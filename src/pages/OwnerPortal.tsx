@@ -7,7 +7,7 @@ import {
   RefreshCcw,
   Users,
 } from "lucide-react";
-import { isSupabaseConfigured, supabase, supabaseDebug } from "../lib/supabaseClient";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ApprovalStatus =
   | "pending"
@@ -68,6 +68,14 @@ export function OwnerPortal() {
 
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
+  }
+
+  function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
+    const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
+
+    return window.confirm(
+      `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
+    );
   }
 
   async function loadOwnerData() {
@@ -190,13 +198,6 @@ export function OwnerPortal() {
         {errorMessage ? <div className="notice-card error">{errorMessage}</div> : null}
         {actionMessage ? <div className="notice-card success">{actionMessage}</div> : null}
 
-        <div className="notice-card">
-          <strong>Supabase debug:</strong> URL: {supabaseDebug.url || "missing"} | URL loaded:{" "}
-          {supabaseDebug.hasUrl ? "yes" : "no"} | anon key loaded:{" "}
-          {supabaseDebug.hasAnonKey ? "yes" : "no"} | key preview:{" "}
-          {supabaseDebug.anonKeyPreview}
-        </div>
-
         <div className="owner-grid">
           <section className="panel panel-large">
             <div className="panel-title panel-title-row">
@@ -229,6 +230,7 @@ export function OwnerPortal() {
 
               {pendingApprovals.map((approval) => {
                 const client = getClientForApproval(approval);
+                const clientName = client?.business_name || "Unknown client";
 
                 return (
                   <div className="approval-card" key={approval.id}>
@@ -237,7 +239,7 @@ export function OwnerPortal() {
                       <small>Risk: {approval.risk_level}</small>
                     </div>
 
-                    <h3>{client?.business_name || "Unknown client"}</h3>
+                    <h3>{clientName}</h3>
                     <p>{approval.summary}</p>
 
                     {approval.recommended_action ? (
@@ -249,26 +251,30 @@ export function OwnerPortal() {
                     <div className="approval-actions">
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          if (!confirmHighRiskAction("accept", clientName)) return;
+
                           updateApprovalStatus(
                             approval,
                             "accepted",
                             "Owner accepted this approval request."
-                          )
-                        }
+                          );
+                        }}
                       >
                         Accept
                       </button>
 
                       <button
                         type="button"
-                        onClick={() =>
+                        onClick={() => {
+                          if (!confirmHighRiskAction("deny", clientName)) return;
+
                           updateApprovalStatus(
                             approval,
                             "denied",
                             "Owner denied this approval request."
-                          )
-                        }
+                          );
+                        }}
                       >
                         Deny
                       </button>
@@ -357,7 +363,7 @@ export function OwnerPortal() {
 
             <div className="history-item">
               <CheckCircle2 size={16} />
-              <p>Approval buttons now write real status changes into Supabase.</p>
+              <p>Accept and Deny now require confirmation before saving.</p>
             </div>
           </aside>
         </div>
