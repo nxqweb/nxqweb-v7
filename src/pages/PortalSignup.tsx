@@ -3,6 +3,8 @@ import { MailCheck, UserPlus } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export function PortalSignup() {
+  const [businessName, setBusinessName] = useState("");
+  const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -12,6 +14,8 @@ export function PortalSignup() {
   async function handleSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    const trimmedBusinessName = businessName.trim();
+    const trimmedContactName = contactName.trim();
     const trimmedEmail = email.trim();
 
     setStatusMessage("");
@@ -19,6 +23,16 @@ export function PortalSignup() {
 
     if (!isSupabaseConfigured || !supabase) {
       setErrorMessage("Supabase is not configured yet. Check .env.local.");
+      return;
+    }
+
+    if (!trimmedBusinessName) {
+      setErrorMessage("Enter your business name.");
+      return;
+    }
+
+    if (!trimmedContactName) {
+      setErrorMessage("Enter your name.");
       return;
     }
 
@@ -39,6 +53,10 @@ export function PortalSignup() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/portal/login`,
+        data: {
+          business_name: trimmedBusinessName,
+          contact_name: trimmedContactName,
+        },
       },
     });
 
@@ -67,12 +85,36 @@ export function PortalSignup() {
           </div>
 
           <p className="subtle">
-            Create your NXQ Web client portal account. Email verification is
-            required before full portal access.
+            Create your NXQ Web client portal account. Your client workspace will
+            be created automatically after signup.
           </p>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
           {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+
+          <label className="auth-label" htmlFor="business-name">
+            Business name
+          </label>
+          <input
+            className="auth-input"
+            id="business-name"
+            onChange={(event) => setBusinessName(event.target.value)}
+            placeholder="Smith Tree Service"
+            type="text"
+            value={businessName}
+          />
+
+          <label className="auth-label" htmlFor="contact-name">
+            Your name
+          </label>
+          <input
+            className="auth-input"
+            id="contact-name"
+            onChange={(event) => setContactName(event.target.value)}
+            placeholder="John Smith"
+            type="text"
+            value={contactName}
+          />
 
           <label className="auth-label" htmlFor="signup-email">
             Email
