@@ -75,6 +75,7 @@ export function OwnerPortal() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
+  const [ownerReplyText, setOwnerReplyText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -90,6 +91,14 @@ export function OwnerPortal() {
 
     return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
   }, [clientMessages, selectedMessageClientId]);
+
+  const selectedReplyClientId = useMemo(() => {
+    if (selectedMessageClientId !== "all") {
+      return selectedMessageClientId;
+    }
+
+    return clients[0]?.id || "";
+  }, [clients, selectedMessageClientId]);
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
   }
@@ -105,6 +114,44 @@ export function OwnerPortal() {
     );
   }
 
+  async function sendOwnerReply() {
+    const trimmedMessage = ownerReplyText.trim();
+
+    if (!selectedReplyClientId) {
+      setErrorMessage("Pick a client before sending a reply.");
+      return;
+    }
+
+    if (!trimmedMessage) {
+      setErrorMessage("Type a reply before sending.");
+      return;
+    }
+
+    setErrorMessage("");
+    setActionMessage("");
+
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const replyResult = await supabase.from("client_messages").insert({
+      client_id: selectedReplyClientId,
+      sender_type: "owner",
+      message: trimmedMessage,
+      needs_owner_review: false,
+      ai_handled: false,
+    });
+
+    if (replyResult.error) {
+      setErrorMessage(`Owner reply failed: ${replyResult.error.message}`);
+      return;
+    }
+
+    setOwnerReplyText("");
+    setActionMessage("Owner reply sent to client portal.");
+    await loadOwnerData();
+  }
   async function loadOwnerData() {
     setIsLoading(true);
     setErrorMessage("");
@@ -445,6 +492,29 @@ if (messageResult.error) {
     })}
   </div>
 
+            <div className="owner-reply-box">
+              <label htmlFor="owner-reply">Reply to selected client</label>
+
+              <textarea
+                id="owner-reply"
+                value={ownerReplyText}
+                onChange={(event) => setOwnerReplyText(event.target.value)}
+                placeholder="Type your reply to the selected client..."
+              />
+
+              <button
+                className="wide-btn"
+                onClick={sendOwnerReply}
+                type="button"
+                disabled={!selectedReplyClientId}
+              >
+                Send reply
+              </button>
+
+              <small>
+                Replies are saved to the Client Portal as owner messages.
+              </small>
+            </div>
   <div className="history-item">
     <Clock size={16} />
     <p>Newest client messages appear here from the Client Portal.</p>
@@ -460,6 +530,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
