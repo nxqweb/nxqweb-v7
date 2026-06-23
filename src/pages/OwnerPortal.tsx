@@ -74,6 +74,7 @@ export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
+  const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -82,6 +83,13 @@ export function OwnerPortal() {
     return clients.reduce((total, client) => total + Number(client.monthly_price || 0), 0);
   }, [clients]);
 
+  const filteredClientMessages = useMemo(() => {
+    if (selectedMessageClientId === "all") {
+      return clientMessages;
+    }
+
+    return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
+  }, [clientMessages, selectedMessageClientId]);
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
   }
@@ -394,12 +402,26 @@ if (messageResult.error) {
     </button>
   </div>
 
+            <div className="message-filter-row">
+              <select
+                className="message-filter-select"
+                value={selectedMessageClientId}
+                onChange={(event) => setSelectedMessageClientId(event.target.value)}
+              >
+                <option value="all">All clients</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.business_name}
+                  </option>
+                ))}
+              </select>
+            </div>
   <div className="owner-message-list">
-    {clientMessages.length === 0 && !isLoading ? (
+    {filteredClientMessages.length === 0 && !isLoading ? (
       <div className="empty-state">No client messages yet.</div>
     ) : null}
 
-    {clientMessages.map((message) => {
+    {filteredClientMessages.map((message) => {
       const client = getClientForMessage(message);
 
       return (
@@ -438,4 +460,10 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
 
