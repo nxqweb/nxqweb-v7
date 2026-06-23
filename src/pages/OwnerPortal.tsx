@@ -70,6 +70,50 @@ function formatDateTime(value: string) {
     timeStyle: "short",
   });
 }
+
+function isWebsiteSetupReport(approval: ApprovalRow) {
+  return (
+    approval.request_type === "website_setup_review" ||
+    approval.recommended_action?.includes("NXQ WEB WEBSITE SETUP REPORT")
+  );
+}
+
+function parseSetupReport(report: string) {
+  const lines = report
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const fields: { label: string; value: string }[] = [];
+  let currentLabel = "";
+
+  for (const line of lines) {
+    if (line === "NXQ WEB WEBSITE SETUP REPORT") continue;
+
+    if (line.endsWith(":")) {
+      currentLabel = line.replace(":", "");
+      fields.push({ label: currentLabel, value: "" });
+      continue;
+    }
+
+    const colonIndex = line.indexOf(":");
+
+    if (colonIndex > -1 && colonIndex < 35) {
+      const label = line.slice(0, colonIndex).trim();
+      const value = line.slice(colonIndex + 1).trim();
+      fields.push({ label, value });
+      currentLabel = label;
+      continue;
+    }
+
+    if (currentLabel && fields.length > 0) {
+      const lastField = fields[fields.length - 1];
+      lastField.value = lastField.value ? `${lastField.value} ${line}` : line;
+    }
+  }
+
+  return fields;
+}
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -329,7 +373,23 @@ if (messageResult.error) {
                     <h3>{clientName}</h3>
                     <p>{approval.summary}</p>
 
-                    {approval.recommended_action ? (
+                    {approval.recommended_action && isWebsiteSetupReport(approval) ? (
+                      <div className="setup-report-viewer">
+                        <div className="setup-report-header">
+                          <strong>Website setup report</strong>
+                          <span>Client submitted intake + agreement</span>
+                        </div>
+
+                        <div className="setup-report-grid">
+                          {parseSetupReport(approval.recommended_action).map((field) => (
+                            <div className="setup-report-field" key={`${approval.id}-${field.label}`}>
+                              <span>{field.label}</span>
+                              <p>{field.value || "Not provided"}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : approval.recommended_action ? (
                       <p className="recommendation">
                         Recommended: {approval.recommended_action}
                       </p>
@@ -530,6 +590,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
