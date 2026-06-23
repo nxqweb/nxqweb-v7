@@ -299,6 +299,64 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown update error";
       setErrorMessage(`Action failed: ${message}`);
     }
+  }  async function updateClientStatus(
+    client: ClientRow,
+    nextStatus: string,
+    actionLabel: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${actionLabel}\n\nClient: ${client.business_name}\n\nThis will update the client record in Supabase. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    const updatePayload =
+      nextStatus === "lead"
+        ? {
+            status: "lead",
+            notes: null,
+            business_type: "Website Client",
+            service_area: "Not provided yet",
+          }
+        : {
+            status: nextStatus,
+          };
+
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update(updatePayload)
+        .eq("id", client.id);
+
+      if (error) {
+        setErrorMessage(`Client update failed: ${error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: `client_${nextStatus}`,
+        details: {
+          client_name: client.business_name,
+          action_label: actionLabel,
+        },
+      });
+
+      setActionMessage(`${client.business_name}: ${actionLabel} complete.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown client update error";
+      setErrorMessage(`Client update failed: ${message}`);
+    }
   }
 
   useEffect(() => {
@@ -492,6 +550,36 @@ if (messageResult.error) {
                   <span>{client.business_type || "Business type missing"}</span>
                   <small>{formatStatus(client.status)}</small>
                   <b>{formatMoney(Number(client.monthly_price || 0))}/mo</b>
+
+                  <div className="client-control-row">
+                    <button
+                      type="button"
+                      onClick={() => updateClientStatus(client, "lead", "Reset setup")}
+                    >
+                      Reset
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => updateClientStatus(client, "approved", "Approve client")}
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => updateClientStatus(client, "needs_review", "Mark needs info")}
+                    >
+                      Needs Info
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => updateClientStatus(client, "archived", "Archive client")}
+                    >
+                      Archive
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -590,6 +678,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 

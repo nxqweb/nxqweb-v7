@@ -1559,3 +1559,29 @@ textarea:focus {
   margin: 0;
   white-space: pre-wrap;
 }
+
+.client-control-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.client-control-row button {
+  border: 1px solid rgba(103, 232, 249, 0.28);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.5);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 850;
+  padding: 8px 10px;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.client-control-row button:hover {
+  border-color: rgba(103, 232, 249, 0.7);
+  background: rgba(8, 145, 178, 0.16);
+  transform: translateY(-1px);
+}
