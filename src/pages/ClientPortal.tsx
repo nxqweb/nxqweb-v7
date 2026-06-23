@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ImagePlus, MessageCircle, RefreshCcw, UploadCloud } from "lucide-react";
+﻿import { useEffect, useState } from "react";
+import { ImagePlus, LogOut, MessageCircle, RefreshCcw, UploadCloud } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -32,6 +32,13 @@ export function ClientPortal() {
     return status.replaceAll("_", " ");
   }
 
+  async function handleLogout() {
+    if (!supabase) return;
+
+    await supabase.auth.signOut();
+    window.location.href = "/portal/login";
+  }
+
   async function loadClientPortalData() {
     setIsLoading(true);
     setNotice("");
@@ -44,11 +51,20 @@ export function ClientPortal() {
     }
 
     try {
+      const sessionResult = await supabase.auth.getSession();
+      const session = sessionResult.data.session;
+
+      if (!session) {
+        window.location.href = "/portal/login";
+        return;
+      }
+
+      const userId = session.user.id;
+
       const clientResult = await supabase
         .from("clients")
         .select("id, business_name, status, monthly_price")
-        .order("created_at", { ascending: false })
-        .limit(1)
+        .eq("auth_user_id", userId)
         .maybeSingle();
 
       if (clientResult.error) {
@@ -59,7 +75,9 @@ export function ClientPortal() {
       }
 
       if (!clientResult.data) {
-        setErrorMessage("No test client found yet.");
+        setErrorMessage(
+          "No client profile is linked to this login yet. Try signing out and creating a client account again."
+        );
         setClient(null);
         setMessages([]);
         return;
@@ -168,6 +186,11 @@ export function ClientPortal() {
           <div className="stat-card">
             <span>Project stage</span>
             <strong>{client ? formatStatus(client.status) : "Loading"}</strong>
+
+            <button className="icon-btn" onClick={handleLogout} type="button">
+              <LogOut size={16} />
+              Log out
+            </button>
           </div>
         </div>
 
