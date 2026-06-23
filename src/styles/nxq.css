@@ -737,3 +737,573 @@ textarea:focus {
   font-weight: 800;
 }
 
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.42);
+  padding: 10px 12px;
+}
+
+.site-brand,
+.site-nav {
+  display: flex;
+  align-items: center;
+}
+
+.site-brand {
+  gap: 8px;
+  color: #a5f3fc;
+  font-weight: 900;
+}
+
+.site-brand svg {
+  color: #67e8f9;
+}
+
+.site-nav {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.site-nav a {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  font-weight: 800;
+  padding: 9px 12px;
+}
+
+.site-nav a:hover {
+  border-color: rgba(125, 211, 252, 0.28);
+  color: #e0f2fe;
+}
+
+.site-nav .site-nav-pill {
+  border-color: rgba(125, 211, 252, 0.34);
+  background: rgba(6, 182, 212, 0.1);
+  color: #a5f3fc;
+}
+
+.home-section {
+  display: grid;
+  gap: 18px;
+  margin-top: 64px;
+}
+
+.section-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.section-heading span {
+  color: #67e8f9;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-heading h2 {
+  max-width: 760px;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.price-line {
+  display: block;
+  color: #86efac;
+  font-size: 1.8rem;
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .site-header {
+    align-items: stretch;
+    border-radius: 24px;
+    flex-direction: column;
+  }
+
+  .site-nav {
+    justify-content: flex-start;
+  }
+}
+
+/* NXQ premium gold public website */
+
+.lux-home {
+  min-height: 100vh;
+  color: #fffaf0;
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.36) 48%, rgba(0, 0, 0, 0.86)),
+    linear-gradient(180deg, rgba(10, 7, 3, 0.38), rgba(5, 5, 8, 0.82)),
+    url("https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=2400&auto=format&fit=crop");
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.lux-home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(251, 191, 36, 0.2), transparent 28%),
+    radial-gradient(circle at 78% 18%, rgba(245, 158, 11, 0.15), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(34, 197, 94, 0.08), transparent 35%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.56));
+}
+
+.lux-page {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: 24px 0 72px;
+}
+
+.lux-card {
+  position: relative;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 0 18px rgba(251, 191, 36, 0.12),
+    0 26px 80px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.lux-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 239, 184, 0.92), rgba(251, 191, 36, 0.68), rgba(146, 64, 14, 0.45));
+  opacity: 0.9;
+  pointer-events: none;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.lux-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.lux-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 14px;
+}
+
+.lux-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lux-logo {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.08);
+  color: #fde68a;
+  font-weight: 950;
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.14);
+}
+
+.lux-brand strong {
+  display: block;
+  color: #fff7ed;
+  font-size: 1.15rem;
+  font-weight: 950;
+  letter-spacing: 0.32em;
+}
+
+.lux-brand span {
+  display: block;
+  color: rgba(254, 243, 199, 0.7);
+  font-size: 0.78rem;
+  margin-top: 3px;
+}
+
+.lux-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.lux-links a {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: rgba(255, 250, 240, 0.78);
+  font-size: 0.9rem;
+  font-weight: 850;
+  padding: 9px 12px;
+}
+
+.lux-links a:hover {
+  border-color: rgba(251, 191, 36, 0.32);
+  color: #fef3c7;
+}
+
+.lux-links .lux-nav-portal {
+  border-color: rgba(251, 191, 36, 0.38);
+  background: rgba(251, 191, 36, 0.08);
+  color: #fde68a;
+}
+
+.lux-hero {
+  display: grid;
+  grid-template-columns: 1.03fr 0.97fr;
+  gap: 34px;
+  align-items: center;
+  min-height: calc(100vh - 118px);
+  padding: 58px 0 46px;
+}
+
+.lux-tag,
+.lux-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: #fde68a;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 10px 14px;
+}
+
+.lux-hero h1 {
+  max-width: 760px;
+  margin-top: 24px;
+  font-size: clamp(3.7rem, 8vw, 6.9rem);
+  font-weight: 950;
+  letter-spacing: -0.09em;
+  line-height: 0.88;
+  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.78);
+}
+
+.lux-hero h1 span {
+  display: block;
+  color: #fcd34d;
+}
+
+.lux-hero p,
+.lux-section-head p,
+.lux-service p,
+.lux-price p,
+.lux-final p,
+.lux-inner-panel p {
+  color: rgba(255, 250, 240, 0.76);
+  line-height: 1.7;
+}
+
+.lux-hero p {
+  max-width: 650px;
+  margin-top: 26px;
+  font-size: 1.08rem;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.8);
+}
+
+.lux-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.lux-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 50px;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 17px;
+  color: #fffaf0;
+  font-weight: 950;
+  padding: 0 20px;
+  text-decoration: none;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.lux-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(253, 230, 138, 0.45);
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.16);
+}
+
+.lux-btn-primary {
+  background: linear-gradient(135deg, #92400e, #f59e0b, #fde68a);
+  color: #120b03;
+}
+
+.lux-btn-secondary {
+  background: rgba(0, 0, 0, 0.1);
+  color: #fde68a;
+}
+
+.lux-preview {
+  min-height: 520px;
+  display: flex;
+  align-items: center;
+  padding: 24px;
+}
+
+.lux-browser {
+  width: 100%;
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 24px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 18px;
+}
+
+.lux-dots {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.lux-dots span {
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  background: rgba(253, 230, 138, 0.34);
+}
+
+.lux-inner-panel {
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 22px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 34px;
+}
+
+.lux-inner-panel small,
+.lux-section-head span {
+  color: #fde68a;
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.lux-inner-panel h2,
+.lux-section-head h2,
+.lux-process h2,
+.lux-final h2 {
+  color: #fffaf0;
+  font-weight: 950;
+  letter-spacing: -0.065em;
+  line-height: 0.96;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.72);
+}
+
+.lux-inner-panel h2 {
+  max-width: 500px;
+  margin-top: 18px;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+}
+
+.lux-inner-panel p {
+  max-width: 450px;
+  margin-top: 18px;
+}
+
+.lux-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 11px;
+  margin-top: 28px;
+}
+
+.lux-mini-grid div {
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 17px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(255, 250, 240, 0.82);
+  font-weight: 850;
+  padding: 15px;
+}
+
+.lux-section {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 52px;
+}
+
+.lux-section-head {
+  display: grid;
+  gap: 12px;
+}
+
+.lux-section-head h2 {
+  max-width: 760px;
+  font-size: clamp(2.4rem, 5.2vw, 4.6rem);
+}
+
+.lux-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.lux-service,
+.lux-price {
+  min-height: 250px;
+  padding: 25px;
+}
+
+.lux-service svg,
+.lux-final svg {
+  color: #facc15;
+}
+
+.lux-service h3,
+.lux-price h3 {
+  margin-top: 24px;
+  margin-bottom: 14px;
+  color: #fffaf0;
+  font-size: 1.45rem;
+  line-height: 1.08;
+}
+
+.lux-price strong {
+  display: block;
+  color: #fcd34d;
+  font-size: 2rem;
+  margin-top: 22px;
+}
+
+.lux-featured {
+  background: rgba(251, 191, 36, 0.055);
+}
+
+.lux-process,
+.lux-final {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 30px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 34px;
+}
+
+.lux-process h2,
+.lux-final h2 {
+  margin-top: 14px;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+}
+
+.lux-checks {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.lux-checks div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(255, 250, 240, 0.84);
+  font-weight: 850;
+  padding: 15px;
+}
+
+.lux-checks svg {
+  color: #facc15;
+  flex: 0 0 auto;
+}
+
+.lux-final {
+  grid-template-columns: 1fr auto;
+}
+
+.lux-final h2 {
+  margin-top: 14px;
+}
+
+.lux-final p {
+  max-width: 620px;
+  margin-top: 14px;
+}
+
+@media (max-width: 920px) {
+  .lux-home {
+    background-attachment: scroll;
+  }
+
+  .lux-links {
+    display: none;
+  }
+
+  .lux-hero,
+  .lux-process,
+  .lux-final {
+    grid-template-columns: 1fr;
+  }
+
+  .lux-hero {
+    min-height: auto;
+  }
+
+  .lux-preview {
+    min-height: auto;
+  }
+
+  .lux-grid,
+  .lux-mini-grid,
+  .lux-checks {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .lux-page {
+    width: min(100% - 20px, 1200px);
+  }
+
+  .lux-nav {
+    border-radius: 24px;
+  }
+
+  .lux-hero h1 {
+    font-size: 3.3rem;
+  }
+
+  .lux-inner-panel,
+  .lux-process,
+  .lux-final {
+    padding: 24px;
+  }
+}
