@@ -1504,3 +1504,58 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+.setup-report-viewer {
+  border: 1px solid rgba(103, 232, 249, 0.24);
+  border-radius: 22px;
+  background: rgba(2, 6, 23, 0.28);
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.setup-report-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.setup-report-header strong {
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.setup-report-header span {
+  color: #67e8f9;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.setup-report-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.setup-report-field {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 12px;
+}
+
+.setup-report-field span {
+  display: block;
+  color: #a5f3fc;
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.setup-report-field p {
+  color: #e2e8f0;
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-wrap;
+}
