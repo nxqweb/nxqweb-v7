@@ -554,3 +554,26 @@ textarea:focus {
   color: #86efac;
   font-size: 0.78rem;
 }
+.owner-message-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.owner-message-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.owner-message-list::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.35);
+  border-radius: 999px;
+}
+
+.owner-message-list::-webkit-scrollbar-thumb {
+  background: rgba(103, 232, 249, 0.35);
+  border-radius: 999px;
+}
+
+.owner-message-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 232, 249, 0.55);
+}
