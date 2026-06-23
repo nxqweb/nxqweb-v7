@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import {
+  CheckCircle2,
   ImagePlus,
   LogOut,
   MessageCircle,
@@ -35,32 +36,54 @@ const packageOptions: Record<
   starter: {
     label: "Starter",
     price: 50,
-    description: "Clean website, client portal, basic updates, and launch support.",
+    description: "Clean new website foundation, client portal, and launch support.",
   },
   growth: {
     label: "Growth",
     price: 100,
-    description: "More pages, stronger content support, and active update workflow.",
+    description: "Stronger website build, more content support, and active update workflow.",
   },
   premium: {
     label: "Premium",
     price: 150,
-    description: "Priority support, deeper AI help, premium polish, and more updates.",
+    description: "Priority support, premium polish, deeper planning, and more update capacity.",
   },
 };
+
+const completedSetupStatuses = [
+  "intake_received",
+  "needs_review",
+  "approved",
+  "active",
+  "overdue",
+  "suspended",
+  "dormant",
+  "archived",
+];
 
 export function ClientPortal() {
   const [client, setClient] = useState<ClientRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
-  const [projectNeed, setProjectNeed] = useState("New website");
-  const [intakeNotes, setIntakeNotes] = useState("");
+  const [companyScale, setCompanyScale] = useState("Local business");
+  const [locationType, setLocationType] = useState("Single location");
+  const [locations, setLocations] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [services, setServices] = useState("");
+  const [pagesNeeded, setPagesNeeded] = useState("");
+  const [styleDirection, setStyleDirection] = useState("");
+  const [brandNotes, setBrandNotes] = useState("");
+  const [competitors, setCompetitors] = useState("");
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
+  const [typedSignature, setTypedSignature] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [isSubmittingIntake, setIsSubmittingIntake] = useState(false);
+  const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  const setupComplete = client ? completedSetupStatuses.includes(client.status) : false;
 
   function formatStatus(status: string) {
     return status.replaceAll("_", " ");
@@ -149,7 +172,7 @@ export function ClientPortal() {
     }
   }
 
-  async function submitIntake() {
+  async function submitWebsiteSetup() {
     setNotice("");
     setErrorMessage("");
 
@@ -164,67 +187,141 @@ export function ClientPortal() {
     }
 
     const selectedPlan = packageOptions[selectedPackage];
-    const cleanNotes = intakeNotes.trim();
+    const cleanIndustry = industry.trim();
+    const cleanServices = services.trim();
+    const cleanPagesNeeded = pagesNeeded.trim();
+    const cleanStyleDirection = styleDirection.trim();
+    const cleanBrandNotes = brandNotes.trim();
+    const cleanLocations = locations.trim();
+    const cleanCompetitors = competitors.trim();
+    const cleanSignature = typedSignature.trim();
 
-    if (!cleanNotes) {
-      setErrorMessage("Tell NXQ what you want before submitting your intake.");
+    if (!cleanIndustry) {
+      setErrorMessage("Enter the client's industry before submitting.");
       return;
     }
 
-    setIsSubmittingIntake(true);
+    if (!cleanServices) {
+      setErrorMessage("Enter the services/products this website needs to explain.");
+      return;
+    }
+
+    if (!cleanPagesNeeded) {
+      setErrorMessage("Enter the pages or sections the website needs.");
+      return;
+    }
+
+    if (!cleanStyleDirection) {
+      setErrorMessage("Enter the style direction for the website.");
+      return;
+    }
+
+    if (!cleanBrandNotes) {
+      setErrorMessage("Enter what makes this business different.");
+      return;
+    }
+
+    if (!agreementAccepted) {
+      setErrorMessage("You must accept the NXQ Web agreement acknowledgment before submitting.");
+      return;
+    }
+
+    if (!cleanSignature) {
+      setErrorMessage("Type your full name as your signature before submitting.");
+      return;
+    }
+
+    setIsSubmittingSetup(true);
 
     try {
+      const setupReport = [
+        `NXQ WEB WEBSITE SETUP REPORT`,
+        ``,
+        `Client: ${client.business_name}`,
+        `Selected package: ${selectedPlan.label} - $${selectedPlan.price}/mo`,
+        `Company scale: ${companyScale}`,
+        `Location setup: ${locationType}`,
+        `Locations: ${cleanLocations || "Not provided / single location"}`,
+        `Industry: ${cleanIndustry}`,
+        ``,
+        `Services / products:`,
+        cleanServices,
+        ``,
+        `Pages / sections needed:`,
+        cleanPagesNeeded,
+        ``,
+        `Style direction:`,
+        cleanStyleDirection,
+        ``,
+        `Brand difference / positioning:`,
+        cleanBrandNotes,
+        ``,
+        `Competitors / examples:`,
+        cleanCompetitors || "Not provided",
+        ``,
+        `Agreement accepted: Yes`,
+        `Typed signature: ${cleanSignature}`,
+        `Signature date: ${new Date().toISOString()}`,
+        ``,
+        `Payment note: Client understands payment/subscription activation will be required before final website access/live service in a later billing step.`,
+      ].join("\n");
+
       const updateResult = await supabase
         .from("clients")
         .update({
           monthly_price: selectedPlan.price,
-          business_type: projectNeed,
+          business_type: cleanIndustry,
+          service_area: cleanLocations || locationType,
           status: "intake_received",
-          notes: `Package: ${selectedPlan.label} - $${selectedPlan.price}/mo\nNeed: ${projectNeed}\nNotes: ${cleanNotes}`,
+          notes: setupReport,
         })
         .eq("id", client.id);
 
       if (updateResult.error) {
-        setErrorMessage(`Intake update failed: ${updateResult.error.message}`);
+        setErrorMessage(`Website setup update failed: ${updateResult.error.message}`);
         return;
       }
 
       const approvalResult = await supabase.from("owner_approval_requests").insert({
         client_id: client.id,
         project_id: null,
-        request_type: "client_intake",
-        title: "Client package intake",
-        summary: `${client.business_name} selected ${selectedPlan.label} at $${selectedPlan.price}/mo. Need: ${projectNeed}. Notes: ${cleanNotes}`,
-        recommended_action: "Review intake, confirm package fit, and approve next project step.",
+        request_type: "website_setup_review",
+        title: "Website setup submitted",
+        summary: `${client.business_name} submitted a website setup sheet. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`,
+        recommended_action: setupReport,
         risk_level: "low",
         status: "pending",
       });
 
       if (approvalResult.error) {
-        setErrorMessage(`Owner approval request failed: ${approvalResult.error.message}`);
+        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
         return;
       }
 
       await supabase.from("activity_logs").insert({
         client_id: client.id,
         actor_type: "client",
-        action: "client_intake_submitted",
+        action: "website_setup_submitted",
         details: {
           package: selectedPlan.label,
           monthly_price: selectedPlan.price,
-          project_need: projectNeed,
-          notes_preview: cleanNotes.slice(0, 160),
+          company_scale: companyScale,
+          location_type: locationType,
+          industry: cleanIndustry,
+          agreement_accepted: agreementAccepted,
+          typed_signature: cleanSignature,
         },
       });
 
-      setNotice("Intake submitted. NXQ will review your package and project request.");
-      setIntakeNotes("");
+      setNotice("Website setup submitted. NXQ will review your project details.");
+      setAgreementAccepted(false);
+      setTypedSignature("");
       await loadClientPortalData();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown intake error";
-      setErrorMessage(`Intake submission failed: ${message}`);
+      const message = error instanceof Error ? error.message : "Unknown setup error";
+      setErrorMessage(`Website setup failed: ${message}`);
     } finally {
-      setIsSubmittingIntake(false);
+      setIsSubmittingSetup(false);
     }
   }
 
@@ -298,8 +395,8 @@ export function ClientPortal() {
             <p className="eyebrow">Client Portal</p>
             <h1>Your website project hub</h1>
             <p className="subtle">
-              Choose your website package, send your intake, message NXQ, upload
-              photos, request changes, and track your website stage.
+              Complete your website setup, message NXQ, upload project content,
+              and track your website stage.
             </p>
           </div>
 
@@ -318,72 +415,189 @@ export function ClientPortal() {
         {notice ? <div className="notice-card success">{notice}</div> : null}
 
         <div className="client-grid">
-          <section className="panel panel-wide">
-            <div className="panel-title">
-              <Send size={20} />
-              <h2>Website package intake</h2>
-            </div>
+          {!setupComplete ? (
+            <section className="panel panel-wide">
+              <div className="panel-title">
+                <Send size={20} />
+                <h2>Website setup sheet</h2>
+              </div>
 
-            <p className="subtle">
-              Pick the monthly package you want, tell NXQ what you need, then submit
-              it for owner review.
-            </p>
+              <p className="subtle">
+                NXQ Web builds a brand-new upgraded website based on your business
+                details, locations, services, style direction, and project goals.
+              </p>
 
-            <div className="package-grid">
-              {(Object.keys(packageOptions) as PackageTier[]).map((tier) => {
-                const option = packageOptions[tier];
-                const isActive = selectedPackage === tier;
+              <div className="package-grid">
+                {(Object.keys(packageOptions) as PackageTier[]).map((tier) => {
+                  const option = packageOptions[tier];
+                  const isActive = selectedPackage === tier;
 
-                return (
-                  <button
-                    className={isActive ? "package-card active" : "package-card"}
-                    key={tier}
-                    onClick={() => setSelectedPackage(tier)}
-                    type="button"
+                  return (
+                    <button
+                      className={isActive ? "package-card active" : "package-card"}
+                      key={tier}
+                      onClick={() => setSelectedPackage(tier)}
+                      type="button"
+                    >
+                      <strong>{option.label}</strong>
+                      <span>${option.price}/mo</span>
+                      <small>{option.description}</small>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="setup-form-grid">
+                <label>
+                  <span>Company size</span>
+                  <select
+                    className="auth-input"
+                    onChange={(event) => setCompanyScale(event.target.value)}
+                    value={companyScale}
                   >
-                    <strong>{option.label}</strong>
-                    <span>${option.price}/mo</span>
-                    <small>{option.description}</small>
-                  </button>
-                );
-              })}
-            </div>
+                    <option>Local business</option>
+                    <option>Regional company</option>
+                    <option>National company</option>
+                    <option>Enterprise / large organization</option>
+                  </select>
+                </label>
 
-            <label className="auth-label" htmlFor="project-need">
-              What do you need?
-            </label>
-            <select
-              className="auth-input"
-              id="project-need"
-              onChange={(event) => setProjectNeed(event.target.value)}
-              value={projectNeed}
-            >
-              <option>New website</option>
-              <option>Website redesign</option>
-              <option>Landing page</option>
-              <option>Maintenance</option>
-              <option>Not sure yet</option>
-            </select>
+                <label>
+                  <span>Location setup</span>
+                  <select
+                    className="auth-input"
+                    onChange={(event) => setLocationType(event.target.value)}
+                    value={locationType}
+                  >
+                    <option>Single location</option>
+                    <option>Multiple locations</option>
+                    <option>Service areas / no storefront</option>
+                    <option>National / online</option>
+                  </select>
+                </label>
+              </div>
 
-            <label className="auth-label" htmlFor="intake-notes">
-              Tell NXQ what you want
-            </label>
-            <textarea
-              id="intake-notes"
-              onChange={(event) => setIntakeNotes(event.target.value)}
-              placeholder="Example: I need a premium website for my tree service with services, reviews, photos, and a contact form."
-              value={intakeNotes}
-            />
+              <label className="auth-label" htmlFor="locations">
+                Locations or service areas
+              </label>
+              <textarea
+                id="locations"
+                onChange={(event) => setLocations(event.target.value)}
+                placeholder="Example: Sacramento CA, Roseville CA, Folsom CA, Elk Grove CA. For multi-location brands, list every location you want represented."
+                value={locations}
+              />
 
-            <button
-              className="wide-btn"
-              disabled={isSubmittingIntake || !client}
-              onClick={submitIntake}
-              type="button"
-            >
-              {isSubmittingIntake ? "Submitting intake..." : "Submit intake for review"}
-            </button>
-          </section>
+              <label className="auth-label" htmlFor="industry">
+                Industry
+              </label>
+              <input
+                className="auth-input"
+                id="industry"
+                onChange={(event) => setIndustry(event.target.value)}
+                placeholder="Example: Tree service, dental office, restaurant group, enterprise retail, security company"
+                value={industry}
+              />
+
+              <label className="auth-label" htmlFor="services">
+                Services/products the website needs to explain
+              </label>
+              <textarea
+                id="services"
+                onChange={(event) => setServices(event.target.value)}
+                placeholder="List services, products, departments, offers, or categories that need to appear on the website."
+                value={services}
+              />
+
+              <label className="auth-label" htmlFor="pages-needed">
+                Pages or sections needed
+              </label>
+              <textarea
+                id="pages-needed"
+                onChange={(event) => setPagesNeeded(event.target.value)}
+                placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ."
+                value={pagesNeeded}
+              />
+
+              <label className="auth-label" htmlFor="style-direction">
+                Website style direction
+              </label>
+              <textarea
+                id="style-direction"
+                onChange={(event) => setStyleDirection(event.target.value)}
+                placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end."
+                value={styleDirection}
+              />
+
+              <label className="auth-label" htmlFor="brand-notes">
+                What makes this business different?
+              </label>
+              <textarea
+                id="brand-notes"
+                onChange={(event) => setBrandNotes(event.target.value)}
+                placeholder="Tell NXQ what makes the company better, more trusted, faster, safer, more premium, or different from competitors."
+                value={brandNotes}
+              />
+
+              <label className="auth-label" htmlFor="competitors">
+                Competitors, examples, or websites you like
+              </label>
+              <textarea
+                id="competitors"
+                onChange={(event) => setCompetitors(event.target.value)}
+                placeholder="Optional: list competitor websites, inspiration sites, or styles you like."
+                value={competitors}
+              />
+
+              <div className="agreement-box">
+                <label>
+                  <input
+                    checked={agreementAccepted}
+                    onChange={(event) => setAgreementAccepted(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>
+                    I acknowledge and agree that NXQ Web will use the information I
+                    submit to prepare a brand-new website project. I understand that
+                    agreement acceptance and billing activation are required before
+                    final website access/live service.
+                  </span>
+                </label>
+
+                <label className="auth-label" htmlFor="typed-signature">
+                  Typed signature
+                </label>
+                <input
+                  className="auth-input"
+                  id="typed-signature"
+                  onChange={(event) => setTypedSignature(event.target.value)}
+                  placeholder="Type your full name"
+                  value={typedSignature}
+                />
+              </div>
+
+              <button
+                className="wide-btn"
+                disabled={isSubmittingSetup || !client}
+                onClick={submitWebsiteSetup}
+                type="button"
+              >
+                {isSubmittingSetup ? "Submitting setup..." : "Submit website setup"}
+              </button>
+            </section>
+          ) : (
+            <section className="panel panel-wide setup-complete-card">
+              <div className="panel-title">
+                <CheckCircle2 size={20} />
+                <h2>Website setup submitted</h2>
+              </div>
+
+              <p className="subtle">
+                Your website setup sheet has been submitted to NXQ for review. The
+                setup form is now out of the way, and this portal will focus on
+                project messages, files, approvals, and progress updates.
+              </p>
+            </section>
+          )}
 
           <section className="panel">
             <div className="panel-title panel-title-row">
@@ -475,7 +689,7 @@ export function ClientPortal() {
             <div className="tracker">
               <span className={client?.status === "lead" ? "active" : ""}>Lead</span>
               <span className={client?.status === "intake_received" ? "active" : ""}>
-                Intake
+                Setup submitted
               </span>
               <span>Owner Review</span>
               <span>Planning</span>
