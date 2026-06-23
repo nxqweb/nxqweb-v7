@@ -42,6 +42,15 @@ type ApprovalRow = {
   owner_response: string | null;
   created_at: string;
 };
+type ClientMessageRow = {
+  id: string;
+  client_id: string | null;
+  sender_type: "owner" | "client" | "ai" | "system";
+  message: string;
+  needs_owner_review: boolean;
+  ai_handled: boolean;
+  created_at: string;
+};
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -55,9 +64,16 @@ function formatStatus(status: string) {
   return status.replaceAll("_", " ");
 }
 
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString([], {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -69,6 +85,9 @@ export function OwnerPortal() {
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
   }
+  function getClientForMessage(message: ClientMessageRow) {
+  return clients.find((client) => client.id === message.client_id) || null;
+}
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
     const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
@@ -115,6 +134,19 @@ export function OwnerPortal() {
       } else {
         setClients((clientResult.data || []) as ClientRow[]);
       }
+      const messageResult = await supabase
+  .from("client_messages")
+  .select(
+    "id, client_id, sender_type, message, needs_owner_review, ai_handled, created_at"
+  )
+  .order("created_at", { ascending: false })
+  .limit(8);
+
+if (messageResult.error) {
+  setErrorMessage(`Client messages load failed: ${messageResult.error.message}`);
+} else {
+  setClientMessages((messageResult.data || []) as ClientMessageRow[]);
+}
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown Supabase fetch error";
       setErrorMessage(`Supabase connection failed: ${message}`);
@@ -351,23 +383,59 @@ export function OwnerPortal() {
           </aside>
 
           <aside className="panel">
-            <div className="panel-title">
-              <MessageSquareText size={20} />
-              <h2>Client messages</h2>
-            </div>
+  <div className="panel-title panel-title-row">
+    <div className="panel-title">
+      <MessageSquareText size={20} />
+      <h2>Client messages</h2>
+    </div>
 
-            <div className="history-item">
-              <Clock size={16} />
-              <p>Client message inbox will connect after approvals are fully live.</p>
-            </div>
+    <button className="icon-btn" onClick={loadOwnerData} type="button">
+      <RefreshCcw size={16} />
+    </button>
+  </div>
 
-            <div className="history-item">
-              <CheckCircle2 size={16} />
-              <p>Accept and Deny now require confirmation before saving.</p>
-            </div>
-          </aside>
+  <div className="owner-message-list">
+    {clientMessages.length === 0 && !isLoading ? (
+      <div className="empty-state">No client messages yet.</div>
+    ) : null}
+
+    {clientMessages.map((message) => {
+      const client = getClientForMessage(message);
+
+      return (
+        <article className="owner-message-card" key={message.id}>
+          <div className="owner-message-top">
+            <strong>{client?.business_name || "Unknown client"}</strong>
+            <span>{formatDateTime(message.created_at)}</span>
+          </div>
+
+          <p>{message.message}</p>
+
+          <small>
+            {message.needs_owner_review
+              ? "Needs owner review"
+              : message.ai_handled
+                ? "AI handled"
+                : "No review needed"}
+          </small>
+        </article>
+      );
+    })}
+  </div>
+
+  <div className="history-item">
+    <Clock size={16} />
+    <p>Newest client messages appear here from the Client Portal.</p>
+  </div>
+
+  <div className="history-item">
+    <CheckCircle2 size={16} />
+    <p>Accept and Deny require confirmation before saving.</p>
+  </div>
+</aside>
         </div>
       </section>
     </main>
   );
 }
+
