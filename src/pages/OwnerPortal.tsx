@@ -612,6 +612,21 @@ if (messageResult.error) {
         }
       }
 
+      const paymentRecord = await supabase.from("payment_records").insert({
+        client_id: client.id,
+        provider: paymentResult.provider,
+        status: paymentResult.status,
+        amount: Number(client.monthly_price || 0),
+        currency: "USD",
+        external_payment_id: paymentResult.externalPaymentId || null,
+        note: paymentResult.message,
+      });
+
+      if (paymentRecord.error) {
+        setErrorMessage(`Payment record failed: ${paymentRecord.error.message}`);
+        return;
+      }
+
       await supabase.from("activity_logs").insert({
         client_id: client.id,
         actor_type: "owner",
@@ -1081,6 +1096,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
