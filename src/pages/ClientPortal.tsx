@@ -27,6 +27,12 @@ type ClientMessageRow = {
   created_at: string;
 };
 
+type ProjectRow = {
+  id: string;
+  client_id: string | null;
+  website_status: string;
+};
+
 type PackageTier = "starter" | "growth" | "premium";
 
 const packageOptions: Record<
@@ -63,6 +69,7 @@ const completedSetupStatuses = [
 
 export function ClientPortal() {
   const [client, setClient] = useState<ClientRow | null>(null);
+  const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
@@ -84,6 +91,7 @@ export function ClientPortal() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const setupComplete = client ? completedSetupStatuses.includes(client.status) : false;
+  const projectStage = project?.website_status || client?.status || "loading";
 
   function formatStatus(status: string) {
     return status.replaceAll("_", " ");
@@ -127,6 +135,7 @@ export function ClientPortal() {
       if (clientResult.error) {
         setErrorMessage(`Client load failed: ${clientResult.error.message}`);
         setClient(null);
+        setProject(null);
         setMessages([]);
         return;
       }
@@ -136,6 +145,7 @@ export function ClientPortal() {
           "No client profile is linked to this login yet. Try signing out and creating a client account again."
         );
         setClient(null);
+        setProject(null);
         setMessages([]);
         return;
       }
@@ -149,6 +159,21 @@ export function ClientPortal() {
         )?.[0] || "starter";
 
       setSelectedPackage(matchingPackage as PackageTier);
+
+      const projectResult = await supabase
+        .from("projects")
+        .select("id, client_id, website_status")
+        .eq("client_id", loadedClient.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (projectResult.error) {
+        setErrorMessage(`Project stage load failed: ${projectResult.error.message}`);
+        setProject(null);
+      } else {
+        setProject((projectResult.data as ProjectRow) || null);
+      }
 
       const messageResult = await supabase
         .from("client_messages")
@@ -402,7 +427,7 @@ export function ClientPortal() {
 
           <div className="stat-card">
             <span>Project stage</span>
-            <strong>{client ? formatStatus(client.status) : "Loading"}</strong>
+            <strong>{formatStatus(projectStage)}</strong>
 
             <button className="icon-btn" onClick={handleLogout} type="button">
               <LogOut size={16} />
@@ -691,10 +716,12 @@ export function ClientPortal() {
               <span className={client?.status === "intake_received" ? "active" : ""}>
                 Setup submitted
               </span>
-              <span>Owner Review</span>
-              <span>Planning</span>
-              <span>Building</span>
-              <span>Live</span>
+              <span className={client?.status === "needs_review" ? "active" : ""}>
+                Owner Review
+              </span>
+              <span className={projectStage === "planning" ? "active" : ""}>Planning</span>
+              <span className={projectStage === "building" ? "active" : ""}>Building</span>
+              <span className={projectStage === "live" ? "active" : ""}>Live</span>
             </div>
           </section>
         </div>
@@ -702,3 +729,4 @@ export function ClientPortal() {
     </main>
   );
 }
+
