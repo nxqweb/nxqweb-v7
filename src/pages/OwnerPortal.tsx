@@ -8,6 +8,7 @@ import {
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { getPaymentProvider } from "../services/paymentProviders";
 
 type ApprovalStatus =
   | "pending"
@@ -453,6 +454,18 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
+      const paymentProvider = getPaymentProvider("manual");
+      const paymentResult = await paymentProvider.activateSubscription({
+        clientId: client.id,
+        clientName: client.business_name,
+        monthlyPrice: Number(client.monthly_price || 0),
+      });
+
+      if (!paymentResult.ok) {
+        setErrorMessage(paymentResult.message);
+        return;
+      }
+
       const clientUpdate = await supabase
         .from("clients")
         .update({
@@ -544,6 +557,18 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
+      const paymentProvider = getPaymentProvider("manual");
+      const paymentResult = await paymentProvider.activateSubscription({
+        clientId: client.id,
+        clientName: client.business_name,
+        monthlyPrice: Number(client.monthly_price || 0),
+      });
+
+      if (!paymentResult.ok) {
+        setErrorMessage(paymentResult.message);
+        return;
+      }
+
       const clientUpdate = await supabase
         .from("clients")
         .update({
@@ -595,12 +620,14 @@ if (messageResult.error) {
           client_name: client.business_name,
           client_status: "active",
           project_status: "building",
-          payment_mode: "manual",
+          payment_mode: paymentResult.provider,
+          payment_status: paymentResult.status,
+          payment_message: paymentResult.message,
           note: "Manual activation used while payment provider is not connected.",
         },
       });
 
-      setActionMessage(`${client.business_name}: subscription activated manually.`);
+      setActionMessage(paymentResult.message);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown manual activation error";
@@ -1054,6 +1081,10 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
 
 
 
