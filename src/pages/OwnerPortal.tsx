@@ -52,6 +52,12 @@ type ClientMessageRow = {
   created_at: string;
 };
 
+type ProjectRow = {
+  id: string;
+  client_id: string | null;
+  website_status: string;
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -117,6 +123,7 @@ function parseSetupReport(report: string) {
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
+  const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
   const [ownerReplyText, setOwnerReplyText] = useState("");
@@ -145,6 +152,10 @@ export function OwnerPortal() {
   }, [clients, selectedMessageClientId]);
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
+  }
+
+  function getProjectForClient(clientId: string) {
+    return projects.find((project) => project.client_id === clientId) || null;
   }
   function getClientForMessage(message: ClientMessageRow) {
   return clients.find((client) => client.id === message.client_id) || null;
@@ -232,7 +243,18 @@ export function OwnerPortal() {
         setErrorMessage(`Client load failed: ${clientResult.error.message}`);
       } else {
         setClients((clientResult.data || []) as ClientRow[]);
+      }      const projectResult = await supabase
+        .from("projects")
+        .select("id, client_id, website_status")
+        .order("created_at", { ascending: false });
+
+      if (projectResult.error) {
+        setErrorMessage(`Project load failed: ${projectResult.error.message}`);
+      } else {
+        setProjects((projectResult.data || []) as ProjectRow[]);
       }
+
+
       const messageResult = await supabase
   .from("client_messages")
   .select(
@@ -356,6 +378,65 @@ if (messageResult.error) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client update error";
       setErrorMessage(`Client update failed: ${message}`);
+    }
+  }
+
+  async function updateProjectStage(
+    client: ClientRow,
+    nextStage: string,
+    actionLabel: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const project = getProjectForClient(client.id);
+
+    if (!project) {
+      setErrorMessage(`${client.business_name} does not have a project record yet.`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${actionLabel}\n\nClient: ${client.business_name}\nProject stage: ${nextStage}\n\nThis will update the project record in Supabase. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          website_status: nextStage,
+        })
+        .eq("id", project.id);
+
+      if (error) {
+        setErrorMessage(`Project stage update failed: ${error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: `project_${nextStage}`,
+        details: {
+          client_name: client.business_name,
+          project_id: project.id,
+          action_label: actionLabel,
+          website_status: nextStage,
+        },
+      });
+
+      setActionMessage(`${client.business_name}: ${actionLabel} complete.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown project update error";
+      setErrorMessage(`Project stage update failed: ${message}`);
     }
   }
 
@@ -580,6 +661,44 @@ if (messageResult.error) {
                       Archive
                     </button>
                   </div>
+
+                  <div className="project-stage-box">
+                    <span>
+                      Project: {getProjectForClient(client.id)?.website_status
+                        ? formatStatus(getProjectForClient(client.id)?.website_status || "")
+                        : "No project yet"}
+                    </span>
+
+                    <div className="project-stage-row">
+                      <button
+                        type="button"
+                        onClick={() => updateProjectStage(client, "planning", "Move to planning")}
+                      >
+                        Planning
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateProjectStage(client, "building", "Move to building")}
+                      >
+                        Building
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateProjectStage(client, "live", "Move to live")}
+                      >
+                        Live
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateProjectStage(client, "frozen", "Freeze project")}
+                      >
+                        Frozen
+                      </button>
+                    </div>
+                  </div>
                 </article>
               ))}
             </div>
@@ -678,6 +797,19 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
