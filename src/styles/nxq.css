@@ -1677,3 +1677,49 @@ textarea:focus {
   transform: none;
   background: rgba(22, 163, 74, 0.28);
 }
+
+/* Owner APS internal scrollers */
+.chat-feed {
+  max-height: 620px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.client-list {
+  max-height: 760px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.owner-message-list {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.chat-feed::-webkit-scrollbar,
+.client-list::-webkit-scrollbar,
+.owner-message-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-feed::-webkit-scrollbar-track,
+.client-list::-webkit-scrollbar-track,
+.owner-message-list::-webkit-scrollbar-track {
+  background: rgba(7, 18, 34, 0.55);
+  border-radius: 999px;
+}
+
+.chat-feed::-webkit-scrollbar-thumb,
+.client-list::-webkit-scrollbar-thumb,
+.owner-message-list::-webkit-scrollbar-thumb {
+  background: rgba(76, 219, 255, 0.45);
+  border-radius: 999px;
+  border: 1px solid rgba(76, 219, 255, 0.25);
+}
+
+.chat-feed::-webkit-scrollbar-thumb:hover,
+.client-list::-webkit-scrollbar-thumb:hover,
+.owner-message-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(76, 219, 255, 0.7);
+}
