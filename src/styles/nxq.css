@@ -1664,3 +1664,16 @@ textarea:focus {
   background: rgba(22, 163, 74, 0.26);
   transform: translateY(-1px);
 }
+
+.manual-activate-btn.is-active {
+  border-color: rgba(74, 222, 128, 0.72);
+  background: rgba(22, 163, 74, 0.28);
+  color: #bbf7d0;
+  cursor: default;
+  opacity: 0.92;
+}
+
+.manual-activate-btn.is-active:hover {
+  transform: none;
+  background: rgba(22, 163, 74, 0.28);
+}

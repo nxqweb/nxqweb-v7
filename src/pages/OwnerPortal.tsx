@@ -938,13 +938,23 @@ if (messageResult.error) {
                       </button>
                     </div>
 
-                    <button
-                      className="manual-activate-btn"
-                      type="button"
-                      onClick={() => activateManualSubscription(client)}
-                    >
-                      Activate Subscription
-                    </button>
+                    {client.status === "active" ? (
+                      <button
+                        className="manual-activate-btn is-active"
+                        type="button"
+                        disabled
+                      >
+                        Subscription Active
+                      </button>
+                    ) : (
+                      <button
+                        className="manual-activate-btn"
+                        type="button"
+                        onClick={() => activateManualSubscription(client)}
+                      >
+                        Activate Subscription
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}
@@ -1044,6 +1054,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
