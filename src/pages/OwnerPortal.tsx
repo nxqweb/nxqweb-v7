@@ -59,6 +59,17 @@ type ProjectRow = {
   website_status: string;
 };
 
+type PaymentRecordRow = {
+  id: string;
+  client_id: string | null;
+  provider: string;
+  status: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  created_at: string;
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -125,6 +136,7 @@ export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
   const [ownerReplyText, setOwnerReplyText] = useState("");
@@ -161,6 +173,10 @@ export function OwnerPortal() {
   function getClientForMessage(message: ClientMessageRow) {
   return clients.find((client) => client.id === message.client_id) || null;
 }
+
+  function getClientForPayment(payment: PaymentRecordRow) {
+    return clients.find((client) => client.id === payment.client_id) || null;
+  }
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
     const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
@@ -255,6 +271,18 @@ export function OwnerPortal() {
         setProjects((projectResult.data || []) as ProjectRow[]);
       }
 
+
+      const paymentResult = await supabase
+        .from("payment_records")
+        .select("id, client_id, provider, status, amount, currency, note, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8);
+
+      if (paymentResult.error) {
+        setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
+      } else {
+        setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
+      }
 
       const messageResult = await supabase
   .from("client_messages")
@@ -1091,11 +1119,63 @@ if (messageResult.error) {
     <p>Accept and Deny require confirmation before saving.</p>
   </div>
 </aside>
+
+          <aside className="panel">
+            <div className="panel-title panel-title-row">
+              <div className="panel-title">
+                <Clock size={20} />
+                <h2>Payment records</h2>
+              </div>
+
+              <button className="icon-btn" onClick={loadOwnerData} type="button">
+                <RefreshCcw size={16} />
+              </button>
+            </div>
+
+            <div className="owner-message-list">
+              {paymentRecords.length === 0 && !isLoading ? (
+                <div className="empty-state">No payment records yet.</div>
+              ) : null}
+
+              {paymentRecords.map((payment) => {
+                const client = getClientForPayment(payment);
+
+                return (
+                  <article className="owner-message-card" key={payment.id}>
+                    <div className="owner-message-top">
+                      <strong>{client?.business_name || "Unknown client"}</strong>
+                      <span>{formatDateTime(payment.created_at)}</span>
+                    </div>
+
+                    <p>
+                      {payment.provider} · {formatStatus(payment.status)} ·{" "}
+                      {formatMoney(Number(payment.amount || 0))}
+                    </p>
+
+                    <small>{payment.note || "No payment note saved."}</small>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="history-item">
+              <CheckCircle2 size={16} />
+              <p>Manual, PayPal, and Stripe payments will appear here.</p>
+            </div>
+          </aside>
         </div>
       </section>
     </main>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
