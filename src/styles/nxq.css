@@ -1723,3 +1723,46 @@ textarea:focus {
 .owner-message-list::-webkit-scrollbar-thumb:hover {
   background: rgba(76, 219, 255, 0.7);
 }
+
+/* Owner APS compact scroll zones v2 */
+.owner-grid {
+  align-items: start;
+}
+
+.chat-feed {
+  max-height: 520px !important;
+  min-height: 0;
+  overflow-y: auto !important;
+  padding-right: 10px;
+}
+
+.client-list {
+  max-height: 520px !important;
+  min-height: 0;
+  overflow-y: auto !important;
+  padding-right: 10px;
+}
+
+.owner-message-list {
+  max-height: 420px !important;
+  min-height: 0;
+  overflow-y: auto !important;
+  padding-right: 10px;
+}
+
+.panel-large {
+  max-height: 720px;
+  overflow: hidden;
+}
+
+.owner-grid > .panel {
+  max-height: 720px;
+}
+
+.mini-client-card {
+  flex-shrink: 0;
+}
+
+.owner-message-card {
+  flex-shrink: 0;
+}

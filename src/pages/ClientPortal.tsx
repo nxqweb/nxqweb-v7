@@ -33,6 +33,17 @@ type ProjectRow = {
   website_status: string;
 };
 
+type UploadedFileRow = {
+  id: string;
+  storage_path: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+  status: string;
+  uploaded_at: string;
+  expires_at: string;
+};
+
 type PackageTier = "starter" | "growth" | "premium";
 
 const packageOptions: Record<
@@ -71,6 +82,8 @@ export function ClientPortal() {
   const [client, setClient] = useState<ClientRow | null>(null);
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
   const [companyScale, setCompanyScale] = useState("Local business");
@@ -86,6 +99,7 @@ export function ClientPortal() {
   const [typedSignature, setTypedSignature] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -137,6 +151,8 @@ export function ClientPortal() {
         setClient(null);
         setProject(null);
         setMessages([]);
+        setUploadedFiles([]);
+        setUploadedFiles([]);
         return;
       }
 
@@ -147,6 +163,8 @@ export function ClientPortal() {
         setClient(null);
         setProject(null);
         setMessages([]);
+        setUploadedFiles([]);
+        setUploadedFiles([]);
         return;
       }
 
@@ -188,6 +206,21 @@ export function ClientPortal() {
         setMessages([]);
       } else {
         setMessages((messageResult.data || []) as ClientMessageRow[]);
+      }
+
+      const fileListResult = await supabase
+        .from("client_files")
+        .select("id, storage_path, file_name, file_type, file_size, status, uploaded_at, expires_at")
+        .eq("client_id", loadedClient.id)
+        .is("deleted_at", null)
+        .order("uploaded_at", { ascending: false })
+        .limit(50);
+
+      if (fileListResult.error) {
+        setErrorMessage(`File list load failed: ${fileListResult.error.message}`);
+        setUploadedFiles([]);
+      } else {
+        setUploadedFiles((fileListResult.data || []) as UploadedFileRow[]);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client portal error";
@@ -405,6 +438,84 @@ export function ClientPortal() {
       setErrorMessage(`Message send failed: ${message}`);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  async function uploadClientFile() {
+    setNotice("");
+    setErrorMessage("");
+
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("No client loaded yet.");
+      return;
+    }
+
+    if (!selectedFile) {
+      setErrorMessage("Choose a file before uploading.");
+      return;
+    }
+
+    setIsUploadingFile(true);
+
+    try {
+      const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const filePath = `${client.id}/${Date.now()}-${safeFileName}`;
+
+      const uploadResult = await supabase.storage
+        .from("client-files")
+        .upload(filePath, selectedFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: selectedFile.type || undefined,
+        });
+
+      if (uploadResult.error) {
+        setErrorMessage(`File upload failed: ${uploadResult.error.message}`);
+        return;
+      }
+
+      const fileRecordResult = await supabase.from("client_files").insert({
+        client_id: client.id,
+        bucket_id: "client-files",
+        storage_path: filePath,
+        file_name: selectedFile.name,
+        file_type: selectedFile.type || null,
+        file_size: selectedFile.size,
+        status: "uploaded",
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+
+      if (fileRecordResult.error) {
+        setErrorMessage(`File record failed: ${fileRecordResult.error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "client",
+        action: "client_file_uploaded",
+        details: {
+          file_name: selectedFile.name,
+          file_path: filePath,
+          file_size: selectedFile.size,
+          file_type: selectedFile.type,
+          expires_in_days: 30,
+        },
+      });
+
+      setSelectedFile(null);
+      setNotice("File uploaded to NXQ.");
+      await loadClientPortalData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown file upload error";
+      setErrorMessage(`File upload failed: ${message}`);
+    } finally {
+      setIsUploadingFile(false);
     }
   }
 
@@ -666,12 +777,63 @@ export function ClientPortal() {
               <UploadCloud size={20} />
               <h2>Upload files</h2>
             </div>
+
             <p className="subtle">
               Upload logos, business photos, reviews, service images, and content for your website.
             </p>
+
             <div className="upload-box">
               <ImagePlus size={30} />
-              <span>File upload will connect to Supabase Storage soon.</span>
+
+              <input
+                className="auth-input"
+                type="file"
+                onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
+              />
+
+              <span>
+                {selectedFile
+                  ? `Ready to upload: ${selectedFile.name}`
+                  : "Choose a logo, photo, review, screenshot, or content file."}
+              </span>
+
+              <button
+                className="wide-btn"
+                disabled={isUploadingFile || !selectedFile || !client}
+                onClick={uploadClientFile}
+                type="button"
+              >
+                {isUploadingFile ? "Uploading file..." : "Upload file"}
+              </button>
+            </div>
+
+            <div className="message-list">
+              {uploadedFiles.length === 0 ? (
+                <div className="empty-state">No files uploaded yet.</div>
+              ) : null}
+
+              {uploadedFiles.map((file) => (
+                <article className="message-card" key={file.id}>
+                  <div className="message-card-top">
+                    <strong>{file.file_name}</strong>
+                    <span>
+                      {new Date(file.uploaded_at).toLocaleString([], {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </div>
+
+                  <p>Status: {formatStatus(file.status)}</p>
+
+                  <small>
+                    Expires{" "}
+                    {new Date(file.expires_at).toLocaleDateString([], {
+                      dateStyle: "medium",
+                    })}
+                  </small>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -729,4 +891,6 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
 
