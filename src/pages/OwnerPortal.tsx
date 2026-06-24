@@ -434,7 +434,103 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown project create error";
       setErrorMessage(`Project create failed: ${message}`);
     }
+  }  async function acceptApprovalAndStartPipeline(
+    approval: ApprovalRow,
+    client: ClientRow | null,
+    clientName: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("Cannot start pipeline because the client record was not found.");
+      return;
+    }
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const clientUpdate = await supabase
+        .from("clients")
+        .update({
+          status: "approved",
+        })
+        .eq("id", client.id);
+
+      if (clientUpdate.error) {
+        setErrorMessage(`Client approval failed: ${clientUpdate.error.message}`);
+        return;
+      }
+
+      const existingProject = getProjectForClient(client.id);
+
+      if (existingProject) {
+        const projectUpdate = await supabase
+          .from("projects")
+          .update({
+            website_status: "planning",
+          })
+          .eq("id", existingProject.id);
+
+        if (projectUpdate.error) {
+          setErrorMessage(`Project update failed: ${projectUpdate.error.message}`);
+          return;
+        }
+      } else {
+        const projectCreate = await supabase
+          .from("projects")
+          .insert({
+            client_id: client.id,
+            project_name: `${client.business_name} Website Project`,
+            website_status: "planning",
+          })
+          .select("id")
+          .single();
+
+        if (projectCreate.error) {
+          setErrorMessage(`Project create failed: ${projectCreate.error.message}`);
+          return;
+        }
+      }
+
+      const approvalUpdate = await supabase
+        .from("owner_approval_requests")
+        .update({
+          status: "accepted",
+          owner_response: "Owner accepted this approval request and started the project pipeline.",
+          resolved_at: new Date().toISOString(),
+        })
+        .eq("id", approval.id);
+
+      if (approvalUpdate.error) {
+        setErrorMessage(`Approval update failed: ${approvalUpdate.error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: "approval_accepted_pipeline_started",
+        details: {
+          approval_id: approval.id,
+          client_name: clientName,
+          client_status: "approved",
+          project_status: "planning",
+        },
+      });
+
+      setActionMessage(`${clientName}: approved and moved into planning.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown pipeline error";
+      setErrorMessage(`Pipeline start failed: ${message}`);
+    }
   }
+
+
 
 
 
@@ -597,11 +693,7 @@ if (messageResult.error) {
                         onClick={() => {
                           if (!confirmHighRiskAction("accept", clientName)) return;
 
-                          updateApprovalStatus(
-                            approval,
-                            "accepted",
-                            "Owner accepted this approval request."
-                          );
+                          acceptApprovalAndStartPipeline(approval, client, clientName);
                         }}
                       >
                         Accept
@@ -864,6 +956,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
