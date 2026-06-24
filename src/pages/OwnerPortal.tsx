@@ -406,6 +406,7 @@ if (messageResult.error) {
         .from("projects")
         .insert({
           client_id: client.id,
+          project_name: `${client.business_name} Website Project`,
           website_status: "planning",
         })
         .select("id")
@@ -863,6 +864,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
