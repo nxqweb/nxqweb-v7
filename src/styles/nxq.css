@@ -1644,3 +1644,23 @@ textarea:focus {
   background: rgba(8, 145, 178, 0.24);
   transform: translateY(-1px);
 }
+
+.manual-activate-btn {
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.16);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 950;
+  margin-top: 10px;
+  padding: 9px 12px;
+  width: 100%;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.manual-activate-btn:hover {
+  border-color: rgba(74, 222, 128, 0.86);
+  background: rgba(22, 163, 74, 0.26);
+  transform: translateY(-1px);
+}

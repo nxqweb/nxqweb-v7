@@ -528,7 +528,87 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown pipeline error";
       setErrorMessage(`Pipeline start failed: ${message}`);
     }
+  }  async function activateManualSubscription(client: ClientRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Activate subscription\n\nClient: ${client.business_name}\n\nThis is manual payment mode. It will mark the client active and move the project into building. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const clientUpdate = await supabase
+        .from("clients")
+        .update({
+          status: "active",
+        })
+        .eq("id", client.id);
+
+      if (clientUpdate.error) {
+        setErrorMessage(`Client activation failed: ${clientUpdate.error.message}`);
+        return;
+      }
+
+      const existingProject = getProjectForClient(client.id);
+
+      if (existingProject) {
+        const projectUpdate = await supabase
+          .from("projects")
+          .update({
+            website_status: "building",
+          })
+          .eq("id", existingProject.id);
+
+        if (projectUpdate.error) {
+          setErrorMessage(`Project activation failed: ${projectUpdate.error.message}`);
+          return;
+        }
+      } else {
+        const projectCreate = await supabase
+          .from("projects")
+          .insert({
+            client_id: client.id,
+            project_name: `${client.business_name} Website Project`,
+            website_status: "building",
+          })
+          .select("id")
+          .single();
+
+        if (projectCreate.error) {
+          setErrorMessage(`Project create failed: ${projectCreate.error.message}`);
+          return;
+        }
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: "manual_subscription_activated",
+        details: {
+          client_name: client.business_name,
+          client_status: "active",
+          project_status: "building",
+          payment_mode: "manual",
+          note: "Manual activation used while payment provider is not connected.",
+        },
+      });
+
+      setActionMessage(`${client.business_name}: subscription activated manually.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown manual activation error";
+      setErrorMessage(`Manual activation failed: ${message}`);
+    }
   }
+
+
 
 
 
@@ -857,6 +937,14 @@ if (messageResult.error) {
                         Frozen
                       </button>
                     </div>
+
+                    <button
+                      className="manual-activate-btn"
+                      type="button"
+                      onClick={() => activateManualSubscription(client)}
+                    >
+                      Activate Subscription
+                    </button>
                   </div>
                 </article>
               ))}
@@ -956,6 +1044,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
