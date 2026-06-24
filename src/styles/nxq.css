@@ -1766,3 +1766,61 @@ textarea:focus {
 .owner-message-card {
   flex-shrink: 0;
 }
+
+/* Owner APS layout anti-overlap fix */
+.owner-grid {
+  align-items: start !important;
+}
+
+.owner-grid > .panel,
+.owner-grid > aside.panel,
+.owner-grid > section.panel {
+  position: relative;
+  max-height: none !important;
+  overflow: visible !important;
+  align-self: start;
+  z-index: 1;
+}
+
+.panel-large {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.chat-feed {
+  max-height: 520px !important;
+  overflow-y: auto !important;
+}
+
+.client-list {
+  max-height: 520px !important;
+  overflow-y: auto !important;
+}
+
+.owner-message-list {
+  max-height: 360px !important;
+  overflow-y: auto !important;
+}
+
+.owner-reply-box {
+  position: relative;
+  z-index: 2;
+  margin-top: 18px;
+}
+
+.history-item {
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 980px) {
+  .owner-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .chat-feed,
+  .client-list,
+  .owner-message-list {
+    max-height: 420px !important;
+  }
+}

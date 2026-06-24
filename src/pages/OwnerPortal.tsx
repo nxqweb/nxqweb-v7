@@ -70,6 +70,21 @@ type PaymentRecordRow = {
   created_at: string;
 };
 
+type ClientFileRow = {
+  id: string;
+  client_id: string | null;
+  bucket_id: string;
+  storage_path: string;
+  file_name: string;
+  file_type: string | null;
+  file_size: number | null;
+  status: string;
+  uploaded_at: string;
+  used_at: string | null;
+  expires_at: string;
+  deleted_at: string | null;
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -137,6 +152,7 @@ export function OwnerPortal() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
+  const [clientFiles, setClientFiles] = useState<ClientFileRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
   const [ownerReplyText, setOwnerReplyText] = useState("");
@@ -176,6 +192,10 @@ export function OwnerPortal() {
 
   function getClientForPayment(payment: PaymentRecordRow) {
     return clients.find((client) => client.id === payment.client_id) || null;
+  }
+
+  function getClientForFile(file: ClientFileRow) {
+    return clients.find((client) => client.id === file.client_id) || null;
   }
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
@@ -282,6 +302,19 @@ export function OwnerPortal() {
         setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
       } else {
         setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
+      }
+
+      const fileResult = await supabase
+        .from("client_files")
+        .select("id, client_id, bucket_id, storage_path, file_name, file_type, file_size, status, uploaded_at, used_at, expires_at, deleted_at")
+        .is("deleted_at", null)
+        .order("uploaded_at", { ascending: false })
+        .limit(12);
+
+      if (fileResult.error) {
+        setErrorMessage(`Client files load failed: ${fileResult.error.message}`);
+      } else {
+        setClientFiles((fileResult.data || []) as ClientFileRow[]);
       }
 
       const messageResult = await supabase
@@ -683,6 +716,91 @@ if (messageResult.error) {
 
 
 
+
+  async function openClientFile(file: ClientFileRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    const signedUrlResult = await supabase.storage
+      .from(file.bucket_id || "client-files")
+      .createSignedUrl(file.storage_path, 60 * 10);
+
+    if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
+      setErrorMessage(
+        `File open failed: ${signedUrlResult.error?.message || "Signed URL was not created."}`
+      );
+      return;
+    }
+
+    window.open(signedUrlResult.data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function updateClientFileStatus(
+    file: ClientFileRow,
+    nextStatus: "used" | "keep" | "delete_pending",
+    actionLabel: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const client = getClientForFile(file);
+    const confirmed = window.confirm(
+      `${actionLabel}\n\nClient: ${client?.business_name || "Unknown client"}\nFile: ${file.file_name}\n\nContinue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    const updatePayload =
+      nextStatus === "used"
+        ? {
+            status: "used",
+            used_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+          }
+        : nextStatus === "keep"
+          ? {
+              status: "keep",
+              expires_at: "2099-12-31T23:59:59.000Z",
+            }
+          : {
+              status: "delete_pending",
+            };
+
+    const updateResult = await supabase
+      .from("client_files")
+      .update(updatePayload)
+      .eq("id", file.id);
+
+    if (updateResult.error) {
+      setErrorMessage(`File update failed: ${updateResult.error.message}`);
+      return;
+    }
+
+    await supabase.from("activity_logs").insert({
+      client_id: file.client_id,
+      actor_type: "owner",
+      action: `client_file_${nextStatus}`,
+      details: {
+        file_id: file.id,
+        file_name: file.file_name,
+        storage_path: file.storage_path,
+        action_label: actionLabel,
+      },
+    });
+
+    setActionMessage(`${file.file_name}: ${actionLabel} complete.`);
+    await loadOwnerData();
+  }
 
   async function updateProjectStage(
     client: ClientRow,
@@ -1124,6 +1242,81 @@ if (messageResult.error) {
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Clock size={20} />
+                <h2>Client files</h2>
+              </div>
+
+              <button className="icon-btn" onClick={loadOwnerData} type="button">
+                <RefreshCcw size={16} />
+              </button>
+            </div>
+
+            <div className="owner-message-list">
+              {clientFiles.length === 0 && !isLoading ? (
+                <div className="empty-state">No client files yet.</div>
+              ) : null}
+
+              {clientFiles.map((file) => {
+                const client = getClientForFile(file);
+
+                return (
+                  <article className="owner-message-card" key={file.id}>
+                    <div className="owner-message-top">
+                      <strong>{client?.business_name || "Unknown client"}</strong>
+                      <span>{formatDateTime(file.uploaded_at)}</span>
+                    </div>
+
+                    <p>{file.file_name}</p>
+
+                    <small>
+                      {formatStatus(file.status)} · Expires{" "}
+                      {new Date(file.expires_at).toLocaleDateString([], {
+                        dateStyle: "medium",
+                      })}
+                    </small>
+
+                    <div className="client-control-row">
+                      <button type="button" onClick={() => openClientFile(file)}>
+                        Open
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateClientFileStatus(file, "used", "Mark used")}
+                      >
+                        Mark Used
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => updateClientFileStatus(file, "keep", "Keep file")}
+                      >
+                        Keep
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientFileStatus(file, "delete_pending", "Mark delete later")
+                        }
+                      >
+                        Delete Later
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="history-item">
+              <CheckCircle2 size={16} />
+              <p>Files marked used expire after 14 days. Kept files do not expire.</p>
+            </div>
+          </aside>
+
+          <aside className="panel">
+            <div className="panel-title panel-title-row">
+              <div className="panel-title">
+                <Clock size={20} />
                 <h2>Payment records</h2>
               </div>
 
@@ -1168,6 +1361,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 
