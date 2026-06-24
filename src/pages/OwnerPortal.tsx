@@ -379,7 +379,63 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown client update error";
       setErrorMessage(`Client update failed: ${message}`);
     }
+  }  async function createProjectForClient(client: ClientRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const existingProject = getProjectForClient(client.id);
+
+    if (existingProject) {
+      setErrorMessage(`${client.business_name} already has a project record.`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Create project\n\nClient: ${client.business_name}\n\nThis will create a website project record in Supabase. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .insert({
+          client_id: client.id,
+          website_status: "planning",
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        setErrorMessage(`Project create failed: ${error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: "project_created",
+        details: {
+          client_name: client.business_name,
+          project_id: data?.id,
+          website_status: "planning",
+        },
+      });
+
+      setActionMessage(`${client.business_name}: project created.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown project create error";
+      setErrorMessage(`Project create failed: ${message}`);
+    }
   }
+
+
 
   async function updateProjectStage(
     client: ClientRow,
@@ -669,6 +725,16 @@ if (messageResult.error) {
                         : "No project yet"}
                     </span>
 
+                    {!getProjectForClient(client.id) ? (
+                      <button
+                        className="create-project-btn"
+                        type="button"
+                        onClick={() => createProjectForClient(client)}
+                      >
+                        Create Project
+                      </button>
+                    ) : null}
+
                     <div className="project-stage-row">
                       <button
                         type="button"
@@ -797,6 +863,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 
