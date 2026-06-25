@@ -2280,3 +2280,30 @@ textarea:focus,
     0 30px 96px rgba(0, 0, 0, 0.36),
     0 0 58px rgba(247, 201, 72, 0.14) !important;
 }
+
+/* NXQ theme toggle polish */
+.nxq-theme-toggle {
+  border-color: rgba(253, 230, 138, 0.45) !important;
+  color: var(--nxq-champagne) !important;
+  letter-spacing: 0.01em;
+}
+
+body[data-nxq-theme="light"] .nxq-page {
+  color: var(--nxq-text);
+}
+
+body[data-nxq-theme="light"] h1,
+body[data-nxq-theme="light"] h2,
+body[data-nxq-theme="light"] h3,
+body[data-nxq-theme="light"] strong {
+  color: #0f172a;
+}
+
+body[data-nxq-theme="light"] .subtle,
+body[data-nxq-theme="light"] .hero-copy,
+body[data-nxq-theme="light"] .message-card p,
+body[data-nxq-theme="light"] .owner-message-card p,
+body[data-nxq-theme="light"] .approval-card p,
+body[data-nxq-theme="light"] .history-item p {
+  color: rgba(30, 41, 59, 0.76) !important;
+}

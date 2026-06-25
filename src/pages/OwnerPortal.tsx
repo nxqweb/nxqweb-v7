@@ -160,9 +160,22 @@ export function OwnerPortal() {
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
   const [ownerView, setOwnerView] = useState<"aps" | "chat">("aps");
+  const [nxqTheme, setNxqTheme] = useState<"dark" | "light">(() => {
+    const savedTheme = window.localStorage.getItem("nxq-theme");
+    const theme = savedTheme === "light" ? "light" : "dark";
+    document.body.dataset.nxqTheme = theme;
+    return theme;
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  function toggleNxqTheme() {
+    const nextTheme = nxqTheme === "dark" ? "light" : "dark";
+    document.body.dataset.nxqTheme = nextTheme;
+    window.localStorage.setItem("nxq-theme", nextTheme);
+    setNxqTheme(nextTheme);
+  }
 
   const monthlyIncome = useMemo(() => {
     return clients.reduce((total, client) => total + Number(client.monthly_price || 0), 0);
@@ -833,6 +846,9 @@ if (messageResult.error) {
             >
               Client chat
             </button>
+            <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
+              {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
             <small>{formatMoney(monthlyIncome)}/mo</small>
           </div>
         </div>
@@ -1255,6 +1271,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 

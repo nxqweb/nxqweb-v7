@@ -79,6 +79,19 @@ const completedSetupStatuses = [
 ];
 
 export function ClientPortal() {
+  const [nxqTheme, setNxqTheme] = useState<"dark" | "light">(() => {
+    const savedTheme = window.localStorage.getItem("nxq-theme");
+    const theme = savedTheme === "light" ? "light" : "dark";
+    document.body.dataset.nxqTheme = theme;
+    return theme;
+  });
+
+  function toggleNxqTheme() {
+    const nextTheme = nxqTheme === "dark" ? "light" : "dark";
+    document.body.dataset.nxqTheme = nextTheme;
+    window.localStorage.setItem("nxq-theme", nextTheme);
+    setNxqTheme(nextTheme);
+  }
   const [client, setClient] = useState<ClientRow | null>(null);
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
@@ -540,6 +553,10 @@ export function ClientPortal() {
             <span>Project stage</span>
             <strong>{formatStatus(projectStage)}</strong>
 
+            <button className="icon-btn" onClick={toggleNxqTheme} type="button">
+              {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
+
             <button className="icon-btn" onClick={handleLogout} type="button">
               <LogOut size={16} />
               Log out
@@ -895,6 +912,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
