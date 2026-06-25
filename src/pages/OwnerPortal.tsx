@@ -115,6 +115,10 @@ function isAiTaskApproval(approval: ApprovalRow) {
   return approval.request_type === "ai_task_approval";
 }
 
+function isPipelineStartApproval(approval: ApprovalRow) {
+  return isWebsiteSetupReport(approval);
+}
+
 function parseSetupReport(report: string) {
   const lines = report
     .split("\n")
@@ -254,6 +258,94 @@ export function OwnerPortal() {
     ].join("\n");
   }
 
+  function shouldRouteCapabilityApproval(decision: string) {
+    return (
+      decision === "owner_review_required" ||
+      decision === "custom_quote_required" ||
+      decision === "not_supported_yet"
+    );
+  }
+
+  function createCapabilityReviewText(requestedText: string) {
+    const classification = classifyCapabilityRequest(requestedText);
+
+    const matchedFeatures =
+      classification.matchedFeatures.length > 0
+        ? classification.matchedFeatures.map((feature) => `- ${feature}`).join("\n")
+        : "- No exact capability rule matched. Owner review required.";
+
+    return [
+      "NXQ ADVANCED CAPABILITY REVIEW",
+      "",
+      `Decision: ${classification.decision}`,
+      `Highest capability level: ${classification.highestLevel}`,
+      `Risk level: ${classification.riskLevel}`,
+      `Owner approval required: ${classification.requiresOwnerApproval ? "yes" : "no"}`,
+      `Custom quote required: ${classification.requiresCustomQuote ? "yes" : "no"}`,
+      `Payment provider needed: ${classification.requiresPaymentProvider ? "yes" : "no"}`,
+      `External API/integration needed: ${classification.requiresExternalApi ? "yes" : "no"}`,
+      "",
+      "Matched feature rules:",
+      matchedFeatures,
+      "",
+      "Safe client-facing response:",
+      classification.clientSafeSummary,
+      "",
+      "Owner internal note:",
+      classification.ownerInternalSummary,
+      "",
+      "Recommended owner options:",
+      "- Approve limited launch-safe version",
+      "- Ask client for more info",
+      "- Require custom quote",
+      "- Deny unsupported advanced version",
+    ].join("\n");
+  }
+
+  async function createCapabilityScopeReviewApproval(
+    approval: ApprovalRow,
+    client: ClientRow,
+    projectId: string | null
+  ) {
+    if (!supabase) {
+      return { ok: false, message: "Supabase is not configured yet." };
+    }
+
+    const requestedText = [approval.summary, approval.recommended_action || ""].join("\n");
+    const classification = classifyCapabilityRequest(requestedText);
+
+    if (!shouldRouteCapabilityApproval(classification.decision)) {
+      return { ok: true, message: "No advanced capability approval needed." };
+    }
+
+    const matchedFeatureList =
+      classification.matchedFeatures.length > 0
+        ? classification.matchedFeatures.join(", ")
+        : "Unknown advanced feature";
+
+    const reviewText = createCapabilityReviewText(requestedText);
+
+    const approvalResult = await supabase.from("owner_approval_requests").insert({
+      client_id: client.id,
+      project_id: projectId,
+      request_type: "capability_scope_review",
+      title: "Advanced capability review needed",
+      summary: `${client.business_name} requested features that need owner review. Decision: ${classification.decision}. Matched: ${matchedFeatureList}.`,
+      recommended_action: reviewText,
+      risk_level: classification.riskLevel,
+      status: "pending",
+    });
+
+    if (approvalResult.error) {
+      return {
+        ok: false,
+        message: `Capability approval create failed: ${approvalResult.error.message}`,
+      };
+    }
+
+    return { ok: true, message: "Capability approval created." };
+  }
+
   function generateProjectBuildPlan(approval: ApprovalRow, client: ClientRow) {
     const fields = parseSetupReport(approval.recommended_action || "");
 
@@ -359,6 +451,16 @@ export function OwnerPortal() {
         ok: false,
         message: `Build plan create failed: ${outputResult.error.message}`,
       };
+    }
+
+    const capabilityApprovalResult = await createCapabilityScopeReviewApproval(
+      approval,
+      client,
+      projectId
+    );
+
+    if (!capabilityApprovalResult.ok) {
+      return capabilityApprovalResult;
     }
 
     return { ok: true, message: "Build plan created." };
@@ -1090,11 +1192,11 @@ if (messageResult.error) {
                         onClick={() => {
                           if (!confirmHighRiskAction("accept", clientName)) return;
 
-                          if (isAiTaskApproval(approval)) {
+                          if (isAiTaskApproval(approval) || !isPipelineStartApproval(approval)) {
                             updateApprovalStatus(
                               approval,
                               "accepted",
-                              "Owner accepted this AI task approval."
+                              "Owner accepted this approval request."
                             );
                             return;
                           }
@@ -1452,6 +1554,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
