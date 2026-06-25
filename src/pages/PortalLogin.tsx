@@ -29,27 +29,67 @@ export function PortalLogin() {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: trimmedEmail,
       password,
     });
 
-    setIsSubmitting(false);
-
-    if (error) {
-      setErrorMessage(error.message);
+    if (error || !data.user) {
+      setIsSubmitting(false);
+      setErrorMessage(error?.message || "Login failed.");
       return;
     }
 
-    setStatusMessage("Login successful. Opening your client portal...");
-    window.location.href = "/client";
+    const ownerResult = await supabase
+      .from("owner_users")
+      .select("id, role")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+
+    if (ownerResult.error) {
+      setIsSubmitting(false);
+      await supabase.auth.signOut();
+      setErrorMessage(`Owner access check failed: ${ownerResult.error.message}`);
+      return;
+    }
+
+    if (ownerResult.data) {
+      setStatusMessage("Owner account verified. Opening Owner APS...");
+      window.location.href = "/owner";
+      return;
+    }
+
+    const clientResult = await supabase
+      .from("clients")
+      .select("id, business_name")
+      .eq("auth_user_id", data.user.id)
+      .maybeSingle();
+
+    setIsSubmitting(false);
+
+    if (clientResult.error) {
+      await supabase.auth.signOut();
+      setErrorMessage(`Client access check failed: ${clientResult.error.message}`);
+      return;
+    }
+
+    if (clientResult.data) {
+      setStatusMessage("Client account verified. Opening your client portal...");
+      window.location.href = "/client";
+      return;
+    }
+
+    await supabase.auth.signOut();
+    setErrorMessage(
+      "This login exists, but it is not linked to an NXQ owner or client profile yet."
+    );
   }
 
   return (
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal">
-          Client Portal
+          NXQ Web Portal
         </a>
 
         <form className="auth-card" onSubmit={handleLogin}>
@@ -59,8 +99,8 @@ export function PortalLogin() {
           </div>
 
           <p className="subtle">
-            Log in with the email and password connected to your NXQ Web client
-            portal.
+            Use your NXQ Web email and password. Owner accounts open Owner APS;
+            client accounts open the Client Portal.
           </p>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
@@ -73,7 +113,7 @@ export function PortalLogin() {
             className="auth-input"
             id="email"
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="client@example.com"
+            placeholder="you@example.com"
             type="email"
             value={email}
           />
@@ -91,12 +131,12 @@ export function PortalLogin() {
           />
 
           <button className="primary-btn auth-submit" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Logging in..." : "Log in to portal"}
+            {isSubmitting ? "Checking access..." : "Log in to portal"}
             <ArrowRight size={18} />
           </button>
 
           <p className="auth-note">
-            Need access? <a href="/portal/signup">Create an account</a>
+            Need client access? <a href="/portal/signup">Create an account</a>
           </p>
         </form>
       </section>

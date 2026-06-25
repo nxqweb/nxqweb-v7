@@ -16,7 +16,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
     if (!supabase) return;
 
     await supabase.auth.signOut();
-    window.location.href = "/owner/login";
+    window.location.href = "/portal/login";
   }
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
       const session = sessionResult.data.session;
 
       if (!session) {
-        window.location.href = "/owner/login";
+        window.location.href = "/portal/login";
         return;
       }
 
@@ -109,4 +109,5 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
 
   return <>{children}</>;
 }
+
 
