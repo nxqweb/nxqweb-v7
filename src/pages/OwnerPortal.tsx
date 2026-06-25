@@ -169,20 +169,16 @@ export function OwnerPortal() {
   }, [clients]);
 
   const filteredClientMessages = useMemo(() => {
-    if (selectedMessageClientId === "all") {
-      return clientMessages;
+    if (!selectedMessageClientId) {
+      return [];
     }
 
     return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
   }, [clientMessages, selectedMessageClientId]);
 
   const selectedReplyClientId = useMemo(() => {
-    if (selectedMessageClientId !== "all") {
-      return selectedMessageClientId;
-    }
-
-    return clients[0]?.id || "";
-  }, [clients, selectedMessageClientId]);
+    return selectedMessageClientId || "";
+  }, [selectedMessageClientId]);
   function getClientForApproval(approval: ApprovalRow) {
     return clients.find((client) => client.id === approval.client_id) || null;
   }
@@ -208,28 +204,24 @@ export function OwnerPortal() {
   }
 
   function useLatestAiDraft() {
-    const selectedClientDraft = selectedReplyClientId
-      ? aiTaskOutputs.find(
-          (output) =>
-            output.client_id === selectedReplyClientId &&
-            output.output_type === "client_reply_draft" &&
-            output.status === "draft_ready"
-        )
-      : null;
+    if (!selectedReplyClientId) {
+      setErrorMessage("Pick a client before loading an AI draft.");
+      return;
+    }
 
-    const fallbackDraft = aiTaskOutputs.find(
+    const draft = aiTaskOutputs.find(
       (output) =>
+        output.client_id === selectedReplyClientId &&
         output.output_type === "client_reply_draft" &&
         output.status === "draft_ready"
     );
 
-    const draft = selectedClientDraft || fallbackDraft;
-
     if (!draft) {
-      setErrorMessage("No ready AI draft found yet. Approve a draft task first or wait for AI generation.");
+      setErrorMessage("No ready AI draft found for this selected client yet.");
       return;
     }
 
+    setErrorMessage("");
     setOwnerReplyText(draft.content);
     setActionMessage("AI draft loaded into the reply box. Review it before sending.");
   }
@@ -324,7 +316,7 @@ export function OwnerPortal() {
         .from("payment_records")
         .select("id, client_id, provider, status, amount, currency, note, created_at")
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(100);
 
       if (paymentResult.error) {
         setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
@@ -353,7 +345,7 @@ export function OwnerPortal() {
     "id, client_id, sender_type, message, needs_owner_review, ai_handled, created_at"
   )
   .order("created_at", { ascending: false })
-  .limit(8);
+  .limit(100);
 
 if (messageResult.error) {
   setErrorMessage(`Client messages load failed: ${messageResult.error.message}`);
@@ -1186,7 +1178,7 @@ if (messageResult.error) {
                 className="wide-btn"
                 onClick={useLatestAiDraft}
                 type="button"
-                disabled={aiTaskOutputs.length === 0}
+                disabled={!selectedReplyClientId || aiTaskOutputs.length === 0}
               >
                 Use latest AI draft
               </button>
@@ -1263,6 +1255,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
