@@ -847,27 +847,31 @@ export function ClientPortal() {
                 </div>
               ) : null}
 
-              {messages.map((message) => (
-                <article className="message-card" key={message.id}>
-                  <div className="message-card-top">
-                    <strong>{message.sender_type}</strong>
-                    <span>
-                      {new Date(message.created_at).toLocaleString([], {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </span>
-                  </div>
+              {messages.map((message) => {
+                const senderLabel =
+                  message.sender_type === "client" ? "You" : "NXQ";
 
-                  <p>{message.message}</p>
+                const statusLabel =
+                  message.sender_type === "client" ? "Sent" : "Received";
 
-                  {message.needs_owner_review ? (
-                    <small>Needs owner review</small>
-                  ) : (
-                    <small>Handled</small>
-                  )}
-                </article>
-              ))}
+                return (
+                  <article className="message-card" key={message.id}>
+                    <div className="message-card-top">
+                      <strong>{senderLabel}</strong>
+                      <span>
+                        {new Date(message.created_at).toLocaleString([], {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </span>
+                    </div>
+
+                    <p>{message.message}</p>
+
+                    <small>{statusLabel}</small>
+                  </article>
+                );
+              })}
             </div>
           </section>
 
@@ -891,6 +895,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
