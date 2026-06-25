@@ -2307,3 +2307,146 @@ body[data-nxq-theme="light"] .approval-card p,
 body[data-nxq-theme="light"] .history-item p {
   color: rgba(30, 41, 59, 0.76) !important;
 }
+
+/* =========================================================
+   NXQ V7 light mode readability polish
+   Keeps platinum/gold glass while improving contrast
+   ========================================================= */
+
+body[data-nxq-theme="light"] {
+  --nxq-text: #0f172a;
+  --nxq-muted: rgba(30, 41, 59, 0.82);
+  --nxq-soft: rgba(51, 65, 85, 0.72);
+  --nxq-champagne: #8a5a00;
+  --nxq-gold: #b7791f;
+  --nxq-rich-gold: #92400e;
+}
+
+body[data-nxq-theme="light"] .badge,
+body[data-nxq-theme="light"] .eyebrow,
+body[data-nxq-theme="light"] .auth-label,
+body[data-nxq-theme="light"] .owner-reply-box label,
+body[data-nxq-theme="light"] .setup-form-grid label span,
+body[data-nxq-theme="light"] .setup-report-header span,
+body[data-nxq-theme="light"] .setup-report-field span,
+body[data-nxq-theme="light"] .project-stage-box > span,
+body[data-nxq-theme="light"] .message-card-top,
+body[data-nxq-theme="light"] .owner-message-top,
+body[data-nxq-theme="light"] .panel-title,
+body[data-nxq-theme="light"] .stat-card span,
+body[data-nxq-theme="light"] .mini-client-card span,
+body[data-nxq-theme="light"] .mini-client-card small {
+  color: #475569 !important;
+}
+
+body[data-nxq-theme="light"] .panel-title svg,
+body[data-nxq-theme="light"] .glass-card svg,
+body[data-nxq-theme="light"] .upload-box svg,
+body[data-nxq-theme="light"] .history-item svg {
+  color: #0891b2 !important;
+}
+
+body[data-nxq-theme="light"] .subtle,
+body[data-nxq-theme="light"] .hero-copy,
+body[data-nxq-theme="light"] .glass-card p,
+body[data-nxq-theme="light"] .approval-card p,
+body[data-nxq-theme="light"] .message-card p,
+body[data-nxq-theme="light"] .owner-message-card p,
+body[data-nxq-theme="light"] .history-item p,
+body[data-nxq-theme="light"] .auth-note,
+body[data-nxq-theme="light"] .setup-report-field p,
+body[data-nxq-theme="light"] .upload-box,
+body[data-nxq-theme="light"] .empty-state,
+body[data-nxq-theme="light"] .agreement-box span {
+  color: rgba(15, 23, 42, 0.82) !important;
+}
+
+body[data-nxq-theme="light"] .message-card small,
+body[data-nxq-theme="light"] .owner-message-card small,
+body[data-nxq-theme="light"] .completed-row strong,
+body[data-nxq-theme="light"] .manual-activate-btn.is-active,
+body[data-nxq-theme="light"] .mini-client-card b,
+body[data-nxq-theme="light"] .price-line,
+body[data-nxq-theme="light"] .package-card span {
+  color: #047857 !important;
+}
+
+body[data-nxq-theme="light"] textarea,
+body[data-nxq-theme="light"] .auth-input,
+body[data-nxq-theme="light"] .message-filter-select {
+  border-color: rgba(146, 64, 14, 0.22) !important;
+  background: rgba(255, 255, 255, 0.56) !important;
+  color: #0f172a !important;
+}
+
+body[data-nxq-theme="light"] textarea::placeholder,
+body[data-nxq-theme="light"] .auth-input::placeholder {
+  color: rgba(71, 85, 105, 0.72) !important;
+}
+
+body[data-nxq-theme="light"] .wide-btn,
+body[data-nxq-theme="light"] .icon-btn,
+body[data-nxq-theme="light"] .secondary-btn,
+body[data-nxq-theme="light"] .approval-actions button,
+body[data-nxq-theme="light"] .client-control-row button,
+body[data-nxq-theme="light"] .project-stage-row button,
+body[data-nxq-theme="light"] .create-project-btn,
+body[data-nxq-theme="light"] .manual-activate-btn {
+  border-color: rgba(146, 64, 14, 0.24) !important;
+  background: rgba(255, 255, 255, 0.46) !important;
+  color: #0f172a !important;
+}
+
+body[data-nxq-theme="light"] .wide-btn:hover,
+body[data-nxq-theme="light"] .icon-btn:hover,
+body[data-nxq-theme="light"] .secondary-btn:hover,
+body[data-nxq-theme="light"] .approval-actions button:hover,
+body[data-nxq-theme="light"] .client-control-row button:hover,
+body[data-nxq-theme="light"] .project-stage-row button:hover,
+body[data-nxq-theme="light"] .create-project-btn:hover,
+body[data-nxq-theme="light"] .manual-activate-btn:hover {
+  border-color: rgba(146, 64, 14, 0.46) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 0 24px rgba(146, 64, 14, 0.1) !important;
+}
+
+body[data-nxq-theme="light"] .nxq-theme-toggle {
+  color: #92400e !important;
+  font-weight: 950;
+}
+
+body[data-nxq-theme="light"] .ai-bubble {
+  border-color: rgba(8, 145, 178, 0.22) !important;
+  background: rgba(236, 254, 255, 0.44) !important;
+}
+
+body[data-nxq-theme="light"] .ai-bubble p {
+  color: rgba(15, 23, 42, 0.82) !important;
+}
+
+body[data-nxq-theme="light"] .recommendation {
+  border-left-color: rgba(8, 145, 178, 0.6) !important;
+  color: #164e63 !important;
+}
+
+body[data-nxq-theme="light"] .completed-row,
+body[data-nxq-theme="light"] .project-stage-box,
+body[data-nxq-theme="light"] .owner-reply-box,
+body[data-nxq-theme="light"] .history-item {
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+body[data-nxq-theme="light"] .chat-feed::-webkit-scrollbar-track,
+body[data-nxq-theme="light"] .client-list::-webkit-scrollbar-track,
+body[data-nxq-theme="light"] .owner-message-list::-webkit-scrollbar-track,
+body[data-nxq-theme="light"] .message-list::-webkit-scrollbar-track {
+  background: rgba(203, 213, 225, 0.46) !important;
+}
+
+body[data-nxq-theme="light"] .chat-feed::-webkit-scrollbar-thumb,
+body[data-nxq-theme="light"] .client-list::-webkit-scrollbar-thumb,
+body[data-nxq-theme="light"] .owner-message-list::-webkit-scrollbar-thumb,
+body[data-nxq-theme="light"] .message-list::-webkit-scrollbar-thumb {
+  background: rgba(8, 145, 178, 0.5) !important;
+  border-color: rgba(8, 145, 178, 0.22) !important;
+}
