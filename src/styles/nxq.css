@@ -2450,3 +2450,59 @@ body[data-nxq-theme="light"] .message-list::-webkit-scrollbar-thumb {
   background: rgba(8, 145, 178, 0.5) !important;
   border-color: rgba(8, 145, 178, 0.22) !important;
 }
+
+/* NXQ Project Build Plan display */
+.build-plan-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.build-plan-list h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.build-plan-card pre {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--nxq-muted);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+
+body[data-nxq-theme="light"] .build-plan-card pre {
+  color: rgba(15, 23, 42, 0.82);
+}
+
+/* NXQ Project Build Plan display */
+.build-plan-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.build-plan-list h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.build-plan-card pre {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--nxq-muted);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+
+body[data-nxq-theme="light"] .build-plan-card pre {
+  color: rgba(15, 23, 42, 0.82);
+}

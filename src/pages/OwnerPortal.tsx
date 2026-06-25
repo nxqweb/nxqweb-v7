@@ -216,6 +216,109 @@ export function OwnerPortal() {
     );
   }
 
+  function getSetupField(fields: { label: string; value: string }[], labelMatch: string) {
+    return (
+      fields.find((field) =>
+        field.label.toLowerCase().includes(labelMatch.toLowerCase())
+      )?.value || "Not provided"
+    );
+  }
+
+  function generateProjectBuildPlan(approval: ApprovalRow, client: ClientRow) {
+    const fields = parseSetupReport(approval.recommended_action || "");
+
+    const selectedPackage = getSetupField(fields, "Selected package");
+    const companyScale = getSetupField(fields, "Company scale");
+    const locationSetup = getSetupField(fields, "Location setup");
+    const locations = getSetupField(fields, "Locations");
+    const industry = getSetupField(fields, "Industry");
+    const services = getSetupField(fields, "Services");
+    const pagesNeeded = getSetupField(fields, "Pages");
+    const styleDirection = getSetupField(fields, "Style");
+    const brandPositioning = getSetupField(fields, "Brand");
+    const competitors = getSetupField(fields, "Competitors");
+
+    const missingAssets = [
+      approval.summary.toLowerCase().includes("logo") ? "Logo/photos may be missing or still needed." : "",
+      pagesNeeded === "Not provided" ? "Confirm required pages/sections." : "",
+      styleDirection === "Not provided" ? "Confirm visual style direction." : "",
+      services === "Not provided" ? "Confirm services/products list." : "",
+    ].filter(Boolean);
+
+    return [
+      "NXQ PROJECT BUILD PLAN",
+      "",
+      `Client: ${client.business_name}`,
+      `Package: ${selectedPackage}`,
+      `Company scale: ${companyScale}`,
+      `Location setup: ${locationSetup}`,
+      `Locations: ${locations}`,
+      `Industry: ${industry}`,
+      "",
+      "Core website direction:",
+      `${client.business_name} needs a premium website build for a ${industry} business. Use the submitted setup sheet as the source of truth and keep the project in planning until required content/assets are confirmed.`,
+      "",
+      "Recommended pages / sections:",
+      pagesNeeded,
+      "",
+      "Services / products to feature:",
+      services,
+      "",
+      "Style direction:",
+      styleDirection,
+      "",
+      "Brand positioning:",
+      brandPositioning,
+      "",
+      "Competitors / examples:",
+      competitors,
+      "",
+      "Missing assets / follow-up needed:",
+      missingAssets.length > 0 ? missingAssets.map((item) => `- ${item}`).join("\n") : "- No obvious missing assets detected from the approval summary.",
+      "",
+      "Initial build phases:",
+      "1. Confirm required pages, assets, and client priorities.",
+      "2. Draft homepage structure and service sections.",
+      "3. Create first visual direction/design preview.",
+      "4. Prepare owner review before client-facing delivery.",
+      "5. Move project from planning to building only after owner confirms readiness.",
+      "",
+      "Owner safety rule:",
+      "Do not launch, charge externally, freeze, or mark final approval without explicit owner confirmation.",
+    ].join("\n");
+  }
+
+  async function createProjectBuildPlanOutput(
+    approval: ApprovalRow,
+    client: ClientRow,
+    projectId: string | null
+  ) {
+    if (!supabase) {
+      return { ok: false, message: "Supabase is not configured yet." };
+    }
+
+    const buildPlan = generateProjectBuildPlan(approval, client);
+
+    const outputResult = await supabase.from("ai_task_outputs").insert({
+      client_id: client.id,
+      project_id: projectId,
+      output_type: "project_build_plan",
+      title: `${client.business_name} Project Build Plan`,
+      content: buildPlan,
+      status: "draft_ready",
+      needs_owner_review: true,
+    });
+
+    if (outputResult.error) {
+      return {
+        ok: false,
+        message: `Build plan create failed: ${outputResult.error.message}`,
+      };
+    }
+
+    return { ok: true, message: "Build plan created." };
+  }
+
   function useLatestAiDraft() {
     if (!selectedReplyClientId) {
       setErrorMessage("Pick a client before loading an AI draft.");
@@ -342,7 +445,7 @@ export function OwnerPortal() {
         .select(
           "id, task_id, client_id, project_id, output_type, title, content, status, needs_owner_review, created_at"
         )
-        .in("output_type", ["client_reply_draft"])
+        .in("output_type", ["client_reply_draft", "project_build_plan"])
         .order("created_at", { ascending: false })
         .limit(10);
 
@@ -575,6 +678,7 @@ if (messageResult.error) {
       }
 
       const existingProject = getProjectForClient(client.id);
+      let pipelineProjectId = existingProject?.id || null;
 
       if (existingProject) {
         const projectUpdate = await supabase
@@ -603,6 +707,8 @@ if (messageResult.error) {
           setErrorMessage(`Project create failed: ${projectCreate.error.message}`);
           return;
         }
+
+        pipelineProjectId = projectCreate.data?.id || null;
       }
 
       const approvalUpdate = await supabase
@@ -619,6 +725,17 @@ if (messageResult.error) {
         return;
       }
 
+      const buildPlanResult = await createProjectBuildPlanOutput(
+        approval,
+        client,
+        pipelineProjectId
+      );
+
+      if (!buildPlanResult.ok) {
+        setErrorMessage(buildPlanResult.message);
+        return;
+      }
+
       await supabase.from("activity_logs").insert({
         client_id: client.id,
         actor_type: "owner",
@@ -631,7 +748,7 @@ if (messageResult.error) {
         },
       });
 
-      setActionMessage(`${clientName}: approved and moved into planning.`);
+      setActionMessage(`${clientName}: approved, moved into planning, and build plan created.`);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown pipeline error";
@@ -988,6 +1105,25 @@ if (messageResult.error) {
                 );
               })}
 
+              {aiTaskOutputs.filter((output) => output.output_type === "project_build_plan").length > 0 ? (
+                <div className="build-plan-list">
+                  <h3>Project build plans</h3>
+
+                  {aiTaskOutputs
+                    .filter((output) => output.output_type === "project_build_plan")
+                    .map((output) => (
+                      <article className="approval-card build-plan-card" key={output.id}>
+                        <div className="approval-top">
+                          <span>{output.title}</span>
+                          <small>{output.status}</small>
+                        </div>
+
+                        <pre>{output.content}</pre>
+                      </article>
+                    ))}
+                </div>
+              ) : null}
+
               {completedApprovals.length > 0 ? (
                 <div className="completed-section">
                   <h3>Completed approvals</h3>
@@ -1271,6 +1407,11 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
 
 
 
