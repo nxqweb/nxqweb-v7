@@ -1857,3 +1857,299 @@ textarea:focus {
     max-height: 420px;
   }
 }
+
+/* =========================================================
+   NXQ V7 reusable bubble-glass card system
+   Dark default + prepared light theme variables
+   ========================================================= */
+
+:root {
+  --nxq-page-bg:
+    radial-gradient(circle at 12% 8%, rgba(120, 92, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(245, 190, 70, 0.12), transparent 26%),
+    radial-gradient(circle at 50% 110%, rgba(255, 245, 205, 0.08), transparent 36%),
+    #02040a;
+
+  --nxq-text: #f8fafc;
+  --nxq-muted: rgba(226, 232, 240, 0.72);
+  --nxq-soft: rgba(226, 232, 240, 0.56);
+
+  --nxq-glass-bg: rgba(255, 255, 255, 0.028);
+  --nxq-glass-bg-strong: rgba(255, 255, 255, 0.048);
+  --nxq-glass-border: rgba(255, 255, 255, 0.18);
+
+  --nxq-gold: #f7c948;
+  --nxq-rich-gold: #f59e0b;
+  --nxq-platinum: #f8fafc;
+  --nxq-champagne: #fde68a;
+
+  --nxq-card-radius: 28px;
+  --nxq-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -18px 42px rgba(255, 255, 255, 0.026),
+    0 28px 90px rgba(0, 0, 0, 0.34),
+    0 0 42px rgba(247, 201, 72, 0.08);
+}
+
+body[data-nxq-theme="light"] {
+  --nxq-page-bg:
+    radial-gradient(circle at 10% 8%, rgba(255, 248, 220, 0.78), transparent 30%),
+    radial-gradient(circle at 86% 14%, rgba(245, 158, 11, 0.16), transparent 26%),
+    radial-gradient(circle at 48% 110%, rgba(148, 163, 184, 0.16), transparent 34%),
+    #f8fafc;
+
+  --nxq-text: #111827;
+  --nxq-muted: rgba(30, 41, 59, 0.72);
+  --nxq-soft: rgba(51, 65, 85, 0.6);
+
+  --nxq-glass-bg: rgba(255, 255, 255, 0.34);
+  --nxq-glass-bg-strong: rgba(255, 255, 255, 0.5);
+  --nxq-glass-border: rgba(120, 113, 108, 0.18);
+
+  --nxq-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -18px 42px rgba(255, 255, 255, 0.18),
+    0 26px 70px rgba(15, 23, 42, 0.12),
+    0 0 38px rgba(245, 158, 11, 0.12);
+}
+
+body {
+  color: var(--nxq-text);
+  background: var(--nxq-page-bg);
+  background-attachment: fixed;
+}
+
+/* Future reusable class:
+   Use className="nxq-card" for any new premium card/panel. */
+.nxq-card,
+.glass-card,
+.panel,
+.stat-card,
+.approval-card,
+.mini-client-card,
+.message-card,
+.owner-message-card,
+.auth-card,
+.package-card,
+.setup-report-viewer,
+.setup-report-field,
+.agreement-box,
+.upload-box,
+.notice-card,
+.empty-state {
+  position: relative;
+  border: 1px solid var(--nxq-glass-border) !important;
+  border-radius: var(--nxq-card-radius) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    var(--nxq-glass-bg) !important;
+  box-shadow: var(--nxq-card-shadow) !important;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.nxq-card::before,
+.glass-card::before,
+.panel::before,
+.stat-card::before,
+.approval-card::before,
+.mini-client-card::before,
+.message-card::before,
+.owner-message-card::before,
+.auth-card::before,
+.package-card::before,
+.setup-report-viewer::before,
+.setup-report-field::before,
+.agreement-box::before,
+.upload-box::before,
+.notice-card::before,
+.empty-state::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 2px;
+  background:
+    conic-gradient(
+      from var(--nxq-border-spin, 0deg),
+      rgba(248, 250, 252, 0.08),
+      rgba(248, 250, 252, 0.92),
+      rgba(253, 230, 138, 0.88),
+      rgba(245, 158, 11, 0.96),
+      rgba(247, 201, 72, 0.86),
+      rgba(248, 250, 252, 0.42),
+      rgba(248, 250, 252, 0.08)
+    );
+  opacity: 0.82;
+  pointer-events: none;
+  animation: nxq-gold-border-spin 7.5s linear infinite;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.nxq-card::after,
+.glass-card::after,
+.panel::after,
+.stat-card::after,
+.approval-card::after,
+.mini-client-card::after,
+.message-card::after,
+.owner-message-card::after,
+.auth-card::after,
+.package-card::after,
+.setup-report-viewer::after,
+.setup-report-field::after,
+.agreement-box::after,
+.upload-box::after,
+.notice-card::after,
+.empty-state::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  border-radius: calc(var(--nxq-card-radius) - 2px);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 100%, rgba(247, 201, 72, 0.09), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), transparent 45%);
+  pointer-events: none;
+}
+
+/* Keep content above animated glass layers */
+.nxq-card > *,
+.glass-card > *,
+.panel > *,
+.stat-card > *,
+.approval-card > *,
+.mini-client-card > *,
+.message-card > *,
+.owner-message-card > *,
+.auth-card > *,
+.package-card > *,
+.setup-report-viewer > *,
+.setup-report-field > *,
+.agreement-box > *,
+.upload-box > *,
+.notice-card > *,
+.empty-state > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes nxq-gold-border-spin {
+  to {
+    --nxq-border-spin: 360deg;
+  }
+}
+
+/* Smooth readable text on the clearer cards */
+.subtle,
+.hero-copy,
+.glass-card p,
+.approval-card p,
+.message-card p,
+.owner-message-card p,
+.history-item p,
+.auth-note,
+.setup-report-field p {
+  color: var(--nxq-muted) !important;
+}
+
+.badge,
+.eyebrow,
+.auth-label,
+.owner-reply-box label,
+.setup-form-grid label span,
+.setup-report-header span,
+.setup-report-field span,
+.project-stage-box > span,
+.message-card-top,
+.owner-message-top {
+  color: var(--nxq-champagne) !important;
+}
+
+/* Inputs stay glassy too */
+textarea,
+.auth-input,
+.message-filter-select {
+  border-color: rgba(253, 230, 138, 0.24) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+  color: var(--nxq-text) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 20px rgba(247, 201, 72, 0.045);
+}
+
+textarea:focus,
+.auth-input:focus,
+.message-filter-select:focus {
+  border-color: rgba(253, 230, 138, 0.72) !important;
+  box-shadow:
+    0 0 0 4px rgba(253, 230, 138, 0.1),
+    0 0 28px rgba(247, 201, 72, 0.12) !important;
+}
+
+/* Button polish */
+.primary-btn {
+  border-color: rgba(253, 230, 138, 0.5) !important;
+  background: linear-gradient(135deg, #f8fafc, #fde68a, #f59e0b) !important;
+  color: #160f04 !important;
+  box-shadow:
+    0 0 34px rgba(245, 158, 11, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.56) !important;
+}
+
+.secondary-btn,
+.wide-btn,
+.icon-btn,
+.approval-actions button,
+.client-control-row button,
+.project-stage-row button,
+.create-project-btn,
+.manual-activate-btn {
+  border-color: rgba(253, 230, 138, 0.3) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--nxq-text) !important;
+}
+
+.secondary-btn:hover,
+.wide-btn:hover,
+.icon-btn:hover,
+.approval-actions button:hover,
+.client-control-row button:hover,
+.project-stage-row button:hover,
+.create-project-btn:hover,
+.manual-activate-btn:hover {
+  border-color: rgba(253, 230, 138, 0.68) !important;
+  box-shadow: 0 0 24px rgba(247, 201, 72, 0.12);
+  transform: translateY(-1px);
+}
+
+/* Respect users who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .nxq-card::before,
+  .glass-card::before,
+  .panel::before,
+  .stat-card::before,
+  .approval-card::before,
+  .mini-client-card::before,
+  .message-card::before,
+  .owner-message-card::before,
+  .auth-card::before,
+  .package-card::before,
+  .setup-report-viewer::before,
+  .setup-report-field::before,
+  .agreement-box::before,
+  .upload-box::before,
+  .notice-card::before,
+  .empty-state::before {
+    animation: none;
+  }
+}
