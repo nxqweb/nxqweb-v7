@@ -999,7 +999,7 @@ if (messageResult.error) {
             </div>
           </section>
 
-          <aside className="panel">
+          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title">
               <Users size={20} />
               <h2>Clients</h2>
@@ -1117,11 +1117,11 @@ if (messageResult.error) {
             </div>
           </aside>
 
-          <aside className="panel owner-chat-panel-hidden" style={{ display: ownerView === "chat" ? undefined : "none" }}>
+          <section className="panel panel-large owner-chat-panel-hidden" style={{ display: ownerView === "chat" ? undefined : "none", gridColumn: "1 / -1" }}>
   <div className="panel-title panel-title-row">
     <div className="panel-title">
       <MessageSquareText size={20} />
-      <h2>Client messages</h2>
+      <h2>Client chat</h2>
     </div>
 
     <button className="icon-btn" onClick={loadOwnerData} type="button">
@@ -1145,7 +1145,7 @@ if (messageResult.error) {
             </div>
   <div className="owner-message-list">
     {filteredClientMessages.length === 0 && !isLoading ? (
-      <div className="empty-state">No client messages yet.</div>
+      <div className="empty-state">Pick a client to open their private message thread.</div>
     ) : null}
 
     {filteredClientMessages.map((message) => {
@@ -1173,7 +1173,7 @@ if (messageResult.error) {
   </div>
 
             <div className="owner-reply-box">
-              <label htmlFor="owner-reply">Reply to selected client</label>
+              <label htmlFor="owner-reply">Direct reply to selected client</label>
 
               <textarea
                 id="owner-reply"
@@ -1213,7 +1213,7 @@ if (messageResult.error) {
     <CheckCircle2 size={16} />
     <p>Accept and Deny require confirmation before saving.</p>
   </div>
-</aside>
+</section>
 
           <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
@@ -1263,6 +1263,10 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
 
 
 

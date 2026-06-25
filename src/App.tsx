@@ -16,8 +16,7 @@ function App() {
     return <OwnerLogin />;
   }
 
-
-  if (path.startsWith("/owner")) {
+  if (path === "/owner") {
     return (
       <OwnerProtectedRoute>
         <OwnerPortal />
@@ -25,8 +24,18 @@ function App() {
     );
   }
 
-  if (path.startsWith("/client")) {
+  if (path.startsWith("/owner/")) {
+    window.location.replace("/owner");
+    return null;
+  }
+
+  if (path === "/client") {
     return <ClientPortal />;
+  }
+
+  if (path.startsWith("/client/")) {
+    window.location.replace("/client");
+    return null;
   }
 
   if (path === "/portal/login") {
@@ -41,14 +50,16 @@ function App() {
     return <CheckEmail />;
   }
 
-  if (path.startsWith("/portal")) {
+  if (path === "/portal") {
     return <PortalLanding />;
+  }
+
+  if (path.startsWith("/portal/")) {
+    window.location.replace("/portal");
+    return null;
   }
 
   return <PublicHome />;
 }
 
 export default App;
-
-
-

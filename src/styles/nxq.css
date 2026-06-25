@@ -1824,3 +1824,36 @@ textarea:focus {
     max-height: 420px !important;
   }
 }
+
+/* Owner chat workspace */
+.owner-chat-panel-hidden.panel-large {
+  min-height: 620px;
+}
+
+.owner-chat-panel-hidden .owner-message-list {
+  min-height: 320px;
+  max-height: 460px;
+}
+
+.owner-chat-panel-hidden .owner-reply-box textarea {
+  min-height: 150px;
+}
+
+@media (max-width: 900px) {
+  .portal-header {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-chat-panel-hidden.panel-large {
+    min-height: auto;
+  }
+
+  .owner-chat-panel-hidden .owner-message-list {
+    min-height: 260px;
+    max-height: 420px;
+  }
+}
