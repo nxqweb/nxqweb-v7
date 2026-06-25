@@ -16,6 +16,7 @@ function App() {
     return <OwnerLogin />;
   }
 
+
   if (path.startsWith("/owner")) {
     return (
       <OwnerProtectedRoute>
@@ -48,3 +49,6 @@ function App() {
 }
 
 export default App;
+
+
+

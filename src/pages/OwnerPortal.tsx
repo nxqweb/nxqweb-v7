@@ -157,8 +157,9 @@ export function OwnerPortal() {
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [aiTaskOutputs, setAiTaskOutputs] = useState<AiTaskOutputRow[]>([]);
-  const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
+  const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
+  const [ownerView, setOwnerView] = useState<"aps" | "chat">("aps");
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -818,15 +819,29 @@ if (messageResult.error) {
         <div className="portal-header">
           <div>
             <p className="eyebrow">Owner APS</p>
-            <h1>NXQ command chat</h1>
+            <h1>{ownerView === "aps" ? "NXQ command chat" : "NXQ client chat"}</h1>
             <p className="subtle">
-              Live Supabase owner portal: AI approvals, client messages, and client overview.
+              {ownerView === "aps" ? "AI approval cockpit and owner decisions." : "Pick one client and text them directly."}
             </p>
           </div>
 
           <div className="stat-card">
-            <span>Monthly income</span>
-            <strong>{formatMoney(monthlyIncome)}/mo</strong>
+            <span>☰ Owner menu</span>
+            <button
+              className="wide-btn"
+              type="button"
+              onClick={() => setOwnerView("aps")}
+            >
+              AI approvals
+            </button>
+            <button
+              className="wide-btn"
+              type="button"
+              onClick={() => setOwnerView("chat")}
+            >
+              Client chat
+            </button>
+            <small>{formatMoney(monthlyIncome)}/mo</small>
           </div>
         </div>
 
@@ -834,7 +849,7 @@ if (messageResult.error) {
         {actionMessage ? <div className="notice-card success">{actionMessage}</div> : null}
 
         <div className="owner-grid">
-          <section className="panel panel-large">
+          <section className="panel panel-large" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Bot size={20} />
@@ -1102,7 +1117,7 @@ if (messageResult.error) {
             </div>
           </aside>
 
-          <aside className="panel">
+          <aside className="panel owner-chat-panel-hidden" style={{ display: ownerView === "chat" ? undefined : "none" }}>
   <div className="panel-title panel-title-row">
     <div className="panel-title">
       <MessageSquareText size={20} />
@@ -1120,7 +1135,7 @@ if (messageResult.error) {
                 value={selectedMessageClientId}
                 onChange={(event) => setSelectedMessageClientId(event.target.value)}
               >
-                <option value="all">All clients</option>
+                <option value="">Pick a client</option>
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.business_name}
@@ -1200,7 +1215,7 @@ if (messageResult.error) {
   </div>
 </aside>
 
-          <aside className="panel">
+          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Clock size={20} />
@@ -1248,6 +1263,18 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
