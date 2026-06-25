@@ -2153,3 +2153,130 @@ textarea:focus,
     animation: none;
   }
 }
+
+/* =========================================================
+   NXQ V7 bubble-glass clarity polish
+   Makes cards clearer and border animation smoother
+   ========================================================= */
+
+@property --nxq-border-spin {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  --nxq-glass-bg: rgba(255, 255, 255, 0.012);
+  --nxq-glass-bg-strong: rgba(255, 255, 255, 0.026);
+  --nxq-glass-border: rgba(255, 255, 255, 0.2);
+
+  --nxq-card-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 -20px 46px rgba(255, 255, 255, 0.018),
+    0 28px 90px rgba(0, 0, 0, 0.34),
+    0 0 46px rgba(247, 201, 72, 0.1);
+}
+
+.nxq-card,
+.glass-card,
+.panel,
+.stat-card,
+.approval-card,
+.mini-client-card,
+.message-card,
+.owner-message-card,
+.auth-card,
+.package-card,
+.setup-report-viewer,
+.setup-report-field,
+.agreement-box,
+.upload-box,
+.notice-card,
+.empty-state {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.006)),
+    rgba(255, 255, 255, 0.012) !important;
+  backdrop-filter: none;
+}
+
+.nxq-card::before,
+.glass-card::before,
+.panel::before,
+.stat-card::before,
+.approval-card::before,
+.mini-client-card::before,
+.message-card::before,
+.owner-message-card::before,
+.auth-card::before,
+.package-card::before,
+.setup-report-viewer::before,
+.setup-report-field::before,
+.agreement-box::before,
+.upload-box::before,
+.notice-card::before,
+.empty-state::before {
+  padding: 2px;
+  background:
+    conic-gradient(
+      from var(--nxq-border-spin),
+      rgba(248, 250, 252, 0.03) 0deg,
+      rgba(248, 250, 252, 0.16) 44deg,
+      rgba(248, 250, 252, 0.95) 76deg,
+      rgba(253, 230, 138, 0.92) 98deg,
+      rgba(245, 158, 11, 1) 122deg,
+      rgba(247, 201, 72, 0.82) 146deg,
+      rgba(248, 250, 252, 0.34) 178deg,
+      rgba(248, 250, 252, 0.04) 230deg,
+      rgba(248, 250, 252, 0.03) 360deg
+    );
+  opacity: 0.96;
+  animation: nxq-gold-border-spin 5.8s linear infinite;
+}
+
+.nxq-card::after,
+.glass-card::after,
+.panel::after,
+.stat-card::after,
+.approval-card::after,
+.mini-client-card::after,
+.message-card::after,
+.owner-message-card::after,
+.auth-card::after,
+.package-card::after,
+.setup-report-viewer::after,
+.setup-report-field::after,
+.agreement-box::after,
+.upload-box::after,
+.notice-card::after,
+.empty-state::after {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.13), transparent 24%),
+    radial-gradient(circle at 88% 100%, rgba(247, 201, 72, 0.055), transparent 30%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 48%);
+}
+
+.approval-card,
+.mini-client-card,
+.message-card,
+.owner-message-card,
+.package-card,
+.setup-report-field {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.01)),
+    rgba(255, 255, 255, 0.018) !important;
+}
+
+.panel:hover,
+.stat-card:hover,
+.approval-card:hover,
+.mini-client-card:hover,
+.message-card:hover,
+.owner-message-card:hover,
+.auth-card:hover,
+.package-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -20px 46px rgba(255, 255, 255, 0.02),
+    0 30px 96px rgba(0, 0, 0, 0.36),
+    0 0 58px rgba(247, 201, 72, 0.14) !important;
+}
