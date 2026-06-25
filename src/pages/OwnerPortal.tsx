@@ -43,6 +43,19 @@ type ApprovalRow = {
   owner_response: string | null;
   created_at: string;
 };
+type AiTaskOutputRow = {
+  id: string;
+  task_id: string | null;
+  client_id: string | null;
+  project_id: string | null;
+  output_type: string;
+  title: string;
+  content: string;
+  status: string;
+  needs_owner_review: boolean;
+  created_at: string;
+};
+
 type ClientMessageRow = {
   id: string;
   client_id: string | null;
@@ -143,6 +156,7 @@ export function OwnerPortal() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
+  const [aiTaskOutputs, setAiTaskOutputs] = useState<AiTaskOutputRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("all");
   const [ownerReplyText, setOwnerReplyText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -190,6 +204,33 @@ export function OwnerPortal() {
     return window.confirm(
       `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
     );
+  }
+
+  function useLatestAiDraft() {
+    const selectedClientDraft = selectedReplyClientId
+      ? aiTaskOutputs.find(
+          (output) =>
+            output.client_id === selectedReplyClientId &&
+            output.output_type === "client_reply_draft" &&
+            output.status === "draft_ready"
+        )
+      : null;
+
+    const fallbackDraft = aiTaskOutputs.find(
+      (output) =>
+        output.output_type === "client_reply_draft" &&
+        output.status === "draft_ready"
+    );
+
+    const draft = selectedClientDraft || fallbackDraft;
+
+    if (!draft) {
+      setErrorMessage("No ready AI draft found yet. Approve a draft task first or wait for AI generation.");
+      return;
+    }
+
+    setOwnerReplyText(draft.content);
+    setActionMessage("AI draft loaded into the reply box. Review it before sending.");
   }
 
   async function sendOwnerReply() {
@@ -288,6 +329,21 @@ export function OwnerPortal() {
         setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
       } else {
         setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
+      }
+
+      const outputResult = await supabase
+        .from("ai_task_outputs")
+        .select(
+          "id, task_id, client_id, project_id, output_type, title, content, status, needs_owner_review, created_at"
+        )
+        .in("output_type", ["client_reply_draft"])
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (outputResult.error) {
+        setErrorMessage(`AI outputs load failed: ${outputResult.error.message}`);
+      } else {
+        setAiTaskOutputs((outputResult.data || []) as AiTaskOutputRow[]);
       }
 
       const messageResult = await supabase
@@ -1113,6 +1169,15 @@ if (messageResult.error) {
 
               <button
                 className="wide-btn"
+                onClick={useLatestAiDraft}
+                type="button"
+                disabled={aiTaskOutputs.length === 0}
+              >
+                Use latest AI draft
+              </button>
+
+              <button
+                className="wide-btn"
                 onClick={sendOwnerReply}
                 type="button"
                 disabled={!selectedReplyClientId}
@@ -1183,6 +1248,13 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
+
 
 
 
