@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { getPaymentProvider } from "../services/paymentProviders";
+import { classifyCapabilityRequest } from "../ai/capabilityRules";
 
 type ApprovalStatus =
   | "pending"
@@ -224,6 +225,35 @@ export function OwnerPortal() {
     );
   }
 
+  function formatCapabilityClassification(requestedText: string) {
+    const classification = classifyCapabilityRequest(requestedText);
+
+    const matchedFeatures =
+      classification.matchedFeatures.length > 0
+        ? classification.matchedFeatures.map((feature) => `- ${feature}`).join("\n")
+        : "- No exact capability rule matched. Owner review required.";
+
+    return [
+      "Requested capability classification:",
+      `Decision: ${classification.decision}`,
+      `Highest capability level: ${classification.highestLevel}`,
+      `Risk level: ${classification.riskLevel}`,
+      `Owner approval required: ${classification.requiresOwnerApproval ? "yes" : "no"}`,
+      `Custom quote required: ${classification.requiresCustomQuote ? "yes" : "no"}`,
+      `Payment provider needed: ${classification.requiresPaymentProvider ? "yes" : "no"}`,
+      `External API/integration needed: ${classification.requiresExternalApi ? "yes" : "no"}`,
+      "",
+      "Matched feature rules:",
+      matchedFeatures,
+      "",
+      "Safe client-facing capability response:",
+      classification.clientSafeSummary,
+      "",
+      "Owner internal capability note:",
+      classification.ownerInternalSummary,
+    ].join("\n");
+  }
+
   function generateProjectBuildPlan(approval: ApprovalRow, client: ClientRow) {
     const fields = parseSetupReport(approval.recommended_action || "");
 
@@ -237,6 +267,18 @@ export function OwnerPortal() {
     const styleDirection = getSetupField(fields, "Style");
     const brandPositioning = getSetupField(fields, "Brand");
     const competitors = getSetupField(fields, "Competitors");
+
+    const capabilityRequestText = [
+      approval.summary,
+      approval.recommended_action || "",
+      industry,
+      services,
+      pagesNeeded,
+      brandPositioning,
+      competitors,
+    ].join("\n");
+
+    const capabilitySummary = formatCapabilityClassification(capabilityRequestText);
 
     const missingAssets = [
       approval.summary.toLowerCase().includes("logo") ? "Logo/photos may be missing or still needed." : "",
@@ -272,6 +314,9 @@ export function OwnerPortal() {
       "",
       "Competitors / examples:",
       competitors,
+      "",
+      "Advanced feature / capability review:",
+      capabilitySummary,
       "",
       "Missing assets / follow-up needed:",
       missingAssets.length > 0 ? missingAssets.map((item) => `- ${item}`).join("\n") : "- No obvious missing assets detected from the approval summary.",
@@ -1407,6 +1452,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
