@@ -97,6 +97,10 @@ function isWebsiteSetupReport(approval: ApprovalRow) {
   );
 }
 
+function isAiTaskApproval(approval: ApprovalRow) {
+  return approval.request_type === "ai_task_approval";
+}
+
 function parseSetupReport(report: string) {
   const lines = report
     .split("\n")
@@ -845,6 +849,15 @@ if (messageResult.error) {
                         onClick={() => {
                           if (!confirmHighRiskAction("accept", clientName)) return;
 
+                          if (isAiTaskApproval(approval)) {
+                            updateApprovalStatus(
+                              approval,
+                              "accepted",
+                              "Owner accepted this AI task approval."
+                            );
+                            return;
+                          }
+
                           acceptApprovalAndStartPipeline(approval, client, clientName);
                         }}
                       >
@@ -1170,6 +1183,10 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
 
 
 
