@@ -44,6 +44,20 @@ type UploadedFileRow = {
   expires_at: string;
 };
 
+type ClientDomainRow = {
+  id: string;
+  client_id: string;
+  domain_name: string;
+  domain_type: string;
+  status: string;
+  dns_provider: string | null;
+  registrar_name: string | null;
+  ownership_confirmed: boolean;
+  client_notes: string | null;
+  dns_instructions: string | null;
+  requested_at: string;
+};
+
 type PackageTier = "starter" | "growth" | "premium";
 
 const packageOptions: Record<
@@ -96,7 +110,13 @@ export function ClientPortal() {
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
+  const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [domainName, setDomainName] = useState("");
+  const [domainRegistrar, setDomainRegistrar] = useState("");
+  const [domainDnsProvider, setDomainDnsProvider] = useState("");
+  const [domainNotes, setDomainNotes] = useState("");
+  const [domainOwnershipConfirmed, setDomainOwnershipConfirmed] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
   const [companyScale, setCompanyScale] = useState("Local business");
@@ -113,6 +133,7 @@ export function ClientPortal() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [isSubmittingDomain, setIsSubmittingDomain] = useState(false);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -234,6 +255,21 @@ export function ClientPortal() {
         setUploadedFiles([]);
       } else {
         setUploadedFiles((fileListResult.data || []) as UploadedFileRow[]);
+      }
+
+      const domainResult = await supabase
+        .from("client_domains")
+        .select(
+          "id, client_id, domain_name, domain_type, status, dns_provider, registrar_name, ownership_confirmed, client_notes, dns_instructions, requested_at"
+        )
+        .eq("client_id", loadedClient.id)
+        .order("requested_at", { ascending: false });
+
+      if (domainResult.error) {
+        setErrorMessage(`Domain list load failed: ${domainResult.error.message}`);
+        setClientDomains([]);
+      } else {
+        setClientDomains((domainResult.data || []) as ClientDomainRow[]);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client portal error";
@@ -532,6 +568,139 @@ export function ClientPortal() {
     }
   }
 
+  function normalizeDomainInput(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, "")
+      .replace(/^www\./, "")
+      .replace(/\/.*$/, "");
+  }
+
+  function isValidDomainName(value: string) {
+    return /^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$/.test(value);
+  }
+
+  async function submitDomainRequest() {
+    setNotice("");
+    setErrorMessage("");
+
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("No client loaded yet.");
+      return;
+    }
+
+    const cleanDomain = normalizeDomainInput(domainName);
+    const cleanRegistrar = domainRegistrar.trim();
+    const cleanDnsProvider = domainDnsProvider.trim();
+    const cleanNotes = domainNotes.trim();
+
+    if (!cleanDomain) {
+      setErrorMessage("Enter the domain name you want connected.");
+      return;
+    }
+
+    if (!isValidDomainName(cleanDomain)) {
+      setErrorMessage("Enter a valid domain like example.com.");
+      return;
+    }
+
+    if (!domainOwnershipConfirmed) {
+      setErrorMessage("Confirm that you own or control this domain before submitting.");
+      return;
+    }
+
+    setIsSubmittingDomain(true);
+
+    try {
+      const domainResult = await supabase
+        .from("client_domains")
+        .insert({
+          client_id: client.id,
+          domain_name: cleanDomain,
+          domain_type: "client_owned",
+          status: "owner_review",
+          registrar_name: cleanRegistrar || null,
+          dns_provider: cleanDnsProvider || null,
+          ownership_confirmed: domainOwnershipConfirmed,
+          client_notes: cleanNotes || null,
+        })
+        .select("id")
+        .single();
+
+      if (domainResult.error) {
+        setErrorMessage(`Domain request failed: ${domainResult.error.message}`);
+        return;
+      }
+
+      const approvalText = [
+        "NXQ DOMAIN CONNECTION REVIEW",
+        "",
+        `Client: ${client.business_name}`,
+        `Domain: ${cleanDomain}`,
+        "Domain type: client owned",
+        "Status: owner review",
+        `Registrar: ${cleanRegistrar || "Not provided"}`,
+        `DNS provider: ${cleanDnsProvider || "Not provided"}`,
+        `Ownership confirmed: ${domainOwnershipConfirmed ? "yes" : "no"}`,
+        "",
+        "Client notes:",
+        cleanNotes || "No notes provided.",
+        "",
+        "Owner safety rule:",
+        "Client owns this domain. NXQ may connect website hosting and provide DNS instructions, but NXQ must not take ownership of the domain.",
+        "",
+        "Recommended owner action:",
+        "Approve the domain connection only if the domain looks correct for this client. Then provide DNS instructions or mark as waiting for DNS.",
+      ].join("\n");
+
+      const approvalResult = await supabase.from("owner_approval_requests").insert({
+        client_id: client.id,
+        project_id: project?.id || null,
+        request_type: "domain_connection_review",
+        title: "Domain connection review needed",
+        summary: `${client.business_name} requested to connect ${cleanDomain}. Client confirmed they own/control the domain.`,
+        recommended_action: approvalText,
+        risk_level: "medium",
+        status: "pending",
+      });
+
+      if (approvalResult.error) {
+        setErrorMessage(`Domain approval request failed: ${approvalResult.error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "client",
+        action: "domain_connection_requested",
+        details: {
+          domain_name: cleanDomain,
+          registrar_name: cleanRegistrar || null,
+          dns_provider: cleanDnsProvider || null,
+        },
+      });
+
+      setNotice("Domain request submitted to NXQ for owner review.");
+      setDomainName("");
+      setDomainRegistrar("");
+      setDomainDnsProvider("");
+      setDomainNotes("");
+      setDomainOwnershipConfirmed(false);
+      await loadClientPortalData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown domain request error";
+      setErrorMessage(`Domain request failed: ${message}`);
+    } finally {
+      setIsSubmittingDomain(false);
+    }
+  }
+
   useEffect(() => {
     loadClientPortalData();
   }, []);
@@ -752,6 +921,101 @@ export function ClientPortal() {
             </section>
           )}
 
+          <section className="panel panel-wide">
+            <div className="panel-title">
+              <CheckCircle2 size={20} />
+              <h2>Domain setup</h2>
+            </div>
+
+            <p className="subtle">
+              Add a domain you already own or control. NXQ can help connect it to your website, but you keep ownership of the domain.
+            </p>
+
+            <div className="setup-form-grid">
+              <label>
+                Domain name
+                <input
+                  placeholder="example.com"
+                  value={domainName}
+                  onChange={(event) => setDomainName(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Registrar
+                <input
+                  placeholder="GoDaddy, Namecheap, Cloudflare, Google Domains, etc."
+                  value={domainRegistrar}
+                  onChange={(event) => setDomainRegistrar(event.target.value)}
+                />
+              </label>
+
+              <label>
+                DNS provider
+                <input
+                  placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS, etc."
+                  value={domainDnsProvider}
+                  onChange={(event) => setDomainDnsProvider(event.target.value)}
+                />
+              </label>
+
+              <label>
+                Domain notes
+                <textarea
+                  placeholder="Tell NXQ if this domain is already being used, needs email kept working, or has special DNS setup."
+                  value={domainNotes}
+                  onChange={(event) => setDomainNotes(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <label className="agreement-box">
+              <input
+                checked={domainOwnershipConfirmed}
+                onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)}
+                type="checkbox"
+              />
+              <span>
+                I confirm I own or control this domain. I understand NXQ can help connect the website, but I keep ownership and can repoint the domain later.
+              </span>
+            </label>
+
+            <button
+              className="wide-btn"
+              disabled={isSubmittingDomain || !client}
+              onClick={submitDomainRequest}
+              type="button"
+            >
+              {isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}
+            </button>
+
+            <div className="owner-message-list">
+              {clientDomains.length === 0 ? (
+                <div className="empty-state">No domain requests yet.</div>
+              ) : null}
+
+              {clientDomains.map((domain) => (
+                <article className="owner-message-card" key={domain.id}>
+                  <div className="owner-message-top">
+                    <strong>{domain.domain_name}</strong>
+                    <span>{formatStatus(domain.status)}</span>
+                  </div>
+
+                  <p>
+                    Registrar: {domain.registrar_name || "Not provided"} · DNS:{" "}
+                    {domain.dns_provider || "Not provided"}
+                  </p>
+
+                  {domain.dns_instructions ? (
+                    <pre>{domain.dns_instructions}</pre>
+                  ) : (
+                    <small>Waiting for NXQ owner review / DNS instructions.</small>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+
           <section className="panel">
             <div className="panel-title panel-title-row">
               <div className="panel-title">
@@ -912,6 +1176,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
