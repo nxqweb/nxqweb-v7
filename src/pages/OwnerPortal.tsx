@@ -1330,24 +1330,6 @@ if (messageResult.error) {
                 );
               })}
 
-              {aiTaskOutputs.filter((output) => output.output_type === "project_build_plan").length > 0 ? (
-                <div className="build-plan-list">
-                  <h3>Project build plans</h3>
-
-                  {aiTaskOutputs
-                    .filter((output) => output.output_type === "project_build_plan")
-                    .map((output) => (
-                      <article className="approval-card build-plan-card" key={output.id}>
-                        <div className="approval-top">
-                          <span>{output.title}</span>
-                          <small>{output.status}</small>
-                        </div>
-
-                        <pre>{output.content}</pre>
-                      </article>
-                    ))}
-                </div>
-              ) : null}
 
               {completedApprovals.length > 0 ? (
                 <div className="completed-section">
@@ -1632,6 +1614,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
