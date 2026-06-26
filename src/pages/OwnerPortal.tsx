@@ -115,6 +115,22 @@ function isAiTaskApproval(approval: ApprovalRow) {
   return approval.request_type === "ai_task_approval";
 }
 
+function isDomainConnectionReview(approval: ApprovalRow) {
+  return approval.request_type === "domain_connection_review";
+}
+
+function getDomainFromApproval(approval: ApprovalRow) {
+  const text = [approval.summary, approval.recommended_action || ""].join("\n");
+  const domainMatch = text.match(/Domain:\s*([a-z0-9.-]+\.[a-z]{2,})/i);
+
+  if (domainMatch?.[1]) {
+    return domainMatch[1].trim().toLowerCase();
+  }
+
+  const fallbackMatch = text.match(/\b([a-z0-9-]+\.[a-z]{2,})\b/i);
+  return fallbackMatch?.[1]?.trim().toLowerCase() || "";
+}
+
 function isPipelineStartApproval(approval: ApprovalRow) {
   return isWebsiteSetupReport(approval);
 }
@@ -651,24 +667,86 @@ if (messageResult.error) {
         return;
       }
 
+      let domainDecisionMessage: string | null = null;
+
+      if (isDomainConnectionReview(approval)) {
+        const domainName = getDomainFromApproval(approval);
+
+        if (!domainName) {
+          setErrorMessage(
+            "Approval was saved, but NXQ could not find the domain name in the approval text."
+          );
+          return;
+        }
+
+        if (status === "accepted") {
+          const domainUpdate = await supabase
+            .from("client_domains")
+            .update({
+              status: "waiting_dns",
+              reviewed_at: new Date().toISOString(),
+              dns_instructions:
+                "NXQ reviewed this client-owned domain request. DNS instructions are pending. Client keeps ownership of the domain and should not transfer ownership to NXQ.",
+              owner_notes: ownerResponse,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("client_id", approval.client_id)
+            .eq("domain_name", domainName);
+
+          if (domainUpdate.error) {
+            setErrorMessage(`Domain status update failed: ${domainUpdate.error.message}`);
+            return;
+          }
+
+          domainDecisionMessage = `${domainName} moved to waiting DNS.`;
+        }
+
+        if (status === "denied") {
+          const domainUpdate = await supabase
+            .from("client_domains")
+            .update({
+              status: "failed",
+              owner_notes: ownerResponse,
+              reviewed_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("client_id", approval.client_id)
+            .eq("domain_name", domainName);
+
+          if (domainUpdate.error) {
+            setErrorMessage(`Domain denial update failed: ${domainUpdate.error.message}`);
+            return;
+          }
+
+          domainDecisionMessage = `${domainName} marked as failed/denied.`;
+        }
+      }
+
       await supabase.from("activity_logs").insert({
         client_id: approval.client_id,
         actor_type: "owner",
         action: `approval_${status}`,
         details: {
           approval_id: approval.id,
-          title: approval.title,
           owner_response: ownerResponse,
+          domain_decision: domainDecisionMessage,
         },
       });
 
-      setActionMessage(`Saved: ${ownerResponse}`);
+      setActionMessage(
+        domainDecisionMessage
+          ? `Saved: ${ownerResponse} ${domainDecisionMessage}`
+          : `Saved: ${ownerResponse}`
+      );
+
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown update error";
       setErrorMessage(`Action failed: ${message}`);
     }
-  }  async function updateClientStatus(
+  }
+
+  async function updateClientStatus(
     client: ClientRow,
     nextStatus: string,
     actionLabel: string
@@ -1554,6 +1632,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
