@@ -705,6 +705,8 @@ export function ClientPortal() {
     loadClientPortalData();
   }, []);
 
+  const hasDomainRequests = clientDomains.length > 0;
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -921,95 +923,114 @@ export function ClientPortal() {
             </section>
           )}
 
-          <section className="panel panel-wide">
+          <section className="panel panel-wide domain-panel">
             <div className="panel-title">
               <CheckCircle2 size={20} />
               <h2>Domain setup</h2>
             </div>
 
-            <p className="subtle">
-              Add a domain you already own or control. NXQ can help connect it to your website, but you keep ownership of the domain.
-            </p>
+            {!hasDomainRequests ? (
+              <div className="domain-connect-card">
+                <div className="domain-connect-copy">
+                  <strong>Connect a domain you own</strong>
+                  <p>
+                    Add the domain you want connected to your website. NXQ can help with
+                    setup, but you keep ownership and can repoint it later.
+                  </p>
+                </div>
 
-            <div className="setup-form-grid">
-              <label>
-                Domain name
-                <input
-                  placeholder="example.com"
-                  value={domainName}
-                  onChange={(event) => setDomainName(event.target.value)}
-                />
-              </label>
+                <div className="domain-form-grid">
+                  <label className="domain-field">
+                    <span>Domain name</span>
+                    <input
+                      placeholder="example.com"
+                      value={domainName}
+                      onChange={(event) => setDomainName(event.target.value)}
+                    />
+                  </label>
 
-              <label>
-                Registrar
-                <input
-                  placeholder="GoDaddy, Namecheap, Cloudflare, Google Domains, etc."
-                  value={domainRegistrar}
-                  onChange={(event) => setDomainRegistrar(event.target.value)}
-                />
-              </label>
+                  <label className="domain-field">
+                    <span>Registrar</span>
+                    <input
+                      placeholder="Namecheap, GoDaddy, Cloudflare..."
+                      value={domainRegistrar}
+                      onChange={(event) => setDomainRegistrar(event.target.value)}
+                    />
+                  </label>
 
-              <label>
-                DNS provider
-                <input
-                  placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS, etc."
-                  value={domainDnsProvider}
-                  onChange={(event) => setDomainDnsProvider(event.target.value)}
-                />
-              </label>
+                  <label className="domain-field">
+                    <span>DNS provider</span>
+                    <input
+                      placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS..."
+                      value={domainDnsProvider}
+                      onChange={(event) => setDomainDnsProvider(event.target.value)}
+                    />
+                  </label>
 
-              <label>
-                Domain notes
-                <textarea
-                  placeholder="Tell NXQ if this domain is already being used, needs email kept working, or has special DNS setup."
-                  value={domainNotes}
-                  onChange={(event) => setDomainNotes(event.target.value)}
-                />
-              </label>
-            </div>
+                  <label className="domain-field domain-field-wide">
+                    <span>Domain notes</span>
+                    <textarea
+                      placeholder="Tell NXQ if this domain already has email, a live website, or special DNS setup."
+                      value={domainNotes}
+                      onChange={(event) => setDomainNotes(event.target.value)}
+                    />
+                  </label>
+                </div>
 
-            <label className="agreement-box">
-              <input
-                checked={domainOwnershipConfirmed}
-                onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)}
-                type="checkbox"
-              />
-              <span>
-                I confirm I own or control this domain. I understand NXQ can help connect the website, but I keep ownership and can repoint the domain later.
-              </span>
-            </label>
+                <label className="domain-ownership-box">
+                  <input
+                    checked={domainOwnershipConfirmed}
+                    onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span>
+                    I confirm I own or control this domain. I understand NXQ can help connect
+                    the website, but I keep ownership and can repoint the domain later.
+                  </span>
+                </label>
 
-            <button
-              className="wide-btn"
-              disabled={isSubmittingDomain || !client}
-              onClick={submitDomainRequest}
-              type="button"
-            >
-              {isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}
-            </button>
+                <button
+                  className="wide-btn"
+                  disabled={isSubmittingDomain || !client}
+                  onClick={submitDomainRequest}
+                  type="button"
+                >
+                  {isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}
+                </button>
+              </div>
+            ) : (
+              <div className="domain-summary-card">
+                <strong>Domain request received</strong>
+                <p>
+                  The full form is collapsed so this portal stays clean. NXQ will review
+                  your domain request and place DNS instructions below when ready.
+                </p>
+              </div>
+            )}
 
-            <div className="owner-message-list">
+            <div className="domain-status-list">
               {clientDomains.length === 0 ? (
                 <div className="empty-state">No domain requests yet.</div>
               ) : null}
 
               {clientDomains.map((domain) => (
-                <article className="owner-message-card" key={domain.id}>
-                  <div className="owner-message-top">
+                <article className="domain-status-card" key={domain.id}>
+                  <div className="domain-status-top">
                     <strong>{domain.domain_name}</strong>
                     <span>{formatStatus(domain.status)}</span>
                   </div>
 
-                  <p>
+                  <p className="domain-meta">
                     Registrar: {domain.registrar_name || "Not provided"} · DNS:{" "}
                     {domain.dns_provider || "Not provided"}
                   </p>
 
                   {domain.dns_instructions ? (
-                    <pre>{domain.dns_instructions}</pre>
+                    <p className="domain-instructions">{domain.dns_instructions}</p>
                   ) : (
-                    <small>Waiting for NXQ owner review / DNS instructions.</small>
+                    <p className="domain-instructions">
+                      Waiting for NXQ owner review / DNS instructions.
+                    </p>
                   )}
                 </article>
               ))}
@@ -1176,6 +1197,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
