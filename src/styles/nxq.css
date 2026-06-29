@@ -3055,3 +3055,32 @@ body[data-nxq-theme="light"] .portal-decision-notice p {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Setup Sheet v2.2 Lead AI rules */
+.setup-section-divider {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(253, 230, 138, 0.22);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(253, 230, 138, 0.09), transparent 36%),
+    rgba(255, 255, 255, 0.035);
+  padding: 14px 16px;
+}
+
+.setup-section-divider span {
+  color: var(--nxq-gold);
+  font-size: 0.8rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.setup-section-divider p {
+  margin: 6px 0 0;
+  color: var(--nxq-muted);
+  line-height: 1.5;
+}
+
+body[data-nxq-theme="light"] .setup-section-divider p {
+  color: rgba(15, 23, 42, 0.72);
+}

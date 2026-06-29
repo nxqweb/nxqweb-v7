@@ -133,6 +133,13 @@ export function ClientPortal() {
   const [styleDirection, setStyleDirection] = useState("");
   const [brandNotes, setBrandNotes] = useState("");
   const [competitors, setCompetitors] = useState("");
+  const [preferredContactMethod, setPreferredContactMethod] = useState("");
+  const [urgentLeadRules, setUrgentLeadRules] = useState("");
+  const [rejectedJobs, setRejectedJobs] = useState("");
+  const [areasNotServed, setAreasNotServed] = useState("");
+  const [aiCanAnswer, setAiCanAnswer] = useState("");
+  const [aiNeverPromise, setAiNeverPromise] = useState("");
+  const [escalationRules, setEscalationRules] = useState("");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [typedSignature, setTypedSignature] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -311,6 +318,13 @@ export function ClientPortal() {
     const cleanBusinessHours = businessHours.trim();
     const cleanEmergencyAvailability = emergencyAvailability.trim();
     const cleanCompetitors = competitors.trim();
+    const cleanPreferredContactMethod = preferredContactMethod.trim();
+    const cleanUrgentLeadRules = urgentLeadRules.trim();
+    const cleanRejectedJobs = rejectedJobs.trim();
+    const cleanAreasNotServed = areasNotServed.trim();
+    const cleanAiCanAnswer = aiCanAnswer.trim();
+    const cleanAiNeverPromise = aiNeverPromise.trim();
+    const cleanEscalationRules = escalationRules.trim();
     const cleanSignature = typedSignature.trim();
 
     if (!cleanIndustry) {
@@ -381,6 +395,17 @@ export function ClientPortal() {
         `Competitors / examples:`,
         cleanCompetitors || "Not provided",
         ``,
+        `Lead handling rules:`,
+        `Preferred contact method: ${cleanPreferredContactMethod || "Not provided"}`,
+        `Urgent lead rules: ${cleanUrgentLeadRules || "Not provided"}`,
+        `Jobs / customers to reject: ${cleanRejectedJobs || "Not provided"}`,
+        `Areas not served: ${cleanAreasNotServed || "Not provided"}`,
+        ``,
+        `Website assistant rules:`,
+        `Assistant can answer: ${cleanAiCanAnswer || "Not provided"}`,
+        `Assistant should never promise: ${cleanAiNeverPromise || "Not provided"}`,
+        `Escalation rules: ${cleanEscalationRules || "Not provided"}`,
+        ``,
         `Agreement accepted: Yes`,
         `Typed signature: ${cleanSignature}`,
         `Signature date: ${new Date().toISOString()}`,
@@ -435,6 +460,13 @@ export function ClientPortal() {
           business_hours: cleanBusinessHours || null,
           emergency_availability: cleanEmergencyAvailability || null,
           industry: cleanIndustry,
+          preferred_contact_method: cleanPreferredContactMethod || null,
+          urgent_lead_rules: cleanUrgentLeadRules || null,
+          rejected_jobs: cleanRejectedJobs || null,
+          areas_not_served: cleanAreasNotServed || null,
+          ai_can_answer: cleanAiCanAnswer || null,
+          ai_never_promise: cleanAiNeverPromise || null,
+          escalation_rules: cleanEscalationRules || null,
           agreement_accepted: agreementAccepted,
           typed_signature: cleanSignature,
         },
@@ -1006,6 +1038,86 @@ export function ClientPortal() {
                 onChange={(event) => setCompetitors(event.target.value)}
                 placeholder="Optional: list competitor websites, inspiration sites, or styles you like."
                 value={competitors}
+              />
+
+              <div className="setup-section-divider">
+                <span>Lead handling rules</span>
+                <p>Tell NXQ how your website should handle real customers, quote requests, and urgent leads.</p>
+              </div>
+
+              <label className="auth-label" htmlFor="preferred-contact-method">
+                Preferred contact method
+              </label>
+              <textarea
+                id="preferred-contact-method"
+                onChange={(event) => setPreferredContactMethod(event.target.value)}
+                placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form."
+                value={preferredContactMethod}
+              />
+
+              <label className="auth-label" htmlFor="urgent-lead-rules">
+                What counts as urgent?
+              </label>
+              <textarea
+                id="urgent-lead-rules"
+                onChange={(event) => setUrgentLeadRules(event.target.value)}
+                placeholder="Example: Storm damage, emergency removals, same-day bookings, large commercial jobs, safety issues, high-budget requests."
+                value={urgentLeadRules}
+              />
+
+              <label className="auth-label" htmlFor="rejected-jobs">
+                Jobs or customers to reject
+              </label>
+              <textarea
+                id="rejected-jobs"
+                onChange={(event) => setRejectedJobs(event.target.value)}
+                placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area."
+                value={rejectedJobs}
+              />
+
+              <label className="auth-label" htmlFor="areas-not-served">
+                Areas not served
+              </label>
+              <textarea
+                id="areas-not-served"
+                onChange={(event) => setAreasNotServed(event.target.value)}
+                placeholder="Example: We do not serve Chico, Bay Area, out-of-county jobs, or locations more than 50 miles away."
+                value={areasNotServed}
+              />
+
+              <div className="setup-section-divider">
+                <span>Website assistant rules</span>
+                <p>These rules prepare NXQ for the future website assistant so it knows what it can say safely.</p>
+              </div>
+
+              <label className="auth-label" htmlFor="ai-can-answer">
+                What can the website assistant answer?
+              </label>
+              <textarea
+                id="ai-can-answer"
+                onChange={(event) => setAiCanAnswer(event.target.value)}
+                placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs."
+                value={aiCanAnswer}
+              />
+
+              <label className="auth-label" htmlFor="ai-never-promise">
+                What should it never promise?
+              </label>
+              <textarea
+                id="ai-never-promise"
+                onChange={(event) => setAiNeverPromise(event.target.value)}
+                placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review."
+                value={aiNeverPromise}
+              />
+
+              <label className="auth-label" htmlFor="escalation-rules">
+                When should it escalate to NXQ or the owner?
+              </label>
+              <textarea
+                id="escalation-rules"
+                onChange={(event) => setEscalationRules(event.target.value)}
+                placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services."
+                value={escalationRules}
               />
 
               <div className="agreement-box">
