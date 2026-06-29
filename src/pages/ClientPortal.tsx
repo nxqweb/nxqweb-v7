@@ -122,6 +122,11 @@ export function ClientPortal() {
   const [companyScale, setCompanyScale] = useState("Local business");
   const [locationType, setLocationType] = useState("Single location");
   const [locations, setLocations] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [businessEmail, setBusinessEmail] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [businessHours, setBusinessHours] = useState("");
+  const [emergencyAvailability, setEmergencyAvailability] = useState("");
   const [industry, setIndustry] = useState("");
   const [services, setServices] = useState("");
   const [pagesNeeded, setPagesNeeded] = useState("");
@@ -300,6 +305,11 @@ export function ClientPortal() {
     const cleanStyleDirection = styleDirection.trim();
     const cleanBrandNotes = brandNotes.trim();
     const cleanLocations = locations.trim();
+    const cleanBusinessPhone = businessPhone.trim();
+    const cleanBusinessEmail = businessEmail.trim();
+    const cleanBusinessAddress = businessAddress.trim();
+    const cleanBusinessHours = businessHours.trim();
+    const cleanEmergencyAvailability = emergencyAvailability.trim();
     const cleanCompetitors = competitors.trim();
     const cleanSignature = typedSignature.trim();
 
@@ -349,6 +359,11 @@ export function ClientPortal() {
         `Company scale: ${companyScale}`,
         `Location setup: ${locationType}`,
         `Locations: ${cleanLocations || "Not provided / single location"}`,
+        `Business phone: ${cleanBusinessPhone || "Not provided"}`,
+        `Business email: ${cleanBusinessEmail || "Not provided"}`,
+        `Business address: ${cleanBusinessAddress || "Not provided"}`,
+        `Business hours: ${cleanBusinessHours || "Not provided"}`,
+        `Emergency / after-hours availability: ${cleanEmergencyAvailability || "Not provided"}`,
         `Industry: ${cleanIndustry}`,
         ``,
         `Services / products:`,
@@ -414,6 +429,11 @@ export function ClientPortal() {
           monthly_price: selectedPlan.price,
           company_scale: companyScale,
           location_type: locationType,
+          business_phone: cleanBusinessPhone || null,
+          business_email: cleanBusinessEmail || null,
+          business_address: cleanBusinessAddress || null,
+          business_hours: cleanBusinessHours || null,
+          emergency_availability: cleanEmergencyAvailability || null,
           industry: cleanIndustry,
           agreement_accepted: agreementAccepted,
           typed_signature: cleanSignature,
@@ -874,6 +894,59 @@ export function ClientPortal() {
                 value={locations}
               />
 
+              <label className="auth-label" htmlFor="business-phone">
+                Business phone
+              </label>
+              <input
+                className="auth-input"
+                id="business-phone"
+                onChange={(event) => setBusinessPhone(event.target.value)}
+                placeholder="Example: (555) 123-4567"
+                value={businessPhone}
+              />
+
+              <label className="auth-label" htmlFor="business-email">
+                Business email
+              </label>
+              <input
+                className="auth-input"
+                id="business-email"
+                onChange={(event) => setBusinessEmail(event.target.value)}
+                placeholder="Example: contact@business.com"
+                value={businessEmail}
+              />
+
+              <label className="auth-label" htmlFor="business-address">
+                Business address
+              </label>
+              <input
+                className="auth-input"
+                id="business-address"
+                onChange={(event) => setBusinessAddress(event.target.value)}
+                placeholder="Example: 123 Main St, Sacramento CA"
+                value={businessAddress}
+              />
+
+              <label className="auth-label" htmlFor="business-hours">
+                Business hours
+              </label>
+              <textarea
+                id="business-hours"
+                onChange={(event) => setBusinessHours(event.target.value)}
+                placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed."
+                value={businessHours}
+              />
+
+              <label className="auth-label" htmlFor="emergency-availability">
+                Emergency / after-hours availability
+              </label>
+              <textarea
+                id="emergency-availability"
+                onChange={(event) => setEmergencyAvailability(event.target.value)}
+                placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc."
+                value={emergencyAvailability}
+              />
+
               <label className="auth-label" htmlFor="industry">
                 Industry
               </label>
@@ -1321,6 +1394,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
