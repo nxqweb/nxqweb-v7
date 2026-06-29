@@ -921,8 +921,22 @@ if (messageResult.error) {
       return;
     }
 
+    const requestedInfo = window.prompt(
+      `What information do you need from ${clientName}?`,
+      "Please add the missing project details before NXQ continues the build plan."
+    );
+
+    if (requestedInfo === null) return;
+
+    const cleanRequestedInfo = requestedInfo.trim();
+
+    if (!cleanRequestedInfo) {
+      setErrorMessage("More info request cancelled because no reason was entered.");
+      return;
+    }
+
     const confirmed = window.confirm(
-      `Ask for more setup info\n\nClient: ${clientName}\n\nThis will reopen the client setup sheet by moving the client back to intake_sent. Continue?`
+      `Ask for more setup info\n\nClient: ${clientName}\n\nReason:\n${cleanRequestedInfo}\n\nThis will reopen the client setup sheet by moving the client back to intake_sent. Continue?`
     );
 
     if (!confirmed) return;
@@ -931,11 +945,13 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
+      const ownerResponse = `Owner requested more setup information: ${cleanRequestedInfo}`;
+
       const approvalResult = await supabase
         .from("owner_approval_requests")
         .update({
           status: "more_info_requested",
-          owner_response: "Owner asked client for more setup information and reopened the setup sheet.",
+          owner_response: ownerResponse,
         })
         .eq("id", approval.id);
 
@@ -965,6 +981,7 @@ if (messageResult.error) {
             approval_id: approval.id,
             previous_approval_status: approval.status,
             next_client_status: "intake_sent",
+            owner_requested_info: cleanRequestedInfo,
             note: "Owner requested more setup information and reopened the client setup sheet.",
           },
         });
@@ -977,6 +994,7 @@ if (messageResult.error) {
       setErrorMessage(`Setup reset failed: ${message}`);
     }
   }
+
   async function updateClientStatus(
     client: ClientRow,
     nextStatus: string,
