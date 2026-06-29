@@ -906,6 +906,77 @@ if (messageResult.error) {
     }
   }
 
+  async function requestMoreSetupInfo(
+    approval: ApprovalRow,
+    client: ClientRow | null,
+    clientName: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("Cannot request more setup info because the client record was not found.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Ask for more setup info\n\nClient: ${clientName}\n\nThis will reopen the client setup sheet by moving the client back to intake_sent. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const approvalResult = await supabase
+        .from("owner_approval_requests")
+        .update({
+          status: "more_info_requested",
+          owner_response: "Owner asked client for more setup information and reopened the setup sheet.",
+        })
+        .eq("id", approval.id);
+
+      if (approvalResult.error) {
+        setErrorMessage(`Approval update failed: ${approvalResult.error.message}`);
+        return;
+      }
+
+      if (isWebsiteSetupReport(approval)) {
+        const clientResult = await supabase
+          .from("clients")
+          .update({
+            status: "intake_sent",
+          })
+          .eq("id", client.id);
+
+        if (clientResult.error) {
+          setErrorMessage(`Client setup reset failed: ${clientResult.error.message}`);
+          return;
+        }
+
+        await supabase.from("activity_logs").insert({
+          client_id: client.id,
+          actor_type: "owner",
+          action: "setup_more_info_requested",
+          details: {
+            approval_id: approval.id,
+            previous_approval_status: approval.status,
+            next_client_status: "intake_sent",
+            note: "Owner requested more setup information and reopened the client setup sheet.",
+          },
+        });
+      }
+
+      setActionMessage(`More setup info requested for ${clientName}. Client setup sheet reopened.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown setup reset error";
+      setErrorMessage(`Setup reset failed: ${message}`);
+    }
+  }
   async function updateClientStatus(
     client: ClientRow,
     nextStatus: string,
@@ -1486,13 +1557,7 @@ if (messageResult.error) {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          updateApprovalStatus(
-                            approval,
-                            "more_info_requested",
-                            "Owner asked AI/client for more information."
-                          )
-                        }
+                        onClick={() => requestMoreSetupInfo(approval, client, clientName)}
                       >
                         Ask More
                       </button>
@@ -1829,6 +1894,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
