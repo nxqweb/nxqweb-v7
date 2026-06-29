@@ -1491,26 +1491,39 @@ if (messageResult.error) {
               {pendingApprovals.map((approval) => {
                 const client = getClientForApproval(approval);
                 const clientName = client?.business_name || "Unknown client";
+                const isSetupReportApproval = isWebsiteSetupReport(approval);
+                const isSetupResubmission =
+                  approval.title.toLowerCase().includes("resubmitted") ||
+                  approval.summary.toLowerCase().includes("resubmitted");
+                const setupReportGroups =
+                  approval.recommended_action && isSetupReportApproval
+                    ? groupSetupReportFields(parseSetupReport(approval.recommended_action))
+                    : [];
 
                 return (
                   <div className="approval-card" key={approval.id}>
                     <div className="approval-top">
-                      <span>{approval.title}</span>
+                      <span>{approval.title}{isSetupResubmission ? " • Resubmission" : ""}</span>
                       <small>Risk: {approval.risk_level}</small>
                     </div>
 
                     <h3>{clientName}</h3>
+                    {isSetupResubmission ? (
+                      <p className="recommendation">
+                        Resubmission: This is an updated setup sheet after NXQ requested more information.
+                      </p>
+                    ) : null}
                     <p>{approval.summary}</p>
 
                     {approval.recommended_action && isWebsiteSetupReport(approval) ? (
                       <div className="setup-report-viewer">
                         <div className="setup-report-header">
                           <strong>Website setup report</strong>
-                          <span>Client submitted intake + agreement</span>
+                          <span>{isSetupResubmission ? "Client resubmitted intake + agreement" : "Client submitted intake + agreement"}</span>
                         </div>
 
                         <div className="setup-report-sections">
-                          {groupSetupReportFields(parseSetupReport(approval.recommended_action)).map((group) => (
+                          {setupReportGroups.map((group) => (
                             <section className="setup-report-section" key={`${approval.id}-${group.title}`}>
                               <div className="setup-report-section-title">
                                 <span>{group.title}</span>
