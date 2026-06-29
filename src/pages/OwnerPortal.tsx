@@ -29,6 +29,7 @@ type ClientRow = {
   business_type: string | null;
   status: string;
   monthly_price: number;
+  notes: string | null;
 };
 
 type ApprovalRow = {
@@ -731,7 +732,7 @@ function parseBuildPlanSections(content: string) {
       const clientResult = await supabase
         .from("clients")
         .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price"
+          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, notes"
         )
         .order("created_at", { ascending: false });
 
@@ -946,6 +947,15 @@ if (messageResult.error) {
 
     try {
       const ownerResponse = `Owner requested more setup information: ${cleanRequestedInfo}`;
+      const existingNotes = client.notes || "";
+      const moreInfoNote = [
+        "NXQ MORE INFO REQUEST",
+        `Requested info: ${cleanRequestedInfo}`,
+        `Requested at: ${new Date().toISOString()}`,
+      ].join("\n");
+      const nextClientNotes = existingNotes
+        ? `${existingNotes.trim()}\n\n${moreInfoNote}`
+        : moreInfoNote;
 
       const approvalResult = await supabase
         .from("owner_approval_requests")
@@ -965,6 +975,7 @@ if (messageResult.error) {
           .from("clients")
           .update({
             status: "intake_sent",
+            notes: nextClientNotes,
           })
           .eq("id", client.id);
 

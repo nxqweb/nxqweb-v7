@@ -93,6 +93,20 @@ const completedSetupStatuses = [
   "archived",
 ];
 
+function getLatestMoreInfoRequest(notes: string | null | undefined) {
+  if (!notes) return "";
+
+  const marker = "NXQ MORE INFO REQUEST";
+  const sections = notes.split(marker);
+  const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
+  const requestedInfoLine = latestSection
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line.startsWith("Requested info:"));
+
+  return requestedInfoLine?.replace("Requested info:", "").trim() || "";
+}
+
 export function ClientPortal() {
   const [nxqTheme, setNxqTheme] = useState<"dark" | "light">(() => {
     const savedTheme = window.localStorage.getItem("nxq-theme");
@@ -765,6 +779,7 @@ export function ClientPortal() {
   const setupWasReopenedForMoreInfo =
     clientDecisionStatus === "intake_sent" &&
     Boolean(client?.notes?.includes("NXQ WEB WEBSITE SETUP REPORT"));
+  const latestMoreInfoRequest = getLatestMoreInfoRequest(client?.notes);
   const projectDecisionStatus = (projectStage || "").toLowerCase();
 
   const portalDecisionNotice = (() => {
@@ -789,7 +804,7 @@ export function ClientPortal() {
         return {
           tone: "warning",
           title: "NXQ needs more information",
-          body: "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
+          body: latestMoreInfoRequest ? `NXQ requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
         };
       }
 
