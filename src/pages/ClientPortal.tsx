@@ -706,6 +706,8 @@ export function ClientPortal() {
   }, []);
 
   const hasDomainRequests = clientDomains.length > 0;
+  const latestDomain = clientDomains[0] || null;
+  const supportEmail = "websitedesignercontact@protonmail.com";
 
   return (
     <main className="nxq-page">
@@ -1037,6 +1039,67 @@ export function ClientPortal() {
             </div>
           </section>
 
+          <section className="panel panel-wide client-settings-panel">
+            <div className="panel-title">
+              <CheckCircle2 size={20} />
+              <h2>Settings</h2>
+            </div>
+
+            <div className="settings-grid">
+              <article className="settings-card">
+                <span>Account</span>
+                <strong>{client?.business_name || "Client account"}</strong>
+                <p>Account profile connected.</p>
+                <small>Project stage: {formatStatus(projectStage)}</small>
+              </article>
+
+              <article className="settings-card">
+                <span>Appearance</span>
+                <strong>{nxqTheme === "dark" ? "Dark mode" : "Light mode"}</strong>
+                <p>Switch the portal theme anytime. Your choice stays saved on this device.</p>
+                <button className="icon-btn" onClick={toggleNxqTheme} type="button">
+                  {nxqTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                </button>
+              </article>
+
+              <article className="settings-card">
+                <span>Domain</span>
+                <strong>{latestDomain?.domain_name || "No domain connected yet"}</strong>
+                <p>
+                  {latestDomain
+                    ? `Status: ${formatStatus(latestDomain.status)}. NXQ can help connect the website, but you keep ownership of the domain.`
+                    : "Add a domain in the Domain setup section above when you are ready."}
+                </p>
+                <small>
+                  {latestDomain?.dns_provider
+                    ? `DNS provider: ${latestDomain.dns_provider}`
+                    : "Domain management lives here after setup."}
+                </small>
+              </article>
+
+              <article className="settings-card">
+                <span>Security</span>
+                <strong>Email and password</strong>
+                <p>
+                  Email/password changes are coming in the next security update. For now, contact NXQ if you need account help.
+                </p>
+                <div className="settings-button-row">
+                  <button className="settings-disabled-btn" disabled type="button">Change email soon</button>
+                  <button className="settings-disabled-btn" disabled type="button">Change password soon</button>
+                </div>
+              </article>
+
+              <article className="settings-card settings-card-wide">
+                <span>Support</span>
+                <strong>Need help?</strong>
+                <p>
+                  Message NXQ below, or contact support at{" "}
+                  <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+                </p>
+              </article>
+            </div>
+          </section>
+
           <section className="panel">
             <div className="panel-title panel-title-row">
               <div className="panel-title">
@@ -1197,6 +1260,9 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
+
 
 
 
