@@ -463,6 +463,13 @@ export function OwnerPortal() {
     const styleDirection = getSetupField(fields, "Style");
     const brandPositioning = getSetupField(fields, "Brand");
     const competitors = getSetupField(fields, "Competitors");
+    const preferredContactMethod = getSetupField(fields, "Preferred contact method");
+    const urgentLeadRules = getSetupField(fields, "Urgent lead rules");
+    const rejectedJobs = getSetupField(fields, "Jobs / customers to reject");
+    const areasNotServed = getSetupField(fields, "Areas not served");
+    const assistantCanAnswer = getSetupField(fields, "Assistant can answer");
+    const assistantNeverPromise = getSetupField(fields, "Assistant should never promise");
+    const escalationRules = getSetupField(fields, "Escalation rules");
 
     const capabilityRequestText = [
       approval.summary,
@@ -472,6 +479,13 @@ export function OwnerPortal() {
       pagesNeeded,
       brandPositioning,
       competitors,
+      preferredContactMethod,
+      urgentLeadRules,
+      rejectedJobs,
+      areasNotServed,
+      assistantCanAnswer,
+      assistantNeverPromise,
+      escalationRules,
     ].join("\n");
 
     const capabilitySummary = formatCapabilityClassification(capabilityRequestText);
@@ -481,6 +495,10 @@ export function OwnerPortal() {
       pagesNeeded === "Not provided" ? "Confirm required pages/sections." : "",
       styleDirection === "Not provided" ? "Confirm visual style direction." : "",
       services === "Not provided" ? "Confirm services/products list." : "",
+      preferredContactMethod === "Not provided" ? "Confirm lead handling rules." : "",
+      assistantCanAnswer === "Not provided" ? "Confirm website assistant answer rules." : "",
+      assistantNeverPromise === "Not provided" ? "Confirm website assistant safety limits." : "",
+      escalationRules === "Not provided" ? "Confirm escalation rules for risky or unclear leads." : "",
     ].filter(Boolean);
 
     return [
@@ -510,6 +528,17 @@ export function OwnerPortal() {
       "",
       "Competitors / examples:",
       competitors,
+      "",
+      "Lead handling plan:",
+      `Preferred contact method: ${preferredContactMethod}`,
+      `Urgent lead rules: ${urgentLeadRules}`,
+      `Jobs / customers to reject: ${rejectedJobs}`,
+      `Areas not served: ${areasNotServed}`,
+      "",
+      "Website assistant behavior rules:",
+      `Assistant can answer: ${assistantCanAnswer}`,
+      `Assistant should never promise: ${assistantNeverPromise}`,
+      `Escalation rules: ${escalationRules}`,
       "",
       "Advanced feature / capability review:",
       capabilitySummary,
@@ -1748,6 +1777,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
