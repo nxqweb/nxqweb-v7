@@ -317,6 +317,49 @@ export function OwnerPortal() {
   }
 
 
+function parseBuildPlanSections(content: string) {
+  const lines = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sections: { title: string; body: string }[] = [];
+  let currentTitle = "Client summary";
+  let currentBody: string[] = [];
+
+  function pushSection() {
+    const body = currentBody.join("\n").trim();
+
+    if (!body && sections.length > 0) return;
+
+    sections.push({
+      title: currentTitle,
+      body: body || "No details provided yet.",
+    });
+  }
+
+  for (const line of lines) {
+    if (line === "NXQ PROJECT BUILD PLAN") continue;
+
+    const isHeading = line.endsWith(":") && line.length <= 72;
+
+    if (isHeading) {
+      pushSection();
+      currentTitle = line.replace(/:$/, "");
+      currentBody = [];
+      continue;
+    }
+
+    currentBody.push(line);
+  }
+
+  pushSection();
+
+  return sections.length > 0
+    ? sections
+    : [{ title: "Build plan", body: content || "No build plan content yet." }];
+}
+
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
     const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
 
@@ -1507,7 +1550,16 @@ if (messageResult.error) {
                       <small>{output.status}</small>
                     </div>
 
-                    <pre>{output.content}</pre>
+          <div className="build-plan-sections">
+            {parseBuildPlanSections(output.content).map((section) => (
+              <section className="build-plan-section" key={`${output.id}-${section.title}`}>
+                <div className="build-plan-section-title">
+                  <span>{section.title}</span>
+                </div>
+                <pre>{section.body}</pre>
+              </section>
+            ))}
+          </div>
                   </article>
                 ))}
             </div>

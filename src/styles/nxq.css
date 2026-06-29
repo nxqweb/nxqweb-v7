@@ -3138,3 +3138,50 @@ body[data-nxq-theme="light"] .setup-section-divider p {
 body[data-nxq-theme="light"] .setup-report-section-title small {
   color: rgba(15, 23, 42, 0.66);
 }
+
+/* Build Plan Viewer Polish v1 */
+.build-plan-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.build-plan-section {
+  border: 1px solid rgba(253, 230, 138, 0.14);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(253, 230, 138, 0.065), transparent 34%),
+    rgba(255, 255, 255, 0.026);
+  padding: 13px;
+}
+
+.build-plan-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.build-plan-section-title span {
+  color: var(--nxq-gold);
+  font-size: 0.78rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.build-plan-section pre {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--nxq-text);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  font-family: inherit;
+}
+
+body[data-nxq-theme="light"] .build-plan-section pre {
+  color: rgba(15, 23, 42, 0.82);
+}
