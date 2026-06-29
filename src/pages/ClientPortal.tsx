@@ -15,6 +15,7 @@ type ClientRow = {
   business_name: string;
   status: string;
   monthly_price: number;
+  notes: string | null;
 };
 
 type ClientMessageRow = {
@@ -188,7 +189,7 @@ export function ClientPortal() {
 
       const clientResult = await supabase
         .from("clients")
-        .select("id, business_name, status, monthly_price")
+        .select("id, business_name, status, monthly_price, notes")
         .eq("auth_user_id", userId)
         .maybeSingle();
 
@@ -761,6 +762,9 @@ export function ClientPortal() {
   const latestDomain = clientDomains[0] || null;
   const supportEmail = "websitedesignercontact@protonmail.com";
   const clientDecisionStatus = (client?.status || "").toLowerCase();
+  const setupWasReopenedForMoreInfo =
+    clientDecisionStatus === "intake_sent" &&
+    Boolean(client?.notes?.includes("NXQ WEB WEBSITE SETUP REPORT"));
   const projectDecisionStatus = (projectStage || "").toLowerCase();
 
   const portalDecisionNotice = (() => {
@@ -781,6 +785,14 @@ export function ClientPortal() {
     }
 
     if (clientDecisionStatus === "intake_sent") {
+      if (setupWasReopenedForMoreInfo) {
+        return {
+          tone: "warning",
+          title: "NXQ needs more information",
+          body: "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
+        };
+      }
+
       return {
         tone: "warning",
         title: "Website setup needed",
