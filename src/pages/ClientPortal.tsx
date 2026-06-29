@@ -341,6 +341,8 @@ export function ClientPortal() {
     const cleanAiNeverPromise = aiNeverPromise.trim();
     const cleanEscalationRules = escalationRules.trim();
     const cleanSignature = typedSignature.trim();
+    const previousMoreInfoRequest = getLatestMoreInfoRequest(client.notes);
+    const isMoreInfoResubmission = Boolean(previousMoreInfoRequest);
 
     if (!cleanIndustry) {
       setErrorMessage("Enter the client's industry before submitting.");
@@ -448,8 +450,10 @@ export function ClientPortal() {
         client_id: client.id,
         project_id: null,
         request_type: "website_setup_review",
-        title: "Website setup submitted",
-        summary: `${client.business_name} submitted a website setup sheet. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`,
+        title: isMoreInfoResubmission ? "Website setup resubmitted" : "Website setup submitted",
+        summary: isMoreInfoResubmission
+          ? `${client.business_name} resubmitted an updated website setup sheet after NXQ requested more information. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`
+          : `${client.business_name} submitted a website setup sheet. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`,
         recommended_action: setupReport,
         risk_level: "low",
         status: "pending",
@@ -484,10 +488,11 @@ export function ClientPortal() {
           escalation_rules: cleanEscalationRules || null,
           agreement_accepted: agreementAccepted,
           typed_signature: cleanSignature,
+          answered_more_info_request: previousMoreInfoRequest || null,
         },
       });
 
-      setNotice("Website setup submitted. NXQ will review your project details.");
+      setNotice(isMoreInfoResubmission ? "Updated website setup submitted. NXQ will review your changes." : "Website setup submitted. NXQ will review your project details.");
       setAgreementAccepted(false);
       setTypedSignature("");
       await loadClientPortalData();
