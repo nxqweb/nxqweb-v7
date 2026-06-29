@@ -708,6 +708,60 @@ export function ClientPortal() {
   const hasDomainRequests = clientDomains.length > 0;
   const latestDomain = clientDomains[0] || null;
   const supportEmail = "websitedesignercontact@protonmail.com";
+  const clientDecisionStatus = (client?.status || "").toLowerCase();
+  const projectDecisionStatus = (projectStage || "").toLowerCase();
+
+  const portalDecisionNotice = (() => {
+    if (clientDecisionStatus === "denied") {
+      return {
+        tone: "danger",
+        title: "Project not approved",
+        body: `Your website setup was reviewed, but NXQ Web is not able to approve this project at this time. If you believe this was a mistake or want to ask a follow-up question, contact ${supportEmail}.`,
+      };
+    }
+
+    if (clientDecisionStatus === "needs_review" || clientDecisionStatus === "intake_received") {
+      return {
+        tone: "info",
+        title: "Website setup under review",
+        body: "NXQ has received your website setup details. Your project is waiting for owner review before the build moves forward.",
+      };
+    }
+
+    if (clientDecisionStatus === "intake_sent") {
+      return {
+        tone: "warning",
+        title: "Website setup needed",
+        body: "Complete your website setup sheet so NXQ can review your project and prepare the build plan.",
+      };
+    }
+
+    if (projectDecisionStatus === "frozen") {
+      return {
+        tone: "danger",
+        title: "Website service paused",
+        body: `This project is currently paused. Message NXQ below or contact ${supportEmail} for help.`,
+      };
+    }
+
+    if (projectDecisionStatus === "cancelled") {
+      return {
+        tone: "danger",
+        title: "Project cancelled",
+        body: `This website project is marked cancelled. Contact ${supportEmail} if you believe this needs to be reviewed.`,
+      };
+    }
+
+    if (projectDecisionStatus === "in_review") {
+      return {
+        tone: "info",
+        title: "Website is in review",
+        body: "Your website is currently in review. NXQ will message you if anything else is needed.",
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <main className="nxq-page">
@@ -739,6 +793,13 @@ export function ClientPortal() {
 
         {errorMessage ? <div className="notice-card error">{errorMessage}</div> : null}
         {notice ? <div className="notice-card success">{notice}</div> : null}
+
+        {portalDecisionNotice ? (
+          <div className={`notice-card portal-decision-notice ${portalDecisionNotice.tone}`}>
+            <strong>{portalDecisionNotice.title}</strong>
+            <p>{portalDecisionNotice.body}</p>
+          </div>
+        ) : null}
 
         <div className="client-grid">
           {!setupComplete ? (
@@ -1260,6 +1321,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 

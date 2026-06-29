@@ -2831,3 +2831,45 @@ body[data-nxq-theme="light"] .settings-card small {
     grid-template-columns: 1fr;
   }
 }
+
+/* Client decision notices v1 */
+.portal-decision-notice {
+  display: grid;
+  gap: 8px;
+}
+
+.portal-decision-notice strong {
+  color: var(--nxq-text);
+  font-size: 1rem;
+}
+
+.portal-decision-notice p {
+  margin: 0;
+  color: var(--nxq-muted);
+  line-height: 1.65;
+}
+
+.portal-decision-notice.danger {
+  border-color: rgba(248, 113, 113, 0.42) !important;
+  background:
+    radial-gradient(circle at top left, rgba(248, 113, 113, 0.12), transparent 36%),
+    rgba(127, 29, 29, 0.12) !important;
+}
+
+.portal-decision-notice.warning {
+  border-color: rgba(251, 191, 36, 0.42) !important;
+  background:
+    radial-gradient(circle at top left, rgba(251, 191, 36, 0.12), transparent 36%),
+    rgba(113, 63, 18, 0.12) !important;
+}
+
+.portal-decision-notice.info {
+  border-color: rgba(125, 211, 252, 0.42) !important;
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.12), transparent 36%),
+    rgba(8, 47, 73, 0.12) !important;
+}
+
+body[data-nxq-theme="light"] .portal-decision-notice p {
+  color: rgba(15, 23, 42, 0.74);
+}
