@@ -1350,6 +1350,41 @@ if (messageResult.error) {
             </div>
           </section>
 
+          <section className="panel build-plan-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+            <div className="panel-title panel-title-row">
+              <div className="panel-title">
+                <Bot size={20} />
+                <h2>Project build plans</h2>
+              </div>
+
+              <button className="icon-btn" onClick={loadOwnerData} type="button">
+                <RefreshCcw size={16} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="build-plan-feed">
+              {aiTaskOutputs.filter((output) => output.output_type === "project_build_plan").length === 0 ? (
+                <div className="empty-state">
+                  No project build plans yet. Accept a website setup approval to generate one.
+                </div>
+              ) : null}
+
+              {aiTaskOutputs
+                .filter((output) => output.output_type === "project_build_plan")
+                .map((output) => (
+                  <article className="build-plan-card" key={output.id}>
+                    <div className="approval-top">
+                      <span>{output.title}</span>
+                      <small>{output.status}</small>
+                    </div>
+
+                    <pre>{output.content}</pre>
+                  </article>
+                ))}
+            </div>
+          </section>
+
           <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title">
               <Users size={20} />
