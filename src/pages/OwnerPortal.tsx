@@ -171,6 +171,94 @@ function parseSetupReport(report: string) {
 
   return fields;
 }
+
+function findSetupField(fields: { label: string; value: string }[], label: string) {
+  const normalizedLabel = label.toLowerCase();
+
+  return fields.find((field) => field.label.toLowerCase() === normalizedLabel);
+}
+
+function groupSetupReportFields(fields: { label: string; value: string }[]) {
+  const groups = [
+    {
+      title: "Business",
+      labels: [
+        "Client",
+        "Selected package",
+        "Company scale",
+        "Location setup",
+        "Locations",
+        "Business phone",
+        "Business email",
+        "Business address",
+        "Business hours",
+        "Emergency / after-hours availability",
+        "Industry",
+      ],
+    },
+    {
+      title: "Website",
+      labels: [
+        "Services / products",
+        "Pages / sections needed",
+        "Style direction",
+        "Brand difference / positioning",
+        "Competitors / examples",
+      ],
+    },
+    {
+      title: "Lead Rules",
+      labels: [
+        "Lead handling rules",
+        "Preferred contact method",
+        "Urgent lead rules",
+        "Jobs / customers to reject",
+        "Areas not served",
+      ],
+    },
+    {
+      title: "Assistant Rules",
+      labels: [
+        "Website assistant rules",
+        "Assistant can answer",
+        "Assistant should never promise",
+        "Escalation rules",
+      ],
+    },
+    {
+      title: "Agreement",
+      labels: ["Agreement accepted", "Typed signature", "Signature date", "Payment note"],
+    },
+  ];
+
+  const usedLabels = new Set<string>();
+
+  const grouped = groups
+    .map((group) => {
+      const groupFields = group.labels
+        .map((label) => findSetupField(fields, label))
+        .filter((field): field is { label: string; value: string } => Boolean(field));
+
+      groupFields.forEach((field) => usedLabels.add(field.label));
+
+      return {
+        title: group.title,
+        fields: groupFields,
+      };
+    })
+    .filter((group) => group.fields.length > 0);
+
+  const otherFields = fields.filter((field) => !usedLabels.has(field.label));
+
+  if (otherFields.length > 0) {
+    grouped.push({
+      title: "Other",
+      fields: otherFields,
+    });
+  }
+
+  return grouped;
+}
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -1249,12 +1337,23 @@ if (messageResult.error) {
                           <span>Client submitted intake + agreement</span>
                         </div>
 
-                        <div className="setup-report-grid">
-                          {parseSetupReport(approval.recommended_action).map((field) => (
-                            <div className="setup-report-field" key={`${approval.id}-${field.label}`}>
-                              <span>{field.label}</span>
-                              <p>{field.value || "Not provided"}</p>
-                            </div>
+                        <div className="setup-report-sections">
+                          {groupSetupReportFields(parseSetupReport(approval.recommended_action)).map((group) => (
+                            <section className="setup-report-section" key={`${approval.id}-${group.title}`}>
+                              <div className="setup-report-section-title">
+                                <span>{group.title}</span>
+                                <small>{group.fields.length} item(s)</small>
+                              </div>
+
+                              <div className="setup-report-grid">
+                                {group.fields.map((field) => (
+                                  <div className="setup-report-field" key={`${approval.id}-${group.title}-${field.label}`}>
+                                    <span>{field.label}</span>
+                                    <p>{field.value || "Not provided"}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
                           ))}
                         </div>
                       </div>
