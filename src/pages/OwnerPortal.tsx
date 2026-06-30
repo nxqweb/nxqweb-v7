@@ -1354,6 +1354,78 @@ if (messageResult.error) {
 
 
 
+
+  async function requestMoreInfoFromClientCard(client: ClientRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const requestedInfo = window.prompt(
+      `What information do you need from ${client.business_name}?`,
+      "Please confirm the missing or unclear website setup details."
+    );
+
+    if (requestedInfo === null) return;
+
+    const cleanRequestedInfo = requestedInfo.trim();
+
+    if (!cleanRequestedInfo) {
+      setErrorMessage("Needs Info requires a short reason so the client knows what to update.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Reopen setup sheet for more info\n\nClient: ${client.business_name}\n\nRequested info:\n${cleanRequestedInfo}\n\nThis will reopen the client setup form and preserve their previous answers. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    const existingNotes = client.notes || "";
+    const moreInfoNote = [
+      "NXQ MORE INFO REQUEST",
+      `Requested info: ${cleanRequestedInfo}`,
+      `Requested at: ${new Date().toISOString()}`,
+    ].join("\n");
+
+    const nextClientNotes = existingNotes
+      ? `${existingNotes.trim()}\n\n${moreInfoNote}`
+      : moreInfoNote;
+
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          status: "intake_sent",
+          notes: nextClientNotes,
+        })
+        .eq("id", client.id);
+
+      if (error) {
+        setErrorMessage(`Client setup reopen failed: ${error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "owner",
+        action: "client_more_info_requested",
+        details: {
+          owner_requested_info: cleanRequestedInfo,
+          source: "owner_client_card",
+        },
+      });
+
+      setActionMessage(`${client.business_name} setup sheet reopened for more info.`);
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown more info error";
+      setErrorMessage(`Client setup reopen failed: ${message}`);
+    }
+  }
   async function updateProjectStage(
     client: ClientRow,
     nextStage: string,
@@ -1707,7 +1779,7 @@ if (messageResult.error) {
 
                     <button
                       type="button"
-                      onClick={() => updateClientStatus(client, "needs_review", "Mark needs info")}
+                      onClick={() => requestMoreInfoFromClientCard(client)}
                     >
                       Needs Info
                     </button>
