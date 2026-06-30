@@ -464,7 +464,7 @@ export function ClientPortal() {
     }
 
     if (!agreementAccepted) {
-      setErrorMessage("You must accept the NXQ Web agreement acknowledgment before submitting.");
+      setErrorMessage("You must accept the website agreement acknowledgment before submitting.");
       return;
     }
 
@@ -586,7 +586,7 @@ export function ClientPortal() {
         },
       });
 
-      setNotice(isMoreInfoResubmission ? "Updated website setup submitted. NXQ will review your changes." : "Website setup submitted. NXQ will review your project details.");
+      setNotice(isMoreInfoResubmission ? "Updated website setup submitted. We will review your changes." : "Website setup submitted. We will review your project details.");
       setAgreementAccepted(false);
       setTypedSignature("");
       await loadClientPortalData();
@@ -646,7 +646,7 @@ export function ClientPortal() {
       });
 
       setMessageText("");
-      setNotice("Message sent to NXQ.");
+      setNotice("Message sent to support.");
       await loadClientPortalData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown send error";
@@ -724,7 +724,7 @@ export function ClientPortal() {
       });
 
       setSelectedFile(null);
-      setNotice("File uploaded to NXQ.");
+      setNotice("File uploaded to your website team.");
       await loadClientPortalData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown file upload error";
@@ -852,7 +852,7 @@ export function ClientPortal() {
         },
       });
 
-      setNotice("Domain request submitted to NXQ for owner review.");
+      setNotice("Domain request submitted for review.");
       setDomainName("");
       setDomainRegistrar("");
       setDomainDnsProvider("");
@@ -886,7 +886,7 @@ export function ClientPortal() {
       return {
         tone: "danger",
         title: "Project not approved",
-        body: `Your website setup was reviewed, but NXQ Web is not able to approve this project at this time. If you believe this was a mistake or want to ask a follow-up question, contact ${supportEmail}.`,
+        body: `Your website setup was reviewed, but we are not able to approve this project at this time. If you believe this was a mistake or want to ask a follow-up question, contact ${supportEmail}.`,
       };
     }
 
@@ -894,7 +894,7 @@ export function ClientPortal() {
       return {
         tone: "info",
         title: "Website setup under review",
-        body: "NXQ has received your website setup details. Your project is waiting for owner review before the build moves forward.",
+        body: "We have received your website setup details. Your project is waiting for review before the build moves forward.",
       };
     }
 
@@ -902,15 +902,15 @@ export function ClientPortal() {
       if (setupWasReopenedForMoreInfo) {
         return {
           tone: "warning",
-          title: "NXQ needs more information",
-          body: latestMoreInfoRequest ? `NXQ requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
+          title: "More information needed",
+          body: latestMoreInfoRequest ? `We requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
         };
       }
 
       return {
         tone: "warning",
         title: "Website setup needed",
-        body: "Complete your website setup sheet so NXQ can review your project and prepare the build plan.",
+        body: "Complete your website setup sheet so we can review your project and prepare the build plan.",
       };
     }
 
@@ -918,7 +918,7 @@ export function ClientPortal() {
       return {
         tone: "danger",
         title: "Website service paused",
-        body: `This project is currently paused. Message NXQ below or contact ${supportEmail} for help.`,
+        body: `This project is currently paused. Message support below or contact ${supportEmail} for help.`,
       };
     }
 
@@ -934,7 +934,7 @@ export function ClientPortal() {
       return {
         tone: "info",
         title: "Website is in review",
-        body: "Your website is currently in review. NXQ will message you if anything else is needed.",
+        body: "Your website is currently in review. We will message you if anything else is needed.",
       };
     }
 
@@ -949,7 +949,7 @@ export function ClientPortal() {
             <p className="eyebrow">Client Portal</p>
             <h1>Your website project hub</h1>
             <p className="subtle">
-              Complete your website setup, message NXQ, upload project content,
+              Complete your website setup, message support, upload project content,
               and track your website stage.
             </p>
           </div>
@@ -988,7 +988,7 @@ export function ClientPortal() {
               </div>
 
               <p className="subtle">
-                NXQ Web builds a brand-new upgraded website based on your business
+                Your website team will use these details to prepare a brand-new upgraded website based on your business
                 details, locations, services, style direction, and project goals.
               </p>
 
@@ -1152,7 +1152,7 @@ export function ClientPortal() {
               <textarea
                 id="brand-notes"
                 onChange={(event) => setBrandNotes(event.target.value)}
-                placeholder="Tell NXQ what makes the company better, more trusted, faster, safer, more premium, or different from competitors."
+                placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors."
                 value={brandNotes}
               />
 
@@ -1168,7 +1168,7 @@ export function ClientPortal() {
 
               <div className="setup-section-divider">
                 <span>Lead handling rules</span>
-                <p>Tell NXQ how your website should handle real customers, quote requests, and urgent leads.</p>
+                <p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p>
               </div>
 
               <label className="auth-label" htmlFor="preferred-contact-method">
@@ -1213,7 +1213,7 @@ export function ClientPortal() {
 
               <div className="setup-section-divider">
                 <span>Website assistant rules</span>
-                <p>These rules prepare NXQ for the future website assistant so it knows what it can say safely.</p>
+                <p>These rules help your website team prepare the future website assistant so it knows what it can say safely.</p>
               </div>
 
               <label className="auth-label" htmlFor="ai-can-answer">
@@ -1237,7 +1237,7 @@ export function ClientPortal() {
               />
 
               <label className="auth-label" htmlFor="escalation-rules">
-                When should it escalate to NXQ or the owner?
+                When should it escalate to support or the owner?
               </label>
               <textarea
                 id="escalation-rules"
@@ -1254,7 +1254,7 @@ export function ClientPortal() {
                     type="checkbox"
                   />
                   <span>
-                    I acknowledge and agree that NXQ Web will use the information I
+                    I acknowledge and agree that my website team will use the information I
                     submit to prepare a brand-new website project. I understand that
                     agreement acceptance and billing activation are required before
                     final website access/live service.
@@ -1290,7 +1290,7 @@ export function ClientPortal() {
               </div>
 
               <p className="subtle">
-                Your website setup sheet has been submitted to NXQ for review. The
+                Your website setup sheet has been submitted for review. The
                 setup form is now out of the way, and this portal will focus on
                 project messages, files, approvals, and progress updates.
               </p>
@@ -1308,7 +1308,7 @@ export function ClientPortal() {
                 <div className="domain-connect-copy">
                   <strong>Connect a domain you own</strong>
                   <p>
-                    Add the domain you want connected to your website. NXQ can help with
+                    Add the domain you want connected to your website. We can help with
                     setup, but you keep ownership and can repoint it later.
                   </p>
                 </div>
@@ -1344,7 +1344,7 @@ export function ClientPortal() {
                   <label className="domain-field domain-field-wide">
                     <span>Domain notes</span>
                     <textarea
-                      placeholder="Tell NXQ if this domain already has email, a live website, or special DNS setup."
+                      placeholder="Tell us if this domain already has email, a live website, or special DNS setup."
                       value={domainNotes}
                       onChange={(event) => setDomainNotes(event.target.value)}
                     />
@@ -1358,7 +1358,7 @@ export function ClientPortal() {
                     type="checkbox"
                   />
                   <span>
-                    I confirm I own or control this domain. I understand NXQ can help connect
+                    I confirm I own or control this domain. I understand support can help connect
                     the website, but I keep ownership and can repoint the domain later.
                   </span>
                 </label>
@@ -1376,7 +1376,7 @@ export function ClientPortal() {
               <div className="domain-summary-card">
                 <strong>Domain request received</strong>
                 <p>
-                  The full form is collapsed so this portal stays clean. NXQ will review
+                  The full form is collapsed so this portal stays clean. We will review
                   your domain request and place DNS instructions below when ready.
                 </p>
               </div>
@@ -1403,7 +1403,7 @@ export function ClientPortal() {
                     <p className="domain-instructions">{domain.dns_instructions}</p>
                   ) : (
                     <p className="domain-instructions">
-                      Waiting for NXQ owner review / DNS instructions.
+                      Waiting for review / DNS instructions.
                     </p>
                   )}
                 </article>
@@ -1439,7 +1439,7 @@ export function ClientPortal() {
                 <strong>{latestDomain?.domain_name || "No domain connected yet"}</strong>
                 <p>
                   {latestDomain
-                    ? `Status: ${formatStatus(latestDomain.status)}. NXQ can help connect the website, but you keep ownership of the domain.`
+                    ? `Status: ${formatStatus(latestDomain.status)}. We can help connect the website, but you keep ownership of the domain.`
                     : "Add a domain in the Domain setup section above when you are ready."}
                 </p>
                 <small>
@@ -1453,7 +1453,7 @@ export function ClientPortal() {
                 <span>Security</span>
                 <strong>Email and password</strong>
                 <p>
-                  Email/password changes are coming in the next security update. For now, contact NXQ if you need account help.
+                  Email/password changes are coming in the next security update. For now, contact support if you need account help.
                 </p>
                 <div className="settings-button-row">
                   <button className="settings-disabled-btn" disabled type="button">Change email soon</button>
@@ -1465,7 +1465,7 @@ export function ClientPortal() {
                 <span>Support</span>
                 <strong>Need help?</strong>
                 <p>
-                  Message NXQ below, or contact support at{" "}
+                  Message support below, or contact support at{" "}
                   <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
                 </p>
               </article>
@@ -1476,7 +1476,7 @@ export function ClientPortal() {
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <MessageCircle size={20} />
-                <h2>Message NXQ</h2>
+                <h2>Message support</h2>
               </div>
 
               <button className="icon-btn" onClick={loadClientPortalData} type="button">
@@ -1586,7 +1586,7 @@ export function ClientPortal() {
 
               {messages.map((message) => {
                 const senderLabel =
-                  message.sender_type === "client" ? "You" : "NXQ";
+                  message.sender_type === "client" ? "You" : "Support";
 
                 const statusLabel =
                   message.sender_type === "client" ? "Sent" : "Received";
@@ -1632,6 +1632,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
