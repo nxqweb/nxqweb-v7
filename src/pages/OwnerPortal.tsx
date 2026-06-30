@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { getPaymentProvider } from "../services/paymentProviders";
-import { classifyCapabilityRequest } from "../ai/capabilityRules";
 
 type ApprovalStatus =
   | "pending"
@@ -367,280 +366,6 @@ function parseBuildPlanSections(content: string) {
     return window.confirm(
       `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
     );
-  }
-
-  function getSetupField(fields: { label: string; value: string }[], labelMatch: string) {
-    return (
-      fields.find((field) =>
-        field.label.toLowerCase().includes(labelMatch.toLowerCase())
-      )?.value || "Not provided"
-    );
-  }
-
-  function formatCapabilityClassification(requestedText: string) {
-    const classification = classifyCapabilityRequest(requestedText);
-
-    const matchedFeatures =
-      classification.matchedFeatures.length > 0
-        ? classification.matchedFeatures.map((feature) => `- ${feature}`).join("\n")
-        : "- No exact capability rule matched. Owner review required.";
-
-    return [
-      "Requested capability classification:",
-      `Decision: ${classification.decision}`,
-      `Highest capability level: ${classification.highestLevel}`,
-      `Risk level: ${classification.riskLevel}`,
-      `Owner approval required: ${classification.requiresOwnerApproval ? "yes" : "no"}`,
-      `Custom quote required: ${classification.requiresCustomQuote ? "yes" : "no"}`,
-      `Payment provider needed: ${classification.requiresPaymentProvider ? "yes" : "no"}`,
-      `External API/integration needed: ${classification.requiresExternalApi ? "yes" : "no"}`,
-      "",
-      "Matched feature rules:",
-      matchedFeatures,
-      "",
-      "Safe client-facing capability response:",
-      classification.clientSafeSummary,
-      "",
-      "Owner internal capability note:",
-      classification.ownerInternalSummary,
-    ].join("\n");
-  }
-
-  function shouldRouteCapabilityApproval(decision: string) {
-    return (
-      decision === "owner_review_required" ||
-      decision === "custom_quote_required" ||
-      decision === "not_supported_yet"
-    );
-  }
-
-  function createCapabilityReviewText(requestedText: string) {
-    const classification = classifyCapabilityRequest(requestedText);
-
-    const matchedFeatures =
-      classification.matchedFeatures.length > 0
-        ? classification.matchedFeatures.map((feature) => `- ${feature}`).join("\n")
-        : "- No exact capability rule matched. Owner review required.";
-
-    return [
-      "NXQ ADVANCED CAPABILITY REVIEW",
-      "",
-      `Decision: ${classification.decision}`,
-      `Highest capability level: ${classification.highestLevel}`,
-      `Risk level: ${classification.riskLevel}`,
-      `Owner approval required: ${classification.requiresOwnerApproval ? "yes" : "no"}`,
-      `Custom quote required: ${classification.requiresCustomQuote ? "yes" : "no"}`,
-      `Payment provider needed: ${classification.requiresPaymentProvider ? "yes" : "no"}`,
-      `External API/integration needed: ${classification.requiresExternalApi ? "yes" : "no"}`,
-      "",
-      "Matched feature rules:",
-      matchedFeatures,
-      "",
-      "Safe client-facing response:",
-      classification.clientSafeSummary,
-      "",
-      "Owner internal note:",
-      classification.ownerInternalSummary,
-      "",
-      "Recommended owner options:",
-      "- Approve limited launch-safe version",
-      "- Ask client for more info",
-      "- Require custom quote",
-      "- Deny unsupported advanced version",
-    ].join("\n");
-  }
-
-  async function createCapabilityScopeReviewApproval(
-    approval: ApprovalRow,
-    client: ClientRow,
-    projectId: string | null
-  ) {
-    if (!supabase) {
-      return { ok: false, message: "Supabase is not configured yet." };
-    }
-
-    const requestedText = [approval.summary, approval.recommended_action || ""].join("\n");
-    const classification = classifyCapabilityRequest(requestedText);
-
-    if (!shouldRouteCapabilityApproval(classification.decision)) {
-      return { ok: true, message: "No advanced capability approval needed." };
-    }
-
-    const matchedFeatureList =
-      classification.matchedFeatures.length > 0
-        ? classification.matchedFeatures.join(", ")
-        : "Unknown advanced feature";
-
-    const reviewText = createCapabilityReviewText(requestedText);
-
-    const approvalResult = await supabase.from("owner_approval_requests").insert({
-      client_id: client.id,
-      project_id: projectId,
-      request_type: "capability_scope_review",
-      title: "Advanced capability review needed",
-      summary: `${client.business_name} requested features that need owner review. Decision: ${classification.decision}. Matched: ${matchedFeatureList}.`,
-      recommended_action: reviewText,
-      risk_level: classification.riskLevel,
-      status: "pending",
-    });
-
-    if (approvalResult.error) {
-      return {
-        ok: false,
-        message: `Capability approval create failed: ${approvalResult.error.message}`,
-      };
-    }
-
-    return { ok: true, message: "Capability approval created." };
-  }
-
-  function generateProjectBuildPlan(approval: ApprovalRow, client: ClientRow) {
-    const fields = parseSetupReport(approval.recommended_action || "");
-
-    const selectedPackage = getSetupField(fields, "Selected package");
-    const companyScale = getSetupField(fields, "Company scale");
-    const locationSetup = getSetupField(fields, "Location setup");
-    const locations = getSetupField(fields, "Locations");
-    const industry = getSetupField(fields, "Industry");
-    const services = getSetupField(fields, "Services");
-    const pagesNeeded = getSetupField(fields, "Pages");
-    const styleDirection = getSetupField(fields, "Style");
-    const brandPositioning = getSetupField(fields, "Brand");
-    const competitors = getSetupField(fields, "Competitors");
-    const preferredContactMethod = getSetupField(fields, "Preferred contact method");
-    const urgentLeadRules = getSetupField(fields, "Urgent lead rules");
-    const rejectedJobs = getSetupField(fields, "Jobs / customers to reject");
-    const areasNotServed = getSetupField(fields, "Areas not served");
-    const assistantCanAnswer = getSetupField(fields, "Assistant can answer");
-    const assistantNeverPromise = getSetupField(fields, "Assistant should never promise");
-    const escalationRules = getSetupField(fields, "Escalation rules");
-
-    const capabilityRequestText = [
-      approval.summary,
-      approval.recommended_action || "",
-      industry,
-      services,
-      pagesNeeded,
-      brandPositioning,
-      competitors,
-      preferredContactMethod,
-      urgentLeadRules,
-      rejectedJobs,
-      areasNotServed,
-      assistantCanAnswer,
-      assistantNeverPromise,
-      escalationRules,
-    ].join("\n");
-
-    const capabilitySummary = formatCapabilityClassification(capabilityRequestText);
-
-    const missingAssets = [
-      approval.summary.toLowerCase().includes("logo") ? "Logo/photos may be missing or still needed." : "",
-      pagesNeeded === "Not provided" ? "Confirm required pages/sections." : "",
-      styleDirection === "Not provided" ? "Confirm visual style direction." : "",
-      services === "Not provided" ? "Confirm services/products list." : "",
-      preferredContactMethod === "Not provided" ? "Confirm lead handling rules." : "",
-      assistantCanAnswer === "Not provided" ? "Confirm website assistant answer rules." : "",
-      assistantNeverPromise === "Not provided" ? "Confirm website assistant safety limits." : "",
-      escalationRules === "Not provided" ? "Confirm escalation rules for risky or unclear leads." : "",
-    ].filter(Boolean);
-
-    return [
-      "NXQ PROJECT BUILD PLAN",
-      "",
-      `Client: ${client.business_name}`,
-      `Package: ${selectedPackage}`,
-      `Company scale: ${companyScale}`,
-      `Location setup: ${locationSetup}`,
-      `Locations: ${locations}`,
-      `Industry: ${industry}`,
-      "",
-      "Core website direction:",
-      `${client.business_name} needs a premium website build for a ${industry} business. Use the submitted setup sheet as the source of truth and keep the project in planning until required content/assets are confirmed.`,
-      "",
-      "Recommended pages / sections:",
-      pagesNeeded,
-      "",
-      "Services / products to feature:",
-      services,
-      "",
-      "Style direction:",
-      styleDirection,
-      "",
-      "Brand positioning:",
-      brandPositioning,
-      "",
-      "Competitors / examples:",
-      competitors,
-      "",
-      "Lead handling plan:",
-      `Preferred contact method: ${preferredContactMethod}`,
-      `Urgent lead rules: ${urgentLeadRules}`,
-      `Jobs / customers to reject: ${rejectedJobs}`,
-      `Areas not served: ${areasNotServed}`,
-      "",
-      "Website assistant behavior rules:",
-      `Assistant can answer: ${assistantCanAnswer}`,
-      `Assistant should never promise: ${assistantNeverPromise}`,
-      `Escalation rules: ${escalationRules}`,
-      "",
-      "Advanced feature / capability review:",
-      capabilitySummary,
-      "",
-      "Missing assets / follow-up needed:",
-      missingAssets.length > 0 ? missingAssets.map((item) => `- ${item}`).join("\n") : "- No obvious missing assets detected from the approval summary.",
-      "",
-      "Initial build phases:",
-      "1. Confirm required pages, assets, and client priorities.",
-      "2. Draft homepage structure and service sections.",
-      "3. Create first visual direction/design preview.",
-      "4. Prepare owner review before client-facing delivery.",
-      "5. Move project from planning to building only after owner confirms readiness.",
-      "",
-      "Owner safety rule:",
-      "Do not launch, charge externally, freeze, or mark final approval without explicit owner confirmation.",
-    ].join("\n");
-  }
-
-  async function createProjectBuildPlanOutput(
-    approval: ApprovalRow,
-    client: ClientRow,
-    projectId: string | null
-  ) {
-    if (!supabase) {
-      return { ok: false, message: "Supabase is not configured yet." };
-    }
-
-    const buildPlan = generateProjectBuildPlan(approval, client);
-
-    const outputResult = await supabase.from("ai_task_outputs").insert({
-      client_id: client.id,
-      project_id: projectId,
-      output_type: "project_build_plan",
-      title: `${client.business_name} Project Build Plan`,
-      content: buildPlan,
-      status: "draft_ready",
-      needs_owner_review: true,
-    });
-
-    if (outputResult.error) {
-      return {
-        ok: false,
-        message: `Build plan create failed: ${outputResult.error.message}`,
-      };
-    }
-
-    const capabilityApprovalResult = await createCapabilityScopeReviewApproval(
-      approval,
-      client,
-      projectId
-    );
-
-    if (!capabilityApprovalResult.ok) {
-      return capabilityApprovalResult;
-    }
-
-    return { ok: true, message: "Build plan created." };
   }
 
   function useLatestAiDraft() {
@@ -1119,7 +844,52 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown project create error";
       setErrorMessage(`Project create failed: ${message}`);
     }
-  }  async function acceptApprovalAndStartPipeline(
+  }
+
+  async function acceptApprovalAndStartPipelineCloud(
+    approval: ApprovalRow,
+    client: ClientRow | null,
+    clientName: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("Cannot start backend pipeline because the client record was not found.");
+      return;
+    }
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const { data, error } = await supabase.rpc("approve_website_setup", {
+        approval_request_id: approval.id,
+      });
+
+      if (error) {
+        setErrorMessage(`Backend approval workflow failed: ${error.message}`);
+        return;
+      }
+
+      const result = data as { message?: string } | null;
+
+      setActionMessage(
+        result?.message ||
+          `${clientName}: approved, moved into planning, and build plan created by Supabase.`
+      );
+
+      await loadOwnerData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown backend workflow error";
+      setErrorMessage(`Backend approval workflow failed: ${message}`);
+    }
+  }
+
+  async function acceptApprovalAndStartPipeline(
     approval: ApprovalRow,
     client: ClientRow | null,
     clientName: string
@@ -1138,108 +908,34 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const paymentProvider = getPaymentProvider("manual");
-      const paymentResult = await paymentProvider.activateSubscription({
-        clientId: client.id,
-        clientName: client.business_name,
-        monthlyPrice: Number(client.monthly_price || 0),
+      const pipelineResult = await supabase.rpc("approve_website_setup", {
+        approval_request_id: approval.id,
       });
 
-      if (!paymentResult.ok) {
-        setErrorMessage(paymentResult.message);
+      if (pipelineResult.error) {
+        setErrorMessage(`Supabase pipeline failed: ${pipelineResult.error.message}`);
         return;
       }
 
-      const clientUpdate = await supabase
-        .from("clients")
-        .update({
-          status: "approved",
-        })
-        .eq("id", client.id);
+      const resultData = pipelineResult.data as {
+        message?: string;
+        project_id?: string;
+        ai_task_output_id?: string;
+      } | null;
 
-      if (clientUpdate.error) {
-        setErrorMessage(`Client approval failed: ${clientUpdate.error.message}`);
-        return;
-      }
-
-      const existingProject = getProjectForClient(client.id);
-      let pipelineProjectId = existingProject?.id || null;
-
-      if (existingProject) {
-        const projectUpdate = await supabase
-          .from("projects")
-          .update({
-            website_status: "planning",
-          })
-          .eq("id", existingProject.id);
-
-        if (projectUpdate.error) {
-          setErrorMessage(`Project update failed: ${projectUpdate.error.message}`);
-          return;
-        }
-      } else {
-        const projectCreate = await supabase
-          .from("projects")
-          .insert({
-            client_id: client.id,
-            project_name: `${client.business_name} Website Project`,
-            website_status: "planning",
-          })
-          .select("id")
-          .single();
-
-        if (projectCreate.error) {
-          setErrorMessage(`Project create failed: ${projectCreate.error.message}`);
-          return;
-        }
-
-        pipelineProjectId = projectCreate.data?.id || null;
-      }
-
-      const approvalUpdate = await supabase
-        .from("owner_approval_requests")
-        .update({
-          status: "accepted",
-          owner_response: "Owner accepted this approval request and started the project pipeline.",
-          resolved_at: new Date().toISOString(),
-        })
-        .eq("id", approval.id);
-
-      if (approvalUpdate.error) {
-        setErrorMessage(`Approval update failed: ${approvalUpdate.error.message}`);
-        return;
-      }
-
-      const buildPlanResult = await createProjectBuildPlanOutput(
-        approval,
-        client,
-        pipelineProjectId
+      setActionMessage(
+        resultData?.message ||
+          `${clientName}: approved, moved into planning, and build plan created.`
       );
 
-      if (!buildPlanResult.ok) {
-        setErrorMessage(buildPlanResult.message);
-        return;
-      }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: "approval_accepted_pipeline_started",
-        details: {
-          approval_id: approval.id,
-          client_name: clientName,
-          client_status: "approved",
-          project_status: "planning",
-        },
-      });
-
-      setActionMessage(`${clientName}: approved, moved into planning, and build plan created.`);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown pipeline error";
       setErrorMessage(`Pipeline start failed: ${message}`);
     }
-  }  async function activateManualSubscription(client: ClientRow) {
+  }
+
+  async function activateManualSubscription(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
       return;
@@ -1625,6 +1321,10 @@ if (messageResult.error) {
                         type="button"
                         onClick={() => {
                           if (!confirmHighRiskAction("accept", clientName)) return;
+                          if (isPipelineStartApproval(approval)) {
+                            acceptApprovalAndStartPipeline(approval, client, clientName);
+                            return;
+                          }
 
                           if (isAiTaskApproval(approval) || !isPipelineStartApproval(approval)) {
                             updateApprovalStatus(
@@ -1635,7 +1335,7 @@ if (messageResult.error) {
                             return;
                           }
 
-                          acceptApprovalAndStartPipeline(approval, client, clientName);
+                          acceptApprovalAndStartPipelineCloud(approval, client, clientName);
                         }}
                       >
                         Accept
@@ -2008,6 +1708,12 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
 
 
 
