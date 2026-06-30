@@ -107,6 +107,63 @@ function getLatestMoreInfoRequest(notes: string | null | undefined) {
   return requestedInfoLine?.replace("Requested info:", "").trim() || "";
 }
 
+function parseClientSetupReport(notes: string | null | undefined) {
+  if (!notes?.includes("NXQ WEB WEBSITE SETUP REPORT")) {
+    return new Map<string, string>();
+  }
+
+  const reportOnly = notes.split("NXQ MORE INFO REQUEST")[0] || notes;
+  const lines = reportOnly.split("\n");
+  const fields = new Map<string, string>();
+  let activeLabel = "";
+  let activeValue: string[] = [];
+
+  function saveActiveField() {
+    if (!activeLabel) return;
+
+    fields.set(
+      activeLabel,
+      activeValue.join("\n").trim().replace(/^Not provided$/i, "")
+    );
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line || line === "NXQ WEB WEBSITE SETUP REPORT") {
+      continue;
+    }
+
+    if (line.endsWith(":")) {
+      saveActiveField();
+      activeLabel = line.replace(/:$/, "").trim();
+      activeValue = [];
+      continue;
+    }
+
+    const inlineMatch = line.match(/^([^:]+):\s*(.*)$/);
+
+    if (inlineMatch) {
+      saveActiveField();
+      activeLabel = inlineMatch[1].trim();
+      activeValue = [inlineMatch[2].trim()];
+      continue;
+    }
+
+    if (activeLabel) {
+      activeValue.push(line);
+    }
+  }
+
+  saveActiveField();
+
+  return fields;
+}
+
+function getSetupReportValue(fields: Map<string, string>, label: string) {
+  return fields.get(label)?.trim() || "";
+}
+
 export function ClientPortal() {
   const [nxqTheme, setNxqTheme] = useState<"dark" | "light">(() => {
     const savedTheme = window.localStorage.getItem("nxq-theme");
@@ -238,6 +295,43 @@ export function ClientPortal() {
         )?.[0] || "starter";
 
       setSelectedPackage(matchingPackage as PackageTier);
+
+      const setupFields = parseClientSetupReport(loadedClient.notes);
+
+      if (setupFields.size > 0) {
+        const savedPackage = getSetupReportValue(setupFields, "Selected package");
+        const savedPackageTier = Object.entries(packageOptions).find(([, option]) =>
+          savedPackage.toLowerCase().includes(option.label.toLowerCase())
+        )?.[0];
+
+        if (savedPackageTier) {
+          setSelectedPackage(savedPackageTier as PackageTier);
+        }
+
+        setCompanyScale(getSetupReportValue(setupFields, "Company scale") || "Local business");
+        setLocationType(getSetupReportValue(setupFields, "Location setup") || "Single location");
+        setLocations(getSetupReportValue(setupFields, "Locations"));
+        setBusinessPhone(getSetupReportValue(setupFields, "Business phone"));
+        setBusinessEmail(getSetupReportValue(setupFields, "Business email"));
+        setBusinessAddress(getSetupReportValue(setupFields, "Business address"));
+        setBusinessHours(getSetupReportValue(setupFields, "Business hours"));
+        setEmergencyAvailability(getSetupReportValue(setupFields, "Emergency / after-hours availability"));
+        setIndustry(getSetupReportValue(setupFields, "Industry"));
+        setServices(getSetupReportValue(setupFields, "Services / products"));
+        setPagesNeeded(getSetupReportValue(setupFields, "Pages / sections needed"));
+        setStyleDirection(getSetupReportValue(setupFields, "Style direction"));
+        setBrandNotes(getSetupReportValue(setupFields, "Brand difference / positioning"));
+        setCompetitors(getSetupReportValue(setupFields, "Competitors / examples"));
+        setPreferredContactMethod(getSetupReportValue(setupFields, "Preferred contact method"));
+        setUrgentLeadRules(getSetupReportValue(setupFields, "Urgent lead rules"));
+        setRejectedJobs(getSetupReportValue(setupFields, "Jobs / customers to reject"));
+        setAreasNotServed(getSetupReportValue(setupFields, "Areas not served"));
+        setAiCanAnswer(getSetupReportValue(setupFields, "Assistant can answer"));
+        setAiNeverPromise(getSetupReportValue(setupFields, "Assistant should never promise"));
+        setEscalationRules(getSetupReportValue(setupFields, "Escalation rules"));
+        setTypedSignature(getSetupReportValue(setupFields, "Typed signature"));
+        setAgreementAccepted(false);
+      }
 
       const projectResult = await supabase
         .from("projects")
