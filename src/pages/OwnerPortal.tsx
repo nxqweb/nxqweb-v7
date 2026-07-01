@@ -41,6 +41,12 @@ type ApprovalRow = {
   risk_level: RiskLevel;
   status: ApprovalStatus;
   owner_response: string | null;
+    options: {
+    preview_id?: string;
+    preview_url?: string;
+    checklist?: string[];
+    launch_block_rule?: string;
+  } | null;
   created_at: string;
 };
 type AiTaskOutputRow = {
@@ -118,6 +124,17 @@ function isDomainConnectionReview(approval: ApprovalRow) {
   return approval.request_type === "domain_connection_review";
 }
 
+function isLaunchPreviewReview(approval: ApprovalRow) {
+  return approval.request_type === "launch_preview_review";
+}
+
+function getLaunchPreviewUrl(approval: ApprovalRow) {
+  return approval.options?.preview_url || "";
+}
+
+function getLaunchPreviewChecklist(approval: ApprovalRow) {
+  return Array.isArray(approval.options?.checklist) ? approval.options.checklist : [];
+}
 function getDomainFromApproval(approval: ApprovalRow) {
   const text = [approval.summary, approval.recommended_action || ""].join("\n");
   const domainMatch = text.match(/Domain:\s*([a-z0-9.-]+\.[a-z]{2,})/i);
@@ -443,7 +460,7 @@ function parseBuildPlanSections(content: string) {
       const approvalResult = await supabase
         .from("owner_approval_requests")
         .select(
-          "id, client_id, project_id, request_type, title, summary, recommended_action, risk_level, status, owner_response, created_at"
+          "id, client_id, project_id, request_type, title, summary, recommended_action, risk_level, status, owner_response, options, created_at"
         )
         .order("created_at", { ascending: false });
 
@@ -788,7 +805,64 @@ if (messageResult.error) {
       const message = error instanceof Error ? error.message : "Unknown client update error";
       setErrorMessage(`Client update failed: ${message}`);
     }
-  }  async function createProjectForClient(client: ClientRow) {
+  }
+
+  async function approveLaunchPreview(approval: ApprovalRow, clientName: string) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const previewUrl = getLaunchPreviewUrl(approval);
+
+    const ownerNotes = window.prompt(
+      `Approve website preview for launch?\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nThis approves the preview gate only. It does not automatically deploy or launch the live website.`,
+      "Owner inspected preview link and approved this website preview for launch."
+    );
+
+    if (ownerNotes === null) return;
+
+    const cleanOwnerNotes = ownerNotes.trim();
+
+    if (!cleanOwnerNotes) {
+      setErrorMessage("Preview approval cancelled because no owner note was entered.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Confirm preview approval\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nYou are confirming that you opened the preview link and checked the website. This will allow the project to move live later, but it will NOT launch automatically. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const previewResult = await supabase.rpc("approve_launch_preview", {
+        approval_request_id: approval.id,
+        owner_notes: cleanOwnerNotes,
+      });
+
+      if (previewResult.error) {
+        setErrorMessage(`Preview approval failed: ${previewResult.error.message}`);
+        return;
+      }
+
+      const resultData = previewResult.data as { message?: string } | null;
+
+      setActionMessage(
+        resultData?.message ||
+          `${clientName}: website preview approved for launch.`
+      );
+
+      await loadOwnerData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown preview approval error";
+      setErrorMessage(`Preview approval failed: ${message}`);
+    }
+  }
+  async function createProjectForClient(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
       return;
@@ -1279,7 +1353,38 @@ if (messageResult.error) {
                     ) : null}
                     <p>{approval.summary}</p>
 
-                    {approval.recommended_action && isWebsiteSetupReport(approval) ? (
+                    {isLaunchPreviewReview(approval) ? (
+                      <div className="setup-report-viewer launch-preview-review">
+                        <div className="setup-report-header">
+                          <strong>Website launch preview</strong>
+                          <span>Owner review required before live launch</span>
+                        </div>
+
+                        <p className="recommendation">
+                          {approval.options?.launch_block_rule ||
+                            "Website cannot move live until this preview is approved by owner."}
+                        </p>
+
+                        {getLaunchPreviewUrl(approval) ? (
+                          <a
+                            className="launch-preview-link"
+                            href={getLaunchPreviewUrl(approval)}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            Open website preview
+                          </a>
+                        ) : (
+                          <p className="recommendation">No preview URL was attached.</p>
+                        )}
+
+                        <div className="launch-preview-checklist">
+                          {getLaunchPreviewChecklist(approval).map((item) => (
+                            <span key={`${approval.id}-${item}`}>✓ {item}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : approval.recommended_action && isWebsiteSetupReport(approval) ? (
                       <div className="setup-report-viewer">
                         <div className="setup-report-header">
                           <strong>Website setup report</strong>
@@ -1317,6 +1422,11 @@ if (messageResult.error) {
                         type="button"
                         onClick={() => {
                           if (!confirmHighRiskAction("accept", clientName)) return;
+                          if (isLaunchPreviewReview(approval)) {
+                            approveLaunchPreview(approval, clientName);
+                            return;
+                          }
+
                           if (isPipelineStartApproval(approval)) {
                             acceptApprovalAndStartPipeline(approval, client, clientName);
                             return;
@@ -1704,6 +1814,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 
