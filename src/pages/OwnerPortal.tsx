@@ -803,7 +803,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `Create project\n\nClient: ${client.business_name}\n\nThis will create a website project record in Supabase. Continue?`
+      `Create project\n\nClient: ${client.business_name}\n\nSupabase will create a website project record only. This will not launch, charge, mark paid, activate billing, or freeze anything. Continue?`
     );
 
     if (!confirmed) return;
@@ -812,40 +812,24 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const { data, error } = await supabase
-        .from("projects")
-        .insert({
-          client_id: client.id,
-          project_name: `${client.business_name} Website Project`,
-          website_status: "planning",
-        })
-        .select("id")
-        .single();
+      const projectResult = await supabase.rpc("create_project_for_client", {
+        target_client_id: client.id,
+      });
 
-      if (error) {
-        setErrorMessage(`Project create failed: ${error.message}`);
+      if (projectResult.error) {
+        setErrorMessage(`Project create failed: ${projectResult.error.message}`);
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: "project_created",
-        details: {
-          client_name: client.business_name,
-          project_id: data?.id,
-          website_status: "planning",
-        },
-      });
+      const resultData = projectResult.data as { message?: string } | null;
 
-      setActionMessage(`${client.business_name}: project created.`);
+      setActionMessage(resultData?.message || `${client.business_name}: project created.`);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown project create error";
       setErrorMessage(`Project create failed: ${message}`);
     }
   }
-
   async function acceptApprovalAndStartPipelineCloud(
     approval: ApprovalRow,
     client: ClientRow | null,
@@ -1799,6 +1783,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
