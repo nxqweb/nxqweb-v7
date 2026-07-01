@@ -3302,3 +3302,48 @@ body[data-nxq-theme="light"] .launch-preview-checklist span {
   background: rgba(220, 252, 231, 0.72);
   border-color: rgba(22, 163, 74, 0.18);
 }
+
+/* Client Package Capability Cards v1 */
+.package-card em {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.08);
+  color: var(--nxq-gold);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
+.package-feature-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.package-feature-list li {
+  position: relative;
+  color: rgba(255, 250, 240, 0.78);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  padding-left: 15px;
+}
+
+.package-feature-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--nxq-gold);
+  font-weight: 950;
+}
+
+body[data-nxq-theme="light"] .package-feature-list li {
+  color: rgba(24, 24, 27, 0.78);
+}

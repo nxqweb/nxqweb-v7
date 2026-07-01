@@ -59,26 +59,81 @@ type ClientDomainRow = {
   requested_at: string;
 };
 
-type PackageTier = "starter" | "growth" | "premium";
+type PackageTier = "starter" | "growth" | "intelligence";
 
 const packageOptions: Record<
   PackageTier,
-  { label: string; price: number; description: string }
+  {
+    label: string;
+    price: number;
+    badge: string;
+    description: string;
+    capabilities: string[];
+    serviceRules: string[];
+  }
 > = {
   starter: {
     label: "Starter",
     price: 50,
-    description: "Clean new website foundation, client portal, and launch support.",
+    badge: "Best Entry",
+    description:
+      "Premium website essentials for small businesses that need a trusted online presence.",
+    capabilities: [
+      "Premium 1–3 page website",
+      "Mobile-responsive design",
+      "Basic SEO setup",
+      "Contact form",
+      "Simple client portal access",
+      "Manual update requests",
+    ],
+    serviceRules: [
+      "Best for simple local businesses and solo owners",
+      "AI may help organize setup details and draft basic website copy",
+      "No click tracking, behavior reporting, advanced SEO campaign, or monthly optimization report included",
+      "Owner approval is required before launch",
+    ],
   },
   growth: {
     label: "Growth",
     price: 100,
-    description: "Stronger website build, more content support, and active update workflow.",
+    badge: "Most Popular",
+    description:
+      "SEO-focused website system for businesses that want stronger structure, better visibility, and more leads.",
+    capabilities: [
+      "Everything in Starter",
+      "Up to 5 core pages",
+      "Service-area SEO sections",
+      "Monthly website/content improvements",
+      "Review and testimonial sections",
+      "AI-assisted SEO/content suggestions",
+    ],
+    serviceRules: [
+      "Best for contractors, tree services, cleaning companies, and local service teams",
+      "AI may suggest SEO sections, service-area copy, and monthly content improvements",
+      "Behavior insights and click/scroll reporting are not included unless upgraded",
+      "Owner approval is required before major changes and launch",
+    ],
   },
-  premium: {
-    label: "Premium",
+  intelligence: {
+    label: "Intelligence",
     price: 150,
-    description: "Priority support, premium polish, deeper planning, and more update capacity.",
+    badge: "Most Advanced",
+    description:
+      "AI-powered website optimization with behavior insights, monthly review, and conversion-focused planning.",
+    capabilities: [
+      "Everything in Growth",
+      "Click and scroll insights",
+      "Page interaction review",
+      "Monthly AI website review",
+      "Layout improvement suggestions",
+      "Conversion-focused optimization notes",
+    ],
+    serviceRules: [
+      "Best for businesses serious about leads, growth, and long-term performance",
+      "AI may review behavior signals and recommend layout/content improvements",
+      "AI may prepare monthly optimization notes for owner review",
+      "Owner approval is required before launch, major copy changes, or risky optimization changes",
+    ],
   },
 };
 
@@ -452,6 +507,8 @@ export function ClientPortal() {
     }
 
     const selectedPlan = packageOptions[selectedPackage];
+    const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
+    const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
     const cleanIndustry = industry.trim();
     const cleanServices = services.trim();
     const cleanPagesNeeded = pagesNeeded.trim();
@@ -518,6 +575,14 @@ export function ClientPortal() {
         ``,
         `Client: ${client.business_name}`,
         `Selected package: ${selectedPlan.label} - $${selectedPlan.price}/mo`,
+        `Package badge: ${selectedPlan.badge}`,
+        ``,
+        `Selected package capabilities:`,
+        `- ${selectedPlanCapabilities}`,
+        ``,
+        `Package AI/service rules:`,
+        `- ${selectedPlanRules}`,
+        ``,
         `Company scale: ${companyScale}`,
         `Location setup: ${locationType}`,
         `Locations: ${cleanLocations || "Not provided / single location"}`,
@@ -747,6 +812,8 @@ export function ClientPortal() {
     }
 
     const selectedPlan = packageOptions[selectedPackage];
+    const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
+    const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
     const targetedAnswer = getTargetedFieldValue(request.fieldKey);
 
     if (!targetedAnswer) {
@@ -762,6 +829,14 @@ export function ClientPortal() {
         ``,
         `Client: ${client.business_name}`,
         `Selected package: ${selectedPlan.label} - $${selectedPlan.price}/mo`,
+        `Package badge: ${selectedPlan.badge}`,
+        ``,
+        `Selected package capabilities:`,
+        `- ${selectedPlanCapabilities}`,
+        ``,
+        `Package AI/service rules:`,
+        `- ${selectedPlanRules}`,
+        ``,
         `Company scale: ${companyScale}`,
         `Location setup: ${locationType}`,
         `Locations: ${locations.trim() || "Not provided / single location"}`,
@@ -1924,6 +1999,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 
