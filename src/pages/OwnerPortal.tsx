@@ -1240,7 +1240,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\nProject stage: ${nextStage}\n\nThis will update the project record in Supabase. Continue?`
+      `${actionLabel}\n\nClient: ${client.business_name}\nProject stage: ${nextStage}\n\nSupabase will update the project stage only. This will not launch, charge, mark paid, or freeze billing. Continue?`
     );
 
     if (!confirmed) return;
@@ -1249,38 +1249,29 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase
-        .from("projects")
-        .update({
-          website_status: nextStage,
-        })
-        .eq("id", project.id);
+      const stageResult = await supabase.rpc("update_project_stage", {
+        target_client_id: client.id,
+        next_website_status: nextStage,
+      });
 
-      if (error) {
-        setErrorMessage(`Project stage update failed: ${error.message}`);
+      if (stageResult.error) {
+        setErrorMessage(`Project stage update failed: ${stageResult.error.message}`);
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: `project_${nextStage}`,
-        details: {
-          client_name: client.business_name,
-          project_id: project.id,
-          action_label: actionLabel,
-          website_status: nextStage,
-        },
-      });
+      const resultData = stageResult.data as { message?: string } | null;
 
-      setActionMessage(`${client.business_name}: ${actionLabel} complete.`);
+      setActionMessage(
+        resultData?.message ||
+          `${client.business_name}: ${actionLabel} complete.`
+      );
+
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown project update error";
       setErrorMessage(`Project stage update failed: ${message}`);
     }
   }
-
   useEffect(() => {
     loadOwnerData();
   }, []);
@@ -1808,6 +1799,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
