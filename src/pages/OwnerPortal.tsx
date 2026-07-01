@@ -1421,11 +1421,12 @@ if (messageResult.error) {
                       <button
                         type="button"
                         onClick={() => {
-                          if (!confirmHighRiskAction("accept", clientName)) return;
                           if (isLaunchPreviewReview(approval)) {
                             approveLaunchPreview(approval, clientName);
                             return;
                           }
+
+                          if (!confirmHighRiskAction("accept", clientName)) return;
 
                           if (isPipelineStartApproval(approval)) {
                             acceptApprovalAndStartPipeline(approval, client, clientName);
@@ -1814,6 +1815,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
