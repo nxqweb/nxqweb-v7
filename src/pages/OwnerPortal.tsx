@@ -8,7 +8,6 @@ import {
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
-import { getPaymentProvider } from "../services/paymentProviders";
 
 type ApprovalStatus =
   | "pending"
@@ -926,7 +925,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `Activate subscription\n\nClient: ${client.business_name}\n\nThis is manual payment mode. It will mark the client active and move the project into building. Continue?`
+      `Activate manual subscription\n\nClient: ${client.business_name}\nAmount: ${formatMoney(Number(client.monthly_price || 0))}/mo\n\nThis is MANUAL/CASH tracking only. Supabase will mark the client active, move/create the project as building, and save a manual payment record.\n\nThis will NOT charge a card, PayPal, Stripe, bank account, or any online payment method. Continue?`
     );
 
     if (!confirmed) return;
@@ -935,106 +934,28 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const paymentProvider = getPaymentProvider("manual");
-      const paymentResult = await paymentProvider.activateSubscription({
-        clientId: client.id,
-        clientName: client.business_name,
-        monthlyPrice: Number(client.monthly_price || 0),
+      const activationResult = await supabase.rpc("activate_manual_subscription", {
+        target_client_id: client.id,
       });
 
-      if (!paymentResult.ok) {
-        setErrorMessage(paymentResult.message);
+      if (activationResult.error) {
+        setErrorMessage(`Manual activation failed: ${activationResult.error.message}`);
         return;
       }
 
-      const clientUpdate = await supabase
-        .from("clients")
-        .update({
-          status: "active",
-        })
-        .eq("id", client.id);
+      const resultData = activationResult.data as { message?: string } | null;
 
-      if (clientUpdate.error) {
-        setErrorMessage(`Client activation failed: ${clientUpdate.error.message}`);
-        return;
-      }
+      setActionMessage(
+        resultData?.message ||
+          `${client.business_name} subscription manually activated. No online charge was processed.`
+      );
 
-      const existingProject = getProjectForClient(client.id);
-
-      if (existingProject) {
-        const projectUpdate = await supabase
-          .from("projects")
-          .update({
-            website_status: "building",
-          })
-          .eq("id", existingProject.id);
-
-        if (projectUpdate.error) {
-          setErrorMessage(`Project activation failed: ${projectUpdate.error.message}`);
-          return;
-        }
-      } else {
-        const projectCreate = await supabase
-          .from("projects")
-          .insert({
-            client_id: client.id,
-            project_name: `${client.business_name} Website Project`,
-            website_status: "building",
-          })
-          .select("id")
-          .single();
-
-        if (projectCreate.error) {
-          setErrorMessage(`Project create failed: ${projectCreate.error.message}`);
-          return;
-        }
-      }
-
-      const paymentRecord = await supabase.from("payment_records").insert({
-        client_id: client.id,
-        provider: paymentResult.provider,
-        status: paymentResult.status,
-        amount: Number(client.monthly_price || 0),
-        currency: "USD",
-        external_payment_id: paymentResult.externalPaymentId || null,
-        note: paymentResult.message,
-      });
-
-      if (paymentRecord.error) {
-        setErrorMessage(`Payment record failed: ${paymentRecord.error.message}`);
-        return;
-      }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: "manual_subscription_activated",
-        details: {
-          client_name: client.business_name,
-          client_status: "active",
-          project_status: "building",
-          payment_mode: paymentResult.provider,
-          payment_status: paymentResult.status,
-          payment_message: paymentResult.message,
-          note: "Manual activation used while payment provider is not connected.",
-        },
-      });
-
-      setActionMessage(paymentResult.message);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown manual activation error";
       setErrorMessage(`Manual activation failed: ${message}`);
     }
   }
-
-
-
-
-
-
-
-
   async function requestMoreInfoFromClientCard(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
@@ -1783,6 +1704,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
