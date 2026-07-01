@@ -126,30 +126,92 @@ export function PublicHome() {
         <section className="lux-section" id="pricing">
           <div className="lux-section-head">
             <span>Pricing</span>
-            <h2>Simple monthly plans clients can actually say yes to.</h2>
+            <h2>Premium websites. Smarter monthly plans.</h2>
+            <p>
+              Start with the plan that matches where your business is right now.
+              As your company grows, your website system can grow with stronger SEO,
+              smarter insights, and deeper monthly optimization.
+            </p>
           </div>
 
-          <div className="lux-grid">
+          <div className="lux-grid lux-pricing-grid">
             <article className="lux-card lux-price">
+              <span className="lux-plan-badge">Best Entry</span>
               <h3>Starter</h3>
-              <p>Clean website, portal access, basic updates, and launch support.</p>
+              <p>
+                Premium website essentials for small businesses that need to look
+                trusted, professional, and ready for customers online.
+              </p>
               <strong>$50/mo</strong>
+              <ul className="lux-plan-list">
+                <li>Premium 1–3 page website</li>
+                <li>Mobile-responsive design</li>
+                <li>Basic SEO setup</li>
+                <li>Contact form</li>
+                <li>Simple client portal access</li>
+                <li>Manual update requests</li>
+              </ul>
+              <small>Best for new businesses, solo owners, and simple local services.</small>
             </article>
 
             <article className="lux-card lux-price lux-featured">
+              <span className="lux-plan-badge">Most Popular</span>
               <h3>Growth</h3>
-              <p>More pages, stronger support, better workflow, and active updates.</p>
+              <p>
+                A stronger SEO-focused website system for businesses that want
+                more visibility, better structure, and more leads.
+              </p>
               <strong>$100/mo</strong>
+              <ul className="lux-plan-list">
+                <li>Everything in Starter</li>
+                <li>Up to 5 core pages</li>
+                <li>Service-area SEO sections</li>
+                <li>Monthly website/content improvements</li>
+                <li>Review and testimonial sections</li>
+                <li>AI-assisted SEO/content suggestions</li>
+              </ul>
+              <small>Best for contractors, tree services, cleaning companies, and local teams.</small>
             </article>
 
             <article className="lux-card lux-price">
-              <h3>Premium</h3>
-              <p>Priority support, deeper AI help, premium polish, and more updates.</p>
+              <span className="lux-plan-badge">Most Advanced</span>
+              <h3>Intelligence</h3>
+              <p>
+                AI-powered website optimization with behavior insights, monthly
+                improvement recommendations, and conversion-focused planning.
+              </p>
               <strong>$150/mo</strong>
+              <ul className="lux-plan-list">
+                <li>Everything in Growth</li>
+                <li>Click and scroll insights</li>
+                <li>Page interaction review</li>
+                <li>Monthly AI website review</li>
+                <li>Layout improvement suggestions</li>
+                <li>Conversion-focused optimization notes</li>
+              </ul>
+              <small>Best for businesses serious about leads, growth, and long-term performance.</small>
+            </article>
+
+            <article className="lux-card lux-price">
+              <span className="lux-plan-badge">Custom</span>
+              <h3>Enterprise</h3>
+              <p>
+                Custom website systems for larger companies, multi-location
+                businesses, and teams that need advanced workflows.
+              </p>
+              <strong>Custom</strong>
+              <ul className="lux-plan-list">
+                <li>Multi-location SEO</li>
+                <li>Location-specific pages</li>
+                <li>Advanced reporting</li>
+                <li>Custom approval workflows</li>
+                <li>Priority project support</li>
+                <li>Custom integrations later</li>
+              </ul>
+              <small>Best for regional service companies, forestry teams, and larger operations.</small>
             </article>
           </div>
         </section>
-
         <section className="lux-card lux-process" id="process">
           <div>
             <span className="lux-kicker">Process</span>
@@ -195,3 +257,4 @@ export function PublicHome() {
     </main>
   );
 }
+

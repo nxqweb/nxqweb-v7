@@ -3186,3 +3186,71 @@ body[data-nxq-theme="light"] .build-plan-section pre {
   color: rgba(15, 23, 42, 0.82);
 }
 
+
+/* Public Pricing Strategy v1 */
+.lux-pricing-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.lux-plan-badge {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.08);
+  color: #fde68a;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 7px 10px;
+  text-transform: uppercase;
+}
+
+.lux-plan-list {
+  display: grid;
+  gap: 9px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lux-plan-list li {
+  position: relative;
+  color: rgba(255, 250, 240, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  padding-left: 18px;
+}
+
+.lux-plan-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #fcd34d;
+  font-weight: 950;
+}
+
+.lux-price small {
+  display: block;
+  color: rgba(254, 243, 199, 0.68);
+  line-height: 1.55;
+  margin-top: 18px;
+}
+
+.lux-featured .lux-plan-badge {
+  background: linear-gradient(135deg, rgba(146, 64, 14, 0.55), rgba(251, 191, 36, 0.16));
+  border-color: rgba(253, 230, 138, 0.42);
+  color: #fff7ed;
+}
+
+@media (max-width: 1100px) {
+  .lux-pricing-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .lux-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+}
