@@ -3187,123 +3187,9 @@ body[data-nxq-theme="light"] .build-plan-section pre {
 }
 
 /* =========================================================
-   NXQ Global Animated Brand Background v1
-   Uses /public/nxq-global-bg.png behind every portal page.
-   ========================================================= */
-
-body {
-  position: relative;
-  overflow-x: hidden;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(2, 4, 10, 0.74), rgba(2, 4, 10, 0.84)),
-    url("/nxq-global-bg.png");
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: min(1320px, 112vw) auto;
-  opacity: 0.24;
-  filter: saturate(1.18) contrast(1.08);
-  transform: scale(1);
-  animation: nxqGlobalLogoPulse 9s ease-in-out infinite;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: -18%;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 48%, rgba(245, 190, 70, 0.16), transparent 22%),
-    radial-gradient(circle at 28% 30%, rgba(245, 190, 70, 0.09), transparent 18%),
-    radial-gradient(circle at 74% 34%, rgba(56, 189, 248, 0.08), transparent 20%),
-    linear-gradient(115deg, transparent 0%, rgba(245, 190, 70, 0.06) 45%, transparent 58%);
-  opacity: 0.6;
-  mix-blend-mode: screen;
-  animation: nxqNeuralGlowDrift 7s ease-in-out infinite;
-}
-
-.nxq-page {
-  position: relative;
-  z-index: 1;
-}
-
-.portal-shell,
-.hero-shell {
-  position: relative;
-  z-index: 2;
-}
-
-body[data-nxq-theme="light"]::before {
-  background-image:
-    linear-gradient(rgba(248, 250, 252, 0.78), rgba(248, 250, 252, 0.9)),
-    url("/nxq-global-bg.png");
-  opacity: 0.18;
-  filter: saturate(0.92) contrast(0.96);
-}
-
-body[data-nxq-theme="light"]::after {
-  opacity: 0.26;
-  mix-blend-mode: multiply;
-}
-
-@keyframes nxqGlobalLogoPulse {
-  0%,
-  100% {
-    opacity: 0.18;
-    transform: scale(1);
-    filter: saturate(1.05) contrast(1.02) brightness(0.9);
-  }
-
-  50% {
-    opacity: 0.32;
-    transform: scale(1.025);
-    filter: saturate(1.35) contrast(1.16) brightness(1.08);
-  }
-}
-
-@keyframes nxqNeuralGlowDrift {
-  0%,
-  100% {
-    transform: translate3d(-1.2%, -0.8%, 0) scale(1);
-    opacity: 0.42;
-  }
-
-  50% {
-    transform: translate3d(1.2%, 0.8%, 0) scale(1.025);
-    opacity: 0.72;
-  }
-}
-
-@media (max-width: 760px) {
-  body::before {
-    background-size: 1180px auto;
-    opacity: 0.18;
-  }
-
-  body::after {
-    opacity: 0.42;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::before,
-  body::after {
-    animation: none;
-  }
-}
-
-/* =========================================================
-   NXQ Web Neural Background v2
-   CSS-only brand watermark: NXQ / WEB with neural strings.
-   Overrides the previous image-based background attempt.
+   NXQ Web Background v3
+   Single NXQ WEB identity mark with subtle neural/circuit motion.
+   No full branch-map image, no extra product hexagons.
    ========================================================= */
 
 body {
@@ -3320,46 +3206,53 @@ body::before {
   z-index: 0;
   pointer-events: none;
   translate: -50% -50%;
-  width: min(980px, 92vw);
+  width: min(760px, 82vw);
+  min-height: min(460px, 54vw);
+  display: grid;
+  place-items: center;
   text-align: center;
-  font-size: clamp(5.5rem, 16vw, 15rem);
-  line-height: 0.72;
+  font-size: clamp(4.8rem, 12vw, 11rem);
+  line-height: 0.74;
   letter-spacing: -0.12em;
   font-weight: 1000;
   color: transparent;
-  -webkit-text-stroke: 1px rgba(245, 190, 70, 0.18);
+  -webkit-text-stroke: 1px rgba(245, 190, 70, 0.2);
   text-shadow:
     0 0 18px rgba(245, 190, 70, 0.12),
-    0 0 52px rgba(245, 190, 70, 0.12),
-    0 0 120px rgba(56, 189, 248, 0.08);
-  opacity: 0.38;
+    0 0 48px rgba(245, 190, 70, 0.12),
+    0 0 108px rgba(56, 189, 248, 0.08);
+  opacity: 0.34;
+  background:
+    linear-gradient(120deg, transparent 0 18%, rgba(245, 190, 70, 0.13) 18.35%, transparent 19.5%),
+    linear-gradient(-120deg, transparent 0 18%, rgba(245, 190, 70, 0.1) 18.35%, transparent 19.5%),
+    linear-gradient(60deg, transparent 0 82%, rgba(245, 190, 70, 0.13) 82.35%, transparent 83.5%),
+    linear-gradient(-60deg, transparent 0 82%, rgba(245, 190, 70, 0.1) 82.35%, transparent 83.5%),
+    radial-gradient(circle at 50% 50%, rgba(245, 190, 70, 0.06), transparent 54%);
+  clip-path: polygon(18% 0%, 82% 0%, 100% 50%, 82% 100%, 18% 100%, 0% 50%);
   filter: blur(0.1px);
-  animation: nxqWebWatermarkPulse 8s ease-in-out infinite;
+  animation: nxqWebCoreMarkPulse 8s ease-in-out infinite;
 }
 
 body::after {
   content: "";
   position: fixed;
-  inset: -12%;
+  inset: -10%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 50% 46%, rgba(245, 190, 70, 0.18), transparent 14%),
-    radial-gradient(circle at 50% 58%, rgba(56, 189, 248, 0.1), transparent 18%),
+    radial-gradient(circle at 50% 50%, rgba(245, 190, 70, 0.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 39% 34%, rgba(245, 190, 70, 0.2) 0 2px, transparent 3px),
+    radial-gradient(circle at 61% 34%, rgba(245, 190, 70, 0.18) 0 2px, transparent 3px),
+    radial-gradient(circle at 38% 67%, rgba(56, 189, 248, 0.14) 0 2px, transparent 3px),
+    radial-gradient(circle at 62% 67%, rgba(245, 190, 70, 0.16) 0 2px, transparent 3px),
 
-    linear-gradient(90deg, transparent 0 18%, rgba(245, 190, 70, 0.12) 18.3%, transparent 19.2% 80%, rgba(245, 190, 70, 0.1) 80.5%, transparent 82%),
-    linear-gradient(0deg, transparent 0 25%, rgba(245, 190, 70, 0.07) 25.3%, transparent 26.2% 74%, rgba(56, 189, 248, 0.06) 74.5%, transparent 76%),
-
-    linear-gradient(32deg, transparent 0 38%, rgba(245, 190, 70, 0.09) 38.25%, transparent 39.2%),
-    linear-gradient(-32deg, transparent 0 40%, rgba(56, 189, 248, 0.07) 40.25%, transparent 41.2%),
-
-    radial-gradient(circle at 22% 28%, rgba(245, 190, 70, 0.22) 0 2px, transparent 3px),
-    radial-gradient(circle at 78% 28%, rgba(245, 190, 70, 0.2) 0 2px, transparent 3px),
-    radial-gradient(circle at 20% 68%, rgba(56, 189, 248, 0.16) 0 2px, transparent 3px),
-    radial-gradient(circle at 80% 70%, rgba(245, 190, 70, 0.18) 0 2px, transparent 3px);
-  opacity: 0.64;
+    linear-gradient(90deg, transparent 0 28%, rgba(245, 190, 70, 0.1) 28.2%, transparent 29.2% 70.8%, rgba(245, 190, 70, 0.1) 71%, transparent 72%),
+    linear-gradient(0deg, transparent 0 34%, rgba(56, 189, 248, 0.06) 34.2%, transparent 35.2% 64.8%, rgba(245, 190, 70, 0.07) 65%, transparent 66%),
+    linear-gradient(35deg, transparent 0 43%, rgba(245, 190, 70, 0.08) 43.2%, transparent 44%),
+    linear-gradient(-35deg, transparent 0 43%, rgba(56, 189, 248, 0.06) 43.2%, transparent 44%);
+  opacity: 0.5;
   mix-blend-mode: screen;
-  animation: nxqNeuralStringsBreathe 7s ease-in-out infinite;
+  animation: nxqWebNeuralBoxBreathe 7s ease-in-out infinite;
 }
 
 .nxq-page {
@@ -3374,55 +3267,57 @@ body::after {
 }
 
 body[data-nxq-theme="light"]::before {
-  -webkit-text-stroke-color: rgba(146, 64, 14, 0.18);
+  -webkit-text-stroke-color: rgba(146, 64, 14, 0.16);
   text-shadow:
-    0 0 18px rgba(146, 64, 14, 0.1),
-    0 0 64px rgba(245, 158, 11, 0.08);
-  opacity: 0.24;
+    0 0 18px rgba(146, 64, 14, 0.08),
+    0 0 64px rgba(245, 158, 11, 0.06);
+  opacity: 0.18;
 }
 
 body[data-nxq-theme="light"]::after {
-  opacity: 0.24;
+  opacity: 0.18;
   mix-blend-mode: multiply;
 }
 
-@keyframes nxqWebWatermarkPulse {
+@keyframes nxqWebCoreMarkPulse {
   0%,
   100% {
-    opacity: 0.24;
+    opacity: 0.22;
     transform: scale(1);
     filter: brightness(0.86) saturate(1);
   }
 
   50% {
-    opacity: 0.46;
+    opacity: 0.42;
     transform: scale(1.018);
-    filter: brightness(1.12) saturate(1.3);
+    filter: brightness(1.14) saturate(1.28);
   }
 }
 
-@keyframes nxqNeuralStringsBreathe {
+@keyframes nxqWebNeuralBoxBreathe {
   0%,
   100% {
-    opacity: 0.42;
-    transform: translate3d(-0.7%, -0.4%, 0) scale(1);
+    opacity: 0.34;
+    transform: translate3d(-0.5%, -0.3%, 0) scale(1);
   }
 
   50% {
-    opacity: 0.78;
-    transform: translate3d(0.7%, 0.4%, 0) scale(1.02);
+    opacity: 0.68;
+    transform: translate3d(0.5%, 0.3%, 0) scale(1.018);
   }
 }
 
 @media (max-width: 760px) {
   body::before {
     top: 42%;
-    font-size: clamp(4.6rem, 24vw, 9rem);
-    opacity: 0.28;
+    width: 88vw;
+    min-height: 320px;
+    font-size: clamp(4rem, 21vw, 8.5rem);
+    opacity: 0.24;
   }
 
   body::after {
-    opacity: 0.38;
+    opacity: 0.32;
   }
 }
 
