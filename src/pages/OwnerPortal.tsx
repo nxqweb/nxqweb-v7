@@ -1188,7 +1188,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `Request targeted setup info\n\nClient: ${client.business_name}\n\nField: ${selectedField.label}\n\nRequested info:\n${cleanRequestedInfo}\n\nThis will show the client only the requested field instead of the full setup sheet. Continue?`
+      `Request targeted setup info\n\nClient: ${client.business_name}\n\nField: ${selectedField.label}\n\nRequested info:\n${cleanRequestedInfo}\n\nSupabase will reopen the requested field for the client. Continue?`
     );
 
     if (!confirmed) return;
@@ -1196,54 +1196,30 @@ if (messageResult.error) {
     setActionMessage("");
     setErrorMessage("");
 
-    const existingNotes = client.notes || "";
-    const moreInfoNote = [
-      "NXQ MORE INFO REQUEST",
-      `Requested info: ${cleanRequestedInfo}`,
-      `Requested at: ${new Date().toISOString()}`,
-      "",
-      "NXQ TARGETED MORE INFO REQUEST",
-      `Field key: ${selectedField.key}`,
-      `Field label: ${selectedField.label}`,
-      `Requested info: ${cleanRequestedInfo}`,
-      `Requested at: ${new Date().toISOString()}`,
-    ].join("\n");
-
-    const nextClientNotes = existingNotes
-      ? `${existingNotes.trim()}\n\n${moreInfoNote}`
-      : moreInfoNote;
-
     try {
-      const { error } = await supabase
-        .from("clients")
-        .update({
-          status: "intake_sent",
-          notes: nextClientNotes,
-        })
-        .eq("id", client.id);
+      const moreInfoResult = await supabase.rpc("request_targeted_more_info", {
+        target_client_id: client.id,
+        requested_field_key: selectedField.key,
+        requested_field_label: selectedField.label,
+        requested_info: cleanRequestedInfo,
+      });
 
-      if (error) {
-        setErrorMessage(`Client setup reopen failed: ${error.message}`);
+      if (moreInfoResult.error) {
+        setErrorMessage(`Targeted more info request failed: ${moreInfoResult.error.message}`);
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: "client_targeted_more_info_requested",
-        details: {
-          owner_requested_info: cleanRequestedInfo,
-          requested_field_key: selectedField.key,
-          requested_field_label: selectedField.label,
-          source: "owner_client_card",
-        },
-      });
+      const resultData = moreInfoResult.data as { message?: string } | null;
 
-      setActionMessage(`${client.business_name}: targeted more info requested for ${selectedField.label}.`);
+      setActionMessage(
+        resultData?.message ||
+          `${client.business_name}: targeted more info requested for ${selectedField.label}.`
+      );
+
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown more info error";
-      setErrorMessage(`Client setup reopen failed: ${message}`);
+      setErrorMessage(`Targeted more info request failed: ${message}`);
     }
   }
   async function updateProjectStage(
@@ -1832,6 +1808,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
