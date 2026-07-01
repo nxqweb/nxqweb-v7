@@ -107,6 +107,43 @@ function getLatestMoreInfoRequest(notes: string | null | undefined) {
   return requestedInfoLine?.replace("Requested info:", "").trim() || "";
 }
 
+
+type TargetedMoreInfoRequest = {
+  fieldKey: string;
+  fieldLabel: string;
+  requestedInfo: string;
+};
+
+function getLatestTargetedMoreInfoRequest(notes: string | null | undefined): TargetedMoreInfoRequest | null {
+  if (!notes) return null;
+
+  const marker = "NXQ TARGETED MORE INFO REQUEST";
+  const sections = notes.split(marker);
+  const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
+
+  if (!latestSection.trim()) return null;
+
+  const lines = latestSection
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const fieldKey =
+    lines.find((line) => line.startsWith("Field key:"))?.replace("Field key:", "").trim() || "other";
+  const fieldLabel =
+    lines.find((line) => line.startsWith("Field label:"))?.replace("Field label:", "").trim() ||
+    "Other requested information";
+  const requestedInfo =
+    lines.find((line) => line.startsWith("Requested info:"))?.replace("Requested info:", "").trim() || "";
+
+  if (!requestedInfo) return null;
+
+  return {
+    fieldKey,
+    fieldLabel,
+    requestedInfo,
+  };
+}
 function parseClientSetupReport(notes: string | null | undefined) {
   if (!notes?.includes("NXQ WEB WEBSITE SETUP REPORT")) {
     return new Map<string, string>();
@@ -598,6 +635,229 @@ export function ClientPortal() {
     }
   }
 
+  function getTargetedFieldValue(fieldKey: string) {
+    switch (fieldKey) {
+      case "preferred_contact_method":
+        return preferredContactMethod.trim();
+      case "emergency_availability":
+        return emergencyAvailability.trim();
+      case "business_hours":
+        return businessHours.trim();
+      case "locations":
+        return locations.trim();
+      case "services":
+        return services.trim();
+      case "pages_needed":
+        return pagesNeeded.trim();
+      case "style_direction":
+        return styleDirection.trim();
+      case "assistant_rules":
+        return [
+          `Assistant can answer: ${aiCanAnswer.trim() || "Not provided"}`,
+          `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
+          `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
+        ].join("\n");
+      default:
+        return brandNotes.trim();
+    }
+  }
+
+  function getTargetedFieldControl(request: TargetedMoreInfoRequest) {
+    switch (request.fieldKey) {
+      case "preferred_contact_method":
+        return {
+          label: "Preferred contact method",
+          value: preferredContactMethod,
+          onChange: setPreferredContactMethod,
+          placeholder: "Example: Phone calls for urgent jobs, text for quick questions, email for non-urgent follow-up.",
+        };
+      case "emergency_availability":
+        return {
+          label: "Emergency / after-hours availability",
+          value: emergencyAvailability,
+          onChange: setEmergencyAvailability,
+          placeholder: "Example: 24/7 storm cleanup available. Sunday emergency calls accepted for dangerous trees.",
+        };
+      case "business_hours":
+        return {
+          label: "Business hours",
+          value: businessHours,
+          onChange: setBusinessHours,
+          placeholder: "Example: Monday-Friday 8am-5pm, Saturday by appointment, Sunday closed except emergencies.",
+        };
+      case "locations":
+        return {
+          label: "Locations or service areas",
+          value: locations,
+          onChange: setLocations,
+          placeholder: "Example: Oroville, Chico, Paradise, Gridley, Butte County, and nearby areas.",
+        };
+      case "services":
+        return {
+          label: "Services / products",
+          value: services,
+          onChange: setServices,
+          placeholder: "Example: Tree removal, trimming, storm cleanup, land clearing, stump grinding.",
+        };
+      case "pages_needed":
+        return {
+          label: "Pages or sections needed",
+          value: pagesNeeded,
+          onChange: setPagesNeeded,
+          placeholder: "Example: Home, About, Services, Gallery, Reviews, Service Areas, Contact, Request a Quote.",
+        };
+      case "style_direction":
+        return {
+          label: "Website style direction",
+          value: styleDirection,
+          onChange: setStyleDirection,
+          placeholder: "Example: Premium, dark, modern, trustworthy, local, bold, clean, professional.",
+        };
+      case "assistant_rules":
+        return {
+          label: "Website assistant rules",
+          value: [aiCanAnswer, aiNeverPromise, escalationRules].filter(Boolean).join("\n\n"),
+          onChange: (value: string) => {
+            setAiCanAnswer(value);
+          },
+          placeholder: "Tell us what the website assistant can answer, should never promise, and should escalate.",
+        };
+      default:
+        return {
+          label: "Other requested information",
+          value: brandNotes,
+          onChange: setBrandNotes,
+          placeholder: "Add the requested missing information here.",
+        };
+    }
+  }
+
+  async function submitTargetedMoreInfoUpdate(request: TargetedMoreInfoRequest) {
+    setNotice("");
+    setErrorMessage("");
+
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!client) {
+      setErrorMessage("No client loaded yet.");
+      return;
+    }
+
+    const selectedPlan = packageOptions[selectedPackage];
+    const targetedAnswer = getTargetedFieldValue(request.fieldKey);
+
+    if (!targetedAnswer) {
+      setErrorMessage(`Please answer: ${request.fieldLabel}`);
+      return;
+    }
+
+    setIsSubmittingSetup(true);
+
+    try {
+      const setupReport = [
+        `NXQ WEB WEBSITE SETUP REPORT`,
+        ``,
+        `Client: ${client.business_name}`,
+        `Selected package: ${selectedPlan.label} - $${selectedPlan.price}/mo`,
+        `Company scale: ${companyScale}`,
+        `Location setup: ${locationType}`,
+        `Locations: ${locations.trim() || "Not provided / single location"}`,
+        `Business phone: ${businessPhone.trim() || "Not provided"}`,
+        `Business email: ${businessEmail.trim() || "Not provided"}`,
+        `Business address: ${businessAddress.trim() || "Not provided"}`,
+        `Business hours: ${businessHours.trim() || "Not provided"}`,
+        `Emergency / after-hours availability: ${emergencyAvailability.trim() || "Not provided"}`,
+        `Industry: ${industry.trim() || "Not provided"}`,
+        ``,
+        `Services / products:`,
+        services.trim() || "Not provided",
+        ``,
+        `Pages / sections needed:`,
+        pagesNeeded.trim() || "Not provided",
+        ``,
+        `Style direction:`,
+        styleDirection.trim() || "Not provided",
+        ``,
+        `Brand difference / positioning:`,
+        brandNotes.trim() || "Not provided",
+        ``,
+        `Competitors / examples:`,
+        competitors.trim() || "Not provided",
+        ``,
+        `Lead handling rules:`,
+        `Preferred contact method: ${preferredContactMethod.trim() || "Not provided"}`,
+        `Urgent lead rules: ${urgentLeadRules.trim() || "Not provided"}`,
+        `Jobs / customers to reject: ${rejectedJobs.trim() || "Not provided"}`,
+        `Areas not served: ${areasNotServed.trim() || "Not provided"}`,
+        ``,
+        `Website assistant rules:`,
+        `Assistant can answer: ${aiCanAnswer.trim() || "Not provided"}`,
+        `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
+        `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
+        ``,
+        `Targeted more info response:`,
+        `Requested field: ${request.fieldLabel}`,
+        `Requested info: ${request.requestedInfo}`,
+        `Client answer: ${targetedAnswer}`,
+        `Response date: ${new Date().toISOString()}`,
+      ].join("\n");
+
+      const updateResult = await supabase
+        .from("clients")
+        .update({
+          monthly_price: selectedPlan.price,
+          business_type: industry.trim() || "Website Client",
+          service_area: locations.trim() || locationType,
+          status: "intake_received",
+          notes: setupReport,
+        })
+        .eq("id", client.id);
+
+      if (updateResult.error) {
+        setErrorMessage(`Client update failed: ${updateResult.error.message}`);
+        return;
+      }
+
+      const approvalResult = await supabase.from("owner_approval_requests").insert({
+        client_id: client.id,
+        project_id: null,
+        request_type: "website_setup_review",
+        title: "Website setup targeted update",
+        summary: `${client.business_name} answered a targeted setup request for ${request.fieldLabel}.`,
+        recommended_action: setupReport,
+        risk_level: "low",
+        status: "pending",
+      });
+
+      if (approvalResult.error) {
+        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
+        return;
+      }
+
+      await supabase.from("activity_logs").insert({
+        client_id: client.id,
+        actor_type: "client",
+        action: "targeted_more_info_submitted",
+        details: {
+          requested_field_key: request.fieldKey,
+          requested_field_label: request.fieldLabel,
+          requested_info: request.requestedInfo,
+          client_answer: targetedAnswer,
+        },
+      });
+
+      setNotice("Requested update submitted. We will review your answer.");
+      await loadClientPortalData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown targeted update error";
+      setErrorMessage(`Requested update failed: ${message}`);
+    } finally {
+      setIsSubmittingSetup(false);
+    }
+  }
   async function sendMessage() {
     setNotice("");
     setErrorMessage("");
@@ -879,6 +1139,10 @@ export function ClientPortal() {
     clientDecisionStatus === "intake_sent" &&
     Boolean(client?.notes?.includes("NXQ WEB WEBSITE SETUP REPORT"));
   const latestMoreInfoRequest = getLatestMoreInfoRequest(client?.notes);
+  const targetedMoreInfoRequest = getLatestTargetedMoreInfoRequest(client?.notes);
+  const targetedMoreInfoField = targetedMoreInfoRequest
+    ? getTargetedFieldControl(targetedMoreInfoRequest)
+    : null;
   const projectDecisionStatus = (projectStage || "").toLowerCase();
 
   const portalDecisionNotice = (() => {
@@ -980,7 +1244,35 @@ export function ClientPortal() {
         ) : null}
 
         <div className="client-grid">
-          {!setupComplete ? (
+          {!setupComplete && targetedMoreInfoRequest && targetedMoreInfoField ? (
+            <section className="panel panel-wide">
+              <div className="panel-title">
+                <Send size={20} />
+                <h2>{targetedMoreInfoField.label}</h2>
+              </div>
+
+              <p className="subtle">{targetedMoreInfoRequest.requestedInfo}</p>
+
+              <label className="auth-label" htmlFor="targeted-more-info-answer">
+                {targetedMoreInfoField.label}
+              </label>
+              <textarea
+                id="targeted-more-info-answer"
+                onChange={(event) => targetedMoreInfoField.onChange(event.target.value)}
+                placeholder={targetedMoreInfoField.placeholder}
+                value={targetedMoreInfoField.value}
+              />
+
+              <button
+                className="wide-btn"
+                disabled={isSubmittingSetup || !client}
+                onClick={() => submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)}
+                type="button"
+              >
+                {isSubmittingSetup ? "Submitting update..." : "Submit requested update"}
+              </button>
+            </section>
+          ) : !setupComplete ? (
             <section className="panel panel-wide">
               <div className="panel-title">
                 <Send size={20} />
@@ -1632,6 +1924,8 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
 
 
 

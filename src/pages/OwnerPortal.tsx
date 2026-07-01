@@ -1057,9 +1057,125 @@ if (messageResult.error) {
       return;
     }
 
+    const fieldChoice = window.prompt(
+      [
+        `What field needs more info from ${client.business_name}?`,
+        "",
+        "1 = Preferred contact method",
+        "2 = Emergency / after-hours availability",
+        "3 = Business hours",
+        "4 = Locations or service areas",
+        "5 = Services / products",
+        "6 = Pages / sections needed",
+        "7 = Website style direction",
+        "8 = Website assistant rules",
+        "9 = Other",
+      ].join("\n"),
+      "1"
+    );
+
+    if (fieldChoice === null) return;
+
+    const normalizedChoice = fieldChoice.trim().toLowerCase();
+
+    const fieldMap: Record<string, { key: string; label: string; defaultQuestion: string }> = {
+      "1": {
+        key: "preferred_contact_method",
+        label: "Preferred contact method",
+        defaultQuestion: "Please confirm the best customer contact method for quote requests and urgent jobs.",
+      },
+      "preferred contact method": {
+        key: "preferred_contact_method",
+        label: "Preferred contact method",
+        defaultQuestion: "Please confirm the best customer contact method for quote requests and urgent jobs.",
+      },
+      "2": {
+        key: "emergency_availability",
+        label: "Emergency / after-hours availability",
+        defaultQuestion: "Please confirm emergency service availability and after-hours rules.",
+      },
+      "emergency": {
+        key: "emergency_availability",
+        label: "Emergency / after-hours availability",
+        defaultQuestion: "Please confirm emergency service availability and after-hours rules.",
+      },
+      "3": {
+        key: "business_hours",
+        label: "Business hours",
+        defaultQuestion: "Please confirm normal business hours.",
+      },
+      "business hours": {
+        key: "business_hours",
+        label: "Business hours",
+        defaultQuestion: "Please confirm normal business hours.",
+      },
+      "4": {
+        key: "locations",
+        label: "Locations or service areas",
+        defaultQuestion: "Please confirm the exact locations or service areas this website should target.",
+      },
+      "service areas": {
+        key: "locations",
+        label: "Locations or service areas",
+        defaultQuestion: "Please confirm the exact locations or service areas this website should target.",
+      },
+      "5": {
+        key: "services",
+        label: "Services / products",
+        defaultQuestion: "Please confirm the services or products the website should explain.",
+      },
+      "services": {
+        key: "services",
+        label: "Services / products",
+        defaultQuestion: "Please confirm the services or products the website should explain.",
+      },
+      "6": {
+        key: "pages_needed",
+        label: "Pages / sections needed",
+        defaultQuestion: "Please confirm the pages or sections the website needs.",
+      },
+      "pages": {
+        key: "pages_needed",
+        label: "Pages / sections needed",
+        defaultQuestion: "Please confirm the pages or sections the website needs.",
+      },
+      "7": {
+        key: "style_direction",
+        label: "Website style direction",
+        defaultQuestion: "Please confirm the website style direction.",
+      },
+      "style": {
+        key: "style_direction",
+        label: "Website style direction",
+        defaultQuestion: "Please confirm the website style direction.",
+      },
+      "8": {
+        key: "assistant_rules",
+        label: "Website assistant rules",
+        defaultQuestion: "Please confirm what the future website assistant can answer, should never promise, or should escalate.",
+      },
+      "assistant": {
+        key: "assistant_rules",
+        label: "Website assistant rules",
+        defaultQuestion: "Please confirm what the future website assistant can answer, should never promise, or should escalate.",
+      },
+      "9": {
+        key: "other",
+        label: "Other requested information",
+        defaultQuestion: "Please provide the requested missing information.",
+      },
+      "other": {
+        key: "other",
+        label: "Other requested information",
+        defaultQuestion: "Please provide the requested missing information.",
+      },
+    };
+
+    const selectedField = fieldMap[normalizedChoice] || fieldMap["9"];
+
     const requestedInfo = window.prompt(
-      `What information do you need from ${client.business_name}?`,
-      "Please confirm the missing or unclear website setup details."
+      `What should the client answer for ${selectedField.label}?`,
+      selectedField.defaultQuestion
     );
 
     if (requestedInfo === null) return;
@@ -1072,7 +1188,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `Reopen setup sheet for more info\n\nClient: ${client.business_name}\n\nRequested info:\n${cleanRequestedInfo}\n\nThis will reopen the client setup form and preserve their previous answers. Continue?`
+      `Request targeted setup info\n\nClient: ${client.business_name}\n\nField: ${selectedField.label}\n\nRequested info:\n${cleanRequestedInfo}\n\nThis will show the client only the requested field instead of the full setup sheet. Continue?`
     );
 
     if (!confirmed) return;
@@ -1083,6 +1199,12 @@ if (messageResult.error) {
     const existingNotes = client.notes || "";
     const moreInfoNote = [
       "NXQ MORE INFO REQUEST",
+      `Requested info: ${cleanRequestedInfo}`,
+      `Requested at: ${new Date().toISOString()}`,
+      "",
+      "NXQ TARGETED MORE INFO REQUEST",
+      `Field key: ${selectedField.key}`,
+      `Field label: ${selectedField.label}`,
       `Requested info: ${cleanRequestedInfo}`,
       `Requested at: ${new Date().toISOString()}`,
     ].join("\n");
@@ -1108,14 +1230,16 @@ if (messageResult.error) {
       await supabase.from("activity_logs").insert({
         client_id: client.id,
         actor_type: "owner",
-        action: "client_more_info_requested",
+        action: "client_targeted_more_info_requested",
         details: {
           owner_requested_info: cleanRequestedInfo,
+          requested_field_key: selectedField.key,
+          requested_field_label: selectedField.label,
           source: "owner_client_card",
         },
       });
 
-      setActionMessage(`${client.business_name} setup sheet reopened for more info.`);
+      setActionMessage(`${client.business_name}: targeted more info requested for ${selectedField.label}.`);
       await loadOwnerData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown more info error";
@@ -1708,6 +1832,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
