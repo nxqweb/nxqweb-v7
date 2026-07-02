@@ -181,7 +181,18 @@ function parseSetupReport(report: string) {
 
     if (currentLabel && fields.length > 0) {
       const lastField = fields[fields.length - 1];
-      lastField.value = lastField.value ? `${lastField.value} ${line}` : line;
+      const shouldPreserveLineBreak =
+        line.startsWith("- ") ||
+        lastField.label === "Selected package capabilities" ||
+        lastField.label === "Package AI/service rules";
+
+      if (!lastField.value) {
+        lastField.value = line;
+      } else if (shouldPreserveLineBreak) {
+        lastField.value = `${lastField.value}\n${line}`;
+      } else {
+        lastField.value = `${lastField.value} ${line}`;
+      }
     }
   }
 
@@ -211,7 +222,15 @@ function groupSetupReportFields(fields: { label: string; value: string }[]) {
         "Emergency / after-hours availability",
         "Industry",
       ],
+    },    {
+      title: "Package Scope",
+      labels: [
+        "Package badge",
+        "Selected package capabilities",
+        "Package AI/service rules",
+      ],
     },
+
     {
       title: "Website",
       labels: [
@@ -1815,6 +1834,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
