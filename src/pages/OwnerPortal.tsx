@@ -1562,25 +1562,41 @@ if (messageResult.error) {
                 </div>
               ) : null}
 
-              {latestProjectBuildPlans.map((output) => (
+              {latestProjectBuildPlans.map((output) => {
+                const client = output.client_id
+                  ? clients.find((clientItem) => clientItem.id === output.client_id) || null
+                  : null;
+                const project = output.client_id ? getProjectForClient(output.client_id) : null;
+
+                return (
                   <article className="build-plan-card" key={output.id}>
                     <div className="approval-top">
                       <span>{output.title}</span>
-                      <small>{output.status}</small>
+                      <small>Saved draft: {formatStatus(output.status)}</small>
                     </div>
 
-          <div className="build-plan-sections">
-            {parseBuildPlanSections(output.content).map((section) => (
-              <section className="build-plan-section" key={`${output.id}-${section.title}`}>
-                <div className="build-plan-section-title">
-                  <span>{section.title}</span>
-                </div>
-                <pre>{section.body}</pre>
-              </section>
-            ))}
-          </div>
+                    <div className="project-stage-box">
+                      <span>
+                        Current client: {client?.status ? formatStatus(client.status) : "Unknown"}
+                      </span>
+                      <span>
+                        Current project: {project?.website_status ? formatStatus(project.website_status) : "No project yet"}
+                      </span>
+                    </div>
+
+                    <div className="build-plan-sections">
+                      {parseBuildPlanSections(output.content).map((section) => (
+                        <section className="build-plan-section" key={`${output.id}-${section.title}`}>
+                          <div className="build-plan-section-title">
+                            <span>{section.title}</span>
+                          </div>
+                          <pre>{section.body}</pre>
+                        </section>
+                      ))}
+                    </div>
                   </article>
-                ))}
+                );
+              })}
             </div>
           </section>
 
@@ -1848,6 +1864,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
