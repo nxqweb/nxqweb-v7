@@ -321,7 +321,13 @@ export function OwnerPortal() {
     setNxqTheme(nextTheme);
   }
 
-  const monthlyIncome = useMemo(() => {
+  const activeMonthlyIncome = useMemo(() => {
+    return clients
+      .filter((client) => client.status === "active")
+      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
+  }, [clients]);
+
+  const pipelineMonthlyValue = useMemo(() => {
     return clients.reduce((total, client) => total + Number(client.monthly_price || 0), 0);
   }, [clients]);
 
@@ -1018,7 +1024,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `Activate manual subscription\n\nClient: ${client.business_name}\nAmount: ${formatMoney(Number(client.monthly_price || 0))}/mo\n\nThis is MANUAL/CASH tracking only. Supabase will mark the client active, move/create the project as building, and save a manual payment record.\n\nThis will NOT charge a card, PayPal, Stripe, bank account, or any online payment method. Continue?`
+      `Activate manual subscription\n\nClient: ${client.business_name}\nAmount: ${formatMoney(Number(client.monthly_price || 0))}/mo\n\nThis is MANUAL/CASH tracking only. Supabase will mark the client active and save a manual payment record. If a project already exists, live/launch-ready projects will stay in their current stage instead of being moved backward. If no project exists yet, Supabase may create one in building.\n\nThis will NOT charge a card, PayPal, Stripe, bank account, or any online payment method. Continue?`
     );
 
     if (!confirmed) return;
@@ -1308,7 +1314,10 @@ if (messageResult.error) {
             <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
             </button>
-            <small>{formatMoney(monthlyIncome)}/mo</small>
+            <div className="owner-revenue-stack">
+              <small>Active MRR: {formatMoney(activeMonthlyIncome)}/mo</small>
+              <small>Pipeline value: {formatMoney(pipelineMonthlyValue)}/mo</small>
+            </div>
           </div>
         </div>
 
@@ -1834,6 +1843,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 

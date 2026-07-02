@@ -3347,3 +3347,30 @@ body[data-nxq-theme="light"] .launch-preview-checklist span {
 body[data-nxq-theme="light"] .package-feature-list li {
   color: rgba(24, 24, 27, 0.78);
 }
+
+/* Owner Revenue Stack v1 */
+.owner-revenue-stack {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  margin-top: 4px;
+}
+
+.owner-revenue-stack small {
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.owner-revenue-stack small:first-child {
+  color: #86efac;
+}
+
+body[data-nxq-theme="light"] .owner-revenue-stack small {
+  color: rgba(15, 23, 42, 0.72);
+}
+
+body[data-nxq-theme="light"] .owner-revenue-stack small:first-child {
+  color: #047857;
+}
