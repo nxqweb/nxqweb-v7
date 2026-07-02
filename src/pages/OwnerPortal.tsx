@@ -1264,6 +1264,32 @@ if (messageResult.error) {
   const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
   const completedApprovals = approvals.filter((approval) => approval.status !== "pending");
 
+  const recentCompletedApprovals = completedApprovals.slice(0, 4);
+
+  const latestProjectBuildPlans = aiTaskOutputs
+    .filter((output) => output.output_type === "project_build_plan")
+    .reduce<AiTaskOutputRow[]>((latestPlans, output) => {
+      const existingIndex = latestPlans.findIndex(
+        (plan) => plan.client_id === output.client_id
+      );
+
+      if (existingIndex === -1) {
+        return [...latestPlans, output];
+      }
+
+      const existingPlan = latestPlans[existingIndex];
+      const outputDate = new Date(output.created_at).getTime();
+      const existingDate = new Date(existingPlan.created_at).getTime();
+
+      if (outputDate <= existingDate) {
+        return latestPlans;
+      }
+
+      const nextPlans = [...latestPlans];
+      nextPlans[existingIndex] = output;
+      return nextPlans;
+    }, []);
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -1497,11 +1523,11 @@ if (messageResult.error) {
               })}
 
 
-              {completedApprovals.length > 0 ? (
+              {recentCompletedApprovals.length > 0 ? (
                 <div className="completed-section">
                   <h3>Completed approvals</h3>
 
-                  {completedApprovals.slice(0, 4).map((approval) => {
+                  {recentCompletedApprovals.map((approval) => {
                     const client = getClientForApproval(approval);
 
                     return (
@@ -1530,15 +1556,13 @@ if (messageResult.error) {
             </div>
 
             <div className="build-plan-feed">
-              {aiTaskOutputs.filter((output) => output.output_type === "project_build_plan").length === 0 ? (
+              {latestProjectBuildPlans.length === 0 ? (
                 <div className="empty-state">
                   No project build plans yet. Accept a website setup approval to generate one.
                 </div>
               ) : null}
 
-              {aiTaskOutputs
-                .filter((output) => output.output_type === "project_build_plan")
-                .map((output) => (
+              {latestProjectBuildPlans.map((output) => (
                   <article className="build-plan-card" key={output.id}>
                     <div className="approval-top">
                       <span>{output.title}</span>
@@ -1824,6 +1848,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 
