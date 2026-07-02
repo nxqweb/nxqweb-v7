@@ -783,7 +783,7 @@ if (messageResult.error) {
     }
 
     const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\n\nThis will update the client record in Supabase. Continue?`
+      `${actionLabel}\n\nClient: ${client.business_name}\n\nSupabase will update the client status only. This will not charge, launch, mark paid, freeze billing, or delete project data. Continue?`
     );
 
     if (!confirmed) return;
@@ -791,44 +791,25 @@ if (messageResult.error) {
     setActionMessage("");
     setErrorMessage("");
 
-    const updatePayload =
-      nextStatus === "lead"
-        ? {
-            status: "lead",
-            notes: null,
-            business_type: "Website Client",
-            service_area: "Not provided yet",
-          }
-        : {
-            status: nextStatus,
-          };
-
     try {
-      const { error } = await supabase
-        .from("clients")
-        .update(updatePayload)
-        .eq("id", client.id);
+      const statusResult = await supabase.rpc("update_client_status", {
+        target_client_id: client.id,
+        next_client_status: nextStatus,
+        action_label: actionLabel,
+      });
 
-      if (error) {
-        setErrorMessage(`Client update failed: ${error.message}`);
+      if (statusResult.error) {
+        setErrorMessage(`Client status update failed: ${statusResult.error.message}`);
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "owner",
-        action: `client_${nextStatus}`,
-        details: {
-          client_name: client.business_name,
-          action_label: actionLabel,
-        },
-      });
+      const resultData = statusResult.data as { message?: string } | null;
 
-      setActionMessage(`${client.business_name}: ${actionLabel} complete.`);
+      setActionMessage(resultData?.message || `${client.business_name}: ${actionLabel} complete.`);
       await loadOwnerData();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown client update error";
-      setErrorMessage(`Client update failed: ${message}`);
+      const message = error instanceof Error ? error.message : "Unknown client status update error";
+      setErrorMessage(`Client status update failed: ${message}`);
     }
   }
 
@@ -1843,6 +1824,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
