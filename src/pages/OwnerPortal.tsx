@@ -674,102 +674,17 @@ if (messageResult.error) {
   }
 
   async function requestMoreSetupInfo(
-    approval: ApprovalRow,
+    _approval: ApprovalRow,
     client: ClientRow | null,
     clientName: string
   ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
     if (!client) {
       setErrorMessage("Cannot request more setup info because the client record was not found.");
       return;
     }
 
-    const requestedInfo = window.prompt(
-      `What information do you need from ${clientName}?`,
-      "Please add the missing project details before NXQ continues the build plan."
-    );
-
-    if (requestedInfo === null) return;
-
-    const cleanRequestedInfo = requestedInfo.trim();
-
-    if (!cleanRequestedInfo) {
-      setErrorMessage("More info request cancelled because no reason was entered.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Ask for more setup info\n\nClient: ${clientName}\n\nReason:\n${cleanRequestedInfo}\n\nThis will reopen the client setup sheet by moving the client back to intake_sent. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const ownerResponse = `Owner requested more setup information: ${cleanRequestedInfo}`;
-      const existingNotes = client.notes || "";
-      const moreInfoNote = [
-        "NXQ MORE INFO REQUEST",
-        `Requested info: ${cleanRequestedInfo}`,
-        `Requested at: ${new Date().toISOString()}`,
-      ].join("\n");
-      const nextClientNotes = existingNotes
-        ? `${existingNotes.trim()}\n\n${moreInfoNote}`
-        : moreInfoNote;
-
-      const approvalResult = await supabase
-        .from("owner_approval_requests")
-        .update({
-          status: "more_info_requested",
-          owner_response: ownerResponse,
-        })
-        .eq("id", approval.id);
-
-      if (approvalResult.error) {
-        setErrorMessage(`Approval update failed: ${approvalResult.error.message}`);
-        return;
-      }
-
-      if (isWebsiteSetupReport(approval)) {
-        const clientResult = await supabase
-          .from("clients")
-          .update({
-            status: "intake_sent",
-            notes: nextClientNotes,
-          })
-          .eq("id", client.id);
-
-        if (clientResult.error) {
-          setErrorMessage(`Client setup reset failed: ${clientResult.error.message}`);
-          return;
-        }
-
-        await supabase.from("activity_logs").insert({
-          client_id: client.id,
-          actor_type: "owner",
-          action: "setup_more_info_requested",
-          details: {
-            approval_id: approval.id,
-            previous_approval_status: approval.status,
-            next_client_status: "intake_sent",
-            owner_requested_info: cleanRequestedInfo,
-            note: "Owner requested more setup information and reopened the client setup sheet.",
-          },
-        });
-      }
-
-      setActionMessage(`More setup info requested for ${clientName}. Client setup sheet reopened.`);
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown setup reset error";
-      setErrorMessage(`Setup reset failed: ${message}`);
-    }
+    setActionMessage(`Opening targeted Needs Info flow for ${clientName}.`);
+    await requestMoreInfoFromClientCard(client);
   }
 
   async function updateClientStatus(
@@ -1864,6 +1779,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
