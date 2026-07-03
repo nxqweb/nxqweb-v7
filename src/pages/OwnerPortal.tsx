@@ -328,7 +328,11 @@ export function OwnerPortal() {
   }, [clients]);
 
   const pipelineMonthlyValue = useMemo(() => {
-    return clients.reduce((total, client) => total + Number(client.monthly_price || 0), 0);
+    const excludedStatuses = new Set(["archived", "denied", "dormant"]);
+
+    return clients
+      .filter((client) => !excludedStatuses.has(client.status))
+      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
   }, [clients]);
 
   const filteredClientMessages = useMemo(() => {
@@ -1779,6 +1783,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
