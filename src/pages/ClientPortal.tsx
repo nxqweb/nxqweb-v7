@@ -957,31 +957,19 @@ export function ClientPortal() {
     setIsSending(true);
 
     try {
-      const { error } = await supabase.from("client_messages").insert({
-        client_id: client.id,
-        sender_type: "client",
-        message: cleanMessage,
-        needs_owner_review: true,
-        ai_handled: false,
+      const messageResult = await supabase.rpc("send_client_portal_message", {
+        message_text: cleanMessage,
       });
 
-      if (error) {
-        setErrorMessage(`Message send failed: ${error.message}`);
+      if (messageResult.error) {
+        setErrorMessage(`Message send failed: ${messageResult.error.message}`);
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "client_message_sent",
-        details: {
-          preview: cleanMessage.slice(0, 120),
-          source: "client_portal",
-        },
-      });
+      const resultData = messageResult.data as { message?: string } | null;
 
       setMessageText("");
-      setNotice("Message sent to support.");
+      setNotice(resultData?.message || "Message sent to support.");
       await loadClientPortalData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown send error";
@@ -1999,6 +1987,7 @@ export function ClientPortal() {
     </main>
   );
 }
+
 
 
 

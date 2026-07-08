@@ -457,12 +457,9 @@ function parseBuildPlanSections(content: string) {
       return;
     }
 
-    const replyResult = await supabase.from("client_messages").insert({
-      client_id: selectedReplyClientId,
-      sender_type: "owner",
-      message: trimmedMessage,
-      needs_owner_review: false,
-      ai_handled: false,
+    const replyResult = await supabase.rpc("send_owner_portal_reply", {
+      target_client_id: selectedReplyClientId,
+      reply_message: trimmedMessage,
     });
 
     if (replyResult.error) {
@@ -470,8 +467,10 @@ function parseBuildPlanSections(content: string) {
       return;
     }
 
+    const resultData = replyResult.data as { message?: string } | null;
+
     setOwnerReplyText("");
-    setActionMessage("Owner reply sent to client portal.");
+    setActionMessage(resultData?.message || "Owner reply sent to client portal.");
     await loadOwnerData();
   }
   async function loadOwnerData() {
@@ -1783,6 +1782,7 @@ if (messageResult.error) {
     </main>
   );
 }
+
 
 
 
