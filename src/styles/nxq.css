@@ -3374,3 +3374,120 @@ body[data-nxq-theme="light"] .owner-revenue-stack small {
 body[data-nxq-theme="light"] .owner-revenue-stack small:first-child {
   color: #047857;
 }
+
+/* Owner Message Ping Center v1 */
+.owner-message-ping-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(253, 230, 138, 0.22);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(253, 230, 138, 0.08), transparent 34%),
+    rgba(2, 6, 23, 0.38);
+  padding: 14px;
+}
+
+.owner-message-ping-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.owner-message-ping-header strong {
+  color: var(--nxq-text);
+  font-size: 0.95rem;
+}
+
+.owner-message-ping-header span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(134, 239, 172, 0.32);
+  border-radius: 999px;
+  background: rgba(22, 101, 52, 0.16);
+  color: #86efac;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 5px 9px;
+}
+
+.owner-message-ping-list {
+  display: grid;
+  gap: 9px;
+}
+
+.owner-message-ping {
+  width: 100%;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    rgba(15, 23, 42, 0.48);
+  color: var(--nxq-text);
+  cursor: pointer;
+  padding: 12px 13px;
+  text-align: left;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.owner-message-ping:hover {
+  border-color: rgba(253, 230, 138, 0.6);
+  box-shadow: 0 0 26px rgba(247, 201, 72, 0.12);
+  transform: translateY(-1px);
+}
+
+.owner-message-ping span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--nxq-champagne);
+}
+
+.owner-message-ping small {
+  color: var(--nxq-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.owner-message-ping p {
+  margin: 8px 0 0;
+  color: var(--nxq-muted);
+  line-height: 1.45;
+}
+
+/* Fix native select dropdown contrast */
+.message-filter-select,
+.message-filter-select option {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+.message-filter-select option:checked,
+.message-filter-select option:hover {
+  background-color: #172554 !important;
+  color: #fef3c7 !important;
+}
+
+body[data-nxq-theme="light"] .message-filter-select,
+body[data-nxq-theme="light"] .message-filter-select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+body[data-nxq-theme="light"] .owner-message-ping-panel {
+  background:
+    radial-gradient(circle at top left, rgba(146, 64, 14, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.46);
+}
+
+body[data-nxq-theme="light"] .owner-message-ping {
+  background: rgba(255, 255, 255, 0.58);
+  color: #0f172a;
+}
+
+body[data-nxq-theme="light"] .owner-message-ping p,
+body[data-nxq-theme="light"] .owner-message-ping small {
+  color: rgba(15, 23, 42, 0.72);
+}

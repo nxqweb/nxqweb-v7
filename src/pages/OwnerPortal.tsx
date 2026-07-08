@@ -343,7 +343,23 @@ export function OwnerPortal() {
     return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
   }, [clientMessages, selectedMessageClientId]);
 
-  const selectedReplyClientId = useMemo(() => {
+  const ownerReviewMessages = useMemo(() => {
+    return clientMessages.filter(
+      (message) => message.sender_type === "client" && message.needs_owner_review
+    );
+  }, [clientMessages]);
+
+  function openClientMessageThread(clientId: string | null) {
+    if (!clientId) {
+      setErrorMessage("This message is not linked to a client record.");
+      return;
+    }
+
+    setSelectedMessageClientId(clientId);
+    setOwnerView("chat");
+    setActionMessage("Opened client chat thread.");
+  }
+const selectedReplyClientId = useMemo(() => {
     return selectedMessageClientId || "";
   }, [selectedMessageClientId]);
   function getClientForApproval(approval: ApprovalRow) {
@@ -1234,7 +1250,7 @@ if (messageResult.error) {
               type="button"
               onClick={() => setOwnerView("chat")}
             >
-              Client chat
+              Client chat {ownerReviewMessages.length > 0 ? `(${ownerReviewMessages.length})` : ""}
             </button>
             <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
@@ -1263,7 +1279,99 @@ if (messageResult.error) {
               </button>
             </div>
 
+            <div className="owner-message-ping-panel">
+
+
+              <div className="owner-message-ping-header">
+
+
+                <strong>Client message pings</strong>
+
+
+                <span>{ownerReviewMessages.length} new</span>
+
+
+              </div>
+
+
+
+              {ownerReviewMessages.length === 0 ? (
+
+
+                <p className="subtle">No client messages need owner review right now.</p>
+
+
+              ) : (
+
+
+                <div className="owner-message-ping-list">
+
+
+                  {ownerReviewMessages.slice(0, 6).map((message) => {
+
+
+                    const client = getClientForMessage(message);
+
+
+
+                    return (
+
+
+                      <button
+
+
+                        className="owner-message-ping"
+
+
+                        key={message.id}
+
+
+                        type="button"
+
+
+                        onClick={() => openClientMessageThread(message.client_id)}
+
+
+                      >
+
+
+                        <span>
+
+
+                          <strong>{client?.business_name || "Unknown client"}</strong>
+
+
+                          <small>{formatDateTime(message.created_at)}</small>
+
+
+                        </span>
+
+
+                        <p>{message.message}</p>
+
+
+                      </button>
+
+
+                    );
+
+
+                  })}
+
+
+                </div>
+
+
+              )}
+
+
+            </div>
+
+
+
             <div className="chat-feed">
+
+
               <div className="ai-bubble">
                 <strong>NXQ AI</strong>
                 <p>
@@ -1782,6 +1890,11 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
 
 
 
