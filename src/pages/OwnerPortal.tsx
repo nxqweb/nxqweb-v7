@@ -722,6 +722,37 @@ if (messageResult.error) {
     await requestMoreInfoFromClientCard(client);
   }
 
+  async function resetClientWorkspace(client: ClientRow) {
+    const confirmed = window.confirm(
+      `Reset client workspace?\n\nClient: ${client.business_name}\n\nThis will clear linked project data, approvals, messages, domains, payment records, file records, and unlink the login from this client. It will not charge, launch, or freeze anything. Continue?`
+    );
+
+    if (!confirmed) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    if (!supabase) {
+      setErrorMessage("Supabase is not connected yet. Refresh and try again.");
+      return;
+    }
+
+    const resetResult = await supabase.rpc("reset_client_workspace", {
+      target_client_id: client.id,
+    });
+
+    if (resetResult.error) {
+      setErrorMessage(`Client reset failed: ${resetResult.error.message}`);
+      return;
+    }
+
+    const resultData = resetResult.data as { message?: string } | null;
+
+    setSelectedMessageClientId("");
+    setOwnerReplyText("");
+    setActionMessage(resultData?.message || "Client workspace reset.");
+    await loadOwnerData();
+  }
   async function updateClientStatus(
     client: ClientRow,
     nextStatus: string,
@@ -1663,7 +1694,7 @@ if (messageResult.error) {
                   <div className="client-control-row">
                     <button
                       type="button"
-                      onClick={() => updateClientStatus(client, "lead", "Reset setup")}
+                      onClick={() => resetClientWorkspace(client)}
                     >
                       Reset
                     </button>
@@ -1906,6 +1937,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
