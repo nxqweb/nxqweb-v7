@@ -3595,3 +3595,78 @@ body[data-nxq-theme="light"] .owner-message-ping small {
     font-size: 2rem;
   }
 }
+
+/* NXQ subtle portal card gold/platinum trail restore v2
+   Only applies to portal/system cards — not public homepage lux cards. */
+.auth-card::before,
+.glass-card::before,
+.panel::before,
+.stat-card::before,
+.approval-card::before,
+.mini-client-card::before,
+.message-card::before,
+.owner-message-card::before,
+.package-card::before,
+.notice-card::before,
+.empty-state::before {
+  z-index: 0;
+  opacity: 0.72;
+  padding: 1px;
+  background:
+    conic-gradient(
+      from var(--nxq-border-spin),
+      rgba(248, 250, 252, 0.02) 0deg,
+      rgba(248, 250, 252, 0.42) 58deg,
+      rgba(253, 230, 138, 0.78) 86deg,
+      rgba(247, 201, 72, 0.46) 122deg,
+      rgba(248, 250, 252, 0.03) 210deg,
+      rgba(253, 230, 138, 0.35) 300deg,
+      rgba(248, 250, 252, 0.02) 360deg
+    );
+  animation: nxq-gold-border-spin 8.5s linear infinite;
+}
+
+.auth-card::after,
+.glass-card::after,
+.panel::after,
+.stat-card::after,
+.approval-card::after,
+.mini-client-card::after,
+.message-card::after,
+.owner-message-card::after,
+.package-card::after,
+.notice-card::after,
+.empty-state::after {
+  z-index: 0;
+}
+
+.auth-card > *,
+.glass-card > *,
+.panel > *,
+.stat-card > *,
+.approval-card > *,
+.mini-client-card > *,
+.message-card > *,
+.owner-message-card > *,
+.package-card > *,
+.notice-card > *,
+.empty-state > * {
+  position: relative;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card::before,
+  .glass-card::before,
+  .panel::before,
+  .stat-card::before,
+  .approval-card::before,
+  .mini-client-card::before,
+  .message-card::before,
+  .owner-message-card::before,
+  .package-card::before,
+  .notice-card::before,
+  .empty-state::before {
+    animation: none;
+  }
+}
