@@ -69,6 +69,7 @@ type ClientMessageRow = {
   message: string;
   needs_owner_review: boolean;
   ai_handled: boolean;
+  owner_seen_at: string | null;
   created_at: string;
 };
 
@@ -345,11 +346,11 @@ export function OwnerPortal() {
 
   const ownerReviewMessages = useMemo(() => {
     return clientMessages.filter(
-      (message) => message.sender_type === "client" && message.needs_owner_review
+      (message) => message.sender_type === "client" && !message.owner_seen_at
     );
   }, [clientMessages]);
 
-  function openClientMessageThread(clientId: string | null) {
+  async function openClientMessageThread(clientId: string | null) {
     if (!clientId) {
       setErrorMessage("This message is not linked to a client record.");
       return;
@@ -358,6 +359,21 @@ export function OwnerPortal() {
     setSelectedMessageClientId(clientId);
     setOwnerView("chat");
     setActionMessage("Opened client chat thread.");
+
+    if (!supabase) {
+      return;
+    }
+
+    const seenResult = await supabase.rpc("mark_client_messages_seen", {
+      target_client_id: clientId,
+    });
+
+    if (seenResult.error) {
+      setErrorMessage(`Message seen update failed: ${seenResult.error.message}`);
+      return;
+    }
+
+    await loadOwnerData();
   }
 const selectedReplyClientId = useMemo(() => {
     return selectedMessageClientId || "";
@@ -567,7 +583,7 @@ function parseBuildPlanSections(content: string) {
       const messageResult = await supabase
   .from("client_messages")
   .select(
-    "id, client_id, sender_type, message, needs_owner_review, ai_handled, created_at"
+    "id, client_id, sender_type, message, needs_owner_review, ai_handled, owner_seen_at, created_at"
   )
   .order("created_at", { ascending: false })
   .limit(100);
@@ -1760,7 +1776,7 @@ if (messageResult.error) {
               <select
                 className="message-filter-select"
                 value={selectedMessageClientId}
-                onChange={(event) => setSelectedMessageClientId(event.target.value)}
+                onChange={(event) => void openClientMessageThread(event.target.value || null)}
               >
                 <option value="">Pick a client</option>
                 {clients.map((client) => (
@@ -1890,6 +1906,12 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
+
+
+
 
 
 
