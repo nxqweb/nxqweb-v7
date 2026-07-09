@@ -1766,9 +1766,7 @@ if (messageResult.error) {
                       >
                         Frozen
                       </button>
-                    </div>
-
-                    {client.status === "active" ? (
+                    </div>                    {client.status === "active" ? (
                       <button
                         className="manual-activate-btn is-active"
                         type="button"
@@ -1776,7 +1774,8 @@ if (messageResult.error) {
                       >
                         Subscription Active
                       </button>
-                    ) : (
+                    ) : ["approved", "needs_review", "intake_received"].includes(client.status) &&
+                      Number(client.monthly_price || 0) > 0 ? (
                       <button
                         className="manual-activate-btn"
                         type="button"
@@ -1784,7 +1783,7 @@ if (messageResult.error) {
                       >
                         Activate Subscription
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </article>
               ))}
@@ -1937,6 +1936,9 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
+
 
 
 
