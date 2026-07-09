@@ -1795,11 +1795,29 @@ export function ClientPortal() {
                 <span>Security</span>
                 <strong>Email and password</strong>
                 <p>
-                  Email/password changes are coming in the next security update. For now, contact support if you need account help.
+                  For account email or password changes, message support below. We keep these changes assisted so your account stays protected.
                 </p>
                 <div className="settings-button-row">
-                  <button className="settings-disabled-btn" disabled type="button">Change email soon</button>
-                  <button className="settings-disabled-btn" disabled type="button">Change password soon</button>
+                  <button
+                    className="settings-disabled-btn"
+                    type="button"
+                    onClick={() => {
+                      setMessageText("Hi, I need help changing the account email for this client portal.");
+                      setNotice("Email change request started. Send the message below when ready.");
+                    }}
+                  >
+                    Request email change
+                  </button>
+                  <button
+                    className="settings-disabled-btn"
+                    type="button"
+                    onClick={() => {
+                      setMessageText("Hi, I need help changing the password for this client portal.");
+                      setNotice("Password help request started. Send the message below when ready.");
+                    }}
+                  >
+                    Request password help
+                  </button>
                 </div>
               </article>
 
@@ -1974,6 +1992,10 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
+
+
 
 
 
