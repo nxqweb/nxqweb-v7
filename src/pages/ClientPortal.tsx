@@ -1070,6 +1070,49 @@ export function ClientPortal() {
     return /^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$/.test(value);
   }
 
+  function getDomainStatusLabel(status: string) {
+    const normalizedStatus = status.toLowerCase();
+
+    if (normalizedStatus === "owner_review") return "Domain request under review";
+    if (normalizedStatus === "waiting_dns") return "Domain approved — DNS setup pending";
+    if (normalizedStatus === "connected") return "Domain connected";
+    if (normalizedStatus === "failed") return "Domain request needs attention";
+
+    return formatStatus(status);
+  }
+
+  function getDomainSummaryTitle(status: string) {
+    const normalizedStatus = status.toLowerCase();
+
+    if (normalizedStatus === "owner_review") return "Domain request under review";
+    if (normalizedStatus === "waiting_dns") return "Domain approved";
+    if (normalizedStatus === "connected") return "Domain connected";
+    if (normalizedStatus === "failed") return "Domain needs attention";
+
+    return "Domain request received";
+  }
+
+  function getDomainSummaryMessage(status: string) {
+    const normalizedStatus = status.toLowerCase();
+
+    if (normalizedStatus === "owner_review") {
+      return "We received your domain request and are reviewing it before DNS setup begins.";
+    }
+
+    if (normalizedStatus === "waiting_dns") {
+      return "Your domain was approved. DNS setup is the next step, and instructions will stay visible below.";
+    }
+
+    if (normalizedStatus === "connected") {
+      return "Your domain is connected to your website.";
+    }
+
+    if (normalizedStatus === "failed") {
+      return "This domain request needs attention. Message support or check the notes below.";
+    }
+
+    return "We received your domain request and will place updates below.";
+  }
   async function submitDomainRequest() {
     setNotice("");
     setErrorMessage("");
@@ -1676,11 +1719,8 @@ export function ClientPortal() {
               </div>
             ) : (
               <div className="domain-summary-card">
-                <strong>Domain request received</strong>
-                <p>
-                  The full form is collapsed so this portal stays clean. We will review
-                  your domain request and place DNS instructions below when ready.
-                </p>
+                <strong>{getDomainSummaryTitle(latestDomain?.status || "")}</strong>
+                <p>{getDomainSummaryMessage(latestDomain?.status || "")}</p>
               </div>
             )}
 
@@ -1693,7 +1733,7 @@ export function ClientPortal() {
                 <article className="domain-status-card" key={domain.id}>
                   <div className="domain-status-top">
                     <strong>{domain.domain_name}</strong>
-                    <span>{formatStatus(domain.status)}</span>
+                    <span>{getDomainStatusLabel(domain.status)}</span>
                   </div>
 
                   <p className="domain-meta">
@@ -1741,7 +1781,7 @@ export function ClientPortal() {
                 <strong>{latestDomain?.domain_name || "No domain connected yet"}</strong>
                 <p>
                   {latestDomain
-                    ? `Status: ${formatStatus(latestDomain.status)}. We can help connect the website, but you keep ownership of the domain.`
+                    ? `Status: ${getDomainStatusLabel(latestDomain.status)}. We can help connect the website, but you keep ownership of the domain.`
                     : "Add a domain in the Domain setup section above when you are ready."}
                 </p>
                 <small>
@@ -1934,6 +1974,11 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
+
+
+
 
 
 
