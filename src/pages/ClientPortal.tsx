@@ -1107,75 +1107,22 @@ export function ClientPortal() {
     setIsSubmittingDomain(true);
 
     try {
-      const domainResult = await supabase
-        .from("client_domains")
-        .insert({
-          client_id: client.id,
-          domain_name: cleanDomain,
-          domain_type: "client_owned",
-          status: "owner_review",
-          registrar_name: cleanRegistrar || null,
-          dns_provider: cleanDnsProvider || null,
-          ownership_confirmed: domainOwnershipConfirmed,
-          client_notes: cleanNotes || null,
-        })
-        .select("id")
-        .single();
+      const domainResult = await supabase.rpc("submit_domain_connection_request", {
+        requested_domain_name: cleanDomain,
+        requested_registrar_name: cleanRegistrar || null,
+        requested_dns_provider: cleanDnsProvider || null,
+        requested_client_notes: cleanNotes || null,
+        ownership_confirmed: domainOwnershipConfirmed,
+      });
 
       if (domainResult.error) {
         setErrorMessage(`Domain request failed: ${domainResult.error.message}`);
         return;
       }
 
-      const approvalText = [
-        "NXQ DOMAIN CONNECTION REVIEW",
-        "",
-        `Client: ${client.business_name}`,
-        `Domain: ${cleanDomain}`,
-        "Domain type: client owned",
-        "Status: owner review",
-        `Registrar: ${cleanRegistrar || "Not provided"}`,
-        `DNS provider: ${cleanDnsProvider || "Not provided"}`,
-        `Ownership confirmed: ${domainOwnershipConfirmed ? "yes" : "no"}`,
-        "",
-        "Client notes:",
-        cleanNotes || "No notes provided.",
-        "",
-        "Owner safety rule:",
-        "Client owns this domain. NXQ may connect website hosting and provide DNS instructions, but NXQ must not take ownership of the domain.",
-        "",
-        "Recommended owner action:",
-        "Approve the domain connection only if the domain looks correct for this client. Then provide DNS instructions or mark as waiting for DNS.",
-      ].join("\n");
+      const resultData = domainResult.data as { message?: string } | null;
 
-      const approvalResult = await supabase.from("owner_approval_requests").insert({
-        client_id: client.id,
-        project_id: project?.id || null,
-        request_type: "domain_connection_review",
-        title: "Domain connection review needed",
-        summary: `${client.business_name} requested to connect ${cleanDomain}. Client confirmed they own/control the domain.`,
-        recommended_action: approvalText,
-        risk_level: "medium",
-        status: "pending",
-      });
-
-      if (approvalResult.error) {
-        setErrorMessage(`Domain approval request failed: ${approvalResult.error.message}`);
-        return;
-      }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "domain_connection_requested",
-        details: {
-          domain_name: cleanDomain,
-          registrar_name: cleanRegistrar || null,
-          dns_provider: cleanDnsProvider || null,
-        },
-      });
-
-      setNotice("Domain request submitted for review.");
+      setNotice(resultData?.message || "Domain request submitted for review.");
       setDomainName("");
       setDomainRegistrar("");
       setDomainDnsProvider("");
@@ -1987,6 +1934,8 @@ export function ClientPortal() {
     </main>
   );
 }
+
+
 
 
 
