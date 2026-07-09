@@ -629,6 +629,29 @@ if (messageResult.error) {
         return;
       }
 
+      if (isDomainConnectionReview(approval)) {
+        const domainDecision = await supabase.rpc("resolve_domain_connection_review", {
+          target_approval_id: approval.id,
+          decision_status: status,
+          owner_response_text: ownerResponse,
+        });
+
+        if (domainDecision.error) {
+          setErrorMessage(`Domain decision failed: ${domainDecision.error.message}`);
+          return;
+        }
+
+        const domainDecisionData = domainDecision.data as { message?: string } | null;
+
+        setActionMessage(
+          domainDecisionData?.message
+            ? `Saved: ${ownerResponse} ${domainDecisionData.message}`
+            : `Saved: ${ownerResponse}`
+        );
+
+        await loadOwnerData();
+        return;
+      }
       let domainDecisionMessage: string | null = null;
 
       if (isDomainConnectionReview(approval)) {
@@ -1936,6 +1959,8 @@ if (messageResult.error) {
     </main>
   );
 }
+
+
 
 
 
