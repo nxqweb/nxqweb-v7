@@ -35,7 +35,7 @@ export function PublicHome() {
           <div className="lux-hero-copy">
             <div className="lux-tag">
               <Crown size={16} />
-              premium AI website agency
+              premium website systems
             </div>
 
             <h1>
@@ -44,8 +44,8 @@ export function PublicHome() {
             </h1>
 
             <p>
-              NXQ Web builds premium monthly websites with client portals, owner
-              approval controls, AI-assisted workflows, and clean systems that
+              NXQ Web builds premium monthly websites with client portals,
+              guided project controls, managed workflows, and clean systems that
               help businesses look sharper, move faster, and stay organized.
             </p>
 
@@ -71,16 +71,16 @@ export function PublicHome() {
 
               <div className="lux-inner-panel">
                 <small>live system preview</small>
-                <h2>Client portal, owner approvals, and AI workflow in one place.</h2>
+                <h2>Client portal, project approvals, and managed website workflow in one place.</h2>
                 <p>
-                  Clear cards, gold edges, secure client access, owner approvals,
+                  Clear cards, gold edges, secure client access, project approvals,
                   project updates, messages, and launch tracking.
                 </p>
 
                 <div className="lux-mini-grid">
                   <div>Client Portal</div>
-                  <div>Owner APS</div>
-                  <div>AI Workflow</div>
+                  <div>Project Review</div>
+                  <div>Website Workflow</div>
                 </div>
               </div>
             </div>
@@ -89,8 +89,8 @@ export function PublicHome() {
 
         <section className="lux-section" id="services">
           <div className="lux-section-head">
-            <span>What NXQ Web does</span>
-            <h2>Premium websites backed by real workflow systems.</h2>
+            <span>What NXQ Web delivers</span>
+            <h2>Premium websites backed by a cleaner project system.</h2>
           </div>
 
           <div className="lux-grid">
@@ -105,19 +105,18 @@ export function PublicHome() {
 
             <article className="lux-card lux-service">
               <Bot size={26} />
-              <h3>AI-managed workflow</h3>
+              <h3>Managed project workflow</h3>
               <p>
-                AI helps collect info, prepare updates, organize requests, and
-                route important actions for owner approval.
+                Setup details, update requests, and important project steps stay organized through a guided workflow.
               </p>
             </article>
 
             <article className="lux-card lux-service">
               <ShieldCheck size={26} />
-              <h3>Approval gates</h3>
+              <h3>Reviewed project steps</h3>
               <p>
-                High-risk actions like accepting clients, launching, freezing,
-                and major changes stay under owner control.
+                Important steps like project approval, launch readiness, account changes,
+                and major updates stay reviewed before they move forward.
               </p>
             </article>
           </div>
@@ -168,7 +167,7 @@ export function PublicHome() {
                 <li>Service-area SEO sections</li>
                 <li>Monthly website/content improvements</li>
                 <li>Review and testimonial sections</li>
-                <li>AI-assisted SEO/content suggestions</li>
+                <li>SEO and content suggestions</li>
               </ul>
               <small>Best for contractors, tree services, cleaning companies, and local teams.</small>
             </article>
@@ -177,15 +176,14 @@ export function PublicHome() {
               <span className="lux-plan-badge">Most Advanced</span>
               <h3>Intelligence</h3>
               <p>
-                AI-powered website optimization with behavior insights, monthly
-                improvement recommendations, and conversion-focused planning.
+                Advanced website optimization with behavior insights, monthly improvement recommendations, and conversion-focused planning.
               </p>
               <strong>$150/mo</strong>
               <ul className="lux-plan-list">
                 <li>Everything in Growth</li>
                 <li>Click and scroll insights</li>
                 <li>Page interaction review</li>
-                <li>Monthly AI website review</li>
+                <li>Monthly website performance review</li>
                 <li>Layout improvement suggestions</li>
                 <li>Conversion-focused optimization notes</li>
               </ul>
@@ -204,7 +202,7 @@ export function PublicHome() {
                 <li>Multi-location SEO</li>
                 <li>Location-specific pages</li>
                 <li>Advanced reporting</li>
-                <li>Custom approval workflows</li>
+                <li>Custom review workflows</li>
                 <li>Priority project support</li>
                 <li>Custom integrations later</li>
               </ul>
@@ -215,7 +213,7 @@ export function PublicHome() {
         <section className="lux-card lux-process" id="process">
           <div>
             <span className="lux-kicker">Process</span>
-            <h2>From website request to launch, without the messy admin chaos.</h2>
+            <h2>From website request to launch, with a clean managed process.</h2>
           </div>
 
           <div className="lux-checks">
@@ -225,15 +223,15 @@ export function PublicHome() {
             </div>
             <div>
               <CheckCircle2 size={18} />
-              AI organizes the request
+              Setup details are organized
             </div>
             <div>
               <CheckCircle2 size={18} />
-              Owner approves key moves
+              Key project steps are reviewed
             </div>
             <div>
               <CheckCircle2 size={18} />
-              Website moves toward launch
+              Website moves cleanly toward launch
             </div>
           </div>
         </section>
@@ -257,4 +255,10 @@ export function PublicHome() {
     </main>
   );
 }
+
+
+
+
+
+
 
