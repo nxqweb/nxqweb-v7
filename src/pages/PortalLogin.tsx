@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -134,6 +134,10 @@ export function PortalLogin() {
             {isSubmitting ? "Checking access..." : "Log in to portal"}
             <ArrowRight size={18} />
           </button>
+
+          <p className="auth-note">
+            <a href="/portal/forgot-password">Forgot your password?</a>
+          </p>
 
           <p className="auth-note">
             Need client access? <a href="/portal/signup">Create an account</a>

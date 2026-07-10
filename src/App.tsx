@@ -1,12 +1,14 @@
-﻿import "./styles/nxq.css";
+import "./styles/nxq.css";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
+import { ForgotPassword } from "./pages/ForgotPassword";
 import { ClientPortal } from "./pages/ClientPortal";
 import { OwnerPortal } from "./pages/OwnerPortal";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
 import { PublicHome } from "./pages/PublicHome";
+import { ResetPassword } from "./pages/ResetPassword";
 
 function App() {
   const path = window.location.pathname;
@@ -48,6 +50,14 @@ function App() {
 
   if (path === "/portal/check-email") {
     return <CheckEmail />;
+  }
+
+  if (path === "/portal/forgot-password") {
+    return <ForgotPassword />;
+  }
+
+  if (path === "/portal/reset-password") {
+    return <ResetPassword />;
   }
 
   if (path === "/portal") {
