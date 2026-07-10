@@ -27,6 +27,10 @@ type ClientRow = {
   business_type: string | null;
   status: string;
   monthly_price: number;
+  billing_status: string;
+  billing_provider: string | null;
+  billing_overdue_since: string | null;
+  billing_frozen_at: string | null;
   notes: string | null;
 };
 
@@ -324,7 +328,7 @@ export function OwnerPortal() {
 
   const activeMonthlyIncome = useMemo(() => {
     return clients
-      .filter((client) => client.status === "active")
+      .filter((client) => client.billing_status === "active")
       .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
   }, [clients]);
 
@@ -533,7 +537,7 @@ function parseBuildPlanSections(content: string) {
       const clientResult = await supabase
         .from("clients")
         .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, notes"
+          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes"
         )
         .order("created_at", { ascending: false });
 
