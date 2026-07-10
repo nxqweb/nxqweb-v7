@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ImagePlus,
@@ -32,6 +32,17 @@ type ProjectRow = {
   id: string;
   client_id: string | null;
   website_status: string;
+};
+
+type PaymentRecordRow = {
+  id: string;
+  client_id: string | null;
+  provider: string;
+  status: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  created_at: string;
 };
 
 type UploadedFileRow = {
@@ -79,7 +90,7 @@ const packageOptions: Record<
     description:
       "Premium website essentials for small businesses that need a trusted online presence.",
     capabilities: [
-      "Premium 1–3 page website",
+      "Premium 1â€“3 page website",
       "Mobile-responsive design",
       "Basic SEO setup",
       "Contact form",
@@ -275,6 +286,7 @@ export function ClientPortal() {
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
   const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
+  const [latestPayment, setLatestPayment] = useState<PaymentRecordRow | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [domainName, setDomainName] = useState("");
   const [domainRegistrar, setDomainRegistrar] = useState("");
@@ -483,6 +495,21 @@ export function ClientPortal() {
         setClientDomains([]);
       } else {
         setClientDomains((domainResult.data || []) as ClientDomainRow[]);
+      }
+
+      const paymentResult = await supabase
+        .from("payment_records")
+        .select("id, client_id, provider, status, amount, currency, note, created_at")
+        .eq("client_id", loadedClient.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (paymentResult.error) {
+        setErrorMessage(`Billing status load failed: ${paymentResult.error.message}`);
+        setLatestPayment(null);
+      } else {
+        setLatestPayment((paymentResult.data as PaymentRecordRow) || null);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client portal error";
@@ -1074,7 +1101,7 @@ export function ClientPortal() {
     const normalizedStatus = status.toLowerCase();
 
     if (normalizedStatus === "owner_review") return "Domain request under review";
-    if (normalizedStatus === "waiting_dns") return "Domain approved — DNS setup pending";
+    if (normalizedStatus === "waiting_dns") return "Domain approved â€” DNS setup pending";
     if (normalizedStatus === "connected") return "Domain connected";
     if (normalizedStatus === "failed") return "Domain request needs attention";
 
@@ -1197,6 +1224,25 @@ export function ClientPortal() {
     ? getTargetedFieldControl(targetedMoreInfoRequest)
     : null;
   const projectDecisionStatus = (projectStage || "").toLowerCase();
+  const selectedPlan = packageOptions[selectedPackage];
+  const subscriptionIsActive =
+    clientDecisionStatus === "active" &&
+    latestPayment?.status?.toLowerCase() === "active";
+
+  const billingProvider =
+    latestPayment?.provider?.toLowerCase() === "manual"
+      ? "Manual billing"
+      : latestPayment?.provider
+        ? formatStatus(latestPayment.provider)
+        : "Not connected";
+
+  const subscriptionLabel = subscriptionIsActive
+    ? "Active"
+    : clientDecisionStatus === "overdue"
+      ? "Past due"
+      : clientDecisionStatus === "frozen"
+        ? "Frozen"
+        : "Awaiting activation";
 
   const portalDecisionNotice = (() => {
     if (clientDecisionStatus === "denied") {
@@ -1737,7 +1783,7 @@ export function ClientPortal() {
                   </div>
 
                   <p className="domain-meta">
-                    Registrar: {domain.registrar_name || "Not provided"} · DNS:{" "}
+                    Registrar: {domain.registrar_name || "Not provided"} Â· DNS:{" "}
                     {domain.dns_provider || "Not provided"}
                   </p>
 
@@ -1766,6 +1812,24 @@ export function ClientPortal() {
                 <p>Account profile connected.</p>
                 <small>Project stage: {formatStatus(projectStage)}</small>
               </article>
+
+              <article className="settings-card">
+                <span>Billing & subscription</span>
+                <strong>{selectedPlan.label} Â· ${selectedPlan.price}/month</strong>
+                <p>
+                  Subscription status: {subscriptionLabel}. Payment method:{" "}
+                  {billingProvider}.
+                </p>
+                <small>
+                  {latestPayment
+                    ? `Latest billing record: ${latestPayment.currency} ${Number(
+                        latestPayment.amount || 0
+                      ).toFixed(2)} Â· ${formatStatus(latestPayment.status)}`
+                    : "Secure online card payments are not connected yet."}
+                </small>
+              </article>
+
+
 
               <article className="settings-card">
                 <span>Appearance</span>
