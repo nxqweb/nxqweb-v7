@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -354,6 +354,20 @@ export function OwnerPortal() {
     );
   }, [clientMessages]);
 
+  const unreadMessageCountByClient = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    for (const message of ownerReviewMessages) {
+      if (!message.client_id) {
+        continue;
+      }
+
+      counts[message.client_id] = (counts[message.client_id] || 0) + 1;
+    }
+
+    return counts;
+  }, [ownerReviewMessages]);
+
   async function openClientMessageThread(clientId: string | null) {
     if (!clientId) {
       setErrorMessage("This message is not linked to a client record.");
@@ -376,6 +390,18 @@ export function OwnerPortal() {
       setErrorMessage(`Message seen update failed: ${seenResult.error.message}`);
       return;
     }
+
+    const seenAt = new Date().toISOString();
+
+    setClientMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.client_id === clientId &&
+        message.sender_type === "client" &&
+        !message.owner_seen_at
+          ? { ...message, owner_seen_at: seenAt }
+          : message
+      )
+    );
 
     await loadOwnerData();
   }
@@ -1972,6 +1998,9 @@ if (messageResult.error) {
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.business_name}
+                    {unreadMessageCountByClient[client.id]
+                      ? ` (${unreadMessageCountByClient[client.id]})`
+                      : ""}
                   </option>
                 ))}
               </select>
