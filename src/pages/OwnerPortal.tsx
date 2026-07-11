@@ -1044,6 +1044,73 @@ if (messageResult.error) {
       setErrorMessage(`Manual activation failed: ${message}`);
     }
   }
+
+  async function updateClientBillingState(
+    client: ClientRow,
+    nextBillingStatus: "active" | "past_due" | "freeze_review" | "frozen",
+    actionLabel: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      [
+        actionLabel,
+        "",
+        `Client: ${client.business_name}`,
+        `Current billing status: ${formatStatus(client.billing_status || "not_configured")}`,
+        `New billing status: ${formatStatus(nextBillingStatus)}`,
+        "",
+        "This changes billing status only.",
+        "It will not change the website project stage.",
+        "It will not charge a card, bank account, or online payment method.",
+        "",
+        "Continue?",
+      ].join("\n")
+    );
+
+    if (!confirmed) return;
+
+    const billingNote = window.prompt(
+      `Optional billing note for ${client.business_name}:`,
+      ""
+    );
+
+    if (billingNote === null) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const billingResult = await supabase.rpc("set_client_billing_state", {
+        target_client_id: client.id,
+        next_billing_status: nextBillingStatus,
+        next_billing_provider: client.billing_provider || "manual",
+        billing_note: billingNote.trim() || null,
+      });
+
+      if (billingResult.error) {
+        setErrorMessage(`Billing update failed: ${billingResult.error.message}`);
+        return;
+      }
+
+      const resultData = billingResult.data as { message?: string } | null;
+
+      setActionMessage(
+        resultData?.message ||
+          `${client.business_name} billing changed to ${formatStatus(nextBillingStatus)}.`
+      );
+
+      await loadOwnerData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown billing update error";
+
+      setErrorMessage(`Billing update failed: ${message}`);
+    }
+  }
   async function requestMoreInfoFromClientCard(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
@@ -1793,7 +1860,73 @@ if (messageResult.error) {
                       >
                         Frozen
                       </button>
-                    </div>                    {client.status === "active" ? (
+                    </div>
+                  </div>
+
+                  <div className="project-stage-box">
+                    <span>
+                      Billing: {formatStatus(client.billing_status || "not_configured")}
+                    </span>
+
+                    <small>
+                      Provider: {client.billing_provider || "Not configured"}
+                    </small>
+
+                    <div className="project-stage-row">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "past_due",
+                            "Mark billing past due"
+                          )
+                        }
+                      >
+                        Past Due
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "freeze_review",
+                            "Send billing to freeze review"
+                          )
+                        }
+                      >
+                        Freeze Review
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "frozen",
+                            "Freeze billing"
+                          )
+                        }
+                      >
+                        Freeze Billing
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "active",
+                            "Restore active billing"
+                          )
+                        }
+                      >
+                        Restore Active
+                      </button>
+                    </div>
+
+                    {client.billing_status === "active" ? (
                       <button
                         className="manual-activate-btn is-active"
                         type="button"
