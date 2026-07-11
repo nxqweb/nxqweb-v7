@@ -14,6 +14,8 @@ type ClientRow = {
   id: string;
   business_name: string;
   status: string;
+  billing_status: string;
+  billing_provider: string | null;
   monthly_price: number;
   notes: string | null;
 };
@@ -364,7 +366,7 @@ export function ClientPortal() {
 
       const clientResult = await supabase
         .from("clients")
-        .select("id, business_name, status, monthly_price, notes")
+        .select("id, business_name, status, billing_status, billing_provider, monthly_price, notes")
         .eq("auth_user_id", userId)
         .maybeSingle();
 
@@ -1225,25 +1227,32 @@ export function ClientPortal() {
     : null;
   const projectDecisionStatus = (projectStage || "").toLowerCase();
   const selectedPlan = packageOptions[selectedPackage];
-  const subscriptionIsActive =
-    clientDecisionStatus === "active" &&
-    latestPayment?.status?.toLowerCase() === "active";
+  const billingStatus = (client?.billing_status || "not_configured").toLowerCase();
+
+  const billingProviderSource =
+    client?.billing_provider || latestPayment?.provider || null;
 
   const billingProvider =
-    latestPayment?.provider?.toLowerCase() === "manual"
+    billingProviderSource?.toLowerCase() === "manual"
       ? "Manual billing"
-      : latestPayment?.provider
-        ? formatStatus(latestPayment.provider)
+      : billingProviderSource
+        ? formatStatus(billingProviderSource)
         : "Not connected";
 
-  const subscriptionLabel = subscriptionIsActive
-    ? "Active"
-    : clientDecisionStatus === "overdue"
-      ? "Past due"
-      : clientDecisionStatus === "frozen"
-        ? "Frozen"
-        : "Awaiting activation";
-
+  const subscriptionLabel =
+    billingStatus === "active"
+      ? "Active"
+      : billingStatus === "past_due"
+        ? "Past due"
+        : billingStatus === "freeze_review"
+          ? "Payment review"
+          : billingStatus === "frozen"
+            ? "Frozen"
+            : billingStatus === "cancelled"
+              ? "Cancelled"
+              : billingStatus === "activation_pending"
+                ? "Activation pending"
+                : "Awaiting activation";
   const portalDecisionNotice = (() => {
     if (clientDecisionStatus === "denied") {
       return {
