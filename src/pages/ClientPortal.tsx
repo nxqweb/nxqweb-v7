@@ -92,7 +92,7 @@ const packageOptions: Record<
     description:
       "Premium website essentials for small businesses that need a trusted online presence.",
     capabilities: [
-      "Premium 1â€“3 page website",
+      "Premium 1-3 page website",
       "Mobile-responsive design",
       "Basic SEO setup",
       "Contact form",
@@ -1107,7 +1107,7 @@ export function ClientPortal() {
     const normalizedStatus = status.toLowerCase();
 
     if (normalizedStatus === "owner_review") return "Domain request under review";
-    if (normalizedStatus === "waiting_dns") return "Domain approved â€” DNS setup pending";
+    if (normalizedStatus === "waiting_dns") return "Domain approved - DNS setup pending";
     if (normalizedStatus === "connected") return "Domain connected";
     if (normalizedStatus === "failed") return "Domain request needs attention";
 
@@ -1796,7 +1796,7 @@ export function ClientPortal() {
                   </div>
 
                   <p className="domain-meta">
-                    Registrar: {domain.registrar_name || "Not provided"} Â· DNS:{" "}
+                    Registrar: {domain.registrar_name || "Not provided"} | DNS:{" "}
                     {domain.dns_provider || "Not provided"}
                   </p>
 
@@ -1828,7 +1828,7 @@ export function ClientPortal() {
 
               <article className="settings-card">
                 <span>Billing & subscription</span>
-                <strong>{selectedPlan.label} Â· ${selectedPlan.price}/month</strong>
+                <strong>{selectedPlan.label} | ${selectedPlan.price}/month</strong>
                 <p>
                   Subscription status: {subscriptionLabel}. Payment method:{" "}
                   {billingProvider}.
@@ -1837,7 +1837,7 @@ export function ClientPortal() {
                   {latestPayment
                     ? `Latest billing record: ${latestPayment.currency} ${Number(
                         latestPayment.amount || 0
-                      ).toFixed(2)} Â· ${formatStatus(latestPayment.status)}`
+                      ).toFixed(2)} | ${formatStatus(latestPayment.status)}`
                     : "Secure online card payments are not connected yet."}
                 </small>
               </article>
