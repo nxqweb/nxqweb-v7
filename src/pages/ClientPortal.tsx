@@ -1889,11 +1889,10 @@ export function ClientPortal() {
                     className="settings-disabled-btn"
                     type="button"
                     onClick={() => {
-                      setMessageText("Hi, I need help changing the password for this client portal.");
-                      setNotice("Password help request started. Send the message below when ready.");
+                      window.location.href = "/portal/forgot-password";
                     }}
                   >
-                    Request password help
+                    Change password
                   </button>
                 </div>
               </article>
