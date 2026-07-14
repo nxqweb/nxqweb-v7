@@ -338,8 +338,12 @@ export function ClientPortal() {
   async function handleLogout() {
     if (!supabase) return;
 
-    await supabase.auth.signOut();
-    window.location.href = "/portal/login";
+    await Promise.race([
+      supabase.auth.signOut(),
+      new Promise((resolve) => window.setTimeout(resolve, 800)),
+    ]);
+
+    window.location.replace("/portal/login");
   }
 
   async function loadClientPortalData() {
