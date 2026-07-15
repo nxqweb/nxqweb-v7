@@ -1062,7 +1062,22 @@ export function ClientPortal() {
       });
 
       if (fileRecordResult.error) {
-        setErrorMessage(`File record failed: ${fileRecordResult.error.message}`);
+        const cleanupResult = await supabase.storage
+          .from("client-files")
+          .remove([filePath]);
+
+        if (cleanupResult.error) {
+          setErrorMessage(
+            `File record failed: ${fileRecordResult.error.message}. ` +
+              `The uploaded file could not be cleaned up automatically: ${cleanupResult.error.message}`
+          );
+          return;
+        }
+
+        setErrorMessage(
+          `File record failed: ${fileRecordResult.error.message}. ` +
+            `The uploaded file was removed automatically, so no orphaned file was left behind.`
+        );
         return;
       }
 
