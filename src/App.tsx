@@ -3,6 +3,7 @@ import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ClientPortal } from "./pages/ClientPortal";
+import { OwnerFiles } from "./pages/OwnerFiles";
 import { OwnerPortal } from "./pages/OwnerPortal";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
@@ -16,6 +17,14 @@ function App() {
   if (path === "/owner/login") {
     window.location.replace("/portal/login");
     return null;
+  }
+
+  if (path === "/owner/files") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerFiles />
+      </OwnerProtectedRoute>
+    );
   }
 
   if (path === "/owner") {
