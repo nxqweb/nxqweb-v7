@@ -1,6 +1,6 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Files, LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type OwnerProtectedRouteProps = {
@@ -107,31 +107,5 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
     );
   }
 
-  return (
-    <>
-      <nav
-        aria-label="Owner navigation"
-        className="client-control-row"
-        style={{
-          position: "fixed",
-          top: 14,
-          right: 14,
-          zIndex: 1000,
-          padding: 8,
-          borderRadius: 14,
-          backdropFilter: "blur(16px)",
-        }}
-      >
-        <a className="icon-btn" href="/owner">
-          <LayoutDashboard size={16} />
-          Owner
-        </a>
-        <a className="icon-btn" href="/owner/files">
-          <Files size={16} />
-          Files
-        </a>
-      </nav>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

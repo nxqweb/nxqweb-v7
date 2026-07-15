@@ -1370,7 +1370,7 @@ if (messageResult.error) {
         {actionMessage ? <div className="notice-card success">{actionMessage}</div> : null}
 
         <div className="owner-grid">
-          <section className="panel panel-large" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <section className="panel panel-large owner-approval-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Bot size={20} />
@@ -1672,6 +1672,25 @@ if (messageResult.error) {
             </div>
           </section>
 
+                    <section
+            className="panel owner-tools-panel"
+            style={{ display: ownerView === "aps" ? undefined : "none" }}
+          >
+            <div className="panel-title">
+              <h2>Owner tools</h2>
+            </div>
+
+            <div className="client-control-row">
+              <a className="icon-btn" href="/owner">
+                Owner dashboard
+              </a>
+
+              <a className="icon-btn" href="/owner/files">
+                Client files
+              </a>
+            </div>
+          </section>
+
           <section className="panel build-plan-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
@@ -1730,7 +1749,7 @@ if (messageResult.error) {
             </div>
           </section>
 
-          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <aside className="panel owner-clients-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title">
               <Users size={20} />
               <h2>Clients</h2>
@@ -2014,7 +2033,7 @@ if (messageResult.error) {
   </div>
 </section>
 
-          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <aside className="panel owner-payments-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Clock size={20} />
