@@ -647,6 +647,22 @@ if (messageResult.error) {
         setErrorMessage(`Action failed: ${error.message}`);
         return;
       }
+      if (status === "denied" && isPipelineStartApproval(approval)) {
+        const clientStatusResult = await supabase
+          .from("clients")
+          .update({
+            status: "denied",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", approval.client_id);
+
+        if (clientStatusResult.error) {
+          setErrorMessage(
+            `Approval was denied, but the client status could not be updated: ${clientStatusResult.error.message}`
+          );
+          return;
+        }
+      }
 
       if (isDomainConnectionReview(approval)) {
         const domainDecision = await supabase.rpc("resolve_domain_connection_review", {
@@ -1616,12 +1632,26 @@ if (messageResult.error) {
                       <button
                         type="button"
                         onClick={() => {
+                          const enteredReason = window.prompt(
+                            `Why are you denying ${clientName}?`,
+                            "The project was not accepted. Please contact NXQ Web support if you believe this decision was made in error."
+                          );
+
+                          if (enteredReason === null) return;
+
+                          const denialReason = enteredReason.trim();
+
+                          if (!denialReason) {
+                            setErrorMessage("A denial reason is required.");
+                            return;
+                          }
+
                           if (!confirmHighRiskAction("deny", clientName)) return;
 
                           updateApprovalStatus(
                             approval,
                             "denied",
-                            "Owner denied this approval request."
+                            denialReason
                           );
                         }}
                       >
