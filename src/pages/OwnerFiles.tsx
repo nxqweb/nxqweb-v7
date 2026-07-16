@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, FileText, RefreshCcw, RotateCcw } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, RefreshCcw } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -40,7 +40,6 @@ export function OwnerFiles() {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [openingFileId, setOpeningFileId] = useState<string | null>(null);
-  const [isResetting, setIsResetting] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -86,9 +85,6 @@ export function OwnerFiles() {
     [clients]
   );
 
-  const selectedClient = selectedClientId
-    ? clients.find((client) => client.id === selectedClientId) || null
-    : null;
 
   const visibleFiles = files.filter(
     (file) => file.status !== "deleted" && (!selectedClientId || file.client_id === selectedClientId)
@@ -115,73 +111,6 @@ export function OwnerFiles() {
     window.open(signedUrlResult.data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function resetSelectedClientSafely() {
-    if (!supabase || !selectedClient) return;
-
-    const clientFiles = files.filter((file) => file.client_id === selectedClient.id);
-    const confirmed = window.confirm(
-      [
-        "Reset client workspace safely?",
-        "",
-        `Client: ${selectedClient.business_name}`,
-        `Stored file records found: ${clientFiles.length}`,
-        "",
-        "NXQ will remove the client's physical Storage objects first, then reset the workspace database records and unlink the client login.",
-        "",
-        "This will not charge, launch, mark paid, or freeze anything.",
-        "",
-        "Continue?",
-      ].join("\n")
-    );
-
-    if (!confirmed) return;
-
-    setIsResetting(true);
-    setErrorMessage("");
-    setActionMessage("");
-
-    const filesByBucket = new Map<string, string[]>();
-
-    for (const file of clientFiles) {
-      const bucketId = file.bucket_id || "client-files";
-      const paths = filesByBucket.get(bucketId) || [];
-      paths.push(file.storage_path);
-      filesByBucket.set(bucketId, paths);
-    }
-
-    for (const [bucketId, paths] of filesByBucket.entries()) {
-      if (paths.length === 0) continue;
-
-      const storageResult = await supabase.storage.from(bucketId).remove(paths);
-
-      if (storageResult.error) {
-        setIsResetting(false);
-        setErrorMessage(
-          `Storage cleanup failed for ${selectedClient.business_name}: ${storageResult.error.message}. Workspace reset was stopped.`
-        );
-        return;
-      }
-    }
-
-    const resetResult = await supabase.rpc("reset_client_workspace", {
-      target_client_id: selectedClient.id,
-    });
-
-    setIsResetting(false);
-
-    if (resetResult.error) {
-      setErrorMessage(
-        `Storage cleanup completed, but workspace reset failed: ${resetResult.error.message}. Retry the safe reset to finish the database cleanup.`
-      );
-      await loadFiles();
-      return;
-    }
-
-    const resultData = resetResult.data as { message?: string } | null;
-    setSelectedClientId("");
-    setActionMessage(resultData?.message || `${selectedClient.business_name} workspace reset safely.`);
-    await loadFiles();
-  }
 
   return (
     <main className="nxq-page">
@@ -229,17 +158,6 @@ export function OwnerFiles() {
               ))}
             </select>
 
-            {selectedClient ? (
-              <button
-                className="icon-btn"
-                type="button"
-                disabled={isResetting}
-                onClick={() => void resetSelectedClientSafely()}
-              >
-                <RotateCcw size={16} />
-                {isResetting ? "Resetting safely..." : "Safe reset selected client"}
-              </button>
-            ) : null}
           </div>
 
           {isLoading ? <div className="empty-state">Loading client files...</div> : null}
