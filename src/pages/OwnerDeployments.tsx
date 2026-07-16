@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, GitBranch, LockKeyhole, RefreshCcw, Rocket } from "lucide-react";
+import { ArrowLeft, ExternalLink, GitBranch, LockKeyhole, RefreshCcw, Rocket, Save } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -64,7 +64,16 @@ export function OwnerDeployments() {
   const [configs, setConfigs] = useState<DeploymentConfigRow[]>([]);
   const [deployments, setDeployments] = useState<DeploymentRow[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [githubOwner, setGithubOwner] = useState("");
+  const [githubRepo, setGithubRepo] = useState("");
+  const [productionBranch, setProductionBranch] = useState("main");
+  const [netlifySiteId, setNetlifySiteId] = useState("");
+  const [productionUrl, setProductionUrl] = useState("");
+  const [autoPublishLocked, setAutoPublishLocked] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   async function loadDeploymentData() {
@@ -133,6 +142,111 @@ export function OwnerDeployments() {
     (deployment) => !selectedClientId || deployment.client_id === selectedClientId
   );
 
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
+  const selectedConfig = configs.find((config) => config.project_id === selectedProjectId) || null;
+
+  function loadProjectIntoForm(projectId: string) {
+    setSelectedProjectId(projectId);
+    setActionMessage("");
+    setErrorMessage("");
+
+    const existingConfig = configs.find((config) => config.project_id === projectId);
+
+    if (!existingConfig) {
+      setGithubOwner("");
+      setGithubRepo("");
+      setProductionBranch("main");
+      setNetlifySiteId("");
+      setProductionUrl("");
+      setAutoPublishLocked(true);
+      return;
+    }
+
+    setGithubOwner(existingConfig.github_owner || "");
+    setGithubRepo(existingConfig.github_repo || "");
+    setProductionBranch(existingConfig.production_branch || "main");
+    setNetlifySiteId(existingConfig.netlify_site_id || "");
+    setProductionUrl(existingConfig.production_url || "");
+    setAutoPublishLocked(existingConfig.auto_publish_locked);
+  }
+
+  async function saveConnection() {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    if (!selectedProject) {
+      setErrorMessage("Pick a project before saving a deployment connection.");
+      return;
+    }
+
+    const cleanGithubOwner = githubOwner.trim();
+    const cleanGithubRepo = githubRepo.trim();
+    const cleanProductionBranch = productionBranch.trim() || "main";
+    const cleanNetlifySiteId = netlifySiteId.trim();
+    const cleanProductionUrl = productionUrl.trim();
+
+    if ((cleanGithubOwner && !cleanGithubRepo) || (!cleanGithubOwner && cleanGithubRepo)) {
+      setErrorMessage("GitHub owner and repository must either both be filled in or both be blank.");
+      return;
+    }
+
+    if (cleanProductionUrl) {
+      try {
+        const parsedUrl = new URL(cleanProductionUrl);
+        if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+          throw new Error("Unsupported URL protocol.");
+        }
+      } catch {
+        setErrorMessage("Production URL must be a valid http or https URL.");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    setActionMessage("");
+    setErrorMessage("");
+
+    const saveResult = await supabase
+      .from("project_deployment_configs")
+      .upsert(
+        {
+          project_id: selectedProject.id,
+          client_id: selectedProject.client_id,
+          github_owner: cleanGithubOwner || null,
+          github_repo: cleanGithubRepo || null,
+          production_branch: cleanProductionBranch,
+          netlify_site_id: cleanNetlifySiteId || null,
+          production_url: cleanProductionUrl || null,
+          auto_publish_locked: autoPublishLocked,
+          last_deployment_status: selectedConfig?.last_deployment_status || "not_configured",
+          last_deployed_commit: selectedConfig?.last_deployed_commit || null,
+        },
+        { onConflict: "project_id" }
+      )
+      .select(
+        "id, project_id, client_id, github_owner, github_repo, production_branch, netlify_site_id, production_url, auto_publish_locked, last_deployed_commit, last_deployment_status, updated_at"
+      )
+      .single();
+
+    setIsSaving(false);
+
+    if (saveResult.error) {
+      setErrorMessage(`Connection save failed: ${saveResult.error.message}`);
+      return;
+    }
+
+    const savedConfig = saveResult.data as DeploymentConfigRow;
+    setConfigs((current) => [
+      savedConfig,
+      ...current.filter((config) => config.project_id !== savedConfig.project_id),
+    ]);
+    setActionMessage(
+      `${clientNameById.get(savedConfig.client_id) || "Project"} deployment connection saved. No deploy was triggered.`
+    );
+  }
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -142,7 +256,7 @@ export function OwnerDeployments() {
             <div>
               <h1>Build and deployments</h1>
               <p className="subtle">
-                View-only GitHub and Netlify tracking. No deploy action is enabled yet.
+                Owner-controlled GitHub and Netlify tracking. No deploy action is enabled yet.
               </p>
             </div>
           </div>
@@ -160,6 +274,103 @@ export function OwnerDeployments() {
         </div>
 
         {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
+        {actionMessage ? <div className="auth-success">{actionMessage}</div> : null}
+
+        <section className="panel">
+          <div className="panel-title">
+            <GitBranch size={20} />
+            <h2>Connect a client project</h2>
+          </div>
+
+          <div className="message-filter-row">
+            <select
+              className="message-filter-select"
+              value={selectedProjectId}
+              onChange={(event) => loadProjectIntoForm(event.target.value)}
+            >
+              <option value="">Pick a project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {clientNameById.get(project.client_id) || "Unknown client"} ·{" "}
+                  {formatStatus(project.website_status)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="owner-reply-box">
+            <label htmlFor="github-owner">GitHub owner or organization</label>
+            <input
+              id="github-owner"
+              value={githubOwner}
+              onChange={(event) => setGithubOwner(event.target.value)}
+              placeholder="nxqweb"
+              disabled={!selectedProjectId}
+            />
+
+            <label htmlFor="github-repo">GitHub repository</label>
+            <input
+              id="github-repo"
+              value={githubRepo}
+              onChange={(event) => setGithubRepo(event.target.value)}
+              placeholder="client-business-website"
+              disabled={!selectedProjectId}
+            />
+
+            <label htmlFor="production-branch">Production branch</label>
+            <input
+              id="production-branch"
+              value={productionBranch}
+              onChange={(event) => setProductionBranch(event.target.value)}
+              placeholder="main"
+              disabled={!selectedProjectId}
+            />
+
+            <label htmlFor="netlify-site-id">Netlify site ID</label>
+            <input
+              id="netlify-site-id"
+              value={netlifySiteId}
+              onChange={(event) => setNetlifySiteId(event.target.value)}
+              placeholder="Netlify site ID"
+              disabled={!selectedProjectId}
+            />
+
+            <label htmlFor="production-url">Production URL</label>
+            <input
+              id="production-url"
+              type="url"
+              value={productionUrl}
+              onChange={(event) => setProductionUrl(event.target.value)}
+              placeholder="https://clientwebsite.com"
+              disabled={!selectedProjectId}
+            />
+
+            <label>
+              <input
+                type="checkbox"
+                checked={autoPublishLocked}
+                onChange={(event) => setAutoPublishLocked(event.target.checked)}
+                disabled={!selectedProjectId}
+              />{" "}
+              Auto publishing is locked
+            </label>
+
+            <button
+              className="wide-btn"
+              type="button"
+              onClick={() => void saveConnection()}
+              disabled={!selectedProjectId || isSaving}
+            >
+              <Save size={16} />
+              {isSaving ? "Saving connection..." : "Save connection"}
+            </button>
+
+            <small>
+              This stores configuration only. It does not create a repository, change Netlify, or
+              trigger a deployment.
+            </small>
+          </div>
+        </section>
 
         <section className="panel">
           <div className="message-filter-row">
@@ -225,6 +436,17 @@ export function OwnerDeployments() {
                       Open production site
                     </a>
                   ) : null}
+
+                  <button
+                    className="wide-btn"
+                    type="button"
+                    onClick={() => {
+                      loadProjectIntoForm(config.project_id);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Edit connection
+                  </button>
                 </article>
               );
             })}
