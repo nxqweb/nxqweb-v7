@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ImagePlus,
@@ -14,6 +14,8 @@ type ClientRow = {
   id: string;
   business_name: string;
   status: string;
+  billing_status: string;
+  billing_provider: string | null;
   monthly_price: number;
   notes: string | null;
 };
@@ -32,6 +34,17 @@ type ProjectRow = {
   id: string;
   client_id: string | null;
   website_status: string;
+};
+
+type PaymentRecordRow = {
+  id: string;
+  client_id: string | null;
+  provider: string;
+  status: string;
+  amount: number;
+  currency: string;
+  note: string | null;
+  created_at: string;
 };
 
 type UploadedFileRow = {
@@ -79,7 +92,7 @@ const packageOptions: Record<
     description:
       "Premium website essentials for small businesses that need a trusted online presence.",
     capabilities: [
-      "Premium 1–3 page website",
+      "Premium 1-3 page website",
       "Mobile-responsive design",
       "Basic SEO setup",
       "Contact form",
@@ -275,6 +288,7 @@ export function ClientPortal() {
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
   const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
+  const [latestPayment, setLatestPayment] = useState<PaymentRecordRow | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [domainName, setDomainName] = useState("");
   const [domainRegistrar, setDomainRegistrar] = useState("");
@@ -324,8 +338,12 @@ export function ClientPortal() {
   async function handleLogout() {
     if (!supabase) return;
 
-    await supabase.auth.signOut();
-    window.location.href = "/portal/login";
+    await Promise.race([
+      supabase.auth.signOut(),
+      new Promise((resolve) => window.setTimeout(resolve, 800)),
+    ]);
+
+    window.location.replace("/portal/login");
   }
 
   async function loadClientPortalData() {
@@ -352,7 +370,7 @@ export function ClientPortal() {
 
       const clientResult = await supabase
         .from("clients")
-        .select("id, business_name, status, monthly_price, notes")
+        .select("id, business_name, status, billing_status, billing_provider, monthly_price, notes")
         .eq("auth_user_id", userId)
         .maybeSingle();
 
@@ -483,6 +501,21 @@ export function ClientPortal() {
         setClientDomains([]);
       } else {
         setClientDomains((domainResult.data || []) as ClientDomainRow[]);
+      }
+
+      const paymentResult = await supabase
+        .from("payment_records")
+        .select("id, client_id, provider, status, amount, currency, note, created_at")
+        .eq("client_id", loadedClient.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (paymentResult.error) {
+        setErrorMessage(`Billing status load failed: ${paymentResult.error.message}`);
+        setLatestPayment(null);
+      } else {
+        setLatestPayment((paymentResult.data as PaymentRecordRow) || null);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client portal error";
@@ -1029,7 +1062,22 @@ export function ClientPortal() {
       });
 
       if (fileRecordResult.error) {
-        setErrorMessage(`File record failed: ${fileRecordResult.error.message}`);
+        const cleanupResult = await supabase.storage
+          .from("client-files")
+          .remove([filePath]);
+
+        if (cleanupResult.error) {
+          setErrorMessage(
+            `File record failed: ${fileRecordResult.error.message}. ` +
+              `The uploaded file could not be cleaned up automatically: ${cleanupResult.error.message}`
+          );
+          return;
+        }
+
+        setErrorMessage(
+          `File record failed: ${fileRecordResult.error.message}. ` +
+            `The uploaded file was removed automatically, so no orphaned file was left behind.`
+        );
         return;
       }
 
@@ -1074,7 +1122,7 @@ export function ClientPortal() {
     const normalizedStatus = status.toLowerCase();
 
     if (normalizedStatus === "owner_review") return "Domain request under review";
-    if (normalizedStatus === "waiting_dns") return "Domain approved — DNS setup pending";
+    if (normalizedStatus === "waiting_dns") return "Domain approved - DNS setup pending";
     if (normalizedStatus === "connected") return "Domain connected";
     if (normalizedStatus === "failed") return "Domain request needs attention";
 
@@ -1197,7 +1245,33 @@ export function ClientPortal() {
     ? getTargetedFieldControl(targetedMoreInfoRequest)
     : null;
   const projectDecisionStatus = (projectStage || "").toLowerCase();
+  const selectedPlan = packageOptions[selectedPackage];
+  const billingStatus = (client?.billing_status || "not_configured").toLowerCase();
 
+  const billingProviderSource =
+    client?.billing_provider || latestPayment?.provider || null;
+
+  const billingProvider =
+    billingProviderSource?.toLowerCase() === "manual"
+      ? "Manual billing"
+      : billingProviderSource
+        ? formatStatus(billingProviderSource)
+        : "Not connected";
+
+  const subscriptionLabel =
+    billingStatus === "active"
+      ? "Active"
+      : billingStatus === "past_due"
+        ? "Past due"
+        : billingStatus === "freeze_review"
+          ? "Payment review"
+          : billingStatus === "frozen"
+            ? "Frozen"
+            : billingStatus === "cancelled"
+              ? "Cancelled"
+              : billingStatus === "activation_pending"
+                ? "Activation pending"
+                : "Awaiting activation";
   const portalDecisionNotice = (() => {
     if (clientDecisionStatus === "denied") {
       return {
@@ -1737,7 +1811,7 @@ export function ClientPortal() {
                   </div>
 
                   <p className="domain-meta">
-                    Registrar: {domain.registrar_name || "Not provided"} · DNS:{" "}
+                    Registrar: {domain.registrar_name || "Not provided"} | DNS:{" "}
                     {domain.dns_provider || "Not provided"}
                   </p>
 
@@ -1766,6 +1840,24 @@ export function ClientPortal() {
                 <p>Account profile connected.</p>
                 <small>Project stage: {formatStatus(projectStage)}</small>
               </article>
+
+              <article className="settings-card">
+                <span>Billing & subscription</span>
+                <strong>{selectedPlan.label} | ${selectedPlan.price}/month</strong>
+                <p>
+                  Subscription status: {subscriptionLabel}. Payment method:{" "}
+                  {billingProvider}.
+                </p>
+                <small>
+                  {latestPayment
+                    ? `Latest billing record: ${latestPayment.currency} ${Number(
+                        latestPayment.amount || 0
+                      ).toFixed(2)} | ${formatStatus(latestPayment.status)}`
+                    : "Secure online card payments are not connected yet."}
+                </small>
+              </article>
+
+
 
               <article className="settings-card">
                 <span>Appearance</span>
@@ -1812,11 +1904,10 @@ export function ClientPortal() {
                     className="settings-disabled-btn"
                     type="button"
                     onClick={() => {
-                      setMessageText("Hi, I need help changing the password for this client portal.");
-                      setNotice("Password help request started. Send the message below when ready.");
+                      window.location.href = "/portal/forgot-password";
                     }}
                   >
-                    Request password help
+                    Change password
                   </button>
                 </div>
               </article>

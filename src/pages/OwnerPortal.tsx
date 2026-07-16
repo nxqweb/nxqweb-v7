@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -27,6 +27,10 @@ type ClientRow = {
   business_type: string | null;
   status: string;
   monthly_price: number;
+  billing_status: string;
+  billing_provider: string | null;
+  billing_overdue_since: string | null;
+  billing_frozen_at: string | null;
   notes: string | null;
 };
 
@@ -135,17 +139,6 @@ function getLaunchPreviewUrl(approval: ApprovalRow) {
 
 function getLaunchPreviewChecklist(approval: ApprovalRow) {
   return Array.isArray(approval.options?.checklist) ? approval.options.checklist : [];
-}
-function getDomainFromApproval(approval: ApprovalRow) {
-  const text = [approval.summary, approval.recommended_action || ""].join("\n");
-  const domainMatch = text.match(/Domain:\s*([a-z0-9.-]+\.[a-z]{2,})/i);
-
-  if (domainMatch?.[1]) {
-    return domainMatch[1].trim().toLowerCase();
-  }
-
-  const fallbackMatch = text.match(/\b([a-z0-9-]+\.[a-z]{2,})\b/i);
-  return fallbackMatch?.[1]?.trim().toLowerCase() || "";
 }
 
 function isPipelineStartApproval(approval: ApprovalRow) {
@@ -324,7 +317,7 @@ export function OwnerPortal() {
 
   const activeMonthlyIncome = useMemo(() => {
     return clients
-      .filter((client) => client.status === "active")
+      .filter((client) => client.billing_status === "active")
       .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
   }, [clients]);
 
@@ -350,6 +343,20 @@ export function OwnerPortal() {
     );
   }, [clientMessages]);
 
+  const unreadMessageCountByClient = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    for (const message of ownerReviewMessages) {
+      if (!message.client_id) {
+        continue;
+      }
+
+      counts[message.client_id] = (counts[message.client_id] || 0) + 1;
+    }
+
+    return counts;
+  }, [ownerReviewMessages]);
+
   async function openClientMessageThread(clientId: string | null) {
     if (!clientId) {
       setErrorMessage("This message is not linked to a client record.");
@@ -372,6 +379,18 @@ export function OwnerPortal() {
       setErrorMessage(`Message seen update failed: ${seenResult.error.message}`);
       return;
     }
+
+    const seenAt = new Date().toISOString();
+
+    setClientMessages((currentMessages) =>
+      currentMessages.map((message) =>
+        message.client_id === clientId &&
+        message.sender_type === "client" &&
+        !message.owner_seen_at
+          ? { ...message, owner_seen_at: seenAt }
+          : message
+      )
+    );
 
     await loadOwnerData();
   }
@@ -533,7 +552,7 @@ function parseBuildPlanSections(content: string) {
       const clientResult = await supabase
         .from("clients")
         .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, notes"
+          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes"
         )
         .order("created_at", { ascending: false });
 
@@ -628,6 +647,22 @@ if (messageResult.error) {
         setErrorMessage(`Action failed: ${error.message}`);
         return;
       }
+      if (status === "denied" && isPipelineStartApproval(approval)) {
+        const clientStatusResult = await supabase
+          .from("clients")
+          .update({
+            status: "denied",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", approval.client_id);
+
+        if (clientStatusResult.error) {
+          setErrorMessage(
+            `Approval was denied, but the client status could not be updated: ${clientStatusResult.error.message}`
+          );
+          return;
+        }
+      }
 
       if (isDomainConnectionReview(approval)) {
         const domainDecision = await supabase.rpc("resolve_domain_connection_review", {
@@ -654,58 +689,6 @@ if (messageResult.error) {
       }
       let domainDecisionMessage: string | null = null;
 
-      if (isDomainConnectionReview(approval)) {
-        const domainName = getDomainFromApproval(approval);
-
-        if (!domainName) {
-          setErrorMessage(
-            "Approval was saved, but NXQ could not find the domain name in the approval text."
-          );
-          return;
-        }
-
-        if (status === "accepted") {
-          const domainUpdate = await supabase
-            .from("client_domains")
-            .update({
-              status: "waiting_dns",
-              reviewed_at: new Date().toISOString(),
-              dns_instructions:
-                "NXQ reviewed this client-owned domain request. DNS instructions are pending. Client keeps ownership of the domain and should not transfer ownership to NXQ.",
-              owner_notes: ownerResponse,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("client_id", approval.client_id)
-            .eq("domain_name", domainName);
-
-          if (domainUpdate.error) {
-            setErrorMessage(`Domain status update failed: ${domainUpdate.error.message}`);
-            return;
-          }
-
-          domainDecisionMessage = `${domainName} moved to waiting DNS.`;
-        }
-
-        if (status === "denied") {
-          const domainUpdate = await supabase
-            .from("client_domains")
-            .update({
-              status: "failed",
-              owner_notes: ownerResponse,
-              reviewed_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("client_id", approval.client_id)
-            .eq("domain_name", domainName);
-
-          if (domainUpdate.error) {
-            setErrorMessage(`Domain denial update failed: ${domainUpdate.error.message}`);
-            return;
-          }
-
-          domainDecisionMessage = `${domainName} marked as failed/denied.`;
-        }
-      }
 
       await supabase.from("activity_logs").insert({
         client_id: approval.client_id,
@@ -745,37 +728,6 @@ if (messageResult.error) {
     await requestMoreInfoFromClientCard(client);
   }
 
-  async function resetClientWorkspace(client: ClientRow) {
-    const confirmed = window.confirm(
-      `Reset client workspace?\n\nClient: ${client.business_name}\n\nThis will clear linked project data, approvals, messages, domains, payment records, file records, and unlink the login from this client. It will not charge, launch, or freeze anything. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    if (!supabase) {
-      setErrorMessage("Supabase is not connected yet. Refresh and try again.");
-      return;
-    }
-
-    const resetResult = await supabase.rpc("reset_client_workspace", {
-      target_client_id: client.id,
-    });
-
-    if (resetResult.error) {
-      setErrorMessage(`Client reset failed: ${resetResult.error.message}`);
-      return;
-    }
-
-    const resultData = resetResult.data as { message?: string } | null;
-
-    setSelectedMessageClientId("");
-    setOwnerReplyText("");
-    setActionMessage(resultData?.message || "Client workspace reset.");
-    await loadOwnerData();
-  }
   async function updateClientStatus(
     client: ClientRow,
     nextStatus: string,
@@ -1038,6 +990,73 @@ if (messageResult.error) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown manual activation error";
       setErrorMessage(`Manual activation failed: ${message}`);
+    }
+  }
+
+  async function updateClientBillingState(
+    client: ClientRow,
+    nextBillingStatus: "active" | "past_due" | "freeze_review" | "frozen",
+    actionLabel: string
+  ) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      [
+        actionLabel,
+        "",
+        `Client: ${client.business_name}`,
+        `Current billing status: ${formatStatus(client.billing_status || "not_configured")}`,
+        `New billing status: ${formatStatus(nextBillingStatus)}`,
+        "",
+        "This changes billing status only.",
+        "It will not change the website project stage.",
+        "It will not charge a card, bank account, or online payment method.",
+        "",
+        "Continue?",
+      ].join("\n")
+    );
+
+    if (!confirmed) return;
+
+    const billingNote = window.prompt(
+      `Optional billing note for ${client.business_name}:`,
+      ""
+    );
+
+    if (billingNote === null) return;
+
+    setActionMessage("");
+    setErrorMessage("");
+
+    try {
+      const billingResult = await supabase.rpc("set_client_billing_state", {
+        target_client_id: client.id,
+        next_billing_status: nextBillingStatus,
+        next_billing_provider: client.billing_provider || "manual",
+        billing_note: billingNote.trim() || null,
+      });
+
+      if (billingResult.error) {
+        setErrorMessage(`Billing update failed: ${billingResult.error.message}`);
+        return;
+      }
+
+      const resultData = billingResult.data as { message?: string } | null;
+
+      setActionMessage(
+        resultData?.message ||
+          `${client.business_name} billing changed to ${formatStatus(nextBillingStatus)}.`
+      );
+
+      await loadOwnerData();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown billing update error";
+
+      setErrorMessage(`Billing update failed: ${message}`);
     }
   }
   async function requestMoreInfoFromClientCard(client: ClientRow) {
@@ -1336,7 +1355,7 @@ if (messageResult.error) {
         {actionMessage ? <div className="notice-card success">{actionMessage}</div> : null}
 
         <div className="owner-grid">
-          <section className="panel panel-large" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <section className="panel panel-large owner-approval-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Bot size={20} />
@@ -1582,12 +1601,26 @@ if (messageResult.error) {
                       <button
                         type="button"
                         onClick={() => {
+                          const enteredReason = window.prompt(
+                            `Why are you denying ${clientName}?`,
+                            "The project was not accepted. Please contact NXQ Web support if you believe this decision was made in error."
+                          );
+
+                          if (enteredReason === null) return;
+
+                          const denialReason = enteredReason.trim();
+
+                          if (!denialReason) {
+                            setErrorMessage("A denial reason is required.");
+                            return;
+                          }
+
                           if (!confirmHighRiskAction("deny", clientName)) return;
 
                           updateApprovalStatus(
                             approval,
                             "denied",
-                            "Owner denied this approval request."
+                            denialReason
                           );
                         }}
                       >
@@ -1635,6 +1668,25 @@ if (messageResult.error) {
                   })}
                 </div>
               ) : null}
+            </div>
+          </section>
+
+                    <section
+            className="panel owner-tools-panel"
+            style={{ display: ownerView === "aps" ? undefined : "none" }}
+          >
+            <div className="panel-title">
+              <h2>Owner tools</h2>
+            </div>
+
+            <div className="client-control-row">
+              <a className="icon-btn" href="/owner">
+                Owner dashboard
+              </a>
+
+              <a className="icon-btn" href="/owner/files">
+                Client files
+              </a>
             </div>
           </section>
 
@@ -1696,7 +1748,7 @@ if (messageResult.error) {
             </div>
           </section>
 
-          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <aside className="panel owner-clients-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title">
               <Users size={20} />
               <h2>Clients</h2>
@@ -1715,14 +1767,7 @@ if (messageResult.error) {
                   <b>{formatMoney(Number(client.monthly_price || 0))}/mo</b>
 
                   <div className="client-control-row">
-                    <button
-                      type="button"
-                      onClick={() => resetClientWorkspace(client)}
-                    >
-                      Reset
-                    </button>
-
-                    <button
+<button
                       type="button"
                       onClick={() => updateClientStatus(client, "approved", "Approve client")}
                     >
@@ -1789,7 +1834,73 @@ if (messageResult.error) {
                       >
                         Frozen
                       </button>
-                    </div>                    {client.status === "active" ? (
+                    </div>
+                  </div>
+
+                  <div className="project-stage-box">
+                    <span>
+                      Billing: {formatStatus(client.billing_status || "not_configured")}
+                    </span>
+
+                    <small>
+                      Provider: {client.billing_provider || "Not configured"}
+                    </small>
+
+                    <div className="project-stage-row">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "past_due",
+                            "Mark billing past due"
+                          )
+                        }
+                      >
+                        Past Due
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "freeze_review",
+                            "Send billing to freeze review"
+                          )
+                        }
+                      >
+                        Freeze Review
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "frozen",
+                            "Freeze billing"
+                          )
+                        }
+                      >
+                        Freeze Billing
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateClientBillingState(
+                            client,
+                            "active",
+                            "Restore active billing"
+                          )
+                        }
+                      >
+                        Restore Active
+                      </button>
+                    </div>
+
+                    {client.billing_status === "active" ? (
                       <button
                         className="manual-activate-btn is-active"
                         type="button"
@@ -1835,6 +1946,9 @@ if (messageResult.error) {
                 {clients.map((client) => (
                   <option key={client.id} value={client.id}>
                     {client.business_name}
+                    {unreadMessageCountByClient[client.id]
+                      ? ` (${unreadMessageCountByClient[client.id]})`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -1911,7 +2025,7 @@ if (messageResult.error) {
   </div>
 </section>
 
-          <aside className="panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
+          <aside className="panel owner-payments-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Clock size={20} />

@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -109,5 +109,3 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
 
   return <>{children}</>;
 }
-
-
