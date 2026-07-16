@@ -1,0 +1,43 @@
+.portal-shell > section.panel:nth-of-type(2) .owner-message-card {
+  display: grid;
+  gap: 10px;
+}
+
+.portal-shell > section.panel:nth-of-type(2) .owner-message-card > p {
+  margin-bottom: 2px;
+}
+
+.portal-shell > section.panel:nth-of-type(2) .owner-message-card > small {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.28);
+  color: #a7f3d0;
+  padding: 9px 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.portal-shell > section.panel:nth-of-type(2) .owner-message-card > small svg {
+  flex: 0 0 auto;
+  color: #67e8f9;
+}
+
+.portal-shell > section.panel:nth-of-type(2) .owner-message-card .wide-btn {
+  margin-top: 2px;
+}
+
+@media (min-width: 760px) {
+  .portal-shell > section.panel:nth-of-type(2) .owner-message-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portal-shell > section.panel:nth-of-type(2) .owner-message-card .owner-message-top,
+  .portal-shell > section.panel:nth-of-type(2) .owner-message-card > p,
+  .portal-shell > section.panel:nth-of-type(2) .owner-message-card .wide-btn {
+    grid-column: 1 / -1;
+  }
+}
