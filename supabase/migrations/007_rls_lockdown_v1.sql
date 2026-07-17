@@ -1,4 +1,4 @@
-﻿-- RLS Lockdown v1
+-- RLS Lockdown v1
 -- Replaces temporary public dev policies with owner/client-scoped access.
 
 -- CLIENTS
