@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, GitBranch, LockKeyhole, RefreshCcw, Rocket, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  GitBranch,
+  LockKeyhole,
+  RefreshCcw,
+  Rocket,
+  Save,
+  SearchCheck,
+  XCircle,
+} from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -43,6 +54,23 @@ type DeploymentRow = {
   created_at: string;
 };
 
+type VerificationCheck = {
+  ok: boolean;
+  status: "pass" | "fail" | "not_configured";
+  message: string;
+};
+
+type VerificationResult = {
+  ok: boolean;
+  config_id: string;
+  project_id: string;
+  client_id: string;
+  verified: boolean;
+  checked_at: string;
+  checks: Record<string, VerificationCheck>;
+  note: string;
+};
+
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
 }
@@ -73,6 +101,10 @@ export function OwnerDeployments() {
   const [autoPublishLocked, setAutoPublishLocked] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [verifyingConfigId, setVerifyingConfigId] = useState("");
+  const [verificationByConfigId, setVerificationByConfigId] = useState<
+    Record<string, VerificationResult>
+  >({});
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -242,8 +274,46 @@ export function OwnerDeployments() {
       savedConfig,
       ...current.filter((config) => config.project_id !== savedConfig.project_id),
     ]);
+    setVerificationByConfigId((current) => {
+      const next = { ...current };
+      delete next[savedConfig.id];
+      return next;
+    });
     setActionMessage(
       `${clientNameById.get(savedConfig.client_id) || "Project"} deployment connection saved. No deploy was triggered.`
+    );
+  }
+
+  async function verifyConnection(config: DeploymentConfigRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    setVerifyingConfigId(config.id);
+    setActionMessage("");
+    setErrorMessage("");
+
+    const result = await supabase.functions.invoke("verify-deployment-connection", {
+      body: { config_id: config.id },
+    });
+
+    setVerifyingConfigId("");
+
+    if (result.error) {
+      setErrorMessage(`Connection verification failed: ${result.error.message}`);
+      return;
+    }
+
+    const verification = result.data as VerificationResult;
+    setVerificationByConfigId((current) => ({
+      ...current,
+      [config.id]: verification,
+    }));
+    setActionMessage(
+      verification.verified
+        ? `${clientNameById.get(config.client_id) || "Project"} connection passed every check.`
+        : `${clientNameById.get(config.client_id) || "Project"} connection check finished with items needing attention.`
     );
   }
 
@@ -256,7 +326,7 @@ export function OwnerDeployments() {
             <div>
               <h1>Build and deployments</h1>
               <p className="subtle">
-                Owner-controlled GitHub and Netlify tracking. No deploy action is enabled yet.
+                Owner-controlled GitHub and Netlify tracking. Verification is read-only and no deploy action is enabled.
               </p>
             </div>
           </div>
@@ -300,109 +370,52 @@ export function OwnerDeployments() {
 
           <div className="owner-reply-box">
             <label htmlFor="github-owner">GitHub owner or organization</label>
-            <input
-              id="github-owner"
-              value={githubOwner}
-              onChange={(event) => setGithubOwner(event.target.value)}
-              placeholder="nxqweb"
-              disabled={!selectedProjectId}
-            />
+            <input id="github-owner" value={githubOwner} onChange={(event) => setGithubOwner(event.target.value)} placeholder="nxqweb" disabled={!selectedProjectId} />
 
             <label htmlFor="github-repo">GitHub repository</label>
-            <input
-              id="github-repo"
-              value={githubRepo}
-              onChange={(event) => setGithubRepo(event.target.value)}
-              placeholder="client-business-website"
-              disabled={!selectedProjectId}
-            />
+            <input id="github-repo" value={githubRepo} onChange={(event) => setGithubRepo(event.target.value)} placeholder="client-business-website" disabled={!selectedProjectId} />
 
             <label htmlFor="production-branch">Production branch</label>
-            <input
-              id="production-branch"
-              value={productionBranch}
-              onChange={(event) => setProductionBranch(event.target.value)}
-              placeholder="main"
-              disabled={!selectedProjectId}
-            />
+            <input id="production-branch" value={productionBranch} onChange={(event) => setProductionBranch(event.target.value)} placeholder="main" disabled={!selectedProjectId} />
 
             <label htmlFor="netlify-site-id">Netlify site ID</label>
-            <input
-              id="netlify-site-id"
-              value={netlifySiteId}
-              onChange={(event) => setNetlifySiteId(event.target.value)}
-              placeholder="Netlify site ID"
-              disabled={!selectedProjectId}
-            />
+            <input id="netlify-site-id" value={netlifySiteId} onChange={(event) => setNetlifySiteId(event.target.value)} placeholder="Netlify site ID" disabled={!selectedProjectId} />
 
             <label htmlFor="production-url">Production URL</label>
-            <input
-              id="production-url"
-              type="url"
-              value={productionUrl}
-              onChange={(event) => setProductionUrl(event.target.value)}
-              placeholder="https://clientwebsite.com"
-              disabled={!selectedProjectId}
-            />
+            <input id="production-url" type="url" value={productionUrl} onChange={(event) => setProductionUrl(event.target.value)} placeholder="https://clientwebsite.com" disabled={!selectedProjectId} />
 
             <label>
-              <input
-                type="checkbox"
-                checked={autoPublishLocked}
-                onChange={(event) => setAutoPublishLocked(event.target.checked)}
-                disabled={!selectedProjectId}
-              />{" "}
+              <input type="checkbox" checked={autoPublishLocked} onChange={(event) => setAutoPublishLocked(event.target.checked)} disabled={!selectedProjectId} />{" "}
               Auto publishing is locked
             </label>
 
-            <button
-              className="wide-btn"
-              type="button"
-              onClick={() => void saveConnection()}
-              disabled={!selectedProjectId || isSaving}
-            >
+            <button className="wide-btn" type="button" onClick={() => void saveConnection()} disabled={!selectedProjectId || isSaving}>
               <Save size={16} />
               {isSaving ? "Saving connection..." : "Save connection"}
             </button>
 
-            <small>
-              This stores configuration only. It does not create a repository, change Netlify, or
-              trigger a deployment.
-            </small>
+            <small>This stores configuration only. It does not create a repository, change Netlify, or trigger a deployment.</small>
           </div>
         </section>
 
         <section className="panel">
           <div className="message-filter-row">
-            <select
-              className="message-filter-select"
-              value={selectedClientId}
-              onChange={(event) => setSelectedClientId(event.target.value)}
-            >
+            <select className="message-filter-select" value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)}>
               <option value="">All clients</option>
               {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.business_name}
-                </option>
+                <option key={client.id} value={client.id}>{client.business_name}</option>
               ))}
             </select>
           </div>
 
           {isLoading ? <div className="empty-state">Loading deployment records...</div> : null}
-
-          {!isLoading && visibleConfigs.length === 0 ? (
-            <div className="empty-state">
-              No deployment configuration records yet. This is expected until a project is connected.
-            </div>
-          ) : null}
+          {!isLoading && visibleConfigs.length === 0 ? <div className="empty-state">No deployment configuration records yet. This is expected until a project is connected.</div> : null}
 
           <div className="owner-message-list">
             {visibleConfigs.map((config) => {
               const project = projectById.get(config.project_id);
-              const repository =
-                config.github_owner && config.github_repo
-                  ? `${config.github_owner}/${config.github_repo}`
-                  : "Not connected";
+              const repository = config.github_owner && config.github_repo ? `${config.github_owner}/${config.github_repo}` : "Not connected";
+              const verification = verificationByConfigId[config.id];
 
               return (
                 <article className="owner-message-card" key={config.id}>
@@ -411,40 +424,40 @@ export function OwnerDeployments() {
                     <span>{formatDateTime(config.updated_at)}</span>
                   </div>
 
-                  <p>
-                    Project: {project?.website_status ? formatStatus(project.website_status) : "Unknown"}
-                  </p>
+                  <p>Project: {project?.website_status ? formatStatus(project.website_status) : "Unknown"}</p>
                   <small>GitHub: {repository}</small>
-                  <small>
-                    <GitBranch size={14} /> Branch: {config.production_branch}
-                  </small>
+                  <small><GitBranch size={14} /> Branch: {config.production_branch}</small>
                   <small>Netlify site: {config.netlify_site_id || "Not connected"}</small>
                   <small>Status: {formatStatus(config.last_deployment_status)}</small>
                   <small>Last commit: {shortCommit(config.last_deployed_commit)}</small>
-                  <small>
-                    <LockKeyhole size={14} /> Auto publish: {config.auto_publish_locked ? "Locked" : "Unlocked"}
-                  </small>
+                  <small><LockKeyhole size={14} /> Auto publish: {config.auto_publish_locked ? "Locked" : "Unlocked"}</small>
+
+                  <button className="wide-btn" type="button" onClick={() => void verifyConnection(config)} disabled={verifyingConfigId === config.id}>
+                    <SearchCheck size={16} />
+                    {verifyingConfigId === config.id ? "Verifying connection..." : "Verify connection"}
+                  </button>
+
+                  {verification ? (
+                    <div className={verification.verified ? "auth-success" : "auth-error"}>
+                      <strong>{verification.verified ? "All checks passed" : "Verification needs attention"}</strong>
+                      <small>Checked {formatDateTime(verification.checked_at)}</small>
+                      {Object.entries(verification.checks).map(([name, check]) => (
+                        <div key={name}>
+                          {check.status === "pass" ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {formatStatus(name)}: {check.message}
+                        </div>
+                      ))}
+                      <small>{verification.note}</small>
+                    </div>
+                  ) : null}
 
                   {config.production_url ? (
-                    <a
-                      className="wide-btn"
-                      href={config.production_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
+                    <a className="wide-btn" href={config.production_url} target="_blank" rel="noreferrer">
                       <ExternalLink size={16} />
                       Open production site
                     </a>
                   ) : null}
 
-                  <button
-                    className="wide-btn"
-                    type="button"
-                    onClick={() => {
-                      loadProjectIntoForm(config.project_id);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                  >
+                  <button className="wide-btn" type="button" onClick={() => { loadProjectIntoForm(config.project_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                     Edit connection
                   </button>
                 </article>
@@ -459,9 +472,7 @@ export function OwnerDeployments() {
             <h2>Recent deployment history</h2>
           </div>
 
-          {!isLoading && visibleDeployments.length === 0 ? (
-            <div className="empty-state">No preview or production deployment history yet.</div>
-          ) : null}
+          {!isLoading && visibleDeployments.length === 0 ? <div className="empty-state">No preview or production deployment history yet.</div> : null}
 
           <div className="owner-message-list">
             {visibleDeployments.map((deployment) => (
@@ -470,20 +481,13 @@ export function OwnerDeployments() {
                   <strong>{clientNameById.get(deployment.client_id) || "Unknown client"}</strong>
                   <span>{formatDateTime(deployment.created_at)}</span>
                 </div>
-                <p>
-                  {formatStatus(deployment.deploy_kind)} · {formatStatus(deployment.status)}
-                </p>
+                <p>{formatStatus(deployment.deploy_kind)} · {formatStatus(deployment.status)}</p>
                 <small>Branch: {deployment.branch}</small>
                 <small>Commit: {shortCommit(deployment.git_commit_sha)}</small>
                 <small>Triggered by: {formatStatus(deployment.trigger_source)}</small>
                 {deployment.error_message ? <small>Error: {deployment.error_message}</small> : null}
                 {deployment.deploy_url ? (
-                  <a
-                    className="wide-btn"
-                    href={deployment.deploy_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
+                  <a className="wide-btn" href={deployment.deploy_url} target="_blank" rel="noreferrer">
                     <ExternalLink size={16} />
                     Open deployment
                   </a>
