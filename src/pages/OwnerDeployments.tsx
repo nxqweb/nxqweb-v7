@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -375,7 +375,7 @@ export function OwnerDeployments() {
               <option value="">Pick a project</option>
               {projects.map((project) => (
                 <option key={project.id} value={project.id}>
-                  {clientNameById.get(project.client_id) || "Unknown client"} Â·{" "}
+                  {clientNameById.get(project.client_id) || "Unknown client"} ·{" "}
                   {formatStatus(project.website_status)}
                 </option>
               ))}
@@ -506,7 +506,7 @@ export function OwnerDeployments() {
                   <strong>{clientNameById.get(deployment.client_id) || "Unknown client"}</strong>
                   <span>{formatDateTime(deployment.created_at)}</span>
                 </div>
-                <p>{formatStatus(deployment.deploy_kind)} Â· {formatStatus(deployment.status)}</p>
+                <p>{formatStatus(deployment.deploy_kind)} · {formatStatus(deployment.status)}</p>
                 <small>Branch: {deployment.branch}</small>
                 <small>Commit: {shortCommit(deployment.git_commit_sha)}</small>
                 <small>Triggered by: {formatStatus(deployment.trigger_source)}</small>
@@ -525,4 +525,3 @@ export function OwnerDeployments() {
     </main>
   );
 }
-
