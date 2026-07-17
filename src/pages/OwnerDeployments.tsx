@@ -36,6 +36,9 @@ type DeploymentConfigRow = {
   auto_publish_locked: boolean;
   last_deployed_commit: string | null;
   last_deployment_status: string;
+  last_verified_at: string | null;
+  last_verification_status: "not_checked" | "passed" | "needs_attention";
+  last_verification_details: Record<string, unknown> | null;
   updated_at: string;
 };
 
@@ -86,6 +89,9 @@ function shortCommit(value: string | null) {
   return value ? value.slice(0, 8) : "None yet";
 }
 
+const deploymentConfigSelect =
+  "id, project_id, client_id, github_owner, github_repo, production_branch, netlify_site_id, production_url, auto_publish_locked, last_deployed_commit, last_deployment_status, last_verified_at, last_verification_status, last_verification_details, updated_at";
+
 export function OwnerDeployments() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -123,9 +129,7 @@ export function OwnerDeployments() {
       supabase.from("projects").select("id, client_id, website_status"),
       supabase
         .from("project_deployment_configs")
-        .select(
-          "id, project_id, client_id, github_owner, github_repo, production_branch, netlify_site_id, production_url, auto_publish_locked, last_deployed_commit, last_deployment_status, updated_at"
-        )
+        .select(deploymentConfigSelect)
         .order("updated_at", { ascending: false }),
       supabase
         .from("project_deployments")
@@ -257,9 +261,7 @@ export function OwnerDeployments() {
         },
         { onConflict: "project_id" }
       )
-      .select(
-        "id, project_id, client_id, github_owner, github_repo, production_branch, netlify_site_id, production_url, auto_publish_locked, last_deployed_commit, last_deployment_status, updated_at"
-      )
+      .select(deploymentConfigSelect)
       .single();
 
     setIsSaving(false);
@@ -310,6 +312,18 @@ export function OwnerDeployments() {
       ...current,
       [config.id]: verification,
     }));
+    setConfigs((current) =>
+      current.map((item) =>
+        item.id === config.id
+          ? {
+              ...item,
+              last_verified_at: verification.checked_at,
+              last_verification_status: verification.verified ? "passed" : "needs_attention",
+              last_verification_details: verification as unknown as Record<string, unknown>,
+            }
+          : item
+      )
+    );
     setActionMessage(
       verification.verified
         ? `${clientNameById.get(config.client_id) || "Project"} connection passed every check.`
@@ -431,6 +445,17 @@ export function OwnerDeployments() {
                   <small>Status: {formatStatus(config.last_deployment_status)}</small>
                   <small>Last commit: {shortCommit(config.last_deployed_commit)}</small>
                   <small><LockKeyhole size={14} /> Auto publish: {config.auto_publish_locked ? "Locked" : "Unlocked"}</small>
+
+                  {config.last_verified_at ? (
+                    <div className={config.last_verification_status === "passed" ? "auth-success" : "auth-error"}>
+                      <strong>
+                        Last saved verification: {config.last_verification_status === "passed" ? "All checks passed" : "Needs attention"}
+                      </strong>
+                      <small>Checked {formatDateTime(config.last_verified_at)}</small>
+                    </div>
+                  ) : (
+                    <small>Last saved verification: Not checked yet</small>
+                  )}
 
                   <button className="wide-btn" type="button" onClick={() => void verifyConnection(config)} disabled={verifyingConfigId === config.id}>
                     <SearchCheck size={16} />
