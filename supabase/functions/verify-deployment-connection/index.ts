@@ -213,6 +213,12 @@ Deno.serve(async (request) => {
             status: "fail",
             message: `Branch check failed with HTTP ${branchResponse.status}.`,
           };
+    } else if (!repositoryResponse.ok && config.production_branch) {
+      githubBranch = {
+        ok: false,
+        status: "fail",
+        message: `Branch ${config.production_branch} was not checked because the repository could not be accessed.`,
+      };
     }
   }
 
@@ -269,17 +275,39 @@ Deno.serve(async (request) => {
     } satisfies CheckResult,
   };
 
-  const allConfiguredChecksPassed = Object.values(checks).every(
-    (check) => check.status === "pass"
-  );
+  const verified = Object.values(checks).every((check) => check.status === "pass");
+  const checkedAt = new Date().toISOString();
+  const verificationStatus = verified ? "passed" : "needs_attention";
+
+  const persistenceResult = await supabase
+    .from("project_deployment_configs")
+    .update({
+      last_verified_at: checkedAt,
+      last_verification_status: verificationStatus,
+      last_verification_details: checks,
+    })
+    .eq("id", config.id);
+
+  if (persistenceResult.error) {
+    return jsonResponse(
+      {
+        error: `Verification completed but could not be saved: ${persistenceResult.error.message}`,
+        verified,
+        checked_at: checkedAt,
+        checks,
+      },
+      500
+    );
+  }
 
   return jsonResponse({
     ok: true,
     config_id: config.id,
     project_id: config.project_id,
     client_id: config.client_id,
-    verified: allConfiguredChecksPassed,
-    checked_at: new Date().toISOString(),
+    verified,
+    checked_at: checkedAt,
+    verification_status: verificationStatus,
     checks,
     note: "Verification is read-only. No repository, branch, Netlify site, or deployment was changed.",
   });
