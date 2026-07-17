@@ -6,6 +6,7 @@ import {
   GitBranch,
   RefreshCcw,
   Rocket,
+  SearchCheck,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -26,6 +27,24 @@ type DeploymentConfigRow = {
   auto_publish_locked: boolean;
 };
 
+type SafetyCheck = {
+  ok: boolean;
+  status: "pass" | "fail" | "not_configured";
+  message: string;
+};
+
+type SafetyResult = {
+  ok: boolean;
+  request_id: string;
+  project_id: string;
+  client_id: string;
+  passed: boolean;
+  checked_at: string;
+  safety_status: "passed" | "needs_attention";
+  checks: Record<string, SafetyCheck>;
+  note: string;
+};
+
 type PreviewRequestRow = {
   id: string;
   deployment_config_id: string;
@@ -39,6 +58,9 @@ type PreviewRequestRow = {
   preview_deploy_id: string | null;
   preview_url: string | null;
   error_message: string | null;
+  safety_checked_at: string | null;
+  safety_status: "not_checked" | "passed" | "needs_attention";
+  safety_details: Record<string, SafetyCheck> | null;
   created_at: string;
   updated_at: string;
 };
@@ -58,6 +80,9 @@ function shortCommit(value: string | null) {
   return value ? value.slice(0, 8) : "Not pinned";
 }
 
+const previewRequestSelect =
+  "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, safety_checked_at, safety_status, safety_details, created_at, updated_at";
+
 export function OwnerPreviewRequests() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [configs, setConfigs] = useState<DeploymentConfigRow[]>([]);
@@ -70,6 +95,8 @@ export function OwnerPreviewRequests() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [decidingRequestId, setDecidingRequestId] = useState("");
+  const [checkingRequestId, setCheckingRequestId] = useState("");
+  const [safetyByRequestId, setSafetyByRequestId] = useState<Record<string, SafetyResult>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -93,9 +120,7 @@ export function OwnerPreviewRequests() {
         .order("updated_at", { ascending: false }),
       supabase
         .from("preview_deployment_requests")
-        .select(
-          "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, created_at, updated_at"
-        )
+        .select(previewRequestSelect)
         .order("created_at", { ascending: false }),
     ]);
 
@@ -178,9 +203,7 @@ export function OwnerPreviewRequests() {
         owner_decision_note: cleanNote || null,
         status: "pending_owner_approval",
       })
-      .select(
-        "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, created_at, updated_at"
-      )
+      .select(previewRequestSelect)
       .single();
 
     setIsCreating(false);
@@ -241,9 +264,7 @@ export function OwnerPreviewRequests() {
       })
       .eq("id", request.id)
       .eq("status", "pending_owner_approval")
-      .select(
-        "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, created_at, updated_at"
-      )
+      .select(previewRequestSelect)
       .single();
 
     setDecidingRequestId("");
@@ -259,6 +280,48 @@ export function OwnerPreviewRequests() {
       decision === "approved_for_preview"
         ? "Preview request approved for a future preview-only deploy. Nothing was deployed."
         : "Preview request rejected. Nothing was deployed."
+    );
+  }
+
+  async function runSafetyCheck(request: PreviewRequestRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    setCheckingRequestId(request.id);
+    setActionMessage("");
+    setErrorMessage("");
+
+    const result = await supabase.functions.invoke("check-preview-deployment-safety", {
+      body: { request_id: request.id },
+    });
+
+    setCheckingRequestId("");
+
+    if (result.error) {
+      setErrorMessage(`Preview safety check failed: ${result.error.message}`);
+      return;
+    }
+
+    const safety = result.data as SafetyResult;
+    setSafetyByRequestId((current) => ({ ...current, [request.id]: safety }));
+    setRequests((current) =>
+      current.map((item) =>
+        item.id === request.id
+          ? {
+              ...item,
+              safety_checked_at: safety.checked_at,
+              safety_status: safety.safety_status,
+              safety_details: safety.checks,
+            }
+          : item
+      )
+    );
+    setActionMessage(
+      safety.passed
+        ? "Preview safety check passed. Nothing was deployed."
+        : "Preview safety check found items needing attention. Nothing was deployed."
     );
   }
 
@@ -395,55 +458,95 @@ export function OwnerPreviewRequests() {
           ) : null}
 
           <div className="owner-message-list">
-            {visibleRequests.map((request) => (
-              <article className="owner-message-card" key={request.id}>
-                <div className="owner-message-top">
-                  <strong>{clientNameById.get(request.client_id) || "Unknown client"}</strong>
-                  <span>{formatDateTime(request.created_at)}</span>
-                </div>
+            {visibleRequests.map((request) => {
+              const liveSafety = safetyByRequestId[request.id];
+              const savedChecks = request.safety_details || null;
+              const checks = liveSafety?.checks || savedChecks;
 
-                <p>{formatStatus(request.status)}</p>
-                <small><GitBranch size={14} /> Source branch: {request.source_branch}</small>
-                <small>Requested commit: {shortCommit(request.requested_commit_sha)}</small>
-                {request.owner_decision_at ? (
-                  <small>Decision recorded: {formatDateTime(request.owner_decision_at)}</small>
-                ) : null}
-                {request.owner_decision_note ? <small>Note: {request.owner_decision_note}</small> : null}
-                {request.error_message ? <div className="auth-error">{request.error_message}</div> : null}
+              return (
+                <article className="owner-message-card" key={request.id}>
+                  <div className="owner-message-top">
+                    <strong>{clientNameById.get(request.client_id) || "Unknown client"}</strong>
+                    <span>{formatDateTime(request.created_at)}</span>
+                  </div>
 
-                {request.status === "pending_owner_approval" ? (
-                  <div className="client-control-row">
+                  <p>{formatStatus(request.status)}</p>
+                  <small><GitBranch size={14} /> Source branch: {request.source_branch}</small>
+                  <small>Requested commit: {shortCommit(request.requested_commit_sha)}</small>
+                  {request.owner_decision_at ? (
+                    <small>Decision recorded: {formatDateTime(request.owner_decision_at)}</small>
+                  ) : null}
+                  {request.owner_decision_note ? <small>Note: {request.owner_decision_note}</small> : null}
+                  {request.error_message ? <div className="auth-error">{request.error_message}</div> : null}
+
+                  {request.status === "pending_owner_approval" ? (
+                    <div className="client-control-row">
+                      <button
+                        className="wide-btn"
+                        type="button"
+                        disabled={decidingRequestId === request.id}
+                        onClick={() => void decidePreviewRequest(request, "approved_for_preview")}
+                      >
+                        <CheckCircle2 size={16} />
+                        Approve preview request
+                      </button>
+                      <button
+                        className="wide-btn danger"
+                        type="button"
+                        disabled={decidingRequestId === request.id}
+                        onClick={() => void decidePreviewRequest(request, "rejected")}
+                      >
+                        <XCircle size={16} />
+                        Reject request
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {request.status === "approved_for_preview" ? (
                     <button
                       className="wide-btn"
                       type="button"
-                      disabled={decidingRequestId === request.id}
-                      onClick={() => void decidePreviewRequest(request, "approved_for_preview")}
+                      disabled={checkingRequestId === request.id}
+                      onClick={() => void runSafetyCheck(request)}
                     >
-                      <CheckCircle2 size={16} />
-                      Approve preview request
+                      <SearchCheck size={16} />
+                      {checkingRequestId === request.id ? "Running safety check..." : "Run preview safety check"}
                     </button>
-                    <button
-                      className="wide-btn danger"
-                      type="button"
-                      disabled={decidingRequestId === request.id}
-                      onClick={() => void decidePreviewRequest(request, "rejected")}
-                    >
-                      <XCircle size={16} />
-                      Reject request
-                    </button>
-                  </div>
-                ) : null}
+                  ) : null}
 
-                {request.preview_url ? (
-                  <a className="wide-btn" href={request.preview_url} target="_blank" rel="noreferrer">
-                    <ExternalLink size={16} />
-                    Open preview
-                  </a>
-                ) : null}
+                  {request.safety_checked_at ? (
+                    <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>
+                      <strong>
+                        Saved safety result: {request.safety_status === "passed" ? "All checks passed" : "Needs attention"}
+                      </strong>
+                      <small>Checked {formatDateTime(request.safety_checked_at)}</small>
+                    </div>
+                  ) : (
+                    <small>Preview safety check: Not run yet</small>
+                  )}
 
-                <small>No deployment action is available on this page.</small>
-              </article>
-            ))}
+                  {checks ? (
+                    <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>
+                      {Object.entries(checks).map(([name, check]) => (
+                        <div key={name}>
+                          {check.status === "pass" ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {formatStatus(name)}: {check.message}
+                        </div>
+                      ))}
+                      <small>This safety check is read-only. No deployment was triggered.</small>
+                    </div>
+                  ) : null}
+
+                  {request.preview_url ? (
+                    <a className="wide-btn" href={request.preview_url} target="_blank" rel="noreferrer">
+                      <ExternalLink size={16} />
+                      Open preview
+                    </a>
+                  ) : null}
+
+                  <small>No deployment action is available on this page.</small>
+                </article>
+              );
+            })}
           </div>
         </section>
       </section>
