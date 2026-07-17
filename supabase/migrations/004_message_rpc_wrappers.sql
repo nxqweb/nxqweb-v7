@@ -1,4 +1,4 @@
-﻿create or replace function public.send_owner_portal_reply(
+create or replace function public.send_owner_portal_reply(
   target_client_id uuid,
   reply_message text
 )

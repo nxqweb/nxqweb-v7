@@ -1,4 +1,4 @@
-﻿alter table public.client_messages
+alter table public.client_messages
 add column if not exists owner_seen_at timestamptz;
 
 update public.client_messages

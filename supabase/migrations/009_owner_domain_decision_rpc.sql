@@ -1,4 +1,4 @@
-﻿create or replace function public.resolve_domain_connection_review(
+create or replace function public.resolve_domain_connection_review(
   target_approval_id uuid,
   decision_status text,
   owner_response_text text

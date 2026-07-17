@@ -1,4 +1,4 @@
-﻿create or replace function public.reset_client_workspace(
+create or replace function public.reset_client_workspace(
   target_client_id uuid
 )
 returns jsonb

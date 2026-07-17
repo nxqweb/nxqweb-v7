@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, FileText, RefreshCcw } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, RefreshCcw, Rocket } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -85,7 +85,6 @@ export function OwnerFiles() {
     [clients]
   );
 
-
   const visibleFiles = files.filter(
     (file) => file.status !== "deleted" && (!selectedClientId || file.client_id === selectedClientId)
   );
@@ -111,7 +110,6 @@ export function OwnerFiles() {
     window.open(signedUrlResult.data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
-
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -128,6 +126,10 @@ export function OwnerFiles() {
             <a className="icon-btn" href="/owner">
               <ArrowLeft size={16} />
               Owner portal
+            </a>
+            <a className="icon-btn" href="/owner/deployments">
+              <Rocket size={16} />
+              Deployments
             </a>
             <button className="icon-btn" onClick={loadFiles} type="button">
               <RefreshCcw size={16} />
@@ -157,7 +159,6 @@ export function OwnerFiles() {
                 </option>
               ))}
             </select>
-
           </div>
 
           {isLoading ? <div className="empty-state">Loading client files...</div> : null}

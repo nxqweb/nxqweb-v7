@@ -1,4 +1,4 @@
-﻿create or replace function public.submit_domain_connection_request(
+create or replace function public.submit_domain_connection_request(
   requested_domain_name text,
   requested_registrar_name text default null,
   requested_dns_provider text default null,
