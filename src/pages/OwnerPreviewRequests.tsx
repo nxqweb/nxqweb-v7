@@ -12,10 +12,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
-type ClientRow = {
-  id: string;
-  business_name: string;
-};
+type ClientRow = { id: string; business_name: string };
 
 type DeploymentConfigRow = {
   id: string;
@@ -73,6 +70,8 @@ type PreviewRequestRow = {
   execution_prepared_at: string | null;
   execution_deployment_id: string | null;
   execution_error: string | null;
+  execution_started_at: string | null;
+  netlify_build_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -92,23 +91,38 @@ type PreparedExecutionResult = {
   note: string;
 };
 
+type NetlifyExecutionResult = {
+  ok: boolean;
+  request_id: string;
+  branch: string;
+  production_branch: string;
+  production: false;
+  execution_status: "executing";
+  netlify_build_id: string;
+  netlify_deploy_id: string | null;
+  note: string;
+};
+
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
 }
 
 function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 }
 
 function shortCommit(value: string | null) {
   return value ? value.slice(0, 8) : "Not pinned";
 }
 
+function isFreshSafetyCheck(value: string | null) {
+  if (!value) return false;
+  const checkedAt = new Date(value).getTime();
+  return Number.isFinite(checkedAt) && Date.now() - checkedAt <= 15 * 60 * 1000;
+}
+
 const previewRequestSelect =
-  "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, safety_checked_at, safety_status, safety_details, execution_status, execution_prepared_at, execution_deployment_id, execution_error, created_at, updated_at";
+  "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, safety_checked_at, safety_status, safety_details, execution_status, execution_prepared_at, execution_deployment_id, execution_error, execution_started_at, netlify_build_id, created_at, updated_at";
 
 export function OwnerPreviewRequests() {
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -124,6 +138,7 @@ export function OwnerPreviewRequests() {
   const [decidingRequestId, setDecidingRequestId] = useState("");
   const [checkingRequestId, setCheckingRequestId] = useState("");
   const [preparingRequestId, setPreparingRequestId] = useState("");
+  const [executingRequestId, setExecutingRequestId] = useState("");
   const [safetyByRequestId, setSafetyByRequestId] = useState<Record<string, SafetyResult>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -142,9 +157,7 @@ export function OwnerPreviewRequests() {
       supabase.from("clients").select("id, business_name").order("business_name"),
       supabase
         .from("project_deployment_configs")
-        .select(
-          "id, project_id, client_id, github_owner, github_repo, production_branch, auto_publish_locked"
-        )
+        .select("id, project_id, client_id, github_owner, github_repo, production_branch, auto_publish_locked")
         .order("updated_at", { ascending: false }),
       supabase
         .from("preview_deployment_requests")
@@ -153,7 +166,6 @@ export function OwnerPreviewRequests() {
     ]);
 
     const firstError = clientResult.error || configResult.error || requestResult.error;
-
     if (firstError) {
       setErrorMessage(firstError.message || "Unable to load preview requests.");
       setIsLoading(false);
@@ -176,18 +188,12 @@ export function OwnerPreviewRequests() {
   );
 
   const selectedConfig = configs.find((config) => config.id === selectedConfigId) || null;
-
   const visibleRequests = requests.filter(
     (request) => !selectedClientId || request.client_id === selectedClientId
   );
 
   async function createPreviewRequest() {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    if (!selectedConfig) {
+    if (!supabase || !selectedConfig) {
       setErrorMessage("Pick a connected project first.");
       return;
     }
@@ -196,25 +202,10 @@ export function OwnerPreviewRequests() {
     const cleanCommit = requestedCommitSha.trim();
     const cleanNote = requestNote.trim();
 
-    if (!cleanBranch) {
-      setErrorMessage("Enter the non-production branch that should be reviewed.");
-      return;
-    }
-
-    if (cleanBranch.toLowerCase() === "main") {
-      setErrorMessage("The main branch cannot be used for a preview request.");
-      return;
-    }
-
-    if (cleanBranch === selectedConfig.production_branch) {
-      setErrorMessage("The production branch cannot be used for a preview request.");
-      return;
-    }
-
-    if (!selectedConfig.auto_publish_locked) {
-      setErrorMessage("Auto publishing must be recorded as locked before creating a preview request.");
-      return;
-    }
+    if (!cleanBranch) return setErrorMessage("Enter the non-production branch that should be reviewed.");
+    if (cleanBranch.toLowerCase() === "main") return setErrorMessage("The main branch cannot be used for a preview request.");
+    if (cleanBranch === selectedConfig.production_branch) return setErrorMessage("The production branch cannot be used for a preview request.");
+    if (!selectedConfig.auto_publish_locked) return setErrorMessage("Auto publishing must be recorded as locked before creating a preview request.");
 
     setIsCreating(true);
     setActionMessage("");
@@ -235,57 +226,37 @@ export function OwnerPreviewRequests() {
       .single();
 
     setIsCreating(false);
-
-    if (result.error) {
-      setErrorMessage(`Preview request creation failed: ${result.error.message}`);
-      return;
-    }
+    if (result.error) return setErrorMessage(`Preview request creation failed: ${result.error.message}`);
 
     const created = result.data as PreviewRequestRow;
     setRequests((current) => [created, ...current]);
     setSourceBranch("");
     setRequestedCommitSha("");
     setRequestNote("");
-    setActionMessage(
-      `${clientNameById.get(created.client_id) || "Project"} preview request created. No deployment was triggered.`
-    );
+    setActionMessage(`${clientNameById.get(created.client_id) || "Project"} preview request created. No deployment was triggered.`);
   }
 
-  async function decidePreviewRequest(
-    request: PreviewRequestRow,
-    decision: "approved_for_preview" | "rejected"
-  ) {
+  async function decidePreviewRequest(request: PreviewRequestRow, decision: "approved_for_preview" | "rejected") {
     if (!supabase) return;
-
-    const notePrompt =
-      decision === "approved_for_preview" ? "Optional approval note" : "Reason for rejection";
-    const note = window.prompt(notePrompt, request.owner_decision_note || "");
-
+    const note = window.prompt(decision === "approved_for_preview" ? "Optional approval note" : "Reason for rejection", request.owner_decision_note || "");
     if (note === null) return;
-    if (decision === "rejected" && !note.trim()) {
-      setErrorMessage("A rejection reason is required.");
-      return;
-    }
+    if (decision === "rejected" && !note.trim()) return setErrorMessage("A rejection reason is required.");
 
     setDecidingRequestId(request.id);
     setActionMessage("");
     setErrorMessage("");
-
     const userResult = await supabase.auth.getUser();
-
     if (userResult.error || !userResult.data.user) {
       setDecidingRequestId("");
-      setErrorMessage(userResult.error?.message || "Unable to confirm the owner account.");
-      return;
+      return setErrorMessage(userResult.error?.message || "Unable to confirm the owner account.");
     }
 
-    const decisionAt = new Date().toISOString();
     const result = await supabase
       .from("preview_deployment_requests")
       .update({
         status: decision,
         owner_decision_by: userResult.data.user.id,
-        owner_decision_at: decisionAt,
+        owner_decision_at: new Date().toISOString(),
         owner_decision_note: note.trim() || null,
       })
       .eq("id", request.id)
@@ -294,107 +265,83 @@ export function OwnerPreviewRequests() {
       .single();
 
     setDecidingRequestId("");
-
-    if (result.error) {
-      setErrorMessage(`Preview decision failed: ${result.error.message}`);
-      return;
-    }
+    if (result.error) return setErrorMessage(`Preview decision failed: ${result.error.message}`);
 
     const updated = result.data as PreviewRequestRow;
     setRequests((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-    setActionMessage(
-      decision === "approved_for_preview"
-        ? "Preview request approved for a future preview-only deploy. Nothing was deployed."
-        : "Preview request rejected. Nothing was deployed."
-    );
+    setActionMessage(decision === "approved_for_preview" ? "Preview request approved. Nothing was deployed." : "Preview request rejected. Nothing was deployed.");
   }
 
   async function runSafetyCheck(request: PreviewRequestRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
+    if (!supabase) return;
     setCheckingRequestId(request.id);
     setActionMessage("");
     setErrorMessage("");
 
-    const result = await supabase.functions.invoke("check-preview-deployment-safety", {
-      body: { request_id: request.id },
-    });
-
+    const result = await supabase.functions.invoke("check-preview-deployment-safety", { body: { request_id: request.id } });
     setCheckingRequestId("");
-
-    if (result.error) {
-      setErrorMessage(`Preview safety check failed: ${result.error.message}`);
-      return;
-    }
+    if (result.error) return setErrorMessage(`Preview safety check failed: ${result.error.message}`);
 
     const safety = result.data as SafetyResult;
     setSafetyByRequestId((current) => ({ ...current, [request.id]: safety }));
-    setRequests((current) =>
-      current.map((item) =>
-        item.id === request.id
-          ? {
-              ...item,
-              safety_checked_at: safety.checked_at,
-              safety_status: safety.safety_status,
-              safety_details: safety.checks,
-            }
-          : item
-      )
-    );
-    setActionMessage(
-      safety.passed
-        ? "Preview safety check passed. Nothing was deployed."
-        : "Preview safety check found items needing attention. Nothing was deployed."
-    );
+    setRequests((current) => current.map((item) => item.id === request.id ? { ...item, safety_checked_at: safety.checked_at, safety_status: safety.safety_status, safety_details: safety.checks } : item));
+    setActionMessage(safety.passed ? "Preview safety check passed. Nothing was deployed." : "Preview safety check found items needing attention. Nothing was deployed.");
   }
 
   async function preparePreviewExecution(request: PreviewRequestRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Prepare one internal queued preview execution record? This will not call Netlify or deploy anything."
-    );
-
-    if (!confirmed) return;
+    if (!supabase) return;
+    if (!window.confirm("Prepare one internal queued preview execution record? This will not call Netlify or deploy anything.")) return;
 
     setPreparingRequestId(request.id);
     setActionMessage("");
     setErrorMessage("");
-
-    const result = await supabase.functions.invoke("prepare-preview-deployment-execution", {
-      body: { request_id: request.id },
-    });
-
+    const result = await supabase.functions.invoke("prepare-preview-deployment-execution", { body: { request_id: request.id } });
     setPreparingRequestId("");
+    if (result.error) return setErrorMessage(`Preview execution preparation failed: ${result.error.message}`);
 
-    if (result.error) {
-      setErrorMessage(`Preview execution preparation failed: ${result.error.message}`);
+    const prepared = result.data as PreparedExecutionResult;
+    setRequests((current) => current.map((item) => item.id === request.id ? {
+      ...item,
+      execution_status: prepared.execution_status,
+      execution_prepared_at: prepared.execution_prepared_at,
+      execution_deployment_id: prepared.deployment_record.id,
+      execution_error: null,
+    } : item));
+    setActionMessage("Preview execution prepared as an internal queued record. Nothing was deployed.");
+  }
+
+  async function startNetlifyPreviewBuild(request: PreviewRequestRow) {
+    if (!supabase) return;
+    if (!isFreshSafetyCheck(request.safety_checked_at)) {
+      setErrorMessage("The safety check is older than 15 minutes. Run it again before starting the Netlify preview build.");
       return;
     }
 
-    const prepared = result.data as PreparedExecutionResult;
-    setRequests((current) =>
-      current.map((item) =>
-        item.id === request.id
-          ? {
-              ...item,
-              execution_status: prepared.execution_status,
-              execution_prepared_at: prepared.execution_prepared_at,
-              execution_deployment_id: prepared.deployment_record.id,
-              execution_error: null,
-            }
-          : item
-      )
+    const confirmed = window.confirm(
+      `Start one real Netlify branch build for ${request.source_branch}? This can use Netlify build credits, but production is blocked.`
     );
-    setActionMessage(
-      "Preview execution prepared as an internal queued record. Nothing was deployed."
-    );
+    if (!confirmed) return;
+
+    setExecutingRequestId(request.id);
+    setActionMessage("");
+    setErrorMessage("");
+    const result = await supabase.functions.invoke("execute-preview-netlify-build", { body: { request_id: request.id } });
+    setExecutingRequestId("");
+    if (result.error) {
+      await loadPreviewData();
+      return setErrorMessage(`Netlify preview build failed to start: ${result.error.message}`);
+    }
+
+    const execution = result.data as NetlifyExecutionResult;
+    setRequests((current) => current.map((item) => item.id === request.id ? {
+      ...item,
+      execution_status: execution.execution_status,
+      execution_started_at: new Date().toISOString(),
+      netlify_build_id: execution.netlify_build_id,
+      preview_deploy_id: execution.netlify_deploy_id,
+      execution_error: null,
+    } : item));
+    setActionMessage(`Netlify preview branch build started for ${execution.branch}. Production: ${execution.production ? "yes" : "no"}.`);
   }
 
   return (
@@ -405,25 +352,13 @@ export function OwnerPreviewRequests() {
             <ShieldCheck size={22} />
             <div>
               <h1>Preview requests</h1>
-              <p className="subtle">
-                Owner approval, safety verification, and internal preparation only. This page cannot publish a website.
-              </p>
+              <p className="subtle">Owner approval, safety verification, internal preparation, and guarded preview branch builds.</p>
             </div>
           </div>
-
           <div className="client-control-row">
-            <a className="icon-btn" href="/owner/deployments">
-              <ArrowLeft size={16} />
-              Deployments
-            </a>
-            <a className="icon-btn" href="/owner">
-              <Rocket size={16} />
-              Owner portal
-            </a>
-            <button className="icon-btn" onClick={() => void loadPreviewData()} type="button">
-              <RefreshCcw size={16} />
-              Refresh
-            </button>
+            <a className="icon-btn" href="/owner/deployments"><ArrowLeft size={16} />Deployments</a>
+            <a className="icon-btn" href="/owner"><Rocket size={16} />Owner portal</a>
+            <button className="icon-btn" onClick={() => void loadPreviewData()} type="button"><RefreshCcw size={16} />Refresh</button>
           </div>
         </div>
 
@@ -431,226 +366,84 @@ export function OwnerPreviewRequests() {
         {actionMessage ? <div className="auth-success">{actionMessage}</div> : null}
 
         <section className="panel">
-          <div className="panel-title">
-            <GitBranch size={20} />
-            <h2>Create preview request</h2>
-          </div>
-
+          <div className="panel-title"><GitBranch size={20} /><h2>Create preview request</h2></div>
           <div className="owner-reply-box">
             <label htmlFor="preview-project">Connected project</label>
-            <select
-              id="preview-project"
-              className="message-filter-select"
-              value={selectedConfigId}
-              onChange={(event) => {
-                setSelectedConfigId(event.target.value);
-                setErrorMessage("");
-                setActionMessage("");
-              }}
-            >
+            <select id="preview-project" className="message-filter-select" value={selectedConfigId} onChange={(event) => setSelectedConfigId(event.target.value)}>
               <option value="">Pick a connected project</option>
-              {configs.map((config) => (
-                <option key={config.id} value={config.id}>
-                  {clientNameById.get(config.client_id) || "Unknown client"} · {config.github_owner || "No GitHub"}/{config.github_repo || "repo"}
-                </option>
-              ))}
+              {configs.map((config) => <option key={config.id} value={config.id}>{clientNameById.get(config.client_id) || "Unknown client"} · {config.github_owner || "No GitHub"}/{config.github_repo || "repo"}</option>)}
             </select>
-
             <label htmlFor="preview-source-branch">Preview source branch</label>
-            <input
-              id="preview-source-branch"
-              value={sourceBranch}
-              onChange={(event) => setSourceBranch(event.target.value)}
-              placeholder="preview/client-redesign"
-              disabled={!selectedConfigId}
-            />
-
+            <input id="preview-source-branch" value={sourceBranch} onChange={(event) => setSourceBranch(event.target.value)} placeholder="preview/client-redesign" disabled={!selectedConfigId} />
             <label htmlFor="preview-commit">Commit SHA (optional)</label>
-            <input
-              id="preview-commit"
-              value={requestedCommitSha}
-              onChange={(event) => setRequestedCommitSha(event.target.value)}
-              placeholder="Pin the preview to a specific commit"
-              disabled={!selectedConfigId}
-            />
-
+            <input id="preview-commit" value={requestedCommitSha} onChange={(event) => setRequestedCommitSha(event.target.value)} placeholder="Pin the preview to a specific commit" disabled={!selectedConfigId} />
             <label htmlFor="preview-note">Request note (optional)</label>
-            <textarea
-              id="preview-note"
-              value={requestNote}
-              onChange={(event) => setRequestNote(event.target.value)}
-              placeholder="What should the owner review in this preview?"
-              disabled={!selectedConfigId}
-            />
-
-            {selectedConfig ? (
-              <small>
-                Production branch: {selectedConfig.production_branch} · Auto publish: {selectedConfig.auto_publish_locked ? "Locked" : "Unlocked"}
-              </small>
-            ) : null}
-
-            <button
-              className="wide-btn"
-              type="button"
-              onClick={() => void createPreviewRequest()}
-              disabled={!selectedConfigId || isCreating}
-            >
-              <ShieldCheck size={16} />
-              {isCreating ? "Creating request..." : "Create approval request"}
-            </button>
-
-            <small>This creates a database record only. No preview or production deploy is triggered.</small>
+            <textarea id="preview-note" value={requestNote} onChange={(event) => setRequestNote(event.target.value)} placeholder="What should the owner review in this preview?" disabled={!selectedConfigId} />
+            {selectedConfig ? <small>Production branch: {selectedConfig.production_branch} · Auto publish: {selectedConfig.auto_publish_locked ? "Locked" : "Unlocked"}</small> : null}
+            <button className="wide-btn" type="button" onClick={() => void createPreviewRequest()} disabled={!selectedConfigId || isCreating}><ShieldCheck size={16} />{isCreating ? "Creating request..." : "Create approval request"}</button>
+            <small>This creates a database record only. No deploy is triggered.</small>
           </div>
         </section>
 
         <section className="panel">
           <div className="panel-title panel-title-row">
-            <div className="panel-title">
-              <ShieldCheck size={20} />
-              <h2>Preview approval queue</h2>
-            </div>
-
-            <select
-              className="message-filter-select"
-              value={selectedClientId}
-              onChange={(event) => setSelectedClientId(event.target.value)}
-            >
+            <div className="panel-title"><ShieldCheck size={20} /><h2>Preview approval queue</h2></div>
+            <select className="message-filter-select" value={selectedClientId} onChange={(event) => setSelectedClientId(event.target.value)}>
               <option value="">All clients</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.business_name}
-                </option>
-              ))}
+              {clients.map((client) => <option key={client.id} value={client.id}>{client.business_name}</option>)}
             </select>
           </div>
 
           {isLoading ? <div className="empty-state">Loading preview requests...</div> : null}
-          {!isLoading && visibleRequests.length === 0 ? (
-            <div className="empty-state">No preview requests yet.</div>
-          ) : null}
+          {!isLoading && visibleRequests.length === 0 ? <div className="empty-state">No preview requests yet.</div> : null}
 
           <div className="owner-message-list">
             {visibleRequests.map((request) => {
-              const liveSafety = safetyByRequestId[request.id];
-              const checks = liveSafety?.checks || request.safety_details || null;
-
+              const checks = safetyByRequestId[request.id]?.checks || request.safety_details || null;
+              const safetyFresh = isFreshSafetyCheck(request.safety_checked_at);
               return (
                 <article className="owner-message-card" key={request.id}>
-                  <div className="owner-message-top">
-                    <strong>{clientNameById.get(request.client_id) || "Unknown client"}</strong>
-                    <span>{formatDateTime(request.created_at)}</span>
-                  </div>
-
+                  <div className="owner-message-top"><strong>{clientNameById.get(request.client_id) || "Unknown client"}</strong><span>{formatDateTime(request.created_at)}</span></div>
                   <p>{formatStatus(request.status)}</p>
                   <small><GitBranch size={14} /> Source branch: {request.source_branch}</small>
                   <small>Requested commit: {shortCommit(request.requested_commit_sha)}</small>
-                  {request.owner_decision_at ? (
-                    <small>Decision recorded: {formatDateTime(request.owner_decision_at)}</small>
-                  ) : null}
+                  {request.owner_decision_at ? <small>Decision recorded: {formatDateTime(request.owner_decision_at)}</small> : null}
                   {request.owner_decision_note ? <small>Note: {request.owner_decision_note}</small> : null}
                   {request.error_message ? <div className="auth-error">{request.error_message}</div> : null}
 
-                  {request.status === "pending_owner_approval" ? (
-                    <div className="client-control-row">
-                      <button
-                        className="wide-btn"
-                        type="button"
-                        disabled={decidingRequestId === request.id}
-                        onClick={() => void decidePreviewRequest(request, "approved_for_preview")}
-                      >
-                        <CheckCircle2 size={16} />
-                        Approve preview request
-                      </button>
-                      <button
-                        className="wide-btn danger"
-                        type="button"
-                        disabled={decidingRequestId === request.id}
-                        onClick={() => void decidePreviewRequest(request, "rejected")}
-                      >
-                        <XCircle size={16} />
-                        Reject request
-                      </button>
-                    </div>
-                  ) : null}
+                  {request.status === "pending_owner_approval" ? <div className="client-control-row">
+                    <button className="wide-btn" type="button" disabled={decidingRequestId === request.id} onClick={() => void decidePreviewRequest(request, "approved_for_preview")}><CheckCircle2 size={16} />Approve preview request</button>
+                    <button className="wide-btn danger" type="button" disabled={decidingRequestId === request.id} onClick={() => void decidePreviewRequest(request, "rejected")}><XCircle size={16} />Reject request</button>
+                  </div> : null}
 
-                  {request.status === "approved_for_preview" ? (
-                    <button
-                      className="wide-btn"
-                      type="button"
-                      disabled={checkingRequestId === request.id}
-                      onClick={() => void runSafetyCheck(request)}
-                    >
-                      <SearchCheck size={16} />
-                      {checkingRequestId === request.id ? "Running safety check..." : "Run preview safety check"}
-                    </button>
-                  ) : null}
+                  {request.status === "approved_for_preview" ? <button className="wide-btn" type="button" disabled={checkingRequestId === request.id} onClick={() => void runSafetyCheck(request)}><SearchCheck size={16} />{checkingRequestId === request.id ? "Running safety check..." : "Run preview safety check"}</button> : null}
 
-                  {request.status === "approved_for_preview" &&
-                  request.safety_status === "passed" &&
-                  request.execution_status === "not_prepared" ? (
-                    <button
-                      className="wide-btn"
-                      type="button"
-                      disabled={preparingRequestId === request.id}
-                      onClick={() => void preparePreviewExecution(request)}
-                    >
-                      <ShieldCheck size={16} />
-                      {preparingRequestId === request.id
-                        ? "Preparing execution..."
-                        : "Prepare preview execution"}
-                    </button>
-                  ) : null}
+                  {request.status === "approved_for_preview" && request.safety_status === "passed" && request.execution_status === "not_prepared" ? <button className="wide-btn" type="button" disabled={preparingRequestId === request.id} onClick={() => void preparePreviewExecution(request)}><ShieldCheck size={16} />{preparingRequestId === request.id ? "Preparing execution..." : "Prepare preview execution"}</button> : null}
 
-                  {request.execution_status === "prepared" ? (
+                  {request.execution_status === "prepared" ? <>
                     <div className="auth-success">
                       <strong>Preview execution prepared</strong>
                       <small>Internal status: prepared · queued record created</small>
-                      {request.execution_prepared_at ? (
-                        <small>Prepared {formatDateTime(request.execution_prepared_at)}</small>
-                      ) : null}
-                      {request.execution_deployment_id ? (
-                        <small>Record: {request.execution_deployment_id.slice(0, 8)}</small>
-                      ) : null}
-                      <small>No GitHub write or Netlify deployment occurred.</small>
+                      {request.execution_prepared_at ? <small>Prepared {formatDateTime(request.execution_prepared_at)}</small> : null}
+                      {request.execution_deployment_id ? <small>Record: {request.execution_deployment_id.slice(0, 8)}</small> : null}
                     </div>
-                  ) : null}
+                    <button className="wide-btn" type="button" disabled={executingRequestId === request.id || !safetyFresh} onClick={() => void startNetlifyPreviewBuild(request)}><Rocket size={16} />{executingRequestId === request.id ? "Starting Netlify preview build..." : safetyFresh ? "Start Netlify preview build" : "Run a fresh safety check first"}</button>
+                    <small>This starts one Netlify build for the approved non-production branch and may use build credits.</small>
+                  </> : null}
 
-                  {request.execution_error ? (
-                    <div className="auth-error">{request.execution_error}</div>
-                  ) : null}
+                  {request.execution_status === "executing" ? <div className="auth-success">
+                    <strong>Netlify preview build started</strong>
+                    <small>Production: No</small>
+                    {request.execution_started_at ? <small>Started {formatDateTime(request.execution_started_at)}</small> : null}
+                    {request.netlify_build_id ? <small>Build: {request.netlify_build_id.slice(0, 8)}</small> : null}
+                    {request.preview_deploy_id ? <small>Deploy: {request.preview_deploy_id.slice(0, 8)}</small> : null}
+                  </div> : null}
 
-                  {request.safety_checked_at ? (
-                    <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>
-                      <strong>
-                        Saved safety result: {request.safety_status === "passed" ? "All checks passed" : "Needs attention"}
-                      </strong>
-                      <small>Checked {formatDateTime(request.safety_checked_at)}</small>
-                    </div>
-                  ) : (
-                    <small>Preview safety check: Not run yet</small>
-                  )}
-
-                  {checks ? (
-                    <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>
-                      {Object.entries(checks).map(([name, check]) => (
-                        <div key={name}>
-                          {check.status === "pass" ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {formatStatus(name)}: {check.message}
-                        </div>
-                      ))}
-                      <small>This safety check is read-only. No deployment was triggered.</small>
-                    </div>
-                  ) : null}
-
-                  {request.preview_url ? (
-                    <a className="wide-btn" href={request.preview_url} target="_blank" rel="noreferrer">
-                      <ExternalLink size={16} />
-                      Open preview
-                    </a>
-                  ) : null}
-
-                  <small>
-                    This page can approve, verify, and prepare an internal queued record only. It cannot publish to Netlify.
-                  </small>
+                  {request.execution_error ? <div className="auth-error">{request.execution_error}</div> : null}
+                  {request.safety_checked_at ? <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}><strong>Saved safety result: {request.safety_status === "passed" ? "All checks passed" : "Needs attention"}</strong><small>Checked {formatDateTime(request.safety_checked_at)} · {safetyFresh ? "Fresh" : "Expired"}</small></div> : <small>Preview safety check: Not run yet</small>}
+                  {checks ? <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>{Object.entries(checks).map(([name, check]) => <div key={name}>{check.status === "pass" ? <CheckCircle2 size={15} /> : <XCircle size={15} />} {formatStatus(name)}: {check.message}</div>)}<small>This safety check is read-only.</small></div> : null}
+                  {request.preview_url ? <a className="wide-btn" href={request.preview_url} target="_blank" rel="noreferrer"><ExternalLink size={16} />Open preview</a> : null}
+                  <small>Production branch, main, and Netlify setting changes are blocked by the server-side execution guard.</small>
                 </article>
               );
             })}
