@@ -45,6 +45,14 @@ type SafetyResult = {
   note: string;
 };
 
+type ExecutionStatus =
+  | "not_prepared"
+  | "prepared"
+  | "executing"
+  | "published"
+  | "failed"
+  | "cancelled";
+
 type PreviewRequestRow = {
   id: string;
   deployment_config_id: string;
@@ -61,8 +69,27 @@ type PreviewRequestRow = {
   safety_checked_at: string | null;
   safety_status: "not_checked" | "passed" | "needs_attention";
   safety_details: Record<string, SafetyCheck> | null;
+  execution_status: ExecutionStatus;
+  execution_prepared_at: string | null;
+  execution_deployment_id: string | null;
+  execution_error: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type PreparedExecutionResult = {
+  ok: boolean;
+  request_id: string;
+  execution_status: "prepared";
+  execution_prepared_at: string;
+  deployment_record: {
+    id: string;
+    status: string;
+    branch: string;
+    git_commit_sha: string | null;
+    created_at: string;
+  };
+  note: string;
 };
 
 function formatStatus(value: string) {
@@ -81,7 +108,7 @@ function shortCommit(value: string | null) {
 }
 
 const previewRequestSelect =
-  "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, safety_checked_at, safety_status, safety_details, created_at, updated_at";
+  "id, deployment_config_id, project_id, client_id, source_branch, requested_commit_sha, status, owner_decision_at, owner_decision_note, preview_deploy_id, preview_url, error_message, safety_checked_at, safety_status, safety_details, execution_status, execution_prepared_at, execution_deployment_id, execution_error, created_at, updated_at";
 
 export function OwnerPreviewRequests() {
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -96,6 +123,7 @@ export function OwnerPreviewRequests() {
   const [isCreating, setIsCreating] = useState(false);
   const [decidingRequestId, setDecidingRequestId] = useState("");
   const [checkingRequestId, setCheckingRequestId] = useState("");
+  const [preparingRequestId, setPreparingRequestId] = useState("");
   const [safetyByRequestId, setSafetyByRequestId] = useState<Record<string, SafetyResult>>({});
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -230,9 +258,7 @@ export function OwnerPreviewRequests() {
     if (!supabase) return;
 
     const notePrompt =
-      decision === "approved_for_preview"
-        ? "Optional approval note"
-        : "Reason for rejection";
+      decision === "approved_for_preview" ? "Optional approval note" : "Reason for rejection";
     const note = window.prompt(notePrompt, request.owner_decision_note || "");
 
     if (note === null) return;
@@ -325,6 +351,52 @@ export function OwnerPreviewRequests() {
     );
   }
 
+  async function preparePreviewExecution(request: PreviewRequestRow) {
+    if (!supabase) {
+      setErrorMessage("Supabase is not configured yet.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Prepare one internal queued preview execution record? This will not call Netlify or deploy anything."
+    );
+
+    if (!confirmed) return;
+
+    setPreparingRequestId(request.id);
+    setActionMessage("");
+    setErrorMessage("");
+
+    const result = await supabase.functions.invoke("prepare-preview-deployment-execution", {
+      body: { request_id: request.id },
+    });
+
+    setPreparingRequestId("");
+
+    if (result.error) {
+      setErrorMessage(`Preview execution preparation failed: ${result.error.message}`);
+      return;
+    }
+
+    const prepared = result.data as PreparedExecutionResult;
+    setRequests((current) =>
+      current.map((item) =>
+        item.id === request.id
+          ? {
+              ...item,
+              execution_status: prepared.execution_status,
+              execution_prepared_at: prepared.execution_prepared_at,
+              execution_deployment_id: prepared.deployment_record.id,
+              execution_error: null,
+            }
+          : item
+      )
+    );
+    setActionMessage(
+      "Preview execution prepared as an internal queued record. Nothing was deployed."
+    );
+  }
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -334,7 +406,7 @@ export function OwnerPreviewRequests() {
             <div>
               <h1>Preview requests</h1>
               <p className="subtle">
-                Owner approval records only. This page cannot call Netlify or publish a website.
+                Owner approval, safety verification, and internal preparation only. This page cannot publish a website.
               </p>
             </div>
           </div>
@@ -348,7 +420,7 @@ export function OwnerPreviewRequests() {
               <Rocket size={16} />
               Owner portal
             </a>
-            <button className="icon-btn" onClick={loadPreviewData} type="button">
+            <button className="icon-btn" onClick={() => void loadPreviewData()} type="button">
               <RefreshCcw size={16} />
               Refresh
             </button>
@@ -460,8 +532,7 @@ export function OwnerPreviewRequests() {
           <div className="owner-message-list">
             {visibleRequests.map((request) => {
               const liveSafety = safetyByRequestId[request.id];
-              const savedChecks = request.safety_details || null;
-              const checks = liveSafety?.checks || savedChecks;
+              const checks = liveSafety?.checks || request.safety_details || null;
 
               return (
                 <article className="owner-message-card" key={request.id}>
@@ -514,6 +585,40 @@ export function OwnerPreviewRequests() {
                     </button>
                   ) : null}
 
+                  {request.status === "approved_for_preview" &&
+                  request.safety_status === "passed" &&
+                  request.execution_status === "not_prepared" ? (
+                    <button
+                      className="wide-btn"
+                      type="button"
+                      disabled={preparingRequestId === request.id}
+                      onClick={() => void preparePreviewExecution(request)}
+                    >
+                      <ShieldCheck size={16} />
+                      {preparingRequestId === request.id
+                        ? "Preparing execution..."
+                        : "Prepare preview execution"}
+                    </button>
+                  ) : null}
+
+                  {request.execution_status === "prepared" ? (
+                    <div className="auth-success">
+                      <strong>Preview execution prepared</strong>
+                      <small>Internal status: prepared · queued record created</small>
+                      {request.execution_prepared_at ? (
+                        <small>Prepared {formatDateTime(request.execution_prepared_at)}</small>
+                      ) : null}
+                      {request.execution_deployment_id ? (
+                        <small>Record: {request.execution_deployment_id.slice(0, 8)}</small>
+                      ) : null}
+                      <small>No GitHub write or Netlify deployment occurred.</small>
+                    </div>
+                  ) : null}
+
+                  {request.execution_error ? (
+                    <div className="auth-error">{request.execution_error}</div>
+                  ) : null}
+
                   {request.safety_checked_at ? (
                     <div className={request.safety_status === "passed" ? "auth-success" : "auth-error"}>
                       <strong>
@@ -543,7 +648,9 @@ export function OwnerPreviewRequests() {
                     </a>
                   ) : null}
 
-                  <small>No deployment action is available on this page.</small>
+                  <small>
+                    This page can approve, verify, and prepare an internal queued record only. It cannot publish to Netlify.
+                  </small>
                 </article>
               );
             })}
