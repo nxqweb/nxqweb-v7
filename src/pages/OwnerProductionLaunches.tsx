@@ -58,12 +58,17 @@ type LaunchRow = {
   owner_decision_note: string | null;
   prepared_at: string | null;
   deployment_record_id: string | null;
+  execution_started_at: string | null;
+  execution_completed_at: string | null;
+  netlify_build_id: string | null;
+  netlify_deploy_id: string | null;
+  error_message: string | null;
   created_at: string;
 };
 
 type AuditResult = {
   passed: boolean;
-  status: "audit_passed" | "audit_blocked" | "approved_for_production";
+  status: "audit_passed" | "audit_blocked" | "approved_for_production" | "prepared";
   audit_status: "passed" | "blocked";
   checked_at: string;
   production: false;
@@ -82,8 +87,18 @@ type PreparationResult = {
   deployment_record: { id: string };
 };
 
+type BuildStartResult = {
+  status: "launching";
+  branch: string;
+  production_commit_sha: string;
+  netlify_build_id: string;
+  netlify_deploy_id: string | null;
+  production_build_started: true;
+  production_published: false;
+};
+
 const launchSelect =
-  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, prepared_at, deployment_record_id, created_at";
+  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, prepared_at, deployment_record_id, execution_started_at, execution_completed_at, netlify_build_id, netlify_deploy_id, error_message, created_at";
 
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
@@ -104,6 +119,7 @@ export function OwnerProductionLaunches() {
   const [auditingId, setAuditingId] = useState("");
   const [decidingId, setDecidingId] = useState("");
   const [preparingId, setPreparingId] = useState("");
+  const [startingId, setStartingId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
@@ -351,6 +367,57 @@ export function OwnerProductionLaunches() {
     setActionMessage("Production execution prepared internally. Nothing was deployed. Production: No.");
   }
 
+  async function startProductionBuild(launch: LaunchRow) {
+    if (!supabase) return;
+
+    const confirmation = window.prompt(
+      `LIVE ACTION: Start one Netlify build from production branch ${launch.production_branch}? This may use build credits. Type START_PRODUCTION_BUILD exactly to continue.`,
+      ""
+    );
+
+    if (confirmation === null) return;
+    if (confirmation.trim() !== "START_PRODUCTION_BUILD") {
+      setErrorMessage("Production build cancelled: the exact confirmation phrase was not entered.");
+      return;
+    }
+
+    setStartingId(launch.id);
+    setErrorMessage("");
+    setActionMessage("");
+
+    const result = await supabase.functions.invoke("execute-production-netlify-build", {
+      body: {
+        launch_request_id: launch.id,
+        confirmation: "START_PRODUCTION_BUILD",
+      },
+    });
+
+    setStartingId("");
+    if (result.error) {
+      setErrorMessage(`Production build start failed: ${result.error.message}. Do not click again until this error is reviewed.`);
+      return;
+    }
+
+    const execution = result.data as BuildStartResult;
+    setLaunches((current) =>
+      current.map((item) =>
+        item.id === launch.id
+          ? {
+              ...item,
+              status: execution.status,
+              execution_started_at: new Date().toISOString(),
+              netlify_build_id: execution.netlify_build_id,
+              netlify_deploy_id: execution.netlify_deploy_id,
+            }
+          : item
+      )
+    );
+
+    setActionMessage(
+      "Production-branch build started. Live publication has NOT been confirmed. Do not start another build."
+    );
+  }
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -359,7 +426,7 @@ export function OwnerProductionLaunches() {
             <Rocket size={22} />
             <div>
               <h1>Production launches</h1>
-              <p className="subtle">Read-only launch audits, explicit owner decisions, and guarded preparation.</p>
+              <p className="subtle">Owner approval, launch audits, guarded preparation, and controlled production builds.</p>
             </div>
           </div>
           <div className="client-control-row">
@@ -481,16 +548,42 @@ export function OwnerProductionLaunches() {
                   ) : null}
 
                   {launch.status === "prepared" ? (
+                    <>
+                      <div className="auth-success">
+                        <strong>Production execution prepared</strong>
+                        <small>Internal status: prepared · queued record created</small>
+                        {launch.prepared_at ? <small>Prepared: {formatDateTime(launch.prepared_at)}</small> : null}
+                        {launch.deployment_record_id ? <small>Record: {launch.deployment_record_id.slice(0, 8)}</small> : null}
+                        <small>No production build has started yet.</small>
+                      </div>
+                      <div className="auth-error">
+                        <strong>Live production action</strong>
+                        <small>This starts one Netlify build from {launch.production_branch} and may use build credits.</small>
+                        <small>Publication will not be marked complete until a separate status check confirms it.</small>
+                      </div>
+                      <button className="wide-btn danger" type="button" disabled={startingId === launch.id} onClick={() => void startProductionBuild(launch)}>
+                        <Rocket size={16} />
+                        {startingId === launch.id ? "Starting production build..." : "Start production build"}
+                      </button>
+                    </>
+                  ) : null}
+
+                  {launch.status === "launching" ? (
                     <div className="auth-success">
-                      <strong>Production execution prepared</strong>
-                      <small>Internal status: prepared · queued record created</small>
-                      {launch.prepared_at ? <small>Prepared: {formatDateTime(launch.prepared_at)}</small> : null}
-                      {launch.deployment_record_id ? <small>Record: {launch.deployment_record_id.slice(0, 8)}</small> : null}
-                      <small>No GitHub write, Netlify build, or production deployment occurred.</small>
+                      <strong>Production-branch build started</strong>
+                      <small>Live publication confirmed: No</small>
+                      {launch.execution_started_at ? <small>Started: {formatDateTime(launch.execution_started_at)}</small> : null}
+                      {launch.netlify_build_id ? <small>Build: {launch.netlify_build_id.slice(0, 8)}</small> : null}
+                      {launch.netlify_deploy_id ? <small>Deploy: {launch.netlify_deploy_id.slice(0, 8)}</small> : null}
+                      <small>Do not start another build. Status must be checked separately.</small>
                     </div>
                   ) : null}
 
-                  <small>Production deployment has not started.</small>
+                  {launch.status === "failed" && launch.error_message ? (
+                    <div className="auth-error">Production execution failed: {launch.error_message}</div>
+                  ) : null}
+
+                  {!['launching', 'published'].includes(launch.status) ? <small>Production publication has not been confirmed.</small> : null}
                 </article>
               );
             })}
