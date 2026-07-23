@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -96,7 +96,7 @@ type BuildStartResult = {
 };
 
 const launchSelect =
-  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, prepared_at, deployment_record_id, execution_started_at, execution_completed_at, netlify_build_id, netlify_deploy_id, error_message, created_at";
+  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, prepared_at, deployment_record_id, execution_started_at, execution_completed_at, netlify_build_id, netlify_deploy_id, published_url, error_message, created_at";
 
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
@@ -468,7 +468,7 @@ export function OwnerProductionLaunches() {
               <option value="">Pick a published preview</option>
               {availablePreviews.map((preview) => (
                 <option key={preview.id} value={preview.id}>
-                  {clientNameById.get(preview.client_id) || "Unknown client"} · {preview.source_branch}
+                  {clientNameById.get(preview.client_id) || "Unknown client"} Â· {preview.source_branch}
                 </option>
               ))}
             </select>
@@ -568,7 +568,7 @@ export function OwnerProductionLaunches() {
                     <>
                       <div className="auth-success">
                         <strong>Production execution prepared</strong>
-                        <small>Internal status: prepared · queued record created</small>
+                        <small>Internal status: prepared Â· queued record created</small>
                         {launch.prepared_at ? <small>Prepared: {formatDateTime(launch.prepared_at)}</small> : null}
                         {launch.deployment_record_id ? <small>Record: {launch.deployment_record_id.slice(0, 8)}</small> : null}
                         <small>No production build has started yet.</small>
@@ -631,3 +631,4 @@ export function OwnerProductionLaunches() {
     </main>
   );
 }
+
