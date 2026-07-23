@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -36,7 +36,7 @@ type ConfigRow = {
 type AuditIssue = { key: string; message: string };
 type AuditCheck = {
   ok: boolean;
-  severity: "critical" | "warning";
+  severity: "critical" | "warning" | "info";
   message: string;
 };
 
@@ -56,6 +56,8 @@ type LaunchRow = {
   warnings: AuditIssue[];
   owner_decision_at: string | null;
   owner_decision_note: string | null;
+  prepared_at: string | null;
+  deployment_record_id: string | null;
   created_at: string;
 };
 
@@ -73,8 +75,15 @@ type AuditResult = {
   warnings: AuditIssue[];
 };
 
+type PreparationResult = {
+  status: "prepared";
+  prepared_at: string;
+  production: false;
+  deployment_record: { id: string };
+};
+
 const launchSelect =
-  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, created_at";
+  "id, deployment_config_id, project_id, client_id, preview_request_id, production_branch, production_url, status, audit_checked_at, audit_status, audit_details, critical_blockers, warnings, owner_decision_at, owner_decision_note, prepared_at, deployment_record_id, created_at";
 
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
@@ -94,6 +103,7 @@ export function OwnerProductionLaunches() {
   const [creating, setCreating] = useState(false);
   const [auditingId, setAuditingId] = useState("");
   const [decidingId, setDecidingId] = useState("");
+  const [preparingId, setPreparingId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
@@ -144,7 +154,12 @@ export function OwnerProductionLaunches() {
   );
 
   const activePreviewIds = useMemo(
-    () => new Set(launches.filter((launch) => !["rejected", "cancelled", "failed"].includes(launch.status)).map((launch) => launch.preview_request_id)),
+    () =>
+      new Set(
+        launches
+          .filter((launch) => !["rejected", "cancelled", "failed"].includes(launch.status))
+          .map((launch) => launch.preview_request_id)
+      ),
     [launches]
   );
 
@@ -273,7 +288,12 @@ export function OwnerProductionLaunches() {
         owner_decision_note: note.trim(),
       })
       .eq("id", launch.id)
-      .in("status", decision === "approved_for_production" ? ["audit_passed", "pending_owner_approval"] : ["audit_passed", "audit_blocked", "pending_owner_approval", "audit_required"])
+      .in(
+        "status",
+        decision === "approved_for_production"
+          ? ["audit_passed", "pending_owner_approval"]
+          : ["audit_passed", "audit_blocked", "pending_owner_approval", "audit_required"]
+      )
       .select(launchSelect)
       .single();
 
@@ -291,6 +311,46 @@ export function OwnerProductionLaunches() {
     );
   }
 
+  async function prepareLaunch(launch: LaunchRow) {
+    if (!supabase) return;
+
+    const confirmed = window.confirm(
+      "Prepare one internal queued production execution record? This will not call GitHub, Netlify, or deploy production."
+    );
+    if (!confirmed) return;
+
+    setPreparingId(launch.id);
+    setErrorMessage("");
+    setActionMessage("");
+
+    const result = await supabase.functions.invoke("prepare-production-deployment-execution", {
+      body: { launch_request_id: launch.id },
+    });
+
+    setPreparingId("");
+    if (result.error) {
+      setErrorMessage(
+        `Production preparation failed: ${result.error.message}. Run a fresh production launch audit and try again.`
+      );
+      return;
+    }
+
+    const preparation = result.data as PreparationResult;
+    setLaunches((current) =>
+      current.map((item) =>
+        item.id === launch.id
+          ? {
+              ...item,
+              status: preparation.status,
+              prepared_at: preparation.prepared_at,
+              deployment_record_id: preparation.deployment_record.id,
+            }
+          : item
+      )
+    );
+    setActionMessage("Production execution prepared internally. Nothing was deployed. Production: No.");
+  }
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -299,7 +359,7 @@ export function OwnerProductionLaunches() {
             <Rocket size={22} />
             <div>
               <h1>Production launches</h1>
-              <p className="subtle">Read-only launch audits and explicit owner decisions. Production execution is not enabled.</p>
+              <p className="subtle">Read-only launch audits, explicit owner decisions, and guarded preparation.</p>
             </div>
           </div>
           <div className="client-control-row">
@@ -325,7 +385,7 @@ export function OwnerProductionLaunches() {
               <option value="">Pick a published preview</option>
               {availablePreviews.map((preview) => (
                 <option key={preview.id} value={preview.id}>
-                  {clientNameById.get(preview.client_id) || "Unknown client"} Â· {preview.source_branch}
+                  {clientNameById.get(preview.client_id) || "Unknown client"} · {preview.source_branch}
                 </option>
               ))}
             </select>
@@ -412,7 +472,25 @@ export function OwnerProductionLaunches() {
 
                   {launch.owner_decision_at ? <small>Decision recorded: {formatDateTime(launch.owner_decision_at)}</small> : null}
                   {launch.owner_decision_note ? <small>Decision note: {launch.owner_decision_note}</small> : null}
-                  <small>Production deployment execution is not enabled on this page.</small>
+
+                  {launch.status === "approved_for_production" ? (
+                    <button className="wide-btn" type="button" disabled={preparingId === launch.id} onClick={() => void prepareLaunch(launch)}>
+                      <ShieldCheck size={16} />
+                      {preparingId === launch.id ? "Preparing production execution..." : "Prepare production execution"}
+                    </button>
+                  ) : null}
+
+                  {launch.status === "prepared" ? (
+                    <div className="auth-success">
+                      <strong>Production execution prepared</strong>
+                      <small>Internal status: prepared · queued record created</small>
+                      {launch.prepared_at ? <small>Prepared: {formatDateTime(launch.prepared_at)}</small> : null}
+                      {launch.deployment_record_id ? <small>Record: {launch.deployment_record_id.slice(0, 8)}</small> : null}
+                      <small>No GitHub write, Netlify build, or production deployment occurred.</small>
+                    </div>
+                  ) : null}
+
+                  <small>Production deployment has not started.</small>
                 </article>
               );
             })}
@@ -422,4 +500,3 @@ export function OwnerProductionLaunches() {
     </main>
   );
 }
-
