@@ -13,7 +13,6 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = { id: string; business_name: string };
-
 type PreviewRow = {
   id: string;
   deployment_config_id: string;
@@ -24,7 +23,6 @@ type PreviewRow = {
   execution_status: string;
   execution_completed_at: string | null;
 };
-
 type ConfigRow = {
   id: string;
   project_id: string;
@@ -32,14 +30,12 @@ type ConfigRow = {
   production_branch: string;
   production_url: string | null;
 };
-
 type AuditIssue = { key: string; message: string };
 type AuditCheck = {
   ok: boolean;
   severity: "critical" | "warning" | "info";
   message: string;
 };
-
 type LaunchRow = {
   id: string;
   deployment_config_id: string;
@@ -65,7 +61,6 @@ type LaunchRow = {
   error_message: string | null;
   created_at: string;
 };
-
 type AuditResult = {
   passed: boolean;
   status: "audit_passed" | "audit_blocked" | "approved_for_production" | "prepared";
@@ -74,19 +69,22 @@ type AuditResult = {
   production: false;
   production_branch: string;
   production_url: string | null;
-  preview_url: string | null;
   checks: Record<string, AuditCheck>;
   critical_blockers: AuditIssue[];
   warnings: AuditIssue[];
 };
-
 type PreparationResult = {
   status: "prepared";
   prepared_at: string;
   production: false;
   deployment_record: { id: string };
 };
-
+type RefreshPreparationResult = {
+  status: "prepared";
+  prepared_at: string;
+  deployment_record_id: string;
+  production: false;
+};
 type BuildStartResult = {
   status: "launching";
   branch: string;
@@ -103,7 +101,6 @@ const launchSelect =
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
 }
-
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 }
@@ -119,20 +116,20 @@ export function OwnerProductionLaunches() {
   const [auditingId, setAuditingId] = useState("");
   const [decidingId, setDecidingId] = useState("");
   const [preparingId, setPreparingId] = useState("");
+  const [refreshingId, setRefreshingId] = useState("");
   const [startingId, setStartingId] = useState("");
+  const [freshPreparationIds, setFreshPreparationIds] = useState<Set<string>>(new Set());
   const [errorMessage, setErrorMessage] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
   async function loadData() {
     setIsLoading(true);
     setErrorMessage("");
-
     if (!isSupabaseConfigured || !supabase) {
       setErrorMessage("Supabase is not configured yet.");
       setIsLoading(false);
       return;
     }
-
     const [clientResult, previewResult, configResult, launchResult] = await Promise.all([
       supabase.from("clients").select("id, business_name").order("business_name"),
       supabase
@@ -145,18 +142,17 @@ export function OwnerProductionLaunches() {
         .select("id, project_id, client_id, production_branch, production_url"),
       supabase.from("production_launch_requests").select(launchSelect).order("created_at", { ascending: false }),
     ]);
-
     const firstError = clientResult.error || previewResult.error || configResult.error || launchResult.error;
     if (firstError) {
       setErrorMessage(firstError.message || "Unable to load production launch requests.");
       setIsLoading(false);
       return;
     }
-
     setClients((clientResult.data || []) as ClientRow[]);
     setPreviews((previewResult.data || []) as PreviewRow[]);
     setConfigs((configResult.data || []) as ConfigRow[]);
     setLaunches((launchResult.data || []) as LaunchRow[]);
+    setFreshPreparationIds(new Set());
     setIsLoading(false);
   }
 
@@ -168,7 +164,6 @@ export function OwnerProductionLaunches() {
     () => new Map(clients.map((client) => [client.id, client.business_name])),
     [clients]
   );
-
   const activePreviewIds = useMemo(
     () =>
       new Set(
@@ -178,7 +173,6 @@ export function OwnerProductionLaunches() {
       ),
     [launches]
   );
-
   const availablePreviews = previews.filter((preview) => !activePreviewIds.has(preview.id));
 
   async function createLaunchRequest() {
@@ -188,17 +182,14 @@ export function OwnerProductionLaunches() {
       setErrorMessage("Only a saved published preview can create a production launch request.");
       return;
     }
-
     const config = configs.find((item) => item.id === preview.deployment_config_id);
     if (!config) {
       setErrorMessage("The deployment configuration for this preview is missing.");
       return;
     }
-
     setCreating(true);
     setErrorMessage("");
     setActionMessage("");
-
     const result = await supabase
       .from("production_launch_requests")
       .insert({
@@ -212,13 +203,11 @@ export function OwnerProductionLaunches() {
       })
       .select(launchSelect)
       .single();
-
     setCreating(false);
     if (result.error) {
       setErrorMessage(`Production launch request creation failed: ${result.error.message}`);
       return;
     }
-
     setLaunches((current) => [result.data as LaunchRow, ...current]);
     setSelectedPreviewId("");
     setActionMessage("Production launch request created. Nothing was deployed.");
@@ -229,17 +218,14 @@ export function OwnerProductionLaunches() {
     setAuditingId(launch.id);
     setErrorMessage("");
     setActionMessage("");
-
     const result = await supabase.functions.invoke("check-production-launch-audit", {
       body: { launch_request_id: launch.id },
     });
-
     setAuditingId("");
     if (result.error) {
       setErrorMessage(`Production launch audit failed: ${result.error.message}`);
       return;
     }
-
     const audit = result.data as AuditResult;
     setLaunches((current) =>
       current.map((item) =>
@@ -258,7 +244,6 @@ export function OwnerProductionLaunches() {
           : item
       )
     );
-
     setActionMessage(
       audit.passed
         ? `Launch audit passed with ${audit.warnings.length} warning(s). Production: No.`
@@ -272,7 +257,6 @@ export function OwnerProductionLaunches() {
       setErrorMessage("A passing launch audit is required before production approval.");
       return;
     }
-
     const note = window.prompt(
       decision === "approved_for_production"
         ? "Production approval note (required)"
@@ -284,17 +268,14 @@ export function OwnerProductionLaunches() {
       setErrorMessage("A decision note is required.");
       return;
     }
-
     const userResult = await supabase.auth.getUser();
     if (userResult.error || !userResult.data.user) {
       setErrorMessage(userResult.error?.message || "Unable to confirm the owner account.");
       return;
     }
-
     setDecidingId(launch.id);
     setErrorMessage("");
     setActionMessage("");
-
     const result = await supabase
       .from("production_launch_requests")
       .update({
@@ -312,13 +293,11 @@ export function OwnerProductionLaunches() {
       )
       .select(launchSelect)
       .single();
-
     setDecidingId("");
     if (result.error) {
       setErrorMessage(`Production decision failed: ${result.error.message}`);
       return;
     }
-
     setLaunches((current) => current.map((item) => (item.id === launch.id ? (result.data as LaunchRow) : item)));
     setActionMessage(
       decision === "approved_for_production"
@@ -329,20 +308,16 @@ export function OwnerProductionLaunches() {
 
   async function prepareLaunch(launch: LaunchRow) {
     if (!supabase) return;
-
     const confirmed = window.confirm(
       "Prepare one internal queued production execution record? This will not call GitHub, Netlify, or deploy production."
     );
     if (!confirmed) return;
-
     setPreparingId(launch.id);
     setErrorMessage("");
     setActionMessage("");
-
     const result = await supabase.functions.invoke("prepare-production-deployment-execution", {
       body: { launch_request_id: launch.id },
     });
-
     setPreparingId("");
     if (result.error) {
       setErrorMessage(
@@ -350,7 +325,6 @@ export function OwnerProductionLaunches() {
       );
       return;
     }
-
     const preparation = result.data as PreparationResult;
     setLaunches((current) =>
       current.map((item) =>
@@ -364,40 +338,83 @@ export function OwnerProductionLaunches() {
           : item
       )
     );
+    setFreshPreparationIds((current) => new Set(current).add(launch.id));
     setActionMessage("Production execution prepared internally. Nothing was deployed. Production: No.");
+  }
+
+  async function refreshPreparation(launch: LaunchRow) {
+    if (!supabase) return;
+    const confirmed = window.confirm(
+      "Refresh the production preparation safety checkpoint? This will not call GitHub, Netlify, or start a build."
+    );
+    if (!confirmed) return;
+    setRefreshingId(launch.id);
+    setErrorMessage("");
+    setActionMessage("");
+    const result = await supabase.functions.invoke("refresh-production-deployment-preparation", {
+      body: { launch_request_id: launch.id },
+    });
+    setRefreshingId("");
+    if (result.error) {
+      setFreshPreparationIds((current) => {
+        const next = new Set(current);
+        next.delete(launch.id);
+        return next;
+      });
+      setErrorMessage(`Preparation refresh failed: ${result.error.message}. No production build was started.`);
+      return;
+    }
+    const refreshed = result.data as RefreshPreparationResult;
+    setLaunches((current) =>
+      current.map((item) =>
+        item.id === launch.id
+          ? {
+              ...item,
+              status: refreshed.status,
+              prepared_at: refreshed.prepared_at,
+              deployment_record_id: refreshed.deployment_record_id,
+            }
+          : item
+      )
+    );
+    setFreshPreparationIds((current) => new Set(current).add(launch.id));
+    setActionMessage("Production preparation refreshed. No build was started. Production: No.");
   }
 
   async function startProductionBuild(launch: LaunchRow) {
     if (!supabase) return;
-
+    if (!freshPreparationIds.has(launch.id)) {
+      setErrorMessage("Refresh production preparation in this session before starting the live build.");
+      return;
+    }
     const confirmation = window.prompt(
       `LIVE ACTION: Start one Netlify build from production branch ${launch.production_branch}? This may use build credits. Type START_PRODUCTION_BUILD exactly to continue.`,
       ""
     );
-
     if (confirmation === null) return;
     if (confirmation.trim() !== "START_PRODUCTION_BUILD") {
       setErrorMessage("Production build cancelled: the exact confirmation phrase was not entered.");
       return;
     }
-
     setStartingId(launch.id);
     setErrorMessage("");
     setActionMessage("");
-
     const result = await supabase.functions.invoke("execute-production-netlify-build", {
       body: {
         launch_request_id: launch.id,
         confirmation: "START_PRODUCTION_BUILD",
       },
     });
-
     setStartingId("");
+    setFreshPreparationIds((current) => {
+      const next = new Set(current);
+      next.delete(launch.id);
+      return next;
+    });
     if (result.error) {
       setErrorMessage(`Production build start failed: ${result.error.message}. Do not click again until this error is reviewed.`);
       return;
     }
-
     const execution = result.data as BuildStartResult;
     setLaunches((current) =>
       current.map((item) =>
@@ -412,7 +429,6 @@ export function OwnerProductionLaunches() {
           : item
       )
     );
-
     setActionMessage(
       "Production-branch build started. Live publication has NOT been confirmed. Do not start another build."
     );
@@ -471,6 +487,7 @@ export function OwnerProductionLaunches() {
           <div className="owner-message-list">
             {launches.map((launch) => {
               const preview = previews.find((item) => item.id === launch.preview_request_id);
+              const preparationFresh = freshPreparationIds.has(launch.id);
               return (
                 <article className="owner-message-card" key={launch.id}>
                   <div className="owner-message-top">
@@ -556,12 +573,33 @@ export function OwnerProductionLaunches() {
                         {launch.deployment_record_id ? <small>Record: {launch.deployment_record_id.slice(0, 8)}</small> : null}
                         <small>No production build has started yet.</small>
                       </div>
+
+                      <button
+                        className="wide-btn"
+                        type="button"
+                        disabled={refreshingId === launch.id || startingId === launch.id}
+                        onClick={() => void refreshPreparation(launch)}
+                      >
+                        <RefreshCcw size={16} />
+                        {refreshingId === launch.id ? "Refreshing preparation..." : "Refresh production preparation"}
+                      </button>
+
+                      <div className={preparationFresh ? "auth-success" : "auth-error"}>
+                        <strong>{preparationFresh ? "Preparation refreshed in this session" : "Fresh preparation required"}</strong>
+                        <small>{preparationFresh ? "The live build control is unlocked for this session." : "Refresh immediately before starting the production build."}</small>
+                      </div>
+
                       <div className="auth-error">
                         <strong>Live production action</strong>
                         <small>This starts one Netlify build from {launch.production_branch} and may use build credits.</small>
                         <small>Publication will not be marked complete until a separate status check confirms it.</small>
                       </div>
-                      <button className="wide-btn danger" type="button" disabled={startingId === launch.id} onClick={() => void startProductionBuild(launch)}>
+                      <button
+                        className="wide-btn danger"
+                        type="button"
+                        disabled={!preparationFresh || startingId === launch.id || refreshingId === launch.id}
+                        onClick={() => void startProductionBuild(launch)}
+                      >
                         <Rocket size={16} />
                         {startingId === launch.id ? "Starting production build..." : "Start production build"}
                       </button>
