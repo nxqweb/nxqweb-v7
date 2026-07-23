@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -61,7 +61,7 @@ type LaunchRow = {
 
 type AuditResult = {
   passed: boolean;
-  status: "audit_passed" | "audit_blocked";
+  status: "audit_passed" | "audit_blocked" | "approved_for_production";
   audit_status: "passed" | "blocked";
   checked_at: string;
   production: false;
@@ -325,7 +325,7 @@ export function OwnerProductionLaunches() {
               <option value="">Pick a published preview</option>
               {availablePreviews.map((preview) => (
                 <option key={preview.id} value={preview.id}>
-                  {clientNameById.get(preview.client_id) || "Unknown client"} · {preview.source_branch}
+                  {clientNameById.get(preview.client_id) || "Unknown client"} Â· {preview.source_branch}
                 </option>
               ))}
             </select>
@@ -355,7 +355,7 @@ export function OwnerProductionLaunches() {
                   <small>Production URL: {launch.production_url || "Not configured"}</small>
                   {preview?.preview_url ? <a href={preview.preview_url} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Open approved preview</a> : null}
 
-                  {["audit_required", "audit_blocked", "audit_passed"].includes(launch.status) ? (
+                  {["audit_required", "audit_blocked", "audit_passed", "approved_for_production"].includes(launch.status) ? (
                     <button className="wide-btn" type="button" disabled={auditingId === launch.id} onClick={() => void runAudit(launch)}>
                       <SearchCheck size={16} />{auditingId === launch.id ? "Running launch audit..." : "Run production launch audit"}
                     </button>
@@ -422,3 +422,4 @@ export function OwnerProductionLaunches() {
     </main>
   );
 }
+

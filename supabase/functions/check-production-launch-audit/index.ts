@@ -344,7 +344,11 @@ Deno.serve(async (request) => {
   const checkedAt = new Date().toISOString();
   const passed = criticalBlockers.length === 0;
   const auditStatus = passed ? "passed" : "blocked";
-  const workflowStatus = passed ? "audit_passed" : "audit_blocked";
+  const workflowStatus = passed
+    ? launch.status === "approved_for_production"
+      ? "approved_for_production"
+      : "audit_passed"
+    : "audit_blocked";
 
   const updateResult = await supabase
     .from("production_launch_requests")
@@ -384,4 +388,5 @@ Deno.serve(async (request) => {
     note: "This production launch audit was read-only. It did not trigger a build, deploy, branch change, or Netlify setting change.",
   });
 });
+
 
