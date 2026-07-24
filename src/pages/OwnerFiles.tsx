@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, FileText, RefreshCcw, Rocket } from "lucide-react";
+import {
+  ArrowLeft,
+  ExternalLink,
+  FileText,
+  RefreshCcw,
+  Rocket,
+  ShieldCheck,
+} from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -130,6 +137,10 @@ export function OwnerFiles() {
             <a className="icon-btn" href="/owner/deployments">
               <Rocket size={16} />
               Deployments
+            </a>
+            <a className="icon-btn" href="/owner/preview-requests">
+              <ShieldCheck size={16} />
+              Preview requests
             </a>
             <button className="icon-btn" onClick={loadFiles} type="button">
               <RefreshCcw size={16} />

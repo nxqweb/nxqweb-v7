@@ -7,6 +7,9 @@ import { ClientPortal } from "./pages/ClientPortal";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerFiles } from "./pages/OwnerFiles";
 import { OwnerPortal } from "./pages/OwnerPortal";
+import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
+import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
+import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
@@ -19,6 +22,30 @@ function App() {
   if (path === "/owner/login") {
     window.location.replace("/portal/login");
     return null;
+  }
+
+  if (path === "/owner/production-status") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerProductionStatus />
+      </OwnerProtectedRoute>
+    );
+  }
+
+  if (path === "/owner/production-launches") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerProductionLaunches />
+      </OwnerProtectedRoute>
+    );
+  }
+
+  if (path === "/owner/preview-requests") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerPreviewRequests />
+      </OwnerProtectedRoute>
+    );
   }
 
   if (path === "/owner/deployments") {
