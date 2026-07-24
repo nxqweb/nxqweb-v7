@@ -8,6 +8,7 @@ import {
   Send,
   UploadCloud,
 } from "lucide-react";
+import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -1321,49 +1322,7 @@ export function ClientPortal() {
             <p>{portalDecisionNotice.body}</p>
           </div>
         ) : null}
-        <section className="panel panel-wide">
-          <div className="panel-title">
-            <CheckCircle2 size={20} />
-            <div>
-              <h2>Website security</h2>
-              <p className="subtle">
-                Live monitoring and incident protection will appear here once the website is connected.
-              </p>
-            </div>
-          </div>
-
-          <div className="settings-grid">
-            <article className="settings-card">
-              <span>Monitoring status</span>
-              <strong>Setup pending</strong>
-              <p>Security monitoring has not been connected yet.</p>
-            </article>
-
-            <article className="settings-card">
-              <span>Website health</span>
-              <strong>Not connected</strong>
-              <p>Uptime and application health checks are not active yet.</p>
-            </article>
-
-            <article className="settings-card">
-              <span>Threats blocked</span>
-              <strong>Not connected</strong>
-              <p>A real blocked-threat count will appear after security logs are connected.</p>
-            </article>
-
-            <article className="settings-card">
-              <span>SSL status</span>
-              <strong>Not checked</strong>
-              <p>Certificate checks begin after the live domain is connected.</p>
-            </article>
-
-            <article className="settings-card settings-card-wide">
-              <span>Last security scan</span>
-              <strong>Not available</strong>
-              <p>No security scan has been recorded for this website yet.</p>
-            </article>
-          </div>
-        </section>
+        <ClientWebsiteSecurity />
 
         <div className="client-grid">
           {!setupComplete && targetedMoreInfoRequest && targetedMoreInfoField ? (
