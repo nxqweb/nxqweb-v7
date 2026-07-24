@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -58,6 +58,7 @@ type LaunchRow = {
   execution_completed_at: string | null;
   netlify_build_id: string | null;
   netlify_deploy_id: string | null;
+  published_url: string | null;
   error_message: string | null;
   created_at: string;
 };
