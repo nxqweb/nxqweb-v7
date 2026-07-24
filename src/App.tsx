@@ -15,6 +15,7 @@ import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
 import { PublicHome } from "./pages/PublicHome";
+import { PublicPlans } from "./pages/PublicPlans";
 import { ResetPassword } from "./pages/ResetPassword";
 
 function App() {
@@ -89,6 +90,10 @@ function App() {
   if (path.startsWith("/client/")) {
     window.location.replace("/client");
     return null;
+  }
+
+  if (path === "/plans") {
+    return <PublicPlans />;
   }
 
   if (path === "/portal/login") {
