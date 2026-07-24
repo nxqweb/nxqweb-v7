@@ -1349,6 +1349,10 @@ export function ClientPortal() {
             <span>Project stage</span>
             <strong>{formatStatus(projectStage)}</strong>
 
+            <a className="icon-btn" href="/client/settings">
+              Settings
+            </a>
+
             <button className="icon-btn" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
             </button>
@@ -1863,7 +1867,11 @@ export function ClientPortal() {
                 <span>Appearance</span>
                 <strong>{nxqTheme === "dark" ? "Dark mode" : "Light mode"}</strong>
                 <p>Switch the portal theme anytime. Your choice stays saved on this device.</p>
-                <button className="icon-btn" onClick={toggleNxqTheme} type="button">
+                <a className="icon-btn" href="/client/settings">
+              Settings
+            </a>
+
+            <button className="icon-btn" onClick={toggleNxqTheme} type="button">
                   {nxqTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
                 </button>
               </article>
