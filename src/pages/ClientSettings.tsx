@@ -160,7 +160,7 @@ export function ClientSettings() {
 
         {!loading ? (
           <div className="owner-detail-grid">
-            <section className="panel">
+            <section className="panel panel-wide">
               <div className="panel-title">
                 {theme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
                 <div>
@@ -178,7 +178,7 @@ export function ClientSettings() {
               </button>
             </section>
 
-            <section className="panel">
+            <section className="panel panel-wide">
               <div className="panel-title">
                 <Mail size={20} />
                 <div>
@@ -186,21 +186,23 @@ export function ClientSettings() {
                   <p className="subtle">Current login: {email || "Not available"}</p>
                 </div>
               </div>
-              <label>
+              <label className="auth-label" htmlFor="client-settings-email">
                 New email address
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(event) => setNewEmail(event.target.value)}
-                  autoComplete="email"
-                />
               </label>
+              <input
+                className="auth-input"
+                id="client-settings-email"
+                type="email"
+                value={newEmail}
+                onChange={(event) => setNewEmail(event.target.value)}
+                autoComplete="email"
+              />
               <button className="wide-btn" type="button" disabled={savingEmail} onClick={() => void updateEmail()}>
                 <Mail size={16} /> {savingEmail ? "Requesting change..." : "Change email"}
               </button>
             </section>
 
-            <section className="panel">
+            <section className="panel panel-wide">
               <div className="panel-title">
                 <KeyRound size={20} />
                 <div>
@@ -208,30 +210,36 @@ export function ClientSettings() {
                   <p className="subtle">Use at least 10 characters and avoid reused passwords.</p>
                 </div>
               </div>
-              <label>
-                New password
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  autoComplete="new-password"
-                />
-              </label>
-              <label>
-                Confirm new password
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) => setConfirmPassword(event.target.value)}
-                  autoComplete="new-password"
-                />
-              </label>
+
+              <div className="setup-form-grid">
+                <label>
+                  <span>New password</span>
+                  <input
+                    className="auth-input"
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label>
+                  <span>Confirm new password</span>
+                  <input
+                    className="auth-input"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </label>
+              </div>
+
               <button className="wide-btn" type="button" disabled={savingPassword} onClick={() => void updatePassword()}>
                 <KeyRound size={16} /> {savingPassword ? "Updating password..." : "Change password"}
               </button>
             </section>
 
-            <section className="panel">
+            <section className="panel panel-wide">
               <div className="panel-title">
                 <Globe2 size={20} />
                 <div>
@@ -246,7 +254,7 @@ export function ClientSettings() {
                 domains.map((domain) => (
                   <div className="owner-message-card" key={domain.id}>
                     <strong>{domain.domain_name}</strong>
-                    <small>Status: {domain.status.replaceAll("_", " ")}</small>
+                    <span className="subtle">Status: {domain.status.replaceAll("_", " ")}</span>
                   </div>
                 ))
               )}
