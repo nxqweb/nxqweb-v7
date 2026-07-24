@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, RefreshCcw, ShieldCheck } from "lucide-react";
+import { ExternalLink, RefreshCcw, Rocket, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type LaunchRow = {
@@ -31,6 +31,19 @@ type StatusResult = {
   note?: string;
 };
 
+type PublishResult = {
+  status: "launching" | "published";
+  production_published: boolean;
+  publish_requested: boolean;
+  netlify_build_id?: string;
+  netlify_deploy_id?: string;
+  deploy_state?: string;
+  production_url?: string | null;
+  production_url_status?: number;
+  published_at?: string | null;
+  note?: string;
+};
+
 type Diagnostics = {
   buildDone?: boolean;
   deployState?: string;
@@ -48,6 +61,7 @@ export function OwnerProductionStatus() {
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -137,7 +151,7 @@ export function OwnerProductionStatus() {
       setError(`Production deployment failed: ${status.error || "Unknown Netlify error."}`);
     } else if ((status.deploy_state || "").toLowerCase() === "ready") {
       setMessage(
-        "The Netlify deploy is ready, but live publication has not been confirmed. This usually means the deploy is waiting for an explicit publish checkpoint or the production URL has not switched yet. No new build was started."
+        "The Netlify deploy is ready, but live publication has not been confirmed. It is eligible for the explicit owner publish checkpoint. No new build was started."
       );
     } else {
       setMessage(
@@ -145,6 +159,78 @@ export function OwnerProductionStatus() {
       );
     }
   }
+
+  async function publishDeploy() {
+    if (!supabase || !launch) return;
+
+    const confirmation = window.prompt(
+      "LIVE ACTION: Publish the already-built ready production deploy? This will switch the live production site. Type PUBLISH_PRODUCTION_DEPLOY exactly to continue."
+    );
+
+    if (confirmation !== "PUBLISH_PRODUCTION_DEPLOY") {
+      if (confirmation !== null) {
+        setError("Exact publish confirmation was not entered. Nothing was published.");
+      }
+      return;
+    }
+
+    setPublishing(true);
+    setError("");
+    setMessage("");
+
+    const result = await supabase.functions.invoke("publish-production-netlify-deploy", {
+      body: {
+        launch_request_id: launch.id,
+        confirmation,
+      },
+    });
+
+    setPublishing(false);
+
+    if (result.error) {
+      setError(`Production publish failed: ${result.error.message}. No new build was started.`);
+      return;
+    }
+
+    const publish = result.data as PublishResult;
+
+    setLaunch((current) =>
+      current
+        ? {
+            ...current,
+            status: publish.status,
+            published_url: publish.production_published
+              ? publish.production_url || current.production_url
+              : current.published_url,
+            execution_completed_at:
+              publish.status === "published"
+                ? publish.published_at || new Date().toISOString()
+                : current.execution_completed_at,
+          }
+        : current
+    );
+
+    setDiagnostics((current) => ({
+      ...current,
+      deployState: publish.deploy_state || current?.deployState,
+      productionUrlStatus: publish.production_url_status,
+      note: publish.note,
+    }));
+
+    if (publish.status === "published" && publish.production_published) {
+      setMessage("Production published successfully. The selected ready deploy is live and the production URL is reachable.");
+    } else {
+      setMessage(
+        publish.note ||
+          "Netlify accepted the publish request, but final live publication is not confirmed yet. Run the read-only status check once."
+      );
+    }
+  }
+
+  const readyToPublish =
+    launch?.status === "launching" &&
+    diagnostics?.deployState?.toLowerCase() === "ready" &&
+    (diagnostics.deployContext || "production").toLowerCase() === "production";
 
   return (
     <main className="nxq-page">
@@ -154,7 +240,7 @@ export function OwnerProductionStatus() {
             <ShieldCheck size={22} />
             <div>
               <h1>Production status</h1>
-              <p className="subtle">Read-only tracking for the one production build already started.</p>
+              <p className="subtle">Controlled tracking and explicit publication for the one production build already started.</p>
             </div>
           </div>
           <div className="client-control-row">
@@ -193,19 +279,31 @@ export function OwnerProductionStatus() {
                     Production URL response: {typeof diagnostics.productionUrlStatus === "number" ? diagnostics.productionUrlStatus : "Not checked because publication is not confirmed"}
                   </small>
                   <small>Netlify result: {diagnostics.note || "No diagnostic note was returned."}</small>
-                  {diagnostics.deployState?.toLowerCase() === "ready" && launch.status !== "published" ? (
-                    <small>
-                      Missing final condition: Netlify has not supplied a confirmed published production result yet.
-                    </small>
+                  {readyToPublish ? (
+                    <small>Final condition: owner must explicitly publish this exact ready deploy.</small>
                   ) : null}
                 </div>
               ) : null}
 
               {launch.status === "launching" ? (
-                <button className="wide-btn" type="button" disabled={checking} onClick={() => void checkStatus()}>
+                <button className="wide-btn" type="button" disabled={checking || publishing} onClick={() => void checkStatus()}>
                   <RefreshCcw size={16} />
                   {checking ? "Checking production status..." : "Check production status"}
                 </button>
+              ) : null}
+
+              {readyToPublish ? (
+                <>
+                  <div className="auth-error">
+                    <strong>Live production action</strong>
+                    <small>This publishes the already-built deploy to the live production URL.</small>
+                    <small>No second build will be started and auto-publish will remain locked.</small>
+                  </div>
+                  <button className="wide-btn" type="button" disabled={publishing || checking} onClick={() => void publishDeploy()}>
+                    <Rocket size={16} />
+                    {publishing ? "Publishing ready production deploy..." : "Publish ready production deploy"}
+                  </button>
+                </>
               ) : null}
 
               {launch.status === "published" && launch.published_url ? (
@@ -214,7 +312,7 @@ export function OwnerProductionStatus() {
                 </a>
               ) : null}
 
-              <small>This page cannot start another build or publish a deploy.</small>
+              <small>This page cannot start another build or unlock auto-publish.</small>
             </div>
           ) : null}
         </section>
