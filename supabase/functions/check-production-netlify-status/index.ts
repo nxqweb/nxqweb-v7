@@ -60,6 +60,7 @@ Deno.serve(async (request) => {
     .select("auth_user_id")
     .eq("auth_user_id", userResult.data.user.id)
     .maybeSingle();
+
   if (ownerResult.error || !ownerResult.data) {
     return jsonResponse({ error: "Owner access required." }, 403);
   }
@@ -78,7 +79,7 @@ Deno.serve(async (request) => {
   const launchResult = await supabase
     .from("production_launch_requests")
     .select(
-      "id, deployment_config_id, project_id, client_id, production_branch, production_url, status, deployment_record_id, netlify_build_id, netlify_deploy_id, execution_started_at, execution_completed_at, published_url"
+      "id, deployment_config_id, project_id, client_id, production_branch, production_url, status, deployment_record_id, netlify_build_id, netlify_deploy_id, execution_started_at, execution_completed_at, published_url, error_message"
     )
     .eq("id", body.launch_request_id)
     .maybeSingle();
@@ -87,11 +88,50 @@ Deno.serve(async (request) => {
   if (!launchResult.data) return jsonResponse({ error: "Production launch request not found." }, 404);
 
   const launch = launchResult.data;
+
+  // Terminal launch states are immutable. A later provider read must never downgrade them.
+  if (launch.status === "published") {
+    const savedUrl = stringValue(launch.published_url) || stringValue(launch.production_url);
+    const page = savedUrl ? await reachable(savedUrl) : { ok: false, status: 0, finalUrl: savedUrl || "" };
+    return jsonResponse({
+      ok: true,
+      launch_request_id: launch.id,
+      status: "published",
+      production_build_started: true,
+      production_published: true,
+      build_done: true,
+      deploy_state: "ready",
+      deploy_context: "production",
+      netlify_build_id: launch.netlify_build_id,
+      netlify_deploy_id: launch.netlify_deploy_id,
+      production_url: page.finalUrl || savedUrl,
+      production_url_status: page.status,
+      published_at: launch.execution_completed_at,
+      note: page.ok
+        ? "Production was already published and the saved production URL is reachable."
+        : "Production was already published, but the saved production URL is not currently reachable.",
+    });
+  }
+
+  if (launch.status === "failed") {
+    return jsonResponse({
+      ok: true,
+      launch_request_id: launch.id,
+      status: "failed",
+      production_build_started: true,
+      production_published: false,
+      netlify_build_id: launch.netlify_build_id,
+      netlify_deploy_id: launch.netlify_deploy_id,
+      error: launch.error_message || "Production deployment previously failed.",
+      note: "Failed is a terminal state and was not changed.",
+    });
+  }
+
+  if (launch.status !== "launching") {
+    return jsonResponse({ error: "Production execution has not started." }, 409);
+  }
   if (!launch.netlify_build_id) {
     return jsonResponse({ error: "This production launch has no Netlify build ID." }, 409);
-  }
-  if (!["launching", "published", "failed"].includes(launch.status)) {
-    return jsonResponse({ error: "Production execution has not started." }, 409);
   }
 
   const [configResult, deploymentResult] = await Promise.all([
@@ -123,9 +163,7 @@ Deno.serve(async (request) => {
   const productionBranch = (config.production_branch || launch.production_branch || "main").trim();
   const productionUrl = stringValue(config.production_url) || stringValue(launch.production_url);
 
-  if (!productionUrl) {
-    return jsonResponse({ error: "Production URL is missing." }, 409);
-  }
+  if (!productionUrl) return jsonResponse({ error: "Production URL is missing." }, 409);
   if (launch.production_branch.trim().toLowerCase() !== productionBranch.toLowerCase()) {
     return jsonResponse({ error: "Launch branch no longer matches the configured production branch." }, 409);
   }
@@ -166,11 +204,13 @@ Deno.serve(async (request) => {
     await supabase
       .from("production_launch_requests")
       .update({ status: "failed", error_message: buildError, execution_completed_at: completedAt })
-      .eq("id", launch.id);
+      .eq("id", launch.id)
+      .eq("status", "launching");
     await supabase
       .from("project_deployments")
       .update({ status: "failed", error_message: buildError, completed_at: completedAt })
-      .eq("id", deployment.id);
+      .eq("id", deployment.id)
+      .eq("status", "building");
 
     return jsonResponse({
       ok: true,
@@ -178,6 +218,8 @@ Deno.serve(async (request) => {
       status: "failed",
       production_build_started: true,
       production_published: false,
+      netlify_build_id: launch.netlify_build_id,
+      netlify_deploy_id: deployId,
       error: buildError,
     });
   }
@@ -215,7 +257,6 @@ Deno.serve(async (request) => {
   if (!deployBranch || deployBranch.toLowerCase() !== productionBranch.toLowerCase()) {
     return jsonResponse({ error: "Netlify deploy branch does not match the configured production branch." }, 409);
   }
-
   if (deployContext && deployContext.toLowerCase() !== "production") {
     return jsonResponse({ error: `Netlify deploy context is ${deployContext}, not production.` }, 409);
   }
@@ -232,7 +273,8 @@ Deno.serve(async (request) => {
         execution_completed_at: completedAt,
         netlify_deploy_id: deployId,
       })
-      .eq("id", launch.id);
+      .eq("id", launch.id)
+      .eq("status", "launching");
     await supabase
       .from("project_deployments")
       .update({
@@ -241,7 +283,8 @@ Deno.serve(async (request) => {
         completed_at: completedAt,
         netlify_deploy_id: deployId,
       })
-      .eq("id", deployment.id);
+      .eq("id", deployment.id)
+      .eq("status", "building");
 
     return jsonResponse({
       ok: true,
@@ -269,6 +312,7 @@ Deno.serve(async (request) => {
         production_published: false,
         build_done: buildDone,
         deploy_state: deployState,
+        deploy_context: deployContext || "production",
         netlify_build_id: launch.netlify_build_id,
         netlify_deploy_id: deployId,
         production_url: productionUrl,
@@ -277,7 +321,7 @@ Deno.serve(async (request) => {
       });
     }
 
-    const completedAt = publishedAt || new Date().toISOString();
+    const completedAt = publishedAt;
     await supabase
       .from("production_launch_requests")
       .update({
@@ -287,7 +331,8 @@ Deno.serve(async (request) => {
         netlify_deploy_id: deployId,
         published_url: productionPage.finalUrl || productionUrl,
       })
-      .eq("id", launch.id);
+      .eq("id", launch.id)
+      .eq("status", "launching");
     await supabase
       .from("project_deployments")
       .update({
@@ -297,7 +342,8 @@ Deno.serve(async (request) => {
         netlify_deploy_id: deployId,
         deploy_url: productionPage.finalUrl || productionUrl,
       })
-      .eq("id", deployment.id);
+      .eq("id", deployment.id)
+      .eq("status", "building");
 
     return jsonResponse({
       ok: true,
@@ -311,6 +357,7 @@ Deno.serve(async (request) => {
       netlify_build_id: launch.netlify_build_id,
       netlify_deploy_id: deployId,
       production_url: productionPage.finalUrl || productionUrl,
+      production_url_status: productionPage.status,
       published_at: completedAt,
       note: "Netlify confirmed the production deploy is published and the production URL is reachable.",
     });
@@ -318,12 +365,14 @@ Deno.serve(async (request) => {
 
   await supabase
     .from("production_launch_requests")
-    .update({ status: "launching", error_message: null, netlify_deploy_id: deployId })
-    .eq("id", launch.id);
+    .update({ error_message: null, netlify_deploy_id: deployId })
+    .eq("id", launch.id)
+    .eq("status", "launching");
   await supabase
     .from("project_deployments")
-    .update({ status: "building", error_message: null, netlify_deploy_id: deployId })
-    .eq("id", deployment.id);
+    .update({ error_message: null, netlify_deploy_id: deployId })
+    .eq("id", deployment.id)
+    .eq("status", "building");
 
   return jsonResponse({
     ok: true,
