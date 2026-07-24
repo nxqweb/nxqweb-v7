@@ -168,16 +168,23 @@ where product_family_slug is null;
 update public.clients
 set product_tier_id = tier.id
 from public.product_family_tiers tier
-join public.product_families family on family.id = tier.product_family_id
-left join public.packages package on package.id = clients.package_id
+join public.product_families family
+  on family.id = tier.product_family_id
 where family.slug = 'business'
   and clients.product_tier_id is null
-  and tier.tier_key = case
-    when package.slug = 'starter' then 'starter'
-    when package.slug = 'growth' then 'growth'
-    when package.slug in ('premium', 'intelligence') then 'intelligence'
-    else 'starter'
-  end;
+  and tier.tier_key = coalesce(
+    (
+      select case
+        when package.slug = 'starter' then 'starter'
+        when package.slug = 'growth' then 'growth'
+        when package.slug in ('premium', 'intelligence') then 'intelligence'
+        else 'starter'
+      end
+      from public.packages package
+      where package.id = clients.package_id
+    ),
+    'starter'
+  );
 
 update public.projects
 set product_tier_id = clients.product_tier_id
