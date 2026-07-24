@@ -4,6 +4,7 @@ import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ClientPortal } from "./pages/ClientPortal";
+import { ClientSettings } from "./pages/ClientSettings";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerFiles } from "./pages/OwnerFiles";
 import { OwnerPortal } from "./pages/OwnerPortal";
@@ -75,6 +76,10 @@ function App() {
   if (path.startsWith("/owner/")) {
     window.location.replace("/owner");
     return null;
+  }
+
+  if (path === "/client/settings") {
+    return <ClientSettings />;
   }
 
   if (path === "/client") {
