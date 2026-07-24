@@ -19,12 +19,24 @@ type LaunchRow = {
 type StatusResult = {
   status: "launching" | "published" | "failed";
   production_published: boolean;
+  build_done?: boolean;
   deploy_state?: string;
+  deploy_context?: string | null;
   netlify_build_id: string;
   netlify_deploy_id: string | null;
   production_url?: string | null;
+  production_url_status?: number;
   published_at?: string;
   error?: string;
+  note?: string;
+};
+
+type Diagnostics = {
+  buildDone?: boolean;
+  deployState?: string;
+  deployContext?: string | null;
+  productionUrlStatus?: number;
+  note?: string;
 };
 
 function formatDateTime(value: string) {
@@ -33,6 +45,7 @@ function formatDateTime(value: string) {
 
 export function OwnerProductionStatus() {
   const [launch, setLaunch] = useState<LaunchRow | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,6 +104,14 @@ export function OwnerProductionStatus() {
 
     const status = result.data as StatusResult;
 
+    setDiagnostics({
+      buildDone: status.build_done,
+      deployState: status.deploy_state,
+      deployContext: status.deploy_context,
+      productionUrlStatus: status.production_url_status,
+      note: status.note,
+    });
+
     setLaunch((current) =>
       current
         ? {
@@ -114,8 +135,14 @@ export function OwnerProductionStatus() {
       setMessage("Production publication confirmed. The live production URL is reachable.");
     } else if (status.status === "failed") {
       setError(`Production deployment failed: ${status.error || "Unknown Netlify error."}`);
+    } else if ((status.deploy_state || "").toLowerCase() === "ready") {
+      setMessage(
+        "The Netlify deploy is ready, but live publication has not been confirmed. This usually means the deploy is waiting for an explicit publish checkpoint or the production URL has not switched yet. No new build was started."
+      );
     } else {
-      setMessage(`Production is still processing. Netlify state: ${status.deploy_state || "unknown"}. No new build was started.`);
+      setMessage(
+        `Production is still processing. Netlify state: ${status.deploy_state || "unknown"}. No new build was started.`
+      );
     }
   }
 
@@ -155,6 +182,25 @@ export function OwnerProductionStatus() {
               {launch.netlify_deploy_id ? <small>Deploy: {launch.netlify_deploy_id.slice(0, 8)}</small> : null}
               <small>Live publication confirmed: {launch.status === "published" ? "Yes" : "No"}</small>
 
+              {diagnostics ? (
+                <div className="auth-success">
+                  <strong>Latest read-only diagnostics</strong>
+                  <small>Build finished: {diagnostics.buildDone === true ? "Yes" : diagnostics.buildDone === false ? "No" : "Unknown"}</small>
+                  <small>Deploy state: {diagnostics.deployState || "Unknown"}</small>
+                  <small>Deploy context: {diagnostics.deployContext || "Not reported"}</small>
+                  <small>Deploy branch: {launch.production_branch}</small>
+                  <small>
+                    Production URL response: {typeof diagnostics.productionUrlStatus === "number" ? diagnostics.productionUrlStatus : "Not checked because publication is not confirmed"}
+                  </small>
+                  <small>Netlify result: {diagnostics.note || "No diagnostic note was returned."}</small>
+                  {diagnostics.deployState?.toLowerCase() === "ready" && launch.status !== "published" ? (
+                    <small>
+                      Missing final condition: Netlify has not supplied a confirmed published production result yet.
+                    </small>
+                  ) : null}
+                </div>
+              ) : null}
+
               {launch.status === "launching" ? (
                 <button className="wide-btn" type="button" disabled={checking} onClick={() => void checkStatus()}>
                   <RefreshCcw size={16} />
@@ -168,7 +214,7 @@ export function OwnerProductionStatus() {
                 </a>
               ) : null}
 
-              <small>This page cannot start another build.</small>
+              <small>This page cannot start another build or publish a deploy.</small>
             </div>
           ) : null}
         </section>
