@@ -1567,8 +1567,40 @@ if (messageResult.error) {
                       </p>
                     ) : null}
 
-                    <div className="approval-actions">
-                      <button
+                    {approval.request_type === "client_plan_change" ? (
+
+                      <div className="plan-change-review-only">
+
+                        <p className="recommendation">
+
+                          Plan changes require pricing, fee, and scope review through the dedicated guarded workflow.
+
+                        </p>
+
+                        <a className="wide-btn" href="/owner/plan-changes">
+
+                          Review plan change
+
+                        </a>
+
+                      </div>
+
+                    ) : null}
+
+
+                    <div
+
+                      className={`approval-actions ${
+
+                        approval.request_type === "client_plan_change"
+
+                          ? "plan-change-generic-actions-hidden"
+
+                          : ""
+
+                      }`}
+
+                    >                      <button
                         type="button"
                         onClick={() => {
                           if (isLaunchPreviewReview(approval)) {
