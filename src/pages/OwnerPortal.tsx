@@ -1480,7 +1480,6 @@ if (messageResult.error) {
                 const client = getClientForApproval(approval);
                 const clientName = client?.business_name || "Unknown client";
                 const isSetupReportApproval = isWebsiteSetupReport(approval);
-                const isClientPlanChange = approval.request_type === "client_plan_change";
                 const isSetupResubmission =
                   approval.title.toLowerCase().includes("resubmitted") ||
                   approval.summary.toLowerCase().includes("resubmitted");
