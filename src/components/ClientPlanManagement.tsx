@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowRightLeft, BadgeDollarSign, CheckCircle2 } from "lucide-react";
-import { PRODUCT_FAMILIES, PRODUCT_TIERS, type ProductFamilySlug, type ProductTierKey } from "../lib/productCatalog";
+import {
+  productFamilies as PRODUCT_FAMILIES,
+  productTiers as PRODUCT_TIERS,
+  type ProductFamilySlug,
+  type ProductTierKey,
+} from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CurrentPlan = {
@@ -79,7 +84,10 @@ export function ClientPlanManagement() {
       familyName: familyResult?.data?.name || "NXQ Business",
       tierKey,
       tierName: tierResult?.data?.name || "Starter",
-      priceLabel: tierResult?.data?.price_label || PRODUCT_TIERS.find((tier) => tier.key === tierKey)?.priceLabel || "Custom",
+      priceLabel:
+        tierResult?.data?.price_label ||
+        PRODUCT_TIERS.find((tier) => tier.key === tierKey)?.priceLabel ||
+        "Custom",
     };
 
     setCurrentPlan(loadedPlan);
