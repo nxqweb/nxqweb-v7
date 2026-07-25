@@ -1,0 +1,42 @@
+/* High-contrast native select styling for plan and account forms. */
+
+select.auth-input {
+  background-color: #0b1020;
+  color: #f8fafc;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+select.auth-input option,
+select.auth-input optgroup {
+  background-color: #0b1020;
+  color: #f8fafc;
+}
+
+select.auth-input option:checked {
+  background-color: #164e63;
+  color: #ffffff;
+}
+
+select.auth-input:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+body[data-nxq-theme="light"] select.auth-input {
+  background-color: #ffffff;
+  color: #111827;
+  color-scheme: light;
+}
+
+body[data-nxq-theme="light"] select.auth-input option,
+body[data-nxq-theme="light"] select.auth-input optgroup {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+body[data-nxq-theme="light"] select.auth-input option:checked {
+  background-color: #cffafe;
+  color: #083344;
+}
