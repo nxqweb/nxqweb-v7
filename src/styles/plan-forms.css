@@ -92,6 +92,10 @@ body[data-nxq-theme="light"] select.auth-input option:checked {
   width: 100%;
 }
 
+.plan-change-generic-actions-hidden {
+  display: none;
+}
+
 .owner-plan-change-shortcut {
   position: fixed;
   right: 24px;
