@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, BadgeDollarSign, CheckCircle2 } from "lucide-react";
+import { ArrowRightLeft, BadgeDollarSign, CheckCircle2, Clock3 } from "lucide-react";
 import {
   productFamilies as PRODUCT_FAMILIES,
   productTiers as PRODUCT_TIERS,
@@ -9,15 +9,61 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CurrentPlan = {
+  clientId: string;
   familySlug: ProductFamilySlug;
   familyName: string;
   tierKey: ProductTierKey;
   tierName: string;
+  monthlyPrice: number | null;
   priceLabel: string;
 };
 
+type PlanChangeRow = {
+  id: string;
+  current_product_family_id: string | null;
+  current_product_tier_id: string | null;
+  requested_product_family_id: string;
+  requested_product_tier_id: string;
+  requested_monthly_price: number | null;
+  one_time_change_fee: number | null;
+  client_note: string | null;
+  owner_note: string | null;
+  status: string;
+  created_at: string;
+  resolved_at: string | null;
+};
+
+type PlanChangeView = PlanChangeRow & {
+  currentPlanLabel: string;
+  requestedPlanLabel: string;
+};
+
+function formatMoney(value: number | null) {
+  if (value === null) return "Custom";
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) return "Not resolved yet";
+
+  return new Date(value).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function formatStatus(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export function ClientPlanManagement() {
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
+  const [history, setHistory] = useState<PlanChangeView[]>([]);
   const [requestedFamily, setRequestedFamily] = useState<ProductFamilySlug>("business");
   const [requestedTier, setRequestedTier] = useState<ProductTierKey>("starter");
   const [note, setNote] = useState("");
@@ -50,49 +96,127 @@ export function ClientPlanManagement() {
 
     const clientResult = await supabase
       .from("clients")
-      .select("product_family_id, product_tier_id")
+      .select("id, product_family_id, product_tier_id, monthly_price")
       .eq("auth_user_id", session.user.id)
       .maybeSingle();
 
-    if (clientResult.error) {
-      setError(`Plan load failed: ${clientResult.error.message}`);
+    if (clientResult.error || !clientResult.data) {
+      setError(`Plan load failed: ${clientResult.error?.message || "Client workspace was not found."}`);
       setLoading(false);
       return;
     }
 
-    const familyResult = clientResult.data?.product_family_id
-      ? await supabase
-          .from("product_families")
-          .select("slug, name")
-          .eq("id", clientResult.data.product_family_id)
-          .maybeSingle()
-      : null;
+    const [familyResult, tierResult, historyResult] = await Promise.all([
+      clientResult.data.product_family_id
+        ? supabase
+            .from("product_families")
+            .select("slug, name")
+            .eq("id", clientResult.data.product_family_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      clientResult.data.product_tier_id
+        ? supabase
+            .from("product_family_tiers")
+            .select("tier_key, name, price_label, monthly_price")
+            .eq("id", clientResult.data.product_tier_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      supabase
+        .from("client_plan_change_requests")
+        .select(
+          "id, current_product_family_id, current_product_tier_id, requested_product_family_id, requested_product_tier_id, requested_monthly_price, one_time_change_fee, client_note, owner_note, status, created_at, resolved_at"
+        )
+        .eq("client_id", clientResult.data.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
-    const tierResult = clientResult.data?.product_tier_id
-      ? await supabase
-          .from("product_family_tiers")
-          .select("tier_key, name, price_label")
-          .eq("id", clientResult.data.product_tier_id)
-          .maybeSingle()
-      : null;
+    const relatedError = familyResult.error || tierResult.error || historyResult.error;
 
-    const familySlug = (familyResult?.data?.slug || "business") as ProductFamilySlug;
-    const tierKey = (tierResult?.data?.tier_key || "starter") as ProductTierKey;
+    if (relatedError) {
+      setError(`Plan details failed to load: ${relatedError.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const familySlug = (familyResult.data?.slug || "business") as ProductFamilySlug;
+    const tierKey = (tierResult.data?.tier_key || "starter") as ProductTierKey;
+    const monthlyPrice =
+      clientResult.data.monthly_price === null
+        ? tierResult.data?.monthly_price ?? null
+        : Number(clientResult.data.monthly_price);
 
     const loadedPlan: CurrentPlan = {
+      clientId: clientResult.data.id,
       familySlug,
-      familyName: familyResult?.data?.name || "NXQ Business",
+      familyName: familyResult.data?.name || "NXQ Business",
       tierKey,
-      tierName: tierResult?.data?.name || "Starter",
+      tierName: tierResult.data?.name || "Starter",
+      monthlyPrice,
       priceLabel:
-        tierResult?.data?.price_label ||
-        PRODUCT_TIERS.find((tier) => tier.key === tierKey)?.priceLabel ||
-        "Custom",
+        monthlyPrice === null
+          ? tierResult.data?.price_label || "Custom"
+          : `${formatMoney(monthlyPrice)}/mo`,
     };
+
+    const rows = (historyResult.data || []) as PlanChangeRow[];
+    const familyIds = [
+      ...new Set(
+        rows
+          .flatMap((row) => [row.current_product_family_id, row.requested_product_family_id])
+          .filter((value): value is string => Boolean(value))
+      ),
+    ];
+    const tierIds = [
+      ...new Set(
+        rows
+          .flatMap((row) => [row.current_product_tier_id, row.requested_product_tier_id])
+          .filter((value): value is string => Boolean(value))
+      ),
+    ];
+
+    const [historyFamiliesResult, historyTiersResult] = await Promise.all([
+      familyIds.length
+        ? supabase.from("product_families").select("id, name").in("id", familyIds)
+        : Promise.resolve({ data: [], error: null }),
+      tierIds.length
+        ? supabase.from("product_family_tiers").select("id, name").in("id", tierIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (historyFamiliesResult.error || historyTiersResult.error) {
+      setError(
+        `Plan history details failed to load: ${
+          historyFamiliesResult.error?.message || historyTiersResult.error?.message
+        }`
+      );
+      setLoading(false);
+      return;
+    }
+
+    const familyMap = new Map(
+      (historyFamiliesResult.data || []).map((family) => [family.id as string, family.name as string])
+    );
+    const tierMap = new Map(
+      (historyTiersResult.data || []).map((tier) => [tier.id as string, tier.name as string])
+    );
 
     setCurrentPlan(loadedPlan);
     setRequestedFamily(familySlug);
     setRequestedTier(tierKey);
+    setHistory(
+      rows.map((row) => ({
+        ...row,
+        currentPlanLabel: `${
+          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQ Business"
+        } · ${
+          (row.current_product_tier_id && tierMap.get(row.current_product_tier_id)) || "Starter"
+        }`,
+        requestedPlanLabel: `${
+          familyMap.get(row.requested_product_family_id) || "Unknown family"
+        } · ${tierMap.get(row.requested_product_tier_id) || "Unknown tier"}`,
+      }))
+    );
     setLoading(false);
   }
 
@@ -108,9 +232,10 @@ export function ClientPlanManagement() {
 
   const isSamePlan =
     currentPlan?.familySlug === requestedFamily && currentPlan?.tierKey === requestedTier;
+  const hasPendingRequest = history.some((request) => request.status === "pending_owner_review");
 
   async function submitRequest() {
-    if (!supabase || isSamePlan) return;
+    if (!supabase || isSamePlan || hasPendingRequest) return;
 
     setSubmitting(true);
     setMessage("");
@@ -131,6 +256,7 @@ export function ClientPlanManagement() {
 
     setMessage("Plan change request sent for owner review. Nothing changes until the request is approved.");
     setNote("");
+    await loadPlan();
   }
 
   return (
@@ -150,13 +276,15 @@ export function ClientPlanManagement() {
         <div className="empty-state">Loading current plan...</div>
       ) : (
         <>
-          <div className="owner-message-card">
+          <div className="owner-message-card plan-summary-card">
             <span className="subtle">Current plan</span>
-            <strong>
-              {currentPlan?.familyName} · {currentPlan?.tierName}
-            </strong>
+            <strong>{currentPlan?.familyName} · {currentPlan?.tierName}</strong>
             <p>{currentPlan?.priceLabel} monthly</p>
           </div>
+
+          {hasPendingRequest ? (
+            <div className="notice-card">A plan-change request is already awaiting owner review.</div>
+          ) : null}
 
           <div className="setup-form-grid">
             <label>
@@ -219,12 +347,52 @@ export function ClientPlanManagement() {
           <button
             className="wide-btn"
             type="button"
-            disabled={submitting || isSamePlan}
+            disabled={submitting || isSamePlan || hasPendingRequest}
             onClick={() => void submitRequest()}
           >
             <CheckCircle2 size={16} />
-            {isSamePlan ? "Current plan selected" : submitting ? "Sending request..." : "Request plan change"}
+            {hasPendingRequest
+              ? "Awaiting owner review"
+              : isSamePlan
+                ? "Current plan selected"
+                : submitting
+                  ? "Sending request..."
+                  : "Request plan change"}
           </button>
+
+          <div className="plan-history-section">
+            <div className="panel-title">
+              <Clock3 size={18} />
+              <h3>Plan-change history</h3>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="empty-state">No plan changes have been requested yet.</div>
+            ) : (
+              <div className="plan-history-list">
+                {history.map((request) => (
+                  <article className="plan-history-card" key={request.id}>
+                    <div className="approval-top">
+                      <strong>{request.currentPlanLabel} → {request.requestedPlanLabel}</strong>
+                      <small>{formatStatus(request.status)}</small>
+                    </div>
+                    <p>
+                      Requested {formatDateTime(request.created_at)}
+                      {request.resolved_at ? ` · Resolved ${formatDateTime(request.resolved_at)}` : ""}
+                    </p>
+                    {request.requested_monthly_price !== null ? (
+                      <p>Monthly price: {formatMoney(Number(request.requested_monthly_price))}/month</p>
+                    ) : null}
+                    {request.one_time_change_fee !== null ? (
+                      <p>One-time website change fee: {formatMoney(Number(request.one_time_change_fee))}</p>
+                    ) : null}
+                    {request.client_note ? <p>Client request: {request.client_note}</p> : null}
+                    {request.owner_note ? <p className="recommendation">NXQ response: {request.owner_note}</p> : null}
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
     </section>
