@@ -26,7 +26,7 @@ export type ProductTierDefinition = {
   description: string;
 };
 
-export const productFamilies: ProductFamilyDefinition[] = [
+export const productFamilyCatalog: ProductFamilyDefinition[] = [
   {
     slug: "business",
     name: "NXQ Business",
@@ -108,17 +108,18 @@ export function isPubliclySelectableFamily(family: ProductFamilyDefinition) {
   return family.status === "available" || family.status === "beta";
 }
 
-export const publiclySelectableProductFamilies = productFamilies.filter(isPubliclySelectableFamily);
+export const productFamilies = productFamilyCatalog.filter(isPubliclySelectableFamily);
+export const publiclySelectableProductFamilies = productFamilies;
 
 export function getProductFamily(slug: string | null) {
-  const requested = productFamilies.find((family) => family.slug === slug);
+  const requested = productFamilyCatalog.find((family) => family.slug === slug);
   return requested && isPubliclySelectableFamily(requested)
     ? requested
-    : publiclySelectableProductFamilies[0] || productFamilies[0];
+    : productFamilies[0] || productFamilyCatalog[0];
 }
 
 export function getRequestedProductFamily(slug: string | null) {
-  return productFamilies.find((family) => family.slug === slug) || null;
+  return productFamilyCatalog.find((family) => family.slug === slug) || null;
 }
 
 export function getProductTier(key: string | null) {
