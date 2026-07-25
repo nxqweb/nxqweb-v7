@@ -1,7 +1,7 @@
 import { ArrowRight, Clock3 } from "lucide-react";
 import {
   isPubliclySelectableFamily,
-  productFamilies as PRODUCT_FAMILIES,
+  productFamilyCatalog as PRODUCT_FAMILIES,
 } from "../lib/productCatalog";
 
 export function ProductFamilySignupSelector() {
