@@ -10,11 +10,13 @@ export type ProductFamilySlug =
 
 export type ProductTierKey = "starter" | "growth" | "intelligence" | "enterprise";
 
+export type ProductFamilyStatus = "available" | "beta" | "planned" | "private";
+
 export type ProductFamilyDefinition = {
   slug: ProductFamilySlug;
   name: string;
   description: string;
-  status: "available" | "beta" | "planned" | "private";
+  status: ProductFamilyStatus;
 };
 
 export type ProductTierDefinition = {
@@ -102,8 +104,21 @@ export const productTiers: ProductTierDefinition[] = [
   },
 ];
 
+export function isPubliclySelectableFamily(family: ProductFamilyDefinition) {
+  return family.status === "available" || family.status === "beta";
+}
+
+export const publiclySelectableProductFamilies = productFamilies.filter(isPubliclySelectableFamily);
+
 export function getProductFamily(slug: string | null) {
-  return productFamilies.find((family) => family.slug === slug) || productFamilies[0];
+  const requested = productFamilies.find((family) => family.slug === slug);
+  return requested && isPubliclySelectableFamily(requested)
+    ? requested
+    : publiclySelectableProductFamilies[0] || productFamilies[0];
+}
+
+export function getRequestedProductFamily(slug: string | null) {
+  return productFamilies.find((family) => family.slug === slug) || null;
 }
 
 export function getProductTier(key: string | null) {
