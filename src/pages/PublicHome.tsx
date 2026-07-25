@@ -1,4 +1,4 @@
-﻿import {
+import {
   ArrowRight,
   Bot,
   CheckCircle2,
@@ -7,6 +7,7 @@
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSelector";
 
 export function PublicHome() {
   return (
@@ -127,11 +128,11 @@ export function PublicHome() {
             <span>Pricing</span>
             <h2>Premium websites. Smarter monthly plans.</h2>
             <p>
-              Start with the plan that matches where your business is right now.
-              As your company grows, your website system can grow with stronger SEO,
-              smarter insights, and deeper monthly optimization.
+              Choose the NXQ website system your business needs, then select the monthly tier that fits your goals.
             </p>
           </div>
+
+          <ProductFamilySignupSelector />
 
           <div className="lux-grid lux-pricing-grid">
             <article className="lux-card lux-price">
@@ -255,10 +256,3 @@ export function PublicHome() {
     </main>
   );
 }
-
-
-
-
-
-
-
