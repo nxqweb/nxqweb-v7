@@ -1,5 +1,6 @@
 import "./styles/nxq.css";
 import "./styles/deployments.css";
+import "./styles/plan-forms.css";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
