@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, KeyRound, Mail, Moon, Save, Sun, Globe2 } from "lucide-react";
+import { ClientPlanManagement } from "../components/ClientPlanManagement";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientDomainRow = {
@@ -146,7 +147,7 @@ export function ClientSettings() {
             <Save size={22} />
             <div>
               <h1>Client settings</h1>
-              <p className="subtle">Manage your account, appearance, and connected domain details.</p>
+              <p className="subtle">Manage your account, plan, appearance, and connected domain details.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client">
@@ -160,6 +161,8 @@ export function ClientSettings() {
 
         {!loading ? (
           <div className="owner-detail-grid">
+            <ClientPlanManagement />
+
             <section className="panel panel-wide">
               <div className="panel-title">
                 {theme === "dark" ? <Moon size={20} /> : <Sun size={20} />}
