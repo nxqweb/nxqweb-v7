@@ -12,9 +12,11 @@ type PlanChangeRequestRow = {
   requested_monthly_price: number | null;
   one_time_change_fee: number | null;
   client_note: string | null;
+  owner_note: string | null;
   status: string;
   owner_approval_request_id: string | null;
   created_at: string;
+  resolved_at: string | null;
 };
 
 type ClientRow = {
@@ -33,6 +35,7 @@ type TierRow = {
   name: string;
   tier_key: string;
   price_label: string | null;
+  monthly_price: number | null;
 };
 
 type RequestView = PlanChangeRequestRow & {
@@ -41,6 +44,8 @@ type RequestView = PlanChangeRequestRow & {
   currentTierName: string;
   requestedFamilyName: string;
   requestedTierName: string;
+  requestedTierKey: string;
+  catalogMonthlyPrice: number | null;
   requestedPriceLabel: string;
 };
 
@@ -54,16 +59,23 @@ function formatMoney(value: number | null) {
   }).format(value);
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string | null) {
+  if (!value) return "Not resolved yet";
+
   return new Date(value).toLocaleString([], {
     dateStyle: "medium",
     timeStyle: "short",
   });
 }
 
+function formatStatus(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export function OwnerPlanChanges() {
   const [requests, setRequests] = useState<RequestView[]>([]);
   const [fees, setFees] = useState<Record<string, string>>({});
+  const [monthlyPrices, setMonthlyPrices] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
@@ -93,7 +105,7 @@ export function OwnerPlanChanges() {
     const requestResult = await supabase
       .from("client_plan_change_requests")
       .select(
-        "id, client_id, current_product_family_id, current_product_tier_id, requested_product_family_id, requested_product_tier_id, requested_monthly_price, one_time_change_fee, client_note, status, owner_approval_request_id, created_at"
+        "id, client_id, current_product_family_id, current_product_tier_id, requested_product_family_id, requested_product_tier_id, requested_monthly_price, one_time_change_fee, client_note, owner_note, status, owner_approval_request_id, created_at, resolved_at"
       )
       .order("created_at", { ascending: false });
 
@@ -128,7 +140,10 @@ export function OwnerPlanChanges() {
         ? supabase.from("product_families").select("id, name, slug").in("id", familyIds)
         : Promise.resolve({ data: [], error: null }),
       tierIds.length
-        ? supabase.from("product_family_tiers").select("id, name, tier_key, price_label").in("id", tierIds)
+        ? supabase
+            .from("product_family_tiers")
+            .select("id, name, tier_key, price_label, monthly_price")
+            .in("id", tierIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -159,6 +174,7 @@ export function OwnerPlanChanges() {
         : null;
       const requestedFamily = familyMap.get(row.requested_product_family_id);
       const requestedTier = tierMap.get(row.requested_product_tier_id);
+      const finalMonthlyPrice = row.requested_monthly_price ?? requestedTier?.monthly_price ?? null;
 
       return {
         ...row,
@@ -167,8 +183,12 @@ export function OwnerPlanChanges() {
         currentTierName: currentTier?.name || "Starter",
         requestedFamilyName: requestedFamily?.name || "Unknown family",
         requestedTierName: requestedTier?.name || "Unknown tier",
+        requestedTierKey: requestedTier?.tier_key || "starter",
+        catalogMonthlyPrice: requestedTier?.monthly_price ?? null,
         requestedPriceLabel:
-          requestedTier?.price_label || formatMoney(row.requested_monthly_price),
+          finalMonthlyPrice === null
+            ? requestedTier?.price_label || "Custom"
+            : `${formatMoney(Number(finalMonthlyPrice))}/month`,
       };
     });
 
@@ -180,9 +200,18 @@ export function OwnerPlanChanges() {
         return result;
       }, {})
     );
+    setMonthlyPrices(
+      views.reduce<Record<string, string>>((result, request) => {
+        result[request.id] =
+          request.requestedTierKey === "enterprise" && request.requested_monthly_price !== null
+            ? String(request.requested_monthly_price)
+            : "";
+        return result;
+      }, {})
+    );
     setNotes(
       views.reduce<Record<string, string>>((result, request) => {
-        result[request.id] = "";
+        result[request.id] = request.owner_note || "";
         return result;
       }, {})
     );
@@ -210,6 +239,22 @@ export function OwnerPlanChanges() {
       return;
     }
 
+    const rawMonthlyPrice = (monthlyPrices[request.id] || "").trim();
+    const approvedMonthlyPrice = rawMonthlyPrice === "" ? null : Number(rawMonthlyPrice);
+
+    if (
+      decision === "accepted" &&
+      request.requestedTierKey === "enterprise" &&
+      (approvedMonthlyPrice === null || !Number.isFinite(approvedMonthlyPrice) || approvedMonthlyPrice <= 0)
+    ) {
+      setError("Enterprise approval requires a positive monthly price.");
+      return;
+    }
+
+    const finalMonthlyPrice =
+      request.requestedTierKey === "enterprise"
+        ? approvedMonthlyPrice
+        : request.catalogMonthlyPrice;
     const actionLabel = decision === "accepted" ? "APPROVE" : "DENY";
     const confirmed = window.confirm(
       [
@@ -218,7 +263,9 @@ export function OwnerPlanChanges() {
         `Client: ${request.clientName}`,
         `Current: ${request.currentFamilyName} · ${request.currentTierName}`,
         `Requested: ${request.requestedFamilyName} · ${request.requestedTierName}`,
-        `New monthly price: ${request.requestedPriceLabel}`,
+        `New monthly price: ${
+          finalMonthlyPrice === null ? "Custom / not set" : `${formatMoney(finalMonthlyPrice)}/month`
+        }`,
         `One-time fee: ${fee === null ? "$0 / not set" : formatMoney(fee)}`,
         "",
         decision === "accepted"
@@ -240,6 +287,7 @@ export function OwnerPlanChanges() {
       decision_status: decision,
       owner_response_text: note,
       one_time_fee: fee,
+      approved_monthly_price: approvedMonthlyPrice,
     });
 
     setBusyId("");
@@ -298,26 +346,27 @@ export function OwnerPlanChanges() {
           <div className="owner-message-list">
             {requests.map((request) => {
               const isPending = request.status === "pending_owner_review";
+              const isEnterprise = request.requestedTierKey === "enterprise";
 
               return (
                 <article className="approval-card" key={request.id}>
                   <div className="approval-top">
                     <span>{request.clientName}</span>
-                    <small>{request.status.replaceAll("_", " ")}</small>
+                    <small>{formatStatus(request.status)}</small>
                   </div>
 
                   <h3>{request.requestedFamilyName} · {request.requestedTierName}</h3>
                   <p className="subtle">Submitted {formatDateTime(request.created_at)}</p>
 
                   <div className="setup-form-grid">
-                    <div className="owner-message-card">
+                    <div className="owner-message-card plan-summary-card">
                       <span className="subtle">Current plan</span>
                       <strong>{request.currentFamilyName} · {request.currentTierName}</strong>
                     </div>
-                    <div className="owner-message-card">
+                    <div className="owner-message-card plan-summary-card">
                       <span className="subtle">Requested plan</span>
                       <strong>{request.requestedFamilyName} · {request.requestedTierName}</strong>
-                      <p>{request.requestedPriceLabel} monthly</p>
+                      <p>{request.requestedPriceLabel}</p>
                     </div>
                   </div>
 
@@ -328,6 +377,32 @@ export function OwnerPlanChanges() {
                   {isPending ? (
                     <>
                       <div className="setup-form-grid">
+                        {isEnterprise ? (
+                          <label>
+                            <span>Approved Enterprise monthly price</span>
+                            <input
+                              className="auth-input"
+                              inputMode="decimal"
+                              min="1"
+                              placeholder="$500"
+                              type="number"
+                              value={monthlyPrices[request.id] || ""}
+                              onChange={(event) =>
+                                setMonthlyPrices((current) => ({
+                                  ...current,
+                                  [request.id]: event.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                        ) : (
+                          <div className="owner-message-card plan-summary-card">
+                            <span className="subtle">Locked monthly price</span>
+                            <strong>{formatMoney(request.catalogMonthlyPrice)}/month</strong>
+                            <p>Fixed tiers always use catalog pricing.</p>
+                          </div>
+                        )}
+
                         <label>
                           <span>One-time website change fee</span>
                           <input
@@ -342,19 +417,21 @@ export function OwnerPlanChanges() {
                             }
                           />
                         </label>
-                        <label>
-                          <span>Owner note</span>
-                          <textarea
-                            className="auth-input"
-                            placeholder="Explain approval scope, fee, timing, or denial reason."
-                            rows={3}
-                            value={notes[request.id] || ""}
-                            onChange={(event) =>
-                              setNotes((current) => ({ ...current, [request.id]: event.target.value }))
-                            }
-                          />
-                        </label>
                       </div>
+
+                      <label className="auth-label" htmlFor={`owner-note-${request.id}`}>
+                        Owner note
+                      </label>
+                      <textarea
+                        className="auth-input"
+                        id={`owner-note-${request.id}`}
+                        placeholder="Explain approval scope, fee, timing, or denial reason."
+                        rows={3}
+                        value={notes[request.id] || ""}
+                        onChange={(event) =>
+                          setNotes((current) => ({ ...current, [request.id]: event.target.value }))
+                        }
+                      />
 
                       <div className="approval-actions">
                         <button
@@ -375,8 +452,16 @@ export function OwnerPlanChanges() {
                       </div>
                     </>
                   ) : (
-                    <div className="notice-card">
-                      This request has already been resolved.
+                    <div className="plan-resolution-card">
+                      <strong>{formatStatus(request.status)}</strong>
+                      <p>Resolved {formatDateTime(request.resolved_at)}</p>
+                      {request.requested_monthly_price !== null ? (
+                        <p>Final monthly price: {formatMoney(Number(request.requested_monthly_price))}/month</p>
+                      ) : null}
+                      {request.one_time_change_fee !== null ? (
+                        <p>One-time website change fee: {formatMoney(Number(request.one_time_change_fee))}</p>
+                      ) : null}
+                      {request.owner_note ? <p className="recommendation">Owner note: {request.owner_note}</p> : null}
                     </div>
                   )}
                 </article>
