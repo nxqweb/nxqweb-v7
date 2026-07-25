@@ -8,6 +8,7 @@ import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerFiles } from "./pages/OwnerFiles";
+import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
 import { OwnerPortal } from "./pages/OwnerPortal";
 import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
 import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
@@ -67,10 +68,23 @@ function App() {
     );
   }
 
+  if (path === "/owner/plan-changes") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerPlanChanges />
+      </OwnerProtectedRoute>
+    );
+  }
+
   if (path === "/owner") {
     return (
       <OwnerProtectedRoute>
-        <OwnerPortal />
+        <>
+          <OwnerPortal />
+          <a className="owner-plan-change-shortcut" href="/owner/plan-changes">
+            Review plan changes
+          </a>
+        </>
       </OwnerProtectedRoute>
     );
   }
