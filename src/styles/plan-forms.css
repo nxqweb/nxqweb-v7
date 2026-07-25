@@ -82,6 +82,16 @@ body[data-nxq-theme="light"] select.auth-input option:checked {
   margin: 0;
 }
 
+.plan-change-review-only {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.plan-change-review-only .wide-btn {
+  width: 100%;
+}
+
 .owner-plan-change-shortcut {
   position: fixed;
   right: 24px;
