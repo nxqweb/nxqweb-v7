@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import { PRODUCT_FAMILIES } from "../lib/productCatalog";
+import { productFamilies as PRODUCT_FAMILIES } from "../lib/productCatalog";
 
 export function ProductFamilySignupSelector() {
   return (
