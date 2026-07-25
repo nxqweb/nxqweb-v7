@@ -1,14 +1,26 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, MailCheck, UserPlus } from "lucide-react";
-import { getProductFamily, productTiers, type ProductTierKey } from "../lib/productCatalog";
+import {
+  getProductFamily,
+  getRequestedProductFamily,
+  isPubliclySelectableFamily,
+  productTiers,
+  type ProductTierKey,
+} from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export function PortalSignup() {
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const requestedFamily = useMemo(
+    () => getRequestedProductFamily(searchParams.get("family")),
+    [searchParams]
+  );
   const selectedFamily = useMemo(
     () => getProductFamily(searchParams.get("family")),
     [searchParams]
   );
+  const unavailableFamily =
+    requestedFamily && !isPubliclySelectableFamily(requestedFamily) ? requestedFamily : null;
 
   const initialTier = searchParams.get("tier");
   const [selectedTier, setSelectedTier] = useState<ProductTierKey>(
@@ -102,6 +114,15 @@ export function PortalSignup() {
               <p className="subtle">{selectedFamily.name}</p>
             </div>
           </div>
+
+          {unavailableFamily ? (
+            <div className="notice-card">
+              <strong>{unavailableFamily.name} is still in development.</strong>
+              <p>
+                NXQ Business was selected instead so no unfinished product workflow can be purchased accidentally.
+              </p>
+            </div>
+          ) : null}
 
           <p className="subtle">{selectedFamily.description}</p>
 
