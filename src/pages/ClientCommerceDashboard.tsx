@@ -15,12 +15,25 @@ type CatalogSummary = {
   };
 };
 
+type CommerceIntakeSummary = {
+  status?: string;
+  existing_site_detected?: boolean;
+  detected_site_url?: string | null;
+  detected_site_source?: string | null;
+  website_transition_mode?: string;
+};
+
 function formatStatus(value: string | undefined) {
   return (value || "setup_pending").replaceAll("_", " ");
 }
 
+function formatSource(value: string | null | undefined) {
+  return (value || "account data").replaceAll("_", " ");
+}
+
 export function ClientCommerceDashboard() {
   const [catalog, setCatalog] = useState<CatalogSummary | null>(null);
+  const [intake, setIntake] = useState<CommerceIntakeSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,17 +57,25 @@ export function ClientCommerceDashboard() {
       return;
     }
 
-    const result = await supabase.rpc("get_my_commerce_catalog");
-    if (result.error) {
-      setError(`Commerce dashboard failed to load: ${result.error.message}`);
+    const [catalogResult, intakeResult] = await Promise.all([
+      supabase.rpc("get_my_commerce_catalog"),
+      supabase.rpc("get_my_commerce_intake"),
+    ]);
+
+    if (catalogResult.error) {
+      setError(`Commerce dashboard failed to load: ${catalogResult.error.message}`);
+    } else if (intakeResult.error) {
+      setError(`Commerce setup status failed to load: ${intakeResult.error.message}`);
     } else {
-      setCatalog((result.data as CatalogSummary) || null);
+      setCatalog((catalogResult.data as CatalogSummary) || null);
+      setIntake((intakeResult.data as CommerceIntakeSummary) || null);
     }
 
     setLoading(false);
   }
 
   const summary = catalog?.summary || {};
+  const setupNeedsAttention = !intake || ["draft", "needs_more_info"].includes(intake.status || "draft");
 
   return (
     <main className="nxq-page">
@@ -79,6 +100,34 @@ export function ClientCommerceDashboard() {
 
         {!loading && !error ? (
           <>
+            {setupNeedsAttention ? (
+              <section className="panel panel-wide">
+                <div className="panel-title">
+                  <ClipboardList size={20} />
+                  <div>
+                    <h2>Commerce setup required</h2>
+                    <p className="subtle">
+                      Your Commerce plan is approved. Finish the storefront setup before NXQ prepares the build and migration plan.
+                    </p>
+                  </div>
+                </div>
+
+                {intake?.existing_site_detected && intake.detected_site_url ? (
+                  <div className="notice-card success">
+                    <strong>Existing website detected automatically</strong>
+                    <p>{intake.detected_site_url}</p>
+                    <p className="subtle">Found from {formatSource(intake.detected_site_source)}. You will choose whether NXQ replaces, rebuilds, or safely connects it.</p>
+                  </div>
+                ) : (
+                  <div className="notice-card">
+                    We did not find a reliable website URL in the account yet. The setup form will only ask for one because the profile, connected domains, and monitoring records were empty.
+                  </div>
+                )}
+
+                <a className="wide-btn" href="/client/commerce/setup">Complete Commerce setup</a>
+              </section>
+            ) : null}
+
             <section className="panel panel-wide">
               <div className="panel-title">
                 <ShoppingBag size={20} />
