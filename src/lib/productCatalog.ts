@@ -111,6 +111,12 @@ export function isPubliclySelectableFamily(family: ProductFamilyDefinition) {
 export const productFamilies = productFamilyCatalog.filter(isPubliclySelectableFamily);
 export const publiclySelectableProductFamilies = productFamilies;
 
+// Commerce is intentionally available only inside the guarded existing-client
+// plan-change workflow while the public catalog still labels it as planned.
+export const planChangeProductFamilies = productFamilyCatalog.filter(
+  (family) => isPubliclySelectableFamily(family) || family.slug === "commerce"
+);
+
 export function getProductFamily(slug: string | null) {
   const requested = productFamilyCatalog.find((family) => family.slug === slug);
   return requested && isPubliclySelectableFamily(requested)
