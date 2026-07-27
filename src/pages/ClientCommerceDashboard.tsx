@@ -57,6 +57,20 @@ export function ClientCommerceDashboard() {
       return;
     }
 
+    const ensureResult = await supabase.rpc("ensure_my_commerce_onboarding");
+    if (ensureResult.error) {
+      setError(`Commerce onboarding could not be prepared: ${ensureResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const ensureData = ensureResult.data as { provisioned?: boolean; reason?: string } | null;
+    if (ensureData?.provisioned === false && ensureData.reason === "not_commerce") {
+      setError("This client account is not currently approved for NXQ Commerce.");
+      setLoading(false);
+      return;
+    }
+
     const [catalogResult, intakeResult] = await Promise.all([
       supabase.rpc("get_my_commerce_catalog"),
       supabase.rpc("get_my_commerce_intake"),
