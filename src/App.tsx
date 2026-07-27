@@ -1,6 +1,7 @@
 import "./styles/nxq.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
+import { ClientCommercePortalTab } from "./components/ClientCommercePortalTab";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -114,7 +115,12 @@ function App() {
   }
 
   if (path === "/client") {
-    return <ClientPortal />;
+    return (
+      <>
+        <ClientCommercePortalTab />
+        <ClientPortal />
+      </>
+    );
   }
 
   if (path.startsWith("/client/")) {
