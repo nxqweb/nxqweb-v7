@@ -72,13 +72,14 @@ export function ClientCommerceCatalog() {
       return;
     }
 
-    const sessionResult = await supabase.auth.getSession();
+    const client = supabase;
+    const sessionResult = await client.auth.getSession();
     if (!sessionResult.data.session) {
       window.location.replace("/portal/login");
       return;
     }
 
-    const result = await supabase.rpc("get_my_commerce_catalog_manager");
+    const result = await client.rpc("get_my_commerce_catalog_manager");
     if (result.error) {
       setError(`Catalog failed to load: ${result.error.message}`);
       setLoading(false);
@@ -92,7 +93,7 @@ export function ClientCommerceCatalog() {
         ...product,
         media: await Promise.all(
           (product.media || []).map(async (item) => {
-            const signed = await supabase.storage
+            const signed = await client.storage
               .from("commerce-product-media")
               .createSignedUrl(item.storage_path, 3600);
             return { ...item, signed_url: signed.data?.signedUrl || "" };
