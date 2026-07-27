@@ -3,14 +3,12 @@ import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type SecurityProfile = {
-  id: string;
   monitoring_status: string;
   website_health: string;
   ssl_status: string;
   monitored_url: string | null;
   threats_blocked_total: number;
   last_scan_at: string | null;
-  latest_error: string | null;
 };
 
 type HealthCheck = {
@@ -19,7 +17,12 @@ type HealthCheck = {
   response_time_ms: number | null;
   http_status: number | null;
   checked_at: string;
-  error_message: string | null;
+};
+
+type SecurityOverview = {
+  profile: SecurityProfile | null;
+  latest_check: HealthCheck | null;
+  active_incidents: number;
 };
 
 function formatStatus(value: string) {
@@ -65,70 +68,21 @@ export function ClientWebsiteSecurity() {
         return;
       }
 
-      const clientResult = await supabase
-        .from("clients")
-        .select("id")
-        .eq("auth_user_id", session.user.id)
-        .maybeSingle();
+      const overviewResult = await supabase.rpc("get_client_security_overview");
 
-      if (clientResult.error) {
-        throw new Error(clientResult.error.message);
+      if (overviewResult.error) {
+        throw new Error(overviewResult.error.message);
       }
 
-      if (!clientResult.data?.id) {
-        setLoading(false);
-        return;
-      }
+      const overview = (overviewResult.data || {
+        profile: null,
+        latest_check: null,
+        active_incidents: 0,
+      }) as SecurityOverview;
 
-      const profileResult = await supabase
-        .from("website_security_profiles")
-        .select(
-          "id, monitoring_status, website_health, ssl_status, monitored_url, threats_blocked_total, last_scan_at, latest_error"
-        )
-        .eq("client_id", clientResult.data.id)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (profileResult.error) {
-        throw new Error(profileResult.error.message);
-      }
-
-      const loadedProfile = (profileResult.data as SecurityProfile | null) || null;
-      setProfile(loadedProfile);
-
-      if (!loadedProfile) {
-        setLatestCheck(null);
-        setActiveIncidents(0);
-        setLoading(false);
-        return;
-      }
-
-      const [checkResult, incidentResult] = await Promise.all([
-        supabase
-          .from("website_health_checks")
-          .select("status, check_type, response_time_ms, http_status, checked_at, error_message")
-          .eq("security_profile_id", loadedProfile.id)
-          .order("checked_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("website_security_incidents")
-          .select("id", { count: "exact", head: true })
-          .eq("security_profile_id", loadedProfile.id)
-          .in("status", ["open", "investigating", "repair_prepared", "awaiting_owner"]),
-      ]);
-
-      if (checkResult.error) {
-        throw new Error(checkResult.error.message);
-      }
-
-      if (incidentResult.error) {
-        throw new Error(incidentResult.error.message);
-      }
-
-      setLatestCheck((checkResult.data as HealthCheck | null) || null);
-      setActiveIncidents(incidentResult.count || 0);
+      setProfile(overview.profile);
+      setLatestCheck(overview.latest_check);
+      setActiveIncidents(Number(overview.active_incidents || 0));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown security overview error";
       setLoadError(`Security overview could not be loaded: ${message}`);
@@ -214,7 +168,11 @@ export function ClientWebsiteSecurity() {
         <article className="settings-card">
           <span>Last security scan</span>
           <strong>{loading ? "Loading..." : formatDate(profile?.last_scan_at || null)}</strong>
-          <p>{profile?.latest_error || latestCheck?.error_message || "No scan error is currently recorded."}</p>
+          <p>
+            {activeIncidents > 0
+              ? "NXQ is reviewing the active incident details."
+              : "No client-facing scan issue is currently recorded."}
+          </p>
         </article>
       </div>
     </section>
