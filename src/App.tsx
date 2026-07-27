@@ -9,6 +9,7 @@ import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
 import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
+import { ClientCommercePreview } from "./pages/ClientCommercePreview";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientPortal } from "./pages/ClientPortal";
@@ -58,6 +59,7 @@ function App() {
     return null;
   }
 
+  if (path === "/client/commerce/preview") return <ClientCommercePreview />;
   if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
