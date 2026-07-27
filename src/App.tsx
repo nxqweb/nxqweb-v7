@@ -5,6 +5,7 @@ import { ClientCommercePortalTab } from "./components/ClientCommercePortalTab";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
 import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
@@ -57,6 +58,7 @@ function App() {
     return null;
   }
 
+  if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
