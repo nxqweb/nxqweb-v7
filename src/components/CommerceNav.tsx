@@ -1,9 +1,10 @@
-import { Boxes, ClipboardList, Images, LayoutDashboard, PackagePlus, Tags } from "lucide-react";
+import { Boxes, ClipboardList, Eye, Images, LayoutDashboard, PackagePlus, Tags } from "lucide-react";
 
 const links = [
   { href: "/client/commerce", label: "Dashboard", icon: LayoutDashboard },
   { href: "/client/commerce/products", label: "Products", icon: PackagePlus },
   { href: "/client/commerce/catalog", label: "Catalog", icon: Images },
+  { href: "/client/commerce/preview", label: "Preview", icon: Eye },
   { href: "/client/commerce/categories", label: "Categories", icon: Tags },
   { href: "/client/commerce/inventory", label: "Inventory", icon: Boxes },
   { href: "/client/commerce/setup", label: "Setup", icon: ClipboardList },
@@ -20,7 +21,7 @@ export function CommerceNav() {
             className={path === href ? "wide-btn" : "icon-btn"}
             href={href}
             key={href}
-            style={{ flex: "1 1 140px", justifyContent: "center" }}
+            style={{ flex: "1 1 125px", justifyContent: "center" }}
           >
             <Icon size={16} />
             {label}
