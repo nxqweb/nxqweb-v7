@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShoppingBag } from "lucide-react";
+import { ClipboardList, LayoutDashboard, PackagePlus, ShoppingBag } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CommerceAccess = {
@@ -34,34 +34,55 @@ export function ClientCommercePortalTab() {
 
   if (!access?.allowed) return null;
 
+  const setupStatus = access.setup_status || "draft";
+  const setupNeedsAttention = ["draft", "needs_more_info"].includes(setupStatus);
+
   return (
-    <nav
-      aria-label="Commerce portal"
+    <section
+      aria-label="Commerce workspace shortcuts"
+      className="panel panel-wide"
       style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 60,
-        display: "flex",
-        justifyContent: "center",
-        padding: "0.75rem 1rem 0",
-        pointerEvents: "none",
+        margin: "1rem auto 0",
+        maxWidth: "min(92vw, 1100px)",
       }}
     >
-      <a
-        className="icon-btn"
-        href="/client/commerce"
-        style={{
-          pointerEvents: "auto",
-          minWidth: "min(92vw, 520px)",
-          justifyContent: "center",
-          backdropFilter: "blur(18px)",
-          boxShadow: "0 18px 45px rgba(0, 0, 0, 0.28)",
-        }}
-      >
-        <ShoppingBag size={17} />
-        Commerce
-        {access.setup_status ? ` · ${access.setup_status.replaceAll("_", " ")}` : ""}
-      </a>
-    </nav>
+      <div className="panel-title panel-title-row">
+        <div className="panel-title">
+          <ShoppingBag size={20} />
+          <div>
+            <h2>Commerce workspace</h2>
+            <p className="subtle">
+              Set up the storefront, add products, manage inventory, and track future orders here.
+            </p>
+          </div>
+        </div>
+        <span className="notice-card" style={{ margin: 0, padding: "0.6rem 0.9rem" }}>
+          Setup: {setupStatus.replaceAll("_", " ")}
+        </span>
+      </div>
+
+      {setupNeedsAttention ? (
+        <div className="notice-card">
+          Finish Commerce setup before NXQ prepares the storefront build and migration plan.
+        </div>
+      ) : null}
+
+      <div className="setup-form-grid">
+        <a className="wide-btn" href="/client/commerce">
+          <LayoutDashboard size={17} />
+          Open Commerce dashboard
+        </a>
+
+        <a className={setupNeedsAttention ? "wide-btn" : "icon-btn"} href="/client/commerce/setup">
+          <ClipboardList size={17} />
+          {setupNeedsAttention ? "Complete Commerce setup" : "Review store setup"}
+        </a>
+
+        <a className="icon-btn" href="/client/commerce/products">
+          <PackagePlus size={17} />
+          Manage products
+        </a>
+      </div>
+    </section>
   );
 }
