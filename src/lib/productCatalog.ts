@@ -108,20 +108,22 @@ export function isPubliclySelectableFamily(family: ProductFamilyDefinition) {
   return family.status === "available" || family.status === "beta";
 }
 
-export const productFamilies = productFamilyCatalog.filter(isPubliclySelectableFamily);
-export const publiclySelectableProductFamilies = productFamilies;
+export const publiclySelectableProductFamilies = productFamilyCatalog.filter(isPubliclySelectableFamily);
 
-// Commerce is intentionally available only inside the guarded existing-client
-// plan-change workflow while the public catalog still labels it as planned.
+// Existing clients may request Commerce through the guarded owner-review flow while
+// Commerce remains publicly marked as planned and unavailable for direct signup.
 export const planChangeProductFamilies = productFamilyCatalog.filter(
   (family) => isPubliclySelectableFamily(family) || family.slug === "commerce"
 );
+
+// Kept as the plan-management list for compatibility with ClientPlanManagement.
+export const productFamilies = planChangeProductFamilies;
 
 export function getProductFamily(slug: string | null) {
   const requested = productFamilyCatalog.find((family) => family.slug === slug);
   return requested && isPubliclySelectableFamily(requested)
     ? requested
-    : productFamilies[0] || productFamilyCatalog[0];
+    : publiclySelectableProductFamilies[0] || productFamilyCatalog[0];
 }
 
 export function getRequestedProductFamily(slug: string | null) {
