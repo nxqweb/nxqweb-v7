@@ -4,6 +4,8 @@ import "./styles/plan-forms.css";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
+import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
@@ -95,8 +97,16 @@ function App() {
     return null;
   }
 
+  if (path === "/client/commerce/products") {
+    return <ClientCommerceProducts />;
+  }
+
   if (path === "/client/commerce/setup") {
     return <ClientCommerceSetup />;
+  }
+
+  if (path === "/client/commerce") {
+    return <ClientCommerceDashboard />;
   }
 
   if (path === "/client/settings") {
