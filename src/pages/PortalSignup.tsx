@@ -1,8 +1,33 @@
-﻿import { useState } from "react";
-import { MailCheck, UserPlus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, CheckCircle2, MailCheck, UserPlus } from "lucide-react";
+import {
+  getProductFamily,
+  getRequestedProductFamily,
+  isPubliclySelectableFamily,
+  productTiers,
+  type ProductTierKey,
+} from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 export function PortalSignup() {
+  const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const requestedFamily = useMemo(
+    () => getRequestedProductFamily(searchParams.get("family")),
+    [searchParams]
+  );
+  const selectedFamily = useMemo(
+    () => getProductFamily(searchParams.get("family")),
+    [searchParams]
+  );
+  const unavailableFamily =
+    requestedFamily && !isPubliclySelectableFamily(requestedFamily) ? requestedFamily : null;
+
+  const initialTier = searchParams.get("tier");
+  const [selectedTier, setSelectedTier] = useState<ProductTierKey>(
+    productTiers.some((tier) => tier.key === initialTier)
+      ? (initialTier as ProductTierKey)
+      : "starter"
+  );
   const [businessName, setBusinessName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
@@ -56,6 +81,8 @@ export function PortalSignup() {
         data: {
           business_name: trimmedBusinessName,
           contact_name: trimmedContactName,
+          product_family_slug: selectedFamily.slug,
+          product_tier_key: selectedTier,
         },
       },
     });
@@ -74,20 +101,62 @@ export function PortalSignup() {
   return (
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
-        <a className="badge" href="/portal">
-          Client Portal
+        <a className="badge" href="/plans">
+          <ArrowLeft size={15} />
+          Change product family
         </a>
 
         <form className="auth-card" onSubmit={handleSignup}>
           <div className="panel-title">
             <UserPlus size={22} />
-            <h1>Create account</h1>
+            <div>
+              <h1>Create account</h1>
+              <p className="subtle">{selectedFamily.name}</p>
+            </div>
           </div>
 
-          <p className="subtle">
-            Create your NXQ Web client portal account. Your client workspace will
-            be created automatically after signup.
-          </p>
+          {unavailableFamily ? (
+            <div className="notice-card">
+              <strong>{unavailableFamily.name} is still in development.</strong>
+              <p>
+                NXQ Business was selected instead so no unfinished product workflow can be purchased accidentally.
+              </p>
+            </div>
+          ) : null}
+
+          <p className="subtle">{selectedFamily.description}</p>
+
+          <section className="panel">
+            <div className="panel-title">
+              <CheckCircle2 size={20} />
+              <div>
+                <h2>Choose your tier</h2>
+                <p className="subtle">
+                  Your product family is selected. Choose the monthly service level that fits your business.
+                </p>
+              </div>
+            </div>
+
+            <div className="settings-grid">
+              {productTiers.map((tier) => {
+                const isSelected = selectedTier === tier.key;
+
+                return (
+                  <button
+                    className={`settings-card ${isSelected ? "selected-plan-card" : ""}`}
+                    key={tier.key}
+                    onClick={() => setSelectedTier(tier.key)}
+                    type="button"
+                  >
+                    <span>{tier.name}</span>
+                    <strong>{tier.priceLabel}</strong>
+                    <p>{tier.description}</p>
+                    <small>{isSelected ? "Selected" : "Choose this tier"}</small>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
           {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
@@ -139,6 +208,15 @@ export function PortalSignup() {
             type="password"
             value={password}
           />
+
+          <div className="notice-card">
+            <strong>
+              {selectedFamily.name} · {productTiers.find((tier) => tier.key === selectedTier)?.name}
+            </strong>
+            <p>
+              This selection will be saved to your NXQ client workspace. Major plan or product-family changes can later be requested from Client Settings.
+            </p>
+          </div>
 
           <button className="primary-btn auth-submit" disabled={isSubmitting} type="submit">
             {isSubmitting ? "Creating account..." : "Create account"}

@@ -1,11 +1,14 @@
 import "./styles/nxq.css";
 import "./styles/deployments.css";
+import "./styles/plan-forms.css";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ClientPortal } from "./pages/ClientPortal";
+import { ClientSettings } from "./pages/ClientSettings";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerFiles } from "./pages/OwnerFiles";
+import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
 import { OwnerPortal } from "./pages/OwnerPortal";
 import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
 import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
@@ -14,6 +17,7 @@ import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
 import { PublicHome } from "./pages/PublicHome";
+import { PublicPlans } from "./pages/PublicPlans";
 import { ResetPassword } from "./pages/ResetPassword";
 
 function App() {
@@ -64,10 +68,23 @@ function App() {
     );
   }
 
+  if (path === "/owner/plan-changes") {
+    return (
+      <OwnerProtectedRoute>
+        <OwnerPlanChanges />
+      </OwnerProtectedRoute>
+    );
+  }
+
   if (path === "/owner") {
     return (
       <OwnerProtectedRoute>
-        <OwnerPortal />
+        <>
+          <OwnerPortal />
+          <a className="owner-plan-change-shortcut" href="/owner/plan-changes">
+            Review plan changes
+          </a>
+        </>
       </OwnerProtectedRoute>
     );
   }
@@ -77,6 +94,10 @@ function App() {
     return null;
   }
 
+  if (path === "/client/settings") {
+    return <ClientSettings />;
+  }
+
   if (path === "/client") {
     return <ClientPortal />;
   }
@@ -84,6 +105,10 @@ function App() {
   if (path.startsWith("/client/")) {
     window.location.replace("/client");
     return null;
+  }
+
+  if (path === "/plans") {
+    return <PublicPlans />;
   }
 
   if (path === "/portal/login") {

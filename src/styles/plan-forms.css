@@ -1,0 +1,134 @@
+/* High-contrast native select styling for plan and account forms. */
+
+select.auth-input {
+  background-color: #0b1020;
+  color: #f8fafc;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+select.auth-input option,
+select.auth-input optgroup {
+  background-color: #0b1020;
+  color: #f8fafc;
+}
+
+select.auth-input option:checked {
+  background-color: #164e63;
+  color: #ffffff;
+}
+
+select.auth-input:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+body[data-nxq-theme="light"] select.auth-input {
+  background-color: #ffffff;
+  color: #111827;
+  color-scheme: light;
+}
+
+body[data-nxq-theme="light"] select.auth-input option,
+body[data-nxq-theme="light"] select.auth-input optgroup {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+body[data-nxq-theme="light"] select.auth-input option:checked {
+  background-color: #cffafe;
+  color: #083344;
+}
+
+.plan-summary-card {
+  display: grid;
+  gap: 7px;
+  align-content: center;
+}
+
+.plan-summary-card > span,
+.plan-summary-card > strong,
+.plan-summary-card > p {
+  display: block;
+  margin: 0;
+}
+
+.plan-history-section {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.plan-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-history-card,
+.plan-resolution-card {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.46);
+  padding: 16px 18px;
+}
+
+.plan-history-card p,
+.plan-resolution-card p {
+  margin: 0;
+}
+
+.plan-change-review-only {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.plan-change-review-only .wide-btn {
+  width: 100%;
+}
+
+.plan-change-generic-actions-hidden {
+  display: none;
+}
+
+.owner-plan-change-shortcut {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  border-radius: 999px;
+  background: rgba(3, 7, 18, 0.94);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  color: #fef08a;
+  font-weight: 900;
+  padding: 0 18px;
+}
+
+.owner-plan-change-shortcut:hover {
+  border-color: rgba(250, 204, 21, 0.85);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+body[data-nxq-theme="light"] .plan-history-card,
+body[data-nxq-theme="light"] .plan-resolution-card {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+@media (max-width: 700px) {
+  .owner-plan-change-shortcut {
+    right: 14px;
+    bottom: 14px;
+  }
+}

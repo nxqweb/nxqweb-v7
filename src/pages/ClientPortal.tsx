@@ -8,6 +8,7 @@ import {
   Send,
   UploadCloud,
 } from "lucide-react";
+import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientRow = {
@@ -36,16 +37,6 @@ type ProjectRow = {
   website_status: string;
 };
 
-type PaymentRecordRow = {
-  id: string;
-  client_id: string | null;
-  provider: string;
-  status: string;
-  amount: number;
-  currency: string;
-  note: string | null;
-  created_at: string;
-};
 
 type UploadedFileRow = {
   id: string;
@@ -288,7 +279,6 @@ export function ClientPortal() {
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
   const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
-  const [latestPayment, setLatestPayment] = useState<PaymentRecordRow | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [domainName, setDomainName] = useState("");
   const [domainRegistrar, setDomainRegistrar] = useState("");
@@ -503,20 +493,6 @@ export function ClientPortal() {
         setClientDomains((domainResult.data || []) as ClientDomainRow[]);
       }
 
-      const paymentResult = await supabase
-        .from("payment_records")
-        .select("id, client_id, provider, status, amount, currency, note, created_at")
-        .eq("client_id", loadedClient.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (paymentResult.error) {
-        setErrorMessage(`Billing status load failed: ${paymentResult.error.message}`);
-        setLatestPayment(null);
-      } else {
-        setLatestPayment((paymentResult.data as PaymentRecordRow) || null);
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown client portal error";
       setErrorMessage(`Client portal failed: ${message}`);
@@ -1245,33 +1221,6 @@ export function ClientPortal() {
     ? getTargetedFieldControl(targetedMoreInfoRequest)
     : null;
   const projectDecisionStatus = (projectStage || "").toLowerCase();
-  const selectedPlan = packageOptions[selectedPackage];
-  const billingStatus = (client?.billing_status || "not_configured").toLowerCase();
-
-  const billingProviderSource =
-    client?.billing_provider || latestPayment?.provider || null;
-
-  const billingProvider =
-    billingProviderSource?.toLowerCase() === "manual"
-      ? "Manual billing"
-      : billingProviderSource
-        ? formatStatus(billingProviderSource)
-        : "Not connected";
-
-  const subscriptionLabel =
-    billingStatus === "active"
-      ? "Active"
-      : billingStatus === "past_due"
-        ? "Past due"
-        : billingStatus === "freeze_review"
-          ? "Payment review"
-          : billingStatus === "frozen"
-            ? "Frozen"
-            : billingStatus === "cancelled"
-              ? "Cancelled"
-              : billingStatus === "activation_pending"
-                ? "Activation pending"
-                : "Awaiting activation";
   const portalDecisionNotice = (() => {
     if (clientDecisionStatus === "denied") {
       return {
@@ -1349,6 +1298,10 @@ export function ClientPortal() {
             <span>Project stage</span>
             <strong>{formatStatus(projectStage)}</strong>
 
+            <a className="icon-btn" href="/client/settings">
+              Settings
+            </a>
+
             <button className="icon-btn" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
             </button>
@@ -1369,6 +1322,7 @@ export function ClientPortal() {
             <p>{portalDecisionNotice.body}</p>
           </div>
         ) : null}
+        <ClientWebsiteSecurity />
 
         <div className="client-grid">
           {!setupComplete && targetedMoreInfoRequest && targetedMoreInfoField ? (
@@ -1826,103 +1780,6 @@ export function ClientPortal() {
               ))}
             </div>
           </section>
-
-          <section className="panel panel-wide client-settings-panel">
-            <div className="panel-title">
-              <CheckCircle2 size={20} />
-              <h2>Settings</h2>
-            </div>
-
-            <div className="settings-grid">
-              <article className="settings-card">
-                <span>Account</span>
-                <strong>{client?.business_name || "Client account"}</strong>
-                <p>Account profile connected.</p>
-                <small>Project stage: {formatStatus(projectStage)}</small>
-              </article>
-
-              <article className="settings-card">
-                <span>Billing & subscription</span>
-                <strong>{selectedPlan.label} | ${selectedPlan.price}/month</strong>
-                <p>
-                  Subscription status: {subscriptionLabel}. Payment method:{" "}
-                  {billingProvider}.
-                </p>
-                <small>
-                  {latestPayment
-                    ? `Latest billing record: ${latestPayment.currency} ${Number(
-                        latestPayment.amount || 0
-                      ).toFixed(2)} | ${formatStatus(latestPayment.status)}`
-                    : "Secure online card payments are not connected yet."}
-                </small>
-              </article>
-
-
-
-              <article className="settings-card">
-                <span>Appearance</span>
-                <strong>{nxqTheme === "dark" ? "Dark mode" : "Light mode"}</strong>
-                <p>Switch the portal theme anytime. Your choice stays saved on this device.</p>
-                <button className="icon-btn" onClick={toggleNxqTheme} type="button">
-                  {nxqTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-                </button>
-              </article>
-
-              <article className="settings-card">
-                <span>Domain</span>
-                <strong>{latestDomain?.domain_name || "No domain connected yet"}</strong>
-                <p>
-                  {latestDomain
-                    ? `Status: ${getDomainStatusLabel(latestDomain.status)}. We can help connect the website, but you keep ownership of the domain.`
-                    : "Add a domain in the Domain setup section above when you are ready."}
-                </p>
-                <small>
-                  {latestDomain?.dns_provider
-                    ? `DNS provider: ${latestDomain.dns_provider}`
-                    : "Domain management lives here after setup."}
-                </small>
-              </article>
-
-              <article className="settings-card">
-                <span>Security</span>
-                <strong>Email and password</strong>
-                <p>
-                  For account email or password changes, message support below. We keep these changes assisted so your account stays protected.
-                </p>
-                <div className="settings-button-row">
-                  <button
-                    className="settings-disabled-btn"
-                    type="button"
-                    onClick={() => {
-                      setMessageText("Hi, I need help changing the account email for this client portal.");
-                      setNotice("Email change request started. Send the message below when ready.");
-                    }}
-                  >
-                    Request email change
-                  </button>
-                  <button
-                    className="settings-disabled-btn"
-                    type="button"
-                    onClick={() => {
-                      window.location.href = "/portal/forgot-password";
-                    }}
-                  >
-                    Change password
-                  </button>
-                </div>
-              </article>
-
-              <article className="settings-card settings-card-wide">
-                <span>Support</span>
-                <strong>Need help?</strong>
-                <p>
-                  Message support below, or contact support at{" "}
-                  <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
-                </p>
-              </article>
-            </div>
-          </section>
-
           <section className="panel">
             <div className="panel-title panel-title-row">
               <div className="panel-title">
