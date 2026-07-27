@@ -202,7 +202,11 @@ export function ClientPlanManagement() {
     );
 
     setCurrentPlan(loadedPlan);
-    setRequestedFamily(familySlug);
+    setRequestedFamily(
+      PRODUCT_FAMILIES.some((family) => family.slug === familySlug)
+        ? familySlug
+        : PRODUCT_FAMILIES[0]?.slug || "business"
+    );
     setRequestedTier(tierKey);
     setHistory(
       rows.map((row) => ({
