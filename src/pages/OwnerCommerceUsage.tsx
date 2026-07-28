@@ -24,6 +24,40 @@ function percent(used: number, limit: number) {
   return Math.min(Math.round((used / limit) * 100), 100);
 }
 
+function UsageBar({ used, limit }: { used: number; limit: number }) {
+  const value = percent(used, limit);
+
+  return (
+    <div
+      aria-label={`${value}% of allowance used`}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={value}
+      style={{
+        width: "100%",
+        height: "9px",
+        borderRadius: "999px",
+        overflow: "hidden",
+        border: "1px solid rgba(255, 221, 87, 0.35)",
+        background: "rgba(255, 255, 255, 0.06)",
+        marginTop: "0.75rem",
+      }}
+    >
+      <div
+        style={{
+          width: `${value}%`,
+          minWidth: value > 0 ? "8px" : 0,
+          height: "100%",
+          borderRadius: "inherit",
+          background: "linear-gradient(90deg, #57e6ff, #ffdd57)",
+          transition: "width 180ms ease",
+        }}
+      />
+    </div>
+  );
+}
+
 export function OwnerCommerceUsage() {
   const [rows, setRows] = useState<UsageSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,11 +89,13 @@ export function OwnerCommerceUsage() {
   return (
     <main className="nxq-page">
       <section className="portal-shell">
-        <div className="panel-title panel-title-row">
-          <div className="panel-title">
+        <div className="panel-title panel-title-row" style={{ alignItems: "flex-start" }}>
+          <div className="panel-title" style={{ alignItems: "flex-start" }}>
             <Gauge size={22} />
             <div>
-              <h1>Commerce usage & limits</h1>
+              <h1 style={{ fontSize: "clamp(3rem, 7vw, 5.75rem)", lineHeight: 0.94, marginBottom: "0.75rem" }}>
+                Commerce usage &amp; limits
+              </h1>
               <p className="subtle">Monthly new-product and image allowances. Normal edits and inventory updates do not count.</p>
             </div>
           </div>
@@ -87,10 +123,12 @@ export function OwnerCommerceUsage() {
               <div className="status-summary">
                 <strong>New products</strong><br />
                 {row.products_used} of {row.monthly_product_limit} used · {row.products_remaining} remaining · {percent(row.products_used, row.monthly_product_limit)}%
+                <UsageBar used={row.products_used} limit={row.monthly_product_limit} />
               </div>
               <div className="status-summary">
                 <strong>Product images</strong><br />
                 {row.images_used} of {row.monthly_image_limit} used · {row.images_remaining} remaining · {percent(row.images_used, row.monthly_image_limit)}%
+                <UsageBar used={row.images_used} limit={row.monthly_image_limit} />
               </div>
               <p className="subtle">Maximum image size: {Math.round(row.max_image_bytes / 1048576)} MB{row.has_override ? " · Owner override active" : ""}</p>
             </article>
