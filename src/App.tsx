@@ -14,6 +14,7 @@ import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
+import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
 import { OwnerCommerceReviews } from "./pages/OwnerCommerceReviews";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerFiles } from "./pages/OwnerFiles";
@@ -37,6 +38,7 @@ function App() {
     return null;
   }
 
+  if (path === "/owner/commerce-builds") return <OwnerProtectedRoute><OwnerCommerceBuildQueue /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-reviews") return <OwnerProtectedRoute><OwnerCommerceReviews /></OwnerProtectedRoute>;
   if (path === "/owner/production-status") return <OwnerProtectedRoute><OwnerProductionStatus /></OwnerProtectedRoute>;
   if (path === "/owner/production-launches") return <OwnerProtectedRoute><OwnerProductionLaunches /></OwnerProtectedRoute>;
@@ -52,6 +54,7 @@ function App() {
           <OwnerPortal />
           <a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a>
           <a className="owner-plan-change-shortcut" href="/owner/commerce-reviews" style={{ bottom: "5.25rem" }}>Review Commerce clients</a>
+          <a className="owner-plan-change-shortcut" href="/owner/commerce-builds" style={{ bottom: "9.5rem" }}>Commerce build queue</a>
         </>
       </OwnerProtectedRoute>
     );
