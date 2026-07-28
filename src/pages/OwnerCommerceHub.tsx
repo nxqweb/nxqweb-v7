@@ -1,15 +1,15 @@
-import { ArrowLeft, Boxes, ClipboardCheck, Gauge, ShoppingBag, Store } from "lucide-react";
+import { ArrowLeft, Boxes, Gauge, ShoppingBag, Store, Users } from "lucide-react";
 
 const commerceSections = [
   {
-    label: "Client reviews",
-    description: "Review submitted setup sheets, catalog readiness, blockers, and storefront build approval.",
+    label: "Commerce clients",
+    description: "See each Commerce client's plan, setup status, usage, and major storefront requests without opening their routine store data.",
     href: "/owner/commerce-reviews",
-    icon: ClipboardCheck,
+    icon: Users,
   },
   {
-    label: "Build queue",
-    description: "Freeze approved build snapshots behind explicit owner gates. Automation remains locked.",
+    label: "Build & launch requests",
+    description: "Review explicit storefront creation, migration, preview, domain, payment, and production-launch requests.",
     href: "/owner/commerce-builds",
     icon: Boxes,
   },
@@ -20,8 +20,8 @@ const commerceSections = [
     icon: Gauge,
   },
   {
-    label: "Stores",
-    description: "A consolidated live-store operations area will be connected after the separate storefront pipeline.",
+    label: "Live stores",
+    description: "A consolidated store-health and operations area will be connected after the separate storefront pipeline.",
     icon: Store,
   },
 ];
@@ -35,17 +35,19 @@ export function OwnerCommerceHub() {
             <ShoppingBag size={22} />
             <div>
               <h1>NXQ Commerce</h1>
-              <p className="subtle">Owner controls for storefront readiness, protected builds, and client usage.</p>
+              <p className="subtle">Owner controls for plans, limits, major storefront requests, and protected launches.</p>
             </div>
           </div>
           <a className="icon-btn" href="/owner/product-families"><ArrowLeft size={16} /> Product families</a>
         </div>
 
         <div className="panel panel-wide">
-          <h2>Commerce overview</h2>
+          <h2>Client-owned store data</h2>
           <p className="subtle">
-            Clients can manage normal products, images, categories, and inventory without individual owner approvals.
-            Owner approval remains required for setup review, migration, build readiness, payments, domains, and production launch.
+            Clients manage their own products, images, categories, prices, inventory, and normal edits. NXQ enforces plan limits automatically and does not require routine owner approval.
+          </p>
+          <p className="subtle">
+            Owner approval is reserved for major actions: creating or migrating a storefront, connecting payments or domains, and publishing to production.
           </p>
         </div>
 
