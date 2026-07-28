@@ -26,6 +26,13 @@ function money(value: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(value || 0));
 }
 
+const productGridStyle = {
+  display: "grid",
+  gap: "1rem",
+  gridTemplateColumns: "repeat(auto-fill, minmax(230px, 320px))",
+  justifyContent: "center",
+} as const;
+
 export function ClientCommercePreview() {
   const [storeName, setStoreName] = useState("Commerce storefront");
   const [products, setProducts] = useState<PreviewProduct[]>([]);
@@ -102,9 +109,11 @@ export function ClientCommercePreview() {
         style={{
           display: "grid",
           gap: "0.85rem",
+          maxWidth: "320px",
           overflow: "hidden",
           padding: "0.85rem",
           transition: "transform 180ms ease, box-shadow 180ms ease",
+          width: "100%",
         }}
       >
         <button
@@ -209,7 +218,7 @@ export function ClientCommercePreview() {
                       <h3 style={{ marginBottom: "0.25rem" }}>Featured products</h3>
                       <p className="subtle" style={{ margin: 0 }}>Highlighted products selected by the client.</p>
                     </div>
-                    <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+                    <div style={productGridStyle}>
                       {featuredProducts.map((product) => <ProductCard key={product.id} product={product} />)}
                     </div>
                   </section>
@@ -221,7 +230,7 @@ export function ClientCommercePreview() {
                       <h3 style={{ marginBottom: "0.25rem" }}>All products</h3>
                       <p className="subtle" style={{ margin: 0 }}>{visibleProducts.length} product{visibleProducts.length === 1 ? "" : "s"} in this view.</p>
                     </div>
-                    <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))" }}>
+                    <div style={productGridStyle}>
                       {regularProducts.map((product) => <ProductCard key={product.id} product={product} />)}
                     </div>
                   </section>
