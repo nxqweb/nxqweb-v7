@@ -16,13 +16,20 @@ export function CommerceNav() {
 
   return (
     <nav aria-label="Commerce workspace navigation" className="panel panel-wide" style={{ marginBottom: "1rem" }}>
-      <div className="panel-title panel-title-row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(108px, 1fr))",
+          gap: "0.75rem",
+          width: "100%",
+        }}
+      >
         {links.map(({ href, label, icon: Icon }) => (
           <a
             className={path === href ? "wide-btn" : "icon-btn"}
             href={href}
             key={href}
-            style={{ flex: "1 1 115px", justifyContent: "center" }}
+            style={{ justifyContent: "center", minWidth: 0, whiteSpace: "nowrap" }}
           >
             <Icon size={16} />
             {label}
