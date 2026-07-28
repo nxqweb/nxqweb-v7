@@ -27,9 +27,17 @@ type ProductRow = {
   name: string;
   status: string;
   product_type: string;
+  short_description?: string | null;
+  description?: string | null;
   base_price: number;
+  compare_at_price?: number | string | null;
   sku: string | null;
+  track_inventory?: boolean | null;
+  requires_shipping?: boolean | null;
+  taxable?: boolean | null;
   featured: boolean;
+  seo_title?: string | null;
+  seo_description?: string | null;
   attributes: ProductAttribute[];
   variants: ProductVariant[];
 };
@@ -145,21 +153,23 @@ export function ClientCommerceProducts() {
   }
 
   function editProduct(product: ProductRow) {
+    const compareAtPrice = product.compare_at_price;
+
     setDraft({
       id: product.id,
       name: product.name,
-      short_description: "",
-      description: "",
+      short_description: product.short_description || "",
+      description: product.description || "",
       product_type: (product.product_type as ProductDraft["product_type"]) || "physical",
       base_price: Number(product.base_price || 0),
-      compare_at_price: "",
+      compare_at_price: compareAtPrice === null || compareAtPrice === undefined ? "" : String(compareAtPrice),
       sku: product.sku || "",
-      track_inventory: true,
-      requires_shipping: product.product_type !== "digital",
-      taxable: true,
+      track_inventory: product.track_inventory ?? true,
+      requires_shipping: product.requires_shipping ?? product.product_type !== "digital",
+      taxable: product.taxable ?? true,
       featured: Boolean(product.featured),
-      seo_title: "",
-      seo_description: "",
+      seo_title: product.seo_title || "",
+      seo_description: product.seo_description || "",
       attributes: (product.attributes || []).map((attribute) => ({
         key: attribute.key,
         label: attribute.label,
