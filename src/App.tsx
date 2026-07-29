@@ -14,6 +14,7 @@ import { ClientCommercePreview } from "./pages/ClientCommercePreview";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
+import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
@@ -75,6 +76,7 @@ function App() {
     return null;
   }
 
+  if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
   if (path === "/client/commerce/preview") return <ClientCommercePreview />;
   if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
