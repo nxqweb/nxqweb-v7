@@ -32,6 +32,7 @@ import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
+import { PublicCommerceRequest } from "./pages/PublicCommerceRequest";
 import { PublicHome } from "./pages/PublicHome";
 import { PublicPlans } from "./pages/PublicPlans";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -94,6 +95,7 @@ function App() {
     return null;
   }
 
+  if (path === "/store/request") return <PublicCommerceRequest />;
   if (path === "/plans") return <PublicPlans />;
   if (path === "/portal/login") return <PortalLogin />;
   if (path === "/portal/signup") return <PortalSignup />;
