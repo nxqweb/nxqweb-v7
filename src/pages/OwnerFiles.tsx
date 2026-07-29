@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  Download,
   ExternalLink,
   FileText,
   RefreshCcw,
   Rocket,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -47,6 +49,8 @@ export function OwnerFiles() {
   const [selectedClientId, setSelectedClientId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [openingFileId, setOpeningFileId] = useState<string | null>(null);
+  const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -96,25 +100,91 @@ export function OwnerFiles() {
     (file) => file.status !== "deleted" && (!selectedClientId || file.client_id === selectedClientId)
   );
 
-  async function openFile(file: ClientFileRow) {
-    if (!supabase) return;
+  async function createSecureUrl(file: ClientFileRow, download = false) {
+    if (!supabase) return null;
 
+    const signedUrlResult = await supabase.storage
+      .from(file.bucket_id || "client-files")
+      .createSignedUrl(file.storage_path, 60, download ? { download: file.file_name } : undefined);
+
+    if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
+      setErrorMessage(signedUrlResult.error?.message || "Unable to create a secure file link.");
+      return null;
+    }
+
+    return signedUrlResult.data.signedUrl;
+  }
+
+  async function openFile(file: ClientFileRow) {
     setOpeningFileId(file.id);
     setErrorMessage("");
     setActionMessage("");
 
-    const signedUrlResult = await supabase.storage
-      .from(file.bucket_id || "client-files")
-      .createSignedUrl(file.storage_path, 60);
-
+    const signedUrl = await createSecureUrl(file);
     setOpeningFileId(null);
 
-    if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
-      setErrorMessage(signedUrlResult.error?.message || "Unable to open this file securely.");
+    if (!signedUrl) return;
+    window.open(signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function downloadFile(file: ClientFileRow) {
+    setDownloadingFileId(file.id);
+    setErrorMessage("");
+    setActionMessage("");
+
+    const signedUrl = await createSecureUrl(file, true);
+    setDownloadingFileId(null);
+
+    if (!signedUrl) return;
+
+    const downloadLink = document.createElement("a");
+    downloadLink.href = signedUrl;
+    downloadLink.download = file.file_name;
+    downloadLink.rel = "noopener noreferrer";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    downloadLink.remove();
+    setActionMessage(`Secure download started for ${file.file_name}.`);
+  }
+
+  async function deleteFile(file: ClientFileRow) {
+    if (!supabase) return;
+
+    const clientName = clientNameById.get(file.client_id) || "this client";
+    const confirmed = window.confirm(
+      `Permanently delete “${file.file_name}” from ${clientName}?\n\nThis removes the private Storage object and its file record. This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingFileId(file.id);
+    setErrorMessage("");
+    setActionMessage("");
+
+    const bucketId = file.bucket_id || "client-files";
+    const storageResult = await supabase.storage.from(bucketId).remove([file.storage_path]);
+
+    if (storageResult.error) {
+      setDeletingFileId(null);
+      setErrorMessage(`File was not deleted: ${storageResult.error.message}`);
       return;
     }
 
-    window.open(signedUrlResult.data.signedUrl, "_blank", "noopener,noreferrer");
+    const metadataResult = await supabase.rpc("owner_finalize_client_file_delete", {
+      target_file_id: file.id,
+    });
+
+    if (metadataResult.error) {
+      setDeletingFileId(null);
+      setErrorMessage(
+        `The private file was removed, but its record still needs cleanup: ${metadataResult.error.message}. Press Delete again to retry safely.`
+      );
+      return;
+    }
+
+    setFiles((current) => current.filter((item) => item.id !== file.id));
+    setDeletingFileId(null);
+    setActionMessage(`${file.file_name} was permanently deleted.`);
   }
 
   return (
@@ -142,14 +212,14 @@ export function OwnerFiles() {
               <ShieldCheck size={16} />
               Preview requests
             </a>
-            <button className="icon-btn" onClick={loadFiles} type="button">
+            <button className="icon-btn" onClick={() => void loadFiles()} type="button">
               <RefreshCcw size={16} />
               Refresh
             </button>
           </div>
         </div>
 
-        {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
+        {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
         {actionMessage ? <div className="auth-success">{actionMessage}</div> : null}
 
         <section className="panel">
@@ -179,29 +249,58 @@ export function OwnerFiles() {
           ) : null}
 
           <div className="owner-message-list">
-            {visibleFiles.map((file) => (
-              <article className="owner-message-card" key={file.id}>
-                <div className="owner-message-top">
-                  <strong>{file.file_name}</strong>
-                  <span>{formatDateTime(file.uploaded_at)}</span>
-                </div>
+            {visibleFiles.map((file) => {
+              const isBusy =
+                openingFileId === file.id ||
+                downloadingFileId === file.id ||
+                deletingFileId === file.id;
 
-                <p>{clientNameById.get(file.client_id) || "Unknown client"}</p>
-                <small>
-                  {file.file_type || "Unknown file type"} · {formatFileSize(file.file_size)} · {file.status}
-                </small>
+              return (
+                <article className="owner-message-card" key={file.id}>
+                  <div className="owner-message-top">
+                    <strong>{file.file_name}</strong>
+                    <span>{formatDateTime(file.uploaded_at)}</span>
+                  </div>
 
-                <button
-                  className="wide-btn"
-                  type="button"
-                  disabled={openingFileId === file.id}
-                  onClick={() => void openFile(file)}
-                >
-                  <ExternalLink size={16} />
-                  {openingFileId === file.id ? "Opening securely..." : "Open file"}
-                </button>
-              </article>
-            ))}
+                  <p>{clientNameById.get(file.client_id) || "Unknown client"}</p>
+                  <small>
+                    {file.file_type || "Unknown file type"} · {formatFileSize(file.file_size)} · {file.status}
+                  </small>
+
+                  <div className="client-control-row" style={{ marginTop: "0.85rem" }}>
+                    <button
+                      className="icon-btn"
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void openFile(file)}
+                    >
+                      <ExternalLink size={16} />
+                      {openingFileId === file.id ? "Opening..." : "Open"}
+                    </button>
+
+                    <button
+                      className="icon-btn"
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void downloadFile(file)}
+                    >
+                      <Download size={16} />
+                      {downloadingFileId === file.id ? "Preparing..." : "Download"}
+                    </button>
+
+                    <button
+                      className="icon-btn danger-btn"
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => void deleteFile(file)}
+                    >
+                      <Trash2 size={16} />
+                      {deletingFileId === file.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </section>
       </section>
