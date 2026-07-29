@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquareText, Send } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
