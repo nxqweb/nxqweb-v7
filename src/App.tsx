@@ -9,6 +9,7 @@ import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
 import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
+import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
 import { ClientCommercePreview } from "./pages/ClientCommercePreview";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
@@ -75,6 +76,7 @@ function App() {
   if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
+  if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
   if (path === "/client/commerce/usage") return <ClientCommerceUsage />;
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
