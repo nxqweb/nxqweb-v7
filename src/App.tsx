@@ -5,6 +5,7 @@ import { ClientCommercePortalTab } from "./components/ClientCommercePortalTab";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { ClientBillingStatus } from "./pages/ClientBillingStatus";
 import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
@@ -19,6 +20,7 @@ import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
+import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
 import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
 import { OwnerCommerceHub } from "./pages/OwnerCommerceHub";
 import { OwnerCommerceReviews } from "./pages/OwnerCommerceReviews";
@@ -49,6 +51,7 @@ function App() {
   }
 
   if (path === "/owner/product-families") return <OwnerProtectedRoute><OwnerProductFamilies /></OwnerProtectedRoute>;
+  if (path === "/owner/billing") return <OwnerProtectedRoute><OwnerBillingLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner/commerce") return <OwnerProtectedRoute><OwnerCommerceHub /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-usage") return <OwnerProtectedRoute><OwnerCommerceUsage /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-builds") return <OwnerProtectedRoute><OwnerCommerceBuildQueue /></OwnerProtectedRoute>;
@@ -67,6 +70,7 @@ function App() {
           <OwnerPortal />
           <a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a>
           <a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a>
+          <a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a>
         </>
       </OwnerProtectedRoute>
     );
@@ -77,6 +81,7 @@ function App() {
     return null;
   }
 
+  if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/commerce/readiness") return <ClientCommerceReadiness />;
   if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
   if (path === "/client/commerce/preview") return <ClientCommercePreview />;
