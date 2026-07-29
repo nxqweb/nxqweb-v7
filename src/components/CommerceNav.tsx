@@ -1,8 +1,9 @@
-import { Boxes, CircleHelp, ClipboardList, Eye, Gauge, Images, LayoutDashboard, MessageSquareText, PackagePlus, ShoppingBag, Tags } from "lucide-react";
+import { Boxes, CircleHelp, ClipboardCheck, ClipboardList, Eye, Gauge, Images, LayoutDashboard, MessageSquareText, PackagePlus, ShoppingBag, Tags } from "lucide-react";
 
 const links = [
   { href: "/client/commerce", label: "Dashboard", icon: LayoutDashboard },
   { href: "/client/commerce/tutorial", label: "Tutorial", icon: CircleHelp },
+  { href: "/client/commerce/readiness", label: "Readiness", icon: ClipboardCheck },
   { href: "/client/commerce/products", label: "Products", icon: PackagePlus },
   { href: "/client/commerce/catalog", label: "Catalog", icon: Images },
   { href: "/client/commerce/preview", label: "Preview", icon: Eye },
