@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Boxes, ClipboardList, PackagePlus, ShoppingBag, Tags } from "lucide-react";
+import { ArrowLeft, Boxes, ClipboardList, PackagePlus, ShieldCheck, ShoppingBag, Tags } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CatalogSummary = {
-  storefront?: { store_name?: string; status?: string };
+  storefront?: { store_name?: string; store_slug?: string; status?: string };
   summary?: { products?: number; draft_products?: number; low_stock_variants?: number; out_of_stock_variants?: number };
 };
 
@@ -44,6 +44,7 @@ export function ClientCommerceDashboard() {
 
   const summary = catalog?.summary || {};
   const setupNeedsAttention = !intake || ["draft", "needs_more_info"].includes(intake.status || "draft");
+  const checkoutHref = catalog?.storefront?.store_slug ? `/store/checkout?store=${encodeURIComponent(catalog.storefront.store_slug)}` : "";
 
   return (
     <main className="nxq-page"><section className="portal-shell">
@@ -54,6 +55,7 @@ export function ClientCommerceDashboard() {
       {!loading && !error ? <>
         {setupNeedsAttention ? <section className="panel panel-wide"><div className="panel-title"><ClipboardList size={20} /><div><h2>Commerce setup required</h2><p className="subtle">Finish the storefront setup before NXQ prepares the build and migration plan.</p></div></div>{intake?.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {formatSource(intake.detected_site_source)}.</p></div> : null}<a className="wide-btn" href="/client/commerce/setup">Complete Commerce setup</a></section> : null}
         <section className="panel panel-wide"><div className="panel-title"><ShoppingBag size={20} /><div><h2>{catalog?.storefront?.store_name || "Commerce storefront"}</h2><p className="subtle">Storefront status: {formatStatus(catalog?.storefront?.status)}</p></div></div><div className="settings-grid"><article className="settings-card"><span>Total products</span><strong>{summary.products || 0}</strong><p>All product drafts and future published products.</p></article><article className="settings-card"><span>Draft products</span><strong>{summary.draft_products || 0}</strong><p>Products still being prepared for review.</p></article><article className="settings-card"><span>Low stock</span><strong>{summary.low_stock_variants || 0}</strong><p>Variants at or below their low-stock threshold.</p></article><article className="settings-card"><span>Out of stock</span><strong>{summary.out_of_stock_variants || 0}</strong><p>Variants with no currently available inventory.</p></article></div></section>
+        {checkoutHref ? <section className="panel panel-wide"><div className="panel-title"><ShieldCheck size={20} /><div><h2>Protected checkout test</h2><p className="subtle">Test the customer cart, automatic server pricing, order creation, and inventory reservation. No real payment or customer contact occurs.</p></div></div><a className="wide-btn" href={checkoutHref}><ShieldCheck size={17} /> Open protected checkout</a></section> : null}
         <div className="owner-detail-grid">
           <section className="panel"><div className="panel-title"><PackagePlus size={20} /><div><h2>Products</h2><p className="subtle">Add product facts, variants, prices, and stock.</p></div></div><a className="wide-btn" href="/client/commerce/products">Open product manager</a></section>
           <section className="panel"><div className="panel-title"><Tags size={20} /><div><h2>Categories</h2><p className="subtle">Organize products and subcategories.</p></div></div><a className="wide-btn" href="/client/commerce/categories">Manage categories</a></section>
