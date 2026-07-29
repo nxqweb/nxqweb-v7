@@ -12,6 +12,7 @@ import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
 import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
 import { ClientCommercePreview } from "./pages/ClientCommercePreview";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
+import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientPortal } from "./pages/ClientPortal";
@@ -77,6 +78,7 @@ function App() {
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
   if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
+  if (path === "/client/commerce/requests") return <ClientCommerceRequests />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
   if (path === "/client/commerce/usage") return <ClientCommerceUsage />;
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
