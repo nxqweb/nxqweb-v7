@@ -41,10 +41,7 @@ export function ClientCommercePortalTab() {
     <section
       aria-label="Commerce workspace shortcuts"
       className="panel panel-wide"
-      style={{
-        margin: "1rem auto 0",
-        maxWidth: "min(92vw, 1100px)",
-      }}
+      style={{ margin: 0, maxWidth: "none", width: "100%" }}
     >
       <div className="panel-title panel-title-row">
         <div className="panel-title">
