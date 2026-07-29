@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MessageSquareText, RefreshCw, Save, TestTube2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquareText, RefreshCw, Save, Settings2, TestTube2 } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -74,6 +74,7 @@ export function ClientCommerceRequests() {
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -131,6 +132,7 @@ export function ClientCommerceRequests() {
       return;
     }
     setSettings({ ...initialSettings, ...(result.data as RequestSettings) });
+    setSettingsOpen(false);
     setMessage("Customer request settings saved.");
   }
 
@@ -164,6 +166,10 @@ export function ClientCommerceRequests() {
     await loadPage();
   }
 
+  const enabledTypeLabels = requestTypeOptions
+    .filter(([value]) => settings.allowed_request_types.includes(value))
+    .map(([, label]) => label);
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -180,32 +186,56 @@ export function ClientCommerceRequests() {
         {!loading ? (
           <div className="owner-detail-grid">
             <section className="panel panel-wide">
-              <div className="panel-title"><MessageSquareText size={20} /><div><h2>Storefront request form</h2><p className="subtle">Turn the feature on only when this store wants customers to submit requests.</p></div></div>
-              <div className="setup-form-grid">
-                <label className="settings-card"><span>Enable customer requests</span><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked }))} /></label>
-                <label className="settings-card"><span>Allow guest requests</span><input type="checkbox" checked={settings.allow_guest_requests} onChange={(event) => setSettings((current) => ({ ...current, allow_guest_requests: event.target.checked }))} /></label>
-                <label className="settings-card"><span>Allow reference images</span><input type="checkbox" checked={settings.allow_image_uploads} onChange={(event) => setSettings((current) => ({ ...current, allow_image_uploads: event.target.checked }))} /></label>
-                <label className="settings-card"><span>Require a budget</span><input type="checkbox" checked={settings.require_budget} onChange={(event) => setSettings((current) => ({ ...current, require_budget: event.target.checked }))} /></label>
-                <label className="settings-card"><span>Require needed-by date</span><input type="checkbox" checked={settings.require_needed_by_date} onChange={(event) => setSettings((current) => ({ ...current, require_needed_by_date: event.target.checked }))} /></label>
-                <label><span>Notification email</span><input className="auth-input" value={settings.notification_email} onChange={(event) => setSettings((current) => ({ ...current, notification_email: event.target.value }))} placeholder="orders@example.com" /></label>
-                <label><span>Maximum images per request</span><input className="auth-input" type="number" min={0} max={10} value={settings.max_images_per_request} onChange={(event) => setSettings((current) => ({ ...current, max_images_per_request: Number(event.target.value) }))} /></label>
-                <label><span>Maximum image size in MB</span><input className="auth-input" type="number" min={1} max={20} value={settings.max_image_size_mb} onChange={(event) => setSettings((current) => ({ ...current, max_image_size_mb: Number(event.target.value) }))} /></label>
+              <div className="panel-title-row">
+                <div className="panel-title">
+                  <Settings2 size={20} />
+                  <div>
+                    <h2>Customer request settings</h2>
+                    <p className="subtle">
+                      {settings.enabled ? "Enabled" : "Disabled"}
+                      {settings.enabled && settings.allow_guest_requests ? " · Guest requests allowed" : ""}
+                      {settings.enabled ? ` · ${enabledTypeLabels.length} request type${enabledTypeLabels.length === 1 ? "" : "s"}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <button className="icon-btn" type="button" onClick={() => setSettingsOpen((current) => !current)}>
+                  {settingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {settingsOpen ? "Close settings" : "Edit settings"}
+                </button>
               </div>
 
-              <h3>Allowed request types</h3>
-              <div className="setup-form-grid">
-                {requestTypeOptions.map(([value, label]) => <label className="settings-card" key={value}><span>{label}</span><input type="checkbox" checked={settings.allowed_request_types.includes(value)} onChange={() => toggleRequestType(value)} /></label>)}
-              </div>
+              {!settingsOpen ? (
+                <div className="empty-state">
+                  {settings.enabled
+                    ? `${enabledTypeLabels.join(", ") || "No request types selected"}. Up to ${settings.max_images_per_request} image${settings.max_images_per_request === 1 ? "" : "s"} per request at ${settings.max_image_size_mb} MB each.`
+                    : "Customer requests are currently turned off for this storefront."}
+                </div>
+              ) : null}
 
-              <label className="auth-label"><span>Estimated response time</span><input className="auth-input" value={settings.response_time_text} onChange={(event) => setSettings((current) => ({ ...current, response_time_text: event.target.value }))} /></label>
-              <label className="auth-label"><span>Customer instructions</span><textarea className="auth-input" rows={3} value={settings.custom_instructions} onChange={(event) => setSettings((current) => ({ ...current, custom_instructions: event.target.value }))} placeholder="Explain what details customers should include." /></label>
-              <label className="auth-label"><span>Confirmation message</span><textarea className="auth-input" rows={3} value={settings.confirmation_message} onChange={(event) => setSettings((current) => ({ ...current, confirmation_message: event.target.value }))} /></label>
-              <button className="wide-btn" type="button" disabled={saving} onClick={() => void saveSettings()}><Save size={16} /> {saving ? "Saving..." : "Save request settings"}</button>
-            </section>
+              {settingsOpen ? (
+                <div style={{ marginTop: "1rem" }}>
+                  <div className="setup-form-grid">
+                    <label className="settings-card"><span>Enable customer requests</span><input type="checkbox" checked={settings.enabled} onChange={(event) => setSettings((current) => ({ ...current, enabled: event.target.checked }))} /></label>
+                    <label className="settings-card"><span>Allow guest requests</span><input type="checkbox" checked={settings.allow_guest_requests} onChange={(event) => setSettings((current) => ({ ...current, allow_guest_requests: event.target.checked }))} /></label>
+                    <label className="settings-card"><span>Allow reference images</span><input type="checkbox" checked={settings.allow_image_uploads} onChange={(event) => setSettings((current) => ({ ...current, allow_image_uploads: event.target.checked }))} /></label>
+                    <label className="settings-card"><span>Require a budget</span><input type="checkbox" checked={settings.require_budget} onChange={(event) => setSettings((current) => ({ ...current, require_budget: event.target.checked }))} /></label>
+                    <label className="settings-card"><span>Require needed-by date</span><input type="checkbox" checked={settings.require_needed_by_date} onChange={(event) => setSettings((current) => ({ ...current, require_needed_by_date: event.target.checked }))} /></label>
+                    <label><span>Notification email</span><input className="auth-input" value={settings.notification_email} onChange={(event) => setSettings((current) => ({ ...current, notification_email: event.target.value }))} placeholder="orders@example.com" /></label>
+                    <label><span>Maximum images per request</span><input className="auth-input" type="number" min={0} max={10} value={settings.max_images_per_request} onChange={(event) => setSettings((current) => ({ ...current, max_images_per_request: Number(event.target.value) }))} /></label>
+                    <label><span>Maximum image size in MB</span><input className="auth-input" type="number" min={1} max={20} value={settings.max_image_size_mb} onChange={(event) => setSettings((current) => ({ ...current, max_image_size_mb: Number(event.target.value) }))} /></label>
+                  </div>
 
-            <section className="panel panel-wide">
-              <div className="panel-title"><TestTube2 size={20} /><div><h2>Protected workflow test</h2><p className="subtle">Creates a private test request only. It does not contact anyone, create an order, charge money, or publish a storefront.</p></div></div>
-              <button className="icon-btn" type="button" onClick={() => void createTestRequest()}><TestTube2 size={16} /> Create protected test request</button>
+                  <h3>Allowed request types</h3>
+                  <div className="setup-form-grid">
+                    {requestTypeOptions.map(([value, label]) => <label className="settings-card" key={value}><span>{label}</span><input type="checkbox" checked={settings.allowed_request_types.includes(value)} onChange={() => toggleRequestType(value)} /></label>)}
+                  </div>
+
+                  <label className="auth-label"><span>Estimated response time</span><input className="auth-input" value={settings.response_time_text} onChange={(event) => setSettings((current) => ({ ...current, response_time_text: event.target.value }))} /></label>
+                  <label className="auth-label"><span>Customer instructions</span><textarea className="auth-input" rows={3} value={settings.custom_instructions} onChange={(event) => setSettings((current) => ({ ...current, custom_instructions: event.target.value }))} placeholder="Explain what details customers should include." /></label>
+                  <label className="auth-label"><span>Confirmation message</span><textarea className="auth-input" rows={3} value={settings.confirmation_message} onChange={(event) => setSettings((current) => ({ ...current, confirmation_message: event.target.value }))} /></label>
+                  <button className="wide-btn" type="button" disabled={saving} onClick={() => void saveSettings()}><Save size={16} /> {saving ? "Saving..." : "Save request settings"}</button>
+                </div>
+              ) : null}
             </section>
 
             <section className="panel panel-wide">
@@ -213,6 +243,12 @@ export function ClientCommerceRequests() {
               {requests.length === 0 ? <div className="empty-state">No customer requests yet.</div> : null}
               {requests.map((request) => <RequestCard key={request.id} request={request} onSave={updateRequest} />)}
             </section>
+
+            <details className="panel panel-wide">
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>Testing tools</summary>
+              <div className="panel-title" style={{ marginTop: "1rem" }}><TestTube2 size={20} /><div><h2>Protected workflow test</h2><p className="subtle">Creates a private test request only. It does not contact anyone, create an order, charge money, or publish a storefront.</p></div></div>
+              <button className="icon-btn" type="button" onClick={() => void createTestRequest()}><TestTube2 size={16} /> Create protected test request</button>
+            </details>
           </div>
         ) : null}
       </section>
