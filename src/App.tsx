@@ -1,7 +1,7 @@
 import "./styles/nxq.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
-import { ClientCommercePortalTab } from "./components/ClientCommercePortalTab";
+import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -97,7 +97,7 @@ function App() {
   if (path === "/client/settings") return <ClientSettings />;
 
   if (path === "/client") {
-    return <><ClientCommercePortalTab /><ClientPortal /></>;
+    return <><ClientPortalTopCards /><ClientPortal /></>;
   }
 
   if (path.startsWith("/client/")) {
