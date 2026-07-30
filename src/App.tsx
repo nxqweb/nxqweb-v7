@@ -10,6 +10,7 @@ import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
 import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
+import { ClientCommerceLiveStore } from "./pages/ClientCommerceLiveStore";
 import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
 import { ClientCommercePreview } from "./pages/ClientCommercePreview";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
@@ -38,6 +39,7 @@ import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
 import { PublicCommerceCheckout } from "./pages/PublicCommerceCheckout";
 import { PublicCommerceRequest } from "./pages/PublicCommerceRequest";
+import { PublicCommerceStorefront } from "./pages/PublicCommerceStorefront";
 import { PublicHome } from "./pages/PublicHome";
 import { PublicPlans } from "./pages/PublicPlans";
 import { ResetPassword } from "./pages/ResetPassword";
@@ -88,6 +90,7 @@ function App() {
   if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
+  if (path === "/client/commerce/live") return <ClientCommerceLiveStore />;
   if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
   if (path === "/client/commerce/requests") return <ClientCommerceRequests />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
@@ -105,6 +108,7 @@ function App() {
     return null;
   }
 
+  if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (path === "/store/checkout") return <PublicCommerceCheckout />;
   if (path === "/store/request") return <PublicCommerceRequest />;
   if (path === "/plans") return <PublicPlans />;
