@@ -25,7 +25,7 @@ as $$
         'compare_at_price', p.compare_at_price,
         'image_url', p.image_urls->>0,
         'image_urls', coalesce(p.image_urls, '[]'::jsonb),
-        'attributes', coalesce(p.attributes, '[]'::jsonb),
+        'attributes', '[]'::jsonb,
         'requires_shipping', p.requires_shipping,
         'variants', coalesce((
           select jsonb_agg(jsonb_build_object(
