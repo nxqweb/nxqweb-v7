@@ -13,6 +13,7 @@ import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
 import { ClientCommerceLiveStore } from "./pages/ClientCommerceLiveStore";
 import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
 import { ClientCommercePreview } from "./pages/ClientCommercePreview";
+import { ClientCommerceProductImages } from "./pages/ClientCommerceProductImages";
 import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
 import { ClientCommerceReadiness } from "./pages/ClientCommerceReadiness";
 import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
@@ -93,6 +94,7 @@ function App() {
   if (path === "/client/commerce/live") return <ClientCommerceLiveStore />;
   if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
   if (path === "/client/commerce/requests") return <ClientCommerceRequests />;
+  if (path === "/client/commerce/images") return <ClientCommerceProductImages />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
   if (path === "/client/commerce/usage") return <ClientCommerceUsage />;
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
