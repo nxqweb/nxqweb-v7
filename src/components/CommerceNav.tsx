@@ -6,6 +6,7 @@ const links = [
   { href: "/client/commerce/tutorial", label: "Tutorial", icon: CircleHelp },
   { href: "/client/commerce/readiness", label: "Readiness", icon: ClipboardCheck },
   { href: "/client/commerce/products", label: "Products", icon: PackagePlus },
+  { href: "/client/commerce/images", label: "Photos", icon: Images },
   { href: "/client/commerce/catalog", label: "Catalog", icon: Images },
   { href: "/client/commerce/preview", label: "Preview", icon: Eye },
   { href: "/client/commerce/categories", label: "Categories", icon: Tags },
