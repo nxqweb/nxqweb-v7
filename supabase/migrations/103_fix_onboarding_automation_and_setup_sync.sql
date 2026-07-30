@@ -97,6 +97,7 @@ from public, anon, authenticated;
 grant execute on function public.enqueue_automation_job(uuid, uuid, text, text, jsonb, timestamptz, integer)
 to service_role;
 
+-- Read one "Label: value" line without building a dynamic regular expression.
 create or replace function public.extract_setup_report_value(
   report text,
   label text
@@ -106,37 +107,49 @@ language sql
 immutable
 strict
 as $$
-  select nullif(
-    btrim(
-      substring(
-        report
-        from ('(?m)^' || regexp_replace(label, '([\\.^$|()\\[\\]{}*+?\\-])', '\\\1', 'g') || ':\\s*(.*)$')
-      )
-    ),
-    ''
-  );
+  with normalized as (
+    select replace(report, E'\r\n', E'\n') as body
+  ), lines as (
+    select line
+    from normalized
+    cross join lateral regexp_split_to_table(body, E'\n') as line
+  )
+  select nullif(btrim(substr(line, length(label) + 2)), '')
+  from lines
+  where left(line, length(label) + 1) = label || ':'
+  limit 1;
 $$;
 
+-- Read the text after "Heading:" until the next blank line.
 create or replace function public.extract_setup_report_section(
   report text,
   heading text
 )
 returns text
-language sql
+language plpgsql
 immutable
 strict
 as $$
-  select nullif(
-    btrim(
-      substring(
-        report
-        from (
-          '(?ms)^' || regexp_replace(heading, '([\\.^$|()\\[\\]{}*+?\\-])', '\\\1', 'g') || ':\\s*\\n(.*?)(?:\\n\\n|\\z)'
-        )
-      )
-    ),
-    ''
-  );
+declare
+  normalized text := replace(report, E'\r\n', E'\n');
+  marker text := heading || ':' || E'\n';
+  marker_pos integer;
+  section_text text;
+  blank_pos integer;
+begin
+  marker_pos := strpos(normalized, marker);
+  if marker_pos = 0 then
+    return null;
+  end if;
+
+  section_text := substr(normalized, marker_pos + length(marker));
+  blank_pos := strpos(section_text, E'\n\n');
+  if blank_pos > 0 then
+    section_text := left(section_text, blank_pos - 1);
+  end if;
+
+  return nullif(btrim(section_text), '');
+end;
 $$;
 
 create or replace function public.sync_accepted_website_setup_to_intake(
