@@ -26,7 +26,7 @@ export function CommerceNav() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(108px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(138px, 1fr))",
           gap: "0.75rem",
           width: "100%",
         }}
@@ -36,10 +36,18 @@ export function CommerceNav() {
             className={path === href ? "wide-btn" : "icon-btn"}
             href={href}
             key={href}
-            style={{ justifyContent: "center", minWidth: 0, whiteSpace: "nowrap" }}
+            style={{
+              justifyContent: "center",
+              minWidth: 0,
+              minHeight: "48px",
+              paddingInline: "0.85rem",
+              textAlign: "center",
+              whiteSpace: "normal",
+              lineHeight: 1.15,
+            }}
           >
-            <Icon size={16} />
-            {label}
+            <Icon size={16} style={{ flexShrink: 0 }} />
+            <span>{label}</span>
           </a>
         ))}
       </div>
