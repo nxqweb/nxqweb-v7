@@ -20,6 +20,7 @@ import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
 import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
+import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
 import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
@@ -95,6 +96,7 @@ function App() {
   if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
   if (path === "/client/commerce/requests") return <ClientCommerceRequests />;
   if (path === "/client/commerce/images") return <ClientCommerceProductImages />;
+  if (path === "/client/commerce/content") return <ClientCommerceWebsiteContent />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
   if (path === "/client/commerce/usage") return <ClientCommerceUsage />;
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
