@@ -264,8 +264,8 @@ begin
     'Structured automatically from accepted website setup approval ' || request_row.id::text || '.',
     request_row.summary,
     '[]'::jsonb,
-    coalesce(client_row.product_family_slug, 'business'),
-    coalesce(client_row.product_tier_key, lower(package_name))
+    'business',
+    coalesce(nullif(lower(package_name), ''), 'starter')
   )
   on conflict do nothing
   returning id into intake_id;
