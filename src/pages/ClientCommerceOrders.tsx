@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
+import { BadgeCheck, ChevronDown, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -120,6 +120,18 @@ export function ClientCommerceOrders() {
     setBusy("");
   }
 
+  async function confirmPayment(order: CommerceOrder) {
+    if (!supabase || order.payment_status === "paid") return;
+    setBusy(`pay-${order.id}`); setError(""); setMessage("");
+    const result = await supabase.rpc("confirm_my_direct_payment_order", { order_uuid: order.id });
+    if (result.error) setError(`Payment could not be confirmed: ${result.error.message}`);
+    else {
+      setMessage(`${order.order_number} marked paid. Inventory was updated from the order items.`);
+      await loadOrders();
+    }
+    setBusy("");
+  }
+
   async function saveOrder(order: CommerceOrder) {
     if (!supabase) return;
     const draft = drafts[order.id] || { status: order.fulfillment_status, tracking: "", note: "" };
@@ -142,12 +154,12 @@ export function ClientCommerceOrders() {
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
       <div className="panel-title panel-title-row">
-        <div className="panel-title"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">Manage customer orders, fulfillment, tracking, and protected order history.</p></div></div>
+        <div className="panel-title"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">Manage customer orders, direct-payment confirmation, fulfillment, and tracking.</p></div></div>
         <button className="icon-btn" onClick={loadOrders} type="button"><RefreshCcw size={16} /> Refresh</button>
       </div>
 
       <section className="panel panel-wide">
-        <div className="panel-title"><PackageCheck size={20} /><div><h2>Client-managed orders</h2><p className="subtle">Routine orders stay inside your Commerce workspace. NXQ does not approve each order.</p></div></div>
+        <div className="panel-title"><PackageCheck size={20} /><div><h2>Client-managed orders</h2><p className="subtle">You control routine orders and confirm money after it reaches your own PayPal or Venmo account.</p></div></div>
         <button className="wide-btn" disabled={busy === "create"} onClick={createTestOrder} type="button"><Plus size={16} /> {busy === "create" ? "Creating test order..." : "Create protected test order"}</button>
         <p className="subtle" style={{ textAlign: "center", marginTop: ".75rem" }}>Testing only: no payment, email, shipment, or live checkout is triggered.</p>
       </section>
@@ -156,14 +168,14 @@ export function ClientCommerceOrders() {
       {message ? <div className="auth-success">{message}</div> : null}
 
       <section className="panel panel-wide"><div className="settings-grid">
-        <article className="settings-card"><span>Total orders</span><strong>{summary.orders || 0}</strong><p>All protected and future live orders.</p></article>
+        <article className="settings-card"><span>Total orders</span><strong>{summary.orders || 0}</strong><p>All protected and live orders.</p></article>
         <article className="settings-card"><span>New</span><strong>{summary.new_orders || 0}</strong><p>Orders waiting to be processed.</p></article>
         <article className="settings-card"><span>Open</span><strong>{summary.open_orders || 0}</strong><p>Orders still being fulfilled.</p></article>
         <article className="settings-card"><span>Completed</span><strong>{summary.completed_orders || 0}</strong><p>Orders marked delivered.</p></article>
       </div></section>
 
       {loading ? <div className="empty-state">Loading orders...</div> : sortedOrders.length === 0 ? (
-        <div className="empty-state">No orders yet. Create a protected test order to verify the workflow before checkout is connected.</div>
+        <div className="empty-state">No orders yet. Open the live storefront when products and direct-payment links are ready.</div>
       ) : sortedOrders.map((order) => {
         const draft = drafts[order.id] || { status: order.fulfillment_status, tracking: order.tracking_number || "", note: order.fulfillment_note || "" };
         const isOpen = Boolean(expanded[order.id]);
@@ -173,6 +185,7 @@ export function ClientCommerceOrders() {
               <div><h2>{order.order_number} {order.is_test ? <span className="subtle">· Test</span> : null}</h2><p>{order.customer_name}{order.customer_email ? ` · ${order.customer_email}` : ""}</p></div>
               <div style={{ textAlign: "right" }}><strong>{formatMoney(order.total, order.currency)}</strong><p>{humanize(order.fulfillment_status)} · {humanize(order.payment_status)}</p></div>
             </div>
+            {order.payment_status !== "paid" && !order.is_test ? <button className="wide-btn" disabled={busy === `pay-${order.id}`} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
             <button className="wide-btn" onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
             {isOpen ? <div style={{ marginTop: "1rem" }}>
               <div className="settings-grid">
