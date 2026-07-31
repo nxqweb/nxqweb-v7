@@ -6,10 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+const netlifyHeaders = (token: string) => ({
+  Authorization: `Bearer ${token}`,
+  "Content-Type": "application/json",
+});
 const githubHeaders = (token: string) => ({
   Accept: "application/vnd.github+json",
   Authorization: `Bearer ${token}`,
-  "X-GitHub-Api-Version": "2026-03-10",
+  "X-GitHub-Api-Version": "2022-11-28",
   "Content-Type": "application/json",
 });
 
@@ -27,7 +32,7 @@ function slugify(value: string) {
     .slice(0, 70) || "nxq-storefront";
 }
 
-async function responseJson(response: Response) {
+async function readJson(response: Response) {
   const text = await response.text();
   if (!text) return null;
   try {
@@ -35,6 +40,10 @@ async function responseJson(response: Response) {
   } catch {
     return { message: text };
   }
+}
+
+function response(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
 async function githubInstallationToken() {
@@ -50,16 +59,27 @@ async function githubInstallationToken() {
     .setExpirationTime(now + 540)
     .sign(privateKey);
 
-  const response = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
-    method: "POST",
-    headers: githubHeaders(jwt),
-    body: JSON.stringify({ permissions: { administration: "write", contents: "write", metadata: "read" } }),
-  });
-  const body = await responseJson(response);
-  if (!response.ok || !body?.token) {
-    throw new Error(`GitHub installation token failed (${response.status}): ${body?.message || "Unknown GitHub error"}`);
+  const tokenResponse = await fetch(
+    `https://api.github.com/app/installations/${installationId}/access_tokens`,
+    {
+      method: "POST",
+      headers: githubHeaders(jwt),
+      body: JSON.stringify({
+        permissions: {
+          administration: "write",
+          contents: "write",
+          metadata: "read",
+        },
+      }),
+    },
+  );
+  const tokenBody = await readJson(tokenResponse);
+  if (!tokenResponse.ok || !tokenBody?.token) {
+    throw new Error(
+      `GitHub installation token failed (${tokenResponse.status}): ${tokenBody?.message || "Unknown GitHub error"}`,
+    );
   }
-  return body.token as string;
+  return tokenBody.token as string;
 }
 
 async function ensureRepository(job: any, businessName: string) {
@@ -69,87 +89,176 @@ async function ensureRepository(job: any, businessName: string) {
   const token = await githubInstallationToken();
   const repositoryName = job.repository_name || `${slugify(businessName)}-storefront`;
 
-  const existing = await fetch(`https://api.github.com/repos/${owner}/${repositoryName}`, {
-    headers: githubHeaders(token),
-  });
-  if (existing.ok) {
-    const repository = await responseJson(existing);
-    return repository;
-  }
-  if (existing.status !== 404) {
-    const body = await responseJson(existing);
-    throw new Error(`GitHub repository lookup failed (${existing.status}): ${body?.message || "Unknown GitHub error"}`);
+  const existingResponse = await fetch(
+    `https://api.github.com/repos/${owner}/${repositoryName}`,
+    { headers: githubHeaders(token) },
+  );
+  if (existingResponse.ok) return await readJson(existingResponse);
+  if (existingResponse.status !== 404) {
+    const body = await readJson(existingResponse);
+    throw new Error(
+      `GitHub repository lookup failed (${existingResponse.status}): ${body?.message || "Unknown GitHub error"}`,
+    );
   }
 
-  const response = await fetch(`https://api.github.com/repos/${templateOwner}/${templateRepo}/generate`, {
-    method: "POST",
-    headers: githubHeaders(token),
-    body: JSON.stringify({
-      owner,
-      name: repositoryName,
-      description: `${businessName} storefront managed by NXQ Commerce`,
-      include_all_branches: false,
-      private: true,
-    }),
-  });
-  const body = await responseJson(response);
-  if (!response.ok) {
-    throw new Error(`GitHub repository creation failed (${response.status}): ${body?.message || "Unknown GitHub error"}`);
+  const createResponse = await fetch(
+    `https://api.github.com/repos/${templateOwner}/${templateRepo}/generate`,
+    {
+      method: "POST",
+      headers: githubHeaders(token),
+      body: JSON.stringify({
+        owner,
+        name: repositoryName,
+        description: `${businessName} storefront managed by NXQ Commerce`,
+        include_all_branches: false,
+        private: true,
+      }),
+    },
+  );
+  const createBody = await readJson(createResponse);
+  if (!createResponse.ok) {
+    throw new Error(
+      `GitHub repository creation failed (${createResponse.status}): ${createBody?.message || "Unknown GitHub error"}`,
+    );
   }
-  return body;
+  return createBody;
+}
+
+async function upsertNetlifyEnvVars(
+  accountId: string,
+  siteId: string,
+  token: string,
+  values: Record<string, string>,
+) {
+  const listResponse = await fetch(
+    `https://api.netlify.com/api/v1/accounts/${accountId}/env?site_id=${encodeURIComponent(siteId)}`,
+    { headers: netlifyHeaders(token) },
+  );
+  const existing = await readJson(listResponse);
+  if (!listResponse.ok) {
+    throw new Error(
+      `Netlify environment lookup failed (${listResponse.status}): ${existing?.message || existing?.error || "Unknown Netlify error"}`,
+    );
+  }
+
+  const existingKeys = new Set(
+    Array.isArray(existing) ? existing.map((item: any) => item?.key).filter(Boolean) : [],
+  );
+
+  for (const [key, value] of Object.entries(values)) {
+    const payload = {
+      key,
+      scopes: ["builds"],
+      values: [{ value, context: "all" }],
+      is_secret: false,
+    };
+    const url = existingKeys.has(key)
+      ? `https://api.netlify.com/api/v1/accounts/${accountId}/env/${encodeURIComponent(key)}?site_id=${encodeURIComponent(siteId)}`
+      : `https://api.netlify.com/api/v1/accounts/${accountId}/env?site_id=${encodeURIComponent(siteId)}`;
+    const envResponse = await fetch(url, {
+      method: existingKeys.has(key) ? "PUT" : "POST",
+      headers: netlifyHeaders(token),
+      body: JSON.stringify(existingKeys.has(key) ? payload : [payload]),
+    });
+    const envBody = await readJson(envResponse);
+    if (!envResponse.ok) {
+      throw new Error(
+        `Netlify environment update failed for ${key} (${envResponse.status}): ${envBody?.message || envBody?.error || "Unknown Netlify error"}`,
+      );
+    }
+  }
+}
+
+async function triggerNetlifyBuild(siteId: string, token: string) {
+  const buildResponse = await fetch(
+    `https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=main&clear_cache=true`,
+    {
+      method: "POST",
+      headers: netlifyHeaders(token),
+      body: JSON.stringify({}),
+    },
+  );
+  const buildBody = await readJson(buildResponse);
+  if (!buildResponse.ok) {
+    throw new Error(
+      `Netlify build trigger failed (${buildResponse.status}): ${buildBody?.message || buildBody?.error || "Unknown Netlify error"}`,
+    );
+  }
+  return buildBody;
 }
 
 async function ensureNetlifySite(job: any, repositoryFullName: string, storefrontSlug: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const siteName = job.netlify_site_name || slugify(repositoryFullName.split("/")[1]);
-  const supabaseUrl = requiredSecret("PUBLIC_SUPABASE_URL");
-  const supabaseAnonKey = requiredSecret("PUBLIC_SUPABASE_ANON_KEY");
+  let site: any = null;
 
   if (job.netlify_site_id) {
-    const existing = await fetch(`https://api.netlify.com/api/v1/sites/${job.netlify_site_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (existing.ok) return await responseJson(existing);
+    const existingResponse = await fetch(
+      `https://api.netlify.com/api/v1/sites/${job.netlify_site_id}`,
+      { headers: netlifyHeaders(token) },
+    );
+    if (existingResponse.ok) site = await readJson(existingResponse);
   }
 
-  const response = await fetch("https://api.netlify.com/api/v1/sites", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      name: siteName,
-      repo: {
-        provider: "github",
-        repo: repositoryFullName,
-        branch: "main",
-        cmd: "npm run build",
-        dir: "dist",
-      },
-      build_settings: {
-        env: {
-          VITE_SUPABASE_URL: supabaseUrl,
-          VITE_SUPABASE_ANON_KEY: supabaseAnonKey,
-          VITE_STOREFRONT_SLUG: storefrontSlug,
+  if (!site) {
+    const createResponse = await fetch("https://api.netlify.com/api/v1/sites", {
+      method: "POST",
+      headers: netlifyHeaders(token),
+      body: JSON.stringify({
+        name: siteName,
+        repo: {
+          provider: "github",
+          repo_path: repositoryFullName,
+          repo: repositoryFullName,
+          repo_branch: "main",
+          branch: "main",
+          cmd: "npm run build",
+          dir: "dist",
         },
-      },
-    }),
-  });
-  const body = await responseJson(response);
-  if (!response.ok) {
-    throw new Error(`Netlify site creation failed (${response.status}): ${body?.message || body?.error || "Unknown Netlify error"}`);
+      }),
+    });
+    site = await readJson(createResponse);
+    if (!createResponse.ok) {
+      throw new Error(
+        `Netlify site creation failed (${createResponse.status}): ${site?.message || site?.error || "Unknown Netlify error"}`,
+      );
+    }
   }
-  return body;
+
+  const siteId = String(site.id);
+  const accountId = String(site.account_id || "");
+  if (!accountId) throw new Error("Netlify site response did not include an account ID.");
+
+  await upsertNetlifyEnvVars(accountId, siteId, token, {
+    VITE_SUPABASE_URL: requiredSecret("PUBLIC_SUPABASE_URL"),
+    VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
+    VITE_STOREFRONT_SLUG: storefrontSlug,
+  });
+  await triggerNetlifyBuild(siteId, token);
+  return site;
 }
 
 async function waitForPreview(siteId: string, token: string) {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const response = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const site = await responseJson(response);
-    if (!response.ok) throw new Error(`Netlify status check failed (${response.status}): ${site?.message || "Unknown Netlify error"}`);
-    const deploy = site?.published_deploy;
-    if (deploy?.state === "ready") {
-      return { ready: true, previewUrl: deploy.ssl_url || deploy.deploy_ssl_url || site.ssl_url || site.url, site };
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    const deploysResponse = await fetch(
+      `https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=5`,
+      { headers: netlifyHeaders(token) },
+    );
+    const deploys = await readJson(deploysResponse);
+    if (!deploysResponse.ok) {
+      throw new Error(
+        `Netlify deploy check failed (${deploysResponse.status}): ${deploys?.message || "Unknown Netlify error"}`,
+      );
+    }
+    const latest = Array.isArray(deploys) ? deploys[0] : null;
+    if (latest?.state === "error") {
+      throw new Error(`Netlify build failed: ${latest.error_message || "Unknown build error"}`);
+    }
+    if (latest?.state === "ready") {
+      return {
+        ready: true,
+        previewUrl: latest.deploy_ssl_url || latest.ssl_url || latest.deploy_url || latest.url,
+      };
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }
@@ -164,30 +273,24 @@ Deno.serve(async (request) => {
   const serviceRoleKey = requiredSecret("SUPABASE_SERVICE_ROLE_KEY");
   const authorization = request.headers.get("Authorization") || "";
 
-  const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
+  const caller = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authorization } },
+  });
   const { data: userData, error: userError } = await caller.auth.getUser();
   if (userError || userData.user?.email?.toLowerCase() !== "nxqweb@protonmail.com") {
-    return new Response(JSON.stringify({ error: "Owner access required." }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return response({ error: "Owner access required." }, 403);
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
   const workerToken = crypto.randomUUID();
-  const claim = await admin.rpc("claim_next_storefront_provisioning_job", { worker_token: workerToken });
-  if (claim.error) {
-    return new Response(JSON.stringify({ error: claim.error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const claim = await admin.rpc("claim_next_storefront_provisioning_job", {
+    worker_token: workerToken,
+  });
+  if (claim.error) return response({ error: claim.error.message }, 500);
   const job = claim.data;
-  if (!job) {
-    return new Response(JSON.stringify({ ok: true, message: "No provisioning jobs are ready." }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (!job) return response({ ok: true, message: "No provisioning jobs are ready." });
 
   let step = "validation";
   try {
@@ -213,9 +316,7 @@ Deno.serve(async (request) => {
         error_step: null,
         updated_at: new Date().toISOString(),
       }).eq("id", job.id).eq("lock_token", workerToken);
-      return new Response(JSON.stringify({ ok: true, job_id: job.id, status: "live", production_url: productionUrl }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return response({ ok: true, job_id: job.id, status: "live", production_url: productionUrl });
     }
 
     step = "github_repository";
@@ -238,7 +339,11 @@ Deno.serve(async (request) => {
       netlify_site_id: siteId,
       netlify_site_name: site.name,
       preview_url: site.ssl_url || site.url || null,
-      provider_metadata: { ...(job.provider_metadata || {}), github_full_name: repository.full_name, netlify_admin_url: site.admin_url },
+      provider_metadata: {
+        ...(job.provider_metadata || {}),
+        github_full_name: repository.full_name,
+        netlify_admin_url: site.admin_url,
+      },
       updated_at: new Date().toISOString(),
     }).eq("id", job.id).eq("lock_token", workerToken);
 
@@ -254,9 +359,7 @@ Deno.serve(async (request) => {
         error_step: "preview_building",
         updated_at: new Date().toISOString(),
       }).eq("id", job.id).eq("lock_token", workerToken);
-      return new Response(JSON.stringify({ ok: true, job_id: job.id, status: "preview_building" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return response({ ok: true, job_id: job.id, status: "preview_building" });
     }
 
     await admin.from("commerce_storefront_provisioning").update({
@@ -270,9 +373,7 @@ Deno.serve(async (request) => {
       updated_at: new Date().toISOString(),
     }).eq("id", job.id).eq("lock_token", workerToken);
 
-    return new Response(JSON.stringify({ ok: true, job_id: job.id, status: "preview_ready", preview_url: preview.previewUrl }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return response({ ok: true, job_id: job.id, status: "preview_ready", preview_url: preview.previewUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown provisioning failure";
     await admin.from("commerce_storefront_provisioning").update({
@@ -284,10 +385,6 @@ Deno.serve(async (request) => {
       next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", job.id).eq("lock_token", workerToken);
-
-    return new Response(JSON.stringify({ error: message, job_id: job.id, error_step: step }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return response({ error: message, job_id: job.id, error_step: step }, 500);
   }
 });
