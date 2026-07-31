@@ -31,6 +31,35 @@ function slugify(value: string) {
     .slice(0, 70) || "nxq-storefront";
 }
 
+function normalizeClaimedJob(value: unknown): any | null {
+  if (value == null) return null;
+
+  let normalized: unknown = value;
+  if (typeof normalized === "string") {
+    try {
+      normalized = JSON.parse(normalized);
+    } catch {
+      throw new Error("Claim RPC returned an unreadable JSON string.");
+    }
+  }
+
+  if (Array.isArray(normalized)) {
+    normalized = normalized[0] ?? null;
+  }
+
+  if (!normalized || typeof normalized !== "object") {
+    throw new Error(`Claim RPC returned an unsupported value type: ${typeof normalized}.`);
+  }
+
+  const job = normalized as Record<string, unknown>;
+  const id = typeof job.id === "string" ? job.id.trim() : "";
+  if (!id) {
+    throw new Error(`Claim RPC result is missing a job id. Keys: ${Object.keys(job).join(", ") || "none"}.`);
+  }
+
+  return job;
+}
+
 async function timedFetch(
   input: string,
   init: RequestInit = {},
@@ -72,7 +101,7 @@ async function saveCheckpoint(
   message: string,
 ) {
   const metadata = job.provider_metadata || {};
-  const result = await admin
+  const { data, error } = await admin
     .from("commerce_storefront_provisioning")
     .update({
       error_step: checkpoint,
@@ -85,10 +114,17 @@ async function saveCheckpoint(
       updated_at: new Date().toISOString(),
     })
     .eq("id", job.id)
-    .eq("lock_token", workerToken);
+    .eq("lock_token", workerToken)
+    .select("id")
+    .maybeSingle();
 
-  if (result.error) {
-    throw new Error(`Checkpoint save failed: ${result.error.message}`);
+  if (error) {
+    throw new Error(`Checkpoint save failed: ${error.message}`);
+  }
+  if (!data?.id) {
+    throw new Error(
+      `Checkpoint save matched zero rows for job ${job.id}. The claim result or worker lock token did not match the database row.`,
+    );
   }
 }
 
@@ -322,7 +358,16 @@ Deno.serve(async (request) => {
     worker_token: workerToken,
   });
   if (claim.error) return response({ error: claim.error.message }, 500);
-  const job = claim.data;
+
+  let job: any | null = null;
+  try {
+    job = normalizeClaimedJob(claim.data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown claim normalization failure";
+    console.error("Storefront claim normalization failed", { message, rawType: typeof claim.data });
+    return response({ error: message, error_step: "claim_result_shape" }, 500);
+  }
+
   if (!job) return response({ ok: true, message: "No provisioning jobs are ready." });
 
   let step = "worker_claimed";
@@ -498,7 +543,9 @@ Deno.serve(async (request) => {
     return response({ ok: true, job_id: job.id, status: "preview_ready", preview_url: previewUrl });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown provisioning failure";
-    await admin.from("commerce_storefront_provisioning").update({
+    console.error("Storefront provisioning failed", { jobId: job.id, step, message });
+
+    const failure = await admin.from("commerce_storefront_provisioning").update({
       status: "failed",
       last_error: message.slice(0, 2000),
       error_step: step,
@@ -507,6 +554,14 @@ Deno.serve(async (request) => {
       next_attempt_at: new Date(Date.now() + 5 * 60_000).toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", job.id).eq("lock_token", workerToken);
+
+    if (failure.error) {
+      console.error("Failed to persist provisioning error", {
+        jobId: job.id,
+        step,
+        persistError: failure.error.message,
+      });
+    }
 
     return response({ error: message, job_id: job.id, error_step: step }, 500);
   }
