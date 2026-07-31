@@ -36,6 +36,7 @@ import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
 import { OwnerProductFamilies } from "./pages/OwnerProductFamilies";
 import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
 import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
+import { OwnerStorefrontProvisioning } from "./pages/OwnerStorefrontProvisioning";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
 import { PortalSignup } from "./pages/PortalSignup";
@@ -60,6 +61,7 @@ function App() {
   if (path === "/owner/commerce-usage") return <OwnerProtectedRoute><OwnerCommerceUsage /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-builds") return <OwnerProtectedRoute><OwnerCommerceBuildQueue /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-reviews") return <OwnerProtectedRoute><OwnerCommerceReviews /></OwnerProtectedRoute>;
+  if (path === "/owner/storefront-provisioning") return <OwnerProtectedRoute><OwnerStorefrontProvisioning /></OwnerProtectedRoute>;
   if (path === "/owner/production-status") return <OwnerProtectedRoute><OwnerProductionStatus /></OwnerProtectedRoute>;
   if (path === "/owner/production-launches") return <OwnerProtectedRoute><OwnerProductionLaunches /></OwnerProtectedRoute>;
   if (path === "/owner/preview-requests") return <OwnerProtectedRoute><OwnerPreviewRequests /></OwnerProtectedRoute>;
