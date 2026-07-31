@@ -31,6 +31,25 @@ function slugify(value: string) {
     .slice(0, 70) || "nxq-storefront";
 }
 
+async function timedFetch(
+  input: string,
+  init: RequestInit = {},
+  timeoutMs = 15000,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Provider request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function readJson(response: Response) {
   const text = await response.text();
   if (!text) return null;
@@ -43,6 +62,34 @@ async function readJson(response: Response) {
 
 function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
+}
+
+async function saveCheckpoint(
+  admin: any,
+  job: any,
+  workerToken: string,
+  checkpoint: string,
+  message: string,
+) {
+  const metadata = job.provider_metadata || {};
+  const result = await admin
+    .from("commerce_storefront_provisioning")
+    .update({
+      error_step: checkpoint,
+      last_error: message,
+      provider_metadata: {
+        ...metadata,
+        checkpoint,
+        checkpoint_at: new Date().toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", job.id)
+    .eq("lock_token", workerToken);
+
+  if (result.error) {
+    throw new Error(`Checkpoint save failed: ${result.error.message}`);
+  }
 }
 
 async function githubInstallationToken() {
@@ -58,7 +105,7 @@ async function githubInstallationToken() {
     .setExpirationTime(now + 540)
     .sign(privateKey);
 
-  const tokenResponse = await fetch(
+  const tokenResponse = await timedFetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
       method: "POST",
@@ -88,7 +135,7 @@ async function ensureRepository(job: any, businessName: string) {
   const token = await githubInstallationToken();
   const repositoryName = job.repository_name || `${slugify(businessName)}-storefront`;
 
-  const existingResponse = await fetch(
+  const existingResponse = await timedFetch(
     `https://api.github.com/repos/${owner}/${repositoryName}`,
     { headers: githubHeaders(token) },
   );
@@ -100,7 +147,7 @@ async function ensureRepository(job: any, businessName: string) {
     );
   }
 
-  const createResponse = await fetch(
+  const createResponse = await timedFetch(
     `https://api.github.com/repos/${templateOwner}/${templateRepo}/generate`,
     {
       method: "POST",
@@ -126,7 +173,7 @@ async function ensureRepository(job: any, businessName: string) {
 async function createNetlifySite(repositoryFullName: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const siteName = slugify(repositoryFullName.split("/")[1]);
-  const createResponse = await fetch("https://api.netlify.com/api/v1/sites", {
+  const createResponse = await timedFetch("https://api.netlify.com/api/v1/sites", {
     method: "POST",
     headers: netlifyHeaders(token),
     body: JSON.stringify({
@@ -153,7 +200,7 @@ async function createNetlifySite(repositoryFullName: string) {
 
 async function getNetlifySite(siteId: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
-  const siteResponse = await fetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+  const siteResponse = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
     headers: netlifyHeaders(token),
   });
   const site = await readJson(siteResponse);
@@ -171,7 +218,7 @@ async function upsertNetlifyEnvVars(
   token: string,
   values: Record<string, string>,
 ) {
-  const listResponse = await fetch(
+  const listResponse = await timedFetch(
     `https://api.netlify.com/api/v1/accounts/${accountId}/env?site_id=${encodeURIComponent(siteId)}`,
     { headers: netlifyHeaders(token) },
   );
@@ -197,7 +244,7 @@ async function upsertNetlifyEnvVars(
     const url = exists
       ? `https://api.netlify.com/api/v1/accounts/${accountId}/env/${encodeURIComponent(key)}?site_id=${encodeURIComponent(siteId)}`
       : `https://api.netlify.com/api/v1/accounts/${accountId}/env?site_id=${encodeURIComponent(siteId)}`;
-    const envResponse = await fetch(url, {
+    const envResponse = await timedFetch(url, {
       method: exists ? "PUT" : "POST",
       headers: netlifyHeaders(token),
       body: JSON.stringify(exists ? payload : [payload]),
@@ -212,7 +259,7 @@ async function upsertNetlifyEnvVars(
 }
 
 async function triggerNetlifyBuild(siteId: string, token: string) {
-  const buildResponse = await fetch(
+  const buildResponse = await timedFetch(
     `https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=main&clear_cache=true`,
     {
       method: "POST",
@@ -231,7 +278,7 @@ async function triggerNetlifyBuild(siteId: string, token: string) {
 
 async function checkPreview(siteId: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
-  const deploysResponse = await fetch(
+  const deploysResponse = await timedFetch(
     `https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=5`,
     { headers: netlifyHeaders(token) },
   );
@@ -278,8 +325,17 @@ Deno.serve(async (request) => {
   const job = claim.data;
   if (!job) return response({ ok: true, message: "No provisioning jobs are ready." });
 
-  let step = "validation";
+  let step = "worker_claimed";
   try {
+    await saveCheckpoint(
+      admin,
+      job,
+      workerToken,
+      "worker_claimed",
+      "Worker claimed the job and entered startup.",
+    );
+
+    step = "validation";
     const [{ data: client, error: clientError }, { data: storefront, error: storefrontError }] = await Promise.all([
       admin.from("clients").select("id,business_name,status").eq("id", job.client_id).single(),
       admin.from("commerce_storefronts").select("id,store_slug,status").eq("id", job.storefront_id).single(),
@@ -308,7 +364,14 @@ Deno.serve(async (request) => {
     const metadata = job.provider_metadata || {};
 
     if (!job.repository_url) {
-      step = "github_repository";
+      step = "github_auth_start";
+      await saveCheckpoint(
+        admin,
+        job,
+        workerToken,
+        "github_auth_start",
+        "Starting GitHub App authentication and repository lookup.",
+      );
       const repository = await ensureRepository(job, client.business_name);
       await admin.from("commerce_storefront_provisioning").update({
         status: "queued",
@@ -331,6 +394,13 @@ Deno.serve(async (request) => {
 
     if (!job.netlify_site_id) {
       step = "netlify_site";
+      await saveCheckpoint(
+        admin,
+        job,
+        workerToken,
+        "netlify_site",
+        "Starting Netlify site creation.",
+      );
       const site = await createNetlifySite(repositoryFullName);
       await admin.from("commerce_storefront_provisioning").update({
         status: "queued",
@@ -355,6 +425,13 @@ Deno.serve(async (request) => {
 
     if (!metadata.netlify_build_triggered_at) {
       step = "netlify_configuration";
+      await saveCheckpoint(
+        admin,
+        job,
+        workerToken,
+        "netlify_configuration",
+        "Configuring Netlify environment variables and starting the preview build.",
+      );
       const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
       const site = await getNetlifySite(String(job.netlify_site_id));
       const accountId = String(site.account_id || "");
@@ -384,6 +461,13 @@ Deno.serve(async (request) => {
     }
 
     step = "preview_check";
+    await saveCheckpoint(
+      admin,
+      job,
+      workerToken,
+      "preview_check",
+      "Checking whether the Netlify preview build is ready.",
+    );
     const previewUrl = await checkPreview(String(job.netlify_site_id));
     if (!previewUrl) {
       await admin.from("commerce_storefront_provisioning").update({
