@@ -272,7 +272,6 @@ async function upsertNetlifyEnvVars(
   for (const [key, value] of Object.entries(values)) {
     const payload = {
       key,
-      scopes: ["builds"],
       values: [{ value, context: "all" }],
       is_secret: false,
     };
