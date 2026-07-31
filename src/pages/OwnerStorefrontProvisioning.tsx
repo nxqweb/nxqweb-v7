@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ExternalLink, RefreshCcw, Rocket, RotateCcw, ServerCog } from "lucide-react";
+import { ArrowLeft, ExternalLink, Play, RefreshCcw, Rocket, RotateCcw, ServerCog } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ProvisioningJob = {
@@ -38,6 +38,7 @@ export function OwnerStorefrontProvisioning() {
   const [clients, setClients] = useState<ClientName[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyJobId, setBusyJobId] = useState("");
+  const [workerBusy, setWorkerBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -73,6 +74,32 @@ export function OwnerStorefrontProvisioning() {
     void loadJobs();
   }, []);
 
+  async function runWorker(showEmptyMessage = true) {
+    if (!supabase) return false;
+
+    setWorkerBusy(true);
+    setError("");
+    setMessage("");
+
+    const result = await supabase.functions.invoke("provision-storefront", { body: {} });
+    setWorkerBusy(false);
+
+    if (result.error) {
+      const functionMessage = typeof result.data?.error === "string" ? result.data.error : result.error.message;
+      setError(`Provisioning worker failed: ${functionMessage}`);
+      await loadJobs();
+      return false;
+    }
+
+    const status = result.data?.status as string | undefined;
+    const workerMessage = result.data?.message as string | undefined;
+    if (status) setMessage(`Worker completed: ${readableStatus(status)}.`);
+    else if (showEmptyMessage) setMessage(workerMessage || "Provisioning worker checked the queue.");
+
+    await loadJobs();
+    return true;
+  }
+
   async function retryJob(job: ProvisioningJob) {
     if (!supabase) return;
     if (!window.confirm(`Retry storefront provisioning for ${clientNames[job.client_id] || "this client"}?`)) return;
@@ -85,17 +112,21 @@ export function OwnerStorefrontProvisioning() {
       target_job_id: job.id,
     });
 
-    if (result.error) setError(`Retry failed: ${result.error.message}`);
-    else setMessage("Provisioning job returned to the queue.");
+    if (result.error) {
+      setError(`Retry failed: ${result.error.message}`);
+      setBusyJobId("");
+      return;
+    }
 
+    setMessage("Provisioning job returned to the queue. Starting worker…");
+    await runWorker(false);
     setBusyJobId("");
-    await loadJobs();
   }
 
   async function approveLaunch(job: ProvisioningJob) {
     if (!supabase) return;
     const name = clientNames[job.client_id] || "this client";
-    if (!window.confirm(`Approve launch for ${name}?\n\nPreview: ${job.preview_url || "Missing"}\n\nThis only releases the separate launch stage. It does not change billing or client data.`)) return;
+    if (!window.confirm(`Approve launch for ${name}?\n\nPreview: ${job.preview_url || "Missing"}\n\nThis releases the separate production stage. It does not change billing or unrelated client data.`)) return;
 
     setBusyJobId(job.id);
     setError("");
@@ -105,11 +136,15 @@ export function OwnerStorefrontProvisioning() {
       target_job_id: job.id,
     });
 
-    if (result.error) setError(`Launch approval failed: ${result.error.message}`);
-    else setMessage("Launch approved. The provisioning worker can now complete the production stage.");
+    if (result.error) {
+      setError(`Launch approval failed: ${result.error.message}`);
+      setBusyJobId("");
+      return;
+    }
 
+    setMessage("Launch approved. Starting production worker…");
+    await runWorker(false);
     setBusyJobId("");
-    await loadJobs();
   }
 
   return (
@@ -132,10 +167,16 @@ export function OwnerStorefrontProvisioning() {
               <h2>Provisioning queue</h2>
               <p className="subtle">Client approval queues a separate storefront automatically. Final production launch still requires your approval.</p>
             </div>
-            <button className="icon-btn" onClick={() => void loadJobs()} disabled={loading} type="button">
-              <RefreshCcw size={16} /> Refresh
-            </button>
+            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              <button className="icon-btn" onClick={() => void runWorker()} disabled={workerBusy} type="button">
+                <Play size={16} /> {workerBusy ? "Working…" : "Process next job"}
+              </button>
+              <button className="icon-btn" onClick={() => void loadJobs()} disabled={loading} type="button">
+                <RefreshCcw size={16} /> Refresh
+              </button>
+            </div>
           </div>
+          <p className="subtle">The worker is protected by your owner login and backend-only GitHub/Netlify secrets.</p>
           {message ? <p className="status-message">{message}</p> : null}
           {error ? <p className="error-message">{error}</p> : null}
         </div>
@@ -171,8 +212,8 @@ export function OwnerStorefrontProvisioning() {
                   </div>
                 ) : null}
 
-                {canRetry ? <button className="wide-btn" disabled={busyJobId === job.id} onClick={() => void retryJob(job)} type="button"><RotateCcw size={16} /> Retry safely</button> : null}
-                {canLaunch ? <button className="wide-btn" disabled={busyJobId === job.id} onClick={() => void approveLaunch(job)} type="button"><Rocket size={16} /> Approve launch</button> : null}
+                {canRetry ? <button className="wide-btn" disabled={busyJobId === job.id || workerBusy} onClick={() => void retryJob(job)} type="button"><RotateCcw size={16} /> Retry safely</button> : null}
+                {canLaunch ? <button className="wide-btn" disabled={busyJobId === job.id || workerBusy} onClick={() => void approveLaunch(job)} type="button"><Rocket size={16} /> Approve launch</button> : null}
               </article>
             );
           })}
