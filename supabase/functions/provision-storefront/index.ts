@@ -208,6 +208,12 @@ async function ensureRepository(job: any, businessName: string) {
 
 async function createNetlifySite(repositoryFullName: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const installationIdText = requiredSecret("NETLIFY_GITHUB_INSTALLATION_ID");
+  const installationId = Number(installationIdText);
+  if (!Number.isSafeInteger(installationId) || installationId <= 0) {
+    throw new Error("NETLIFY_GITHUB_INSTALLATION_ID must be a positive numeric Netlify GitHub App installation ID.");
+  }
+
   const siteName = slugify(repositoryFullName.split("/")[1]);
   const createResponse = await timedFetch("https://api.netlify.com/api/v1/sites", {
     method: "POST",
@@ -218,10 +224,13 @@ async function createNetlifySite(repositoryFullName: string) {
         provider: "github",
         repo_path: repositoryFullName,
         repo: repositoryFullName,
+        repo_url: `https://github.com/${repositoryFullName}`,
         repo_branch: "main",
         branch: "main",
         cmd: "npm run build",
         dir: "dist",
+        public_repo: false,
+        installation_id: installationId,
       },
     }),
   });
@@ -345,13 +354,23 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
   });
   const { data: userData, error: userError } = await caller.auth.getUser();
-  if (userError || userData.user?.email?.toLowerCase() !== "nxqweb@protonmail.com") {
+  if (userError || !userData.user) {
     return response({ error: "Owner access required." }, 403);
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+
+  const ownerAccess = await admin
+    .from("owner_users")
+    .select("id,role")
+    .eq("auth_user_id", userData.user.id)
+    .maybeSingle();
+  if (ownerAccess.error || !ownerAccess.data) {
+    return response({ error: "Owner access required." }, 403);
+  }
+
   const workerToken = crypto.randomUUID();
   const claim = await admin.rpc("claim_next_storefront_provisioning_job", {
     worker_token: workerToken,
@@ -380,29 +399,55 @@ Deno.serve(async (request) => {
     );
 
     step = "validation";
-    const [{ data: client, error: clientError }, { data: storefront, error: storefrontError }] = await Promise.all([
+    const [
+      { data: client, error: clientError },
+      { data: storefront, error: storefrontError },
+      { data: acceptedApproval, error: approvalError },
+    ] = await Promise.all([
       admin.from("clients").select("id,business_name,status").eq("id", job.client_id).single(),
       admin.from("commerce_storefronts").select("id,store_slug,status").eq("id", job.storefront_id).single(),
+      admin
+        .from("owner_approval_requests")
+        .select("id,status")
+        .eq("client_id", job.client_id)
+        .eq("request_type", "website_setup_review")
+        .eq("status", "accepted")
+        .order("resolved_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
     if (clientError || !client) throw new Error(clientError?.message || "Client record not found.");
     if (storefrontError || !storefront) throw new Error(storefrontError?.message || "Storefront record not found.");
+    if (["denied", "archived", "dormant"].includes(String(client.status))) {
+      throw new Error(`Client status ${client.status} is not eligible for storefront provisioning.`);
+    }
+    if (approvalError || !acceptedApproval) {
+      throw new Error(approvalError?.message || "Accepted owner website setup approval is required before provisioning.");
+    }
 
     if (job.launch_approved_at) {
-      step = "production_launch";
-      const productionUrl = job.preview_url || job.production_url;
-      if (!productionUrl) throw new Error("Preview URL is missing.");
+      step = "production_launch_guard";
       await admin.from("commerce_storefront_provisioning").update({
-        status: "live",
-        production_url: productionUrl,
-        launched_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
+        status: "launch_approved",
         locked_at: null,
         lock_token: null,
-        last_error: null,
-        error_step: null,
+        last_error: "Production publication is intentionally blocked in the storefront preview worker. Use the guarded production launch workflow.",
+        error_step: "production_publish_required",
+        provider_metadata: {
+          ...(job.provider_metadata || {}),
+          checkpoint: "production_publish_required",
+          production_publish_required: true,
+          production_publish_automatic: false,
+        },
         updated_at: new Date().toISOString(),
       }).eq("id", job.id).eq("lock_token", workerToken);
-      return response({ ok: true, job_id: job.id, status: "live", production_url: productionUrl });
+      return response({
+        ok: true,
+        job_id: job.id,
+        status: "launch_approved",
+        production_publish_required: true,
+        message: "Preview approval is recorded. Production publication remains behind the guarded production workflow.",
+      });
     }
 
     const metadata = job.provider_metadata || {};
