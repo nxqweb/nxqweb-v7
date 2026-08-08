@@ -71,7 +71,7 @@ export function OwnerCommerceBuildQueue() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner queue load only
 
   async function load() {
     setLoading(true);

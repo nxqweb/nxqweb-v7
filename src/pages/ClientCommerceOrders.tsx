@@ -75,7 +75,7 @@ export function ClientCommerceOrders() {
 
   useEffect(() => { void loadOrders(); }, []);
 
-  const orders = data?.orders || [];
+  const orders = useMemo(() => data?.orders || [], [data]);
   const summary = data?.summary || {};
   const sortedOrders = useMemo(() => [...orders].sort((a, b) => Date.parse(b.placed_at) - Date.parse(a.placed_at)), [orders]);
 

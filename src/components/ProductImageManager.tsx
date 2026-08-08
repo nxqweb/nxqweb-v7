@@ -48,7 +48,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
 
   useEffect(() => {
     void loadImages();
-  }, [productId]);
+  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps -- reload only when the selected product changes
 
   async function persist(nextImages: string[]) {
     if (!supabase) return false;

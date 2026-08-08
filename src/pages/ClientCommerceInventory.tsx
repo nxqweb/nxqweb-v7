@@ -35,7 +35,7 @@ export function ClientCommerceInventory() {
 
   useEffect(() => { void loadInventory(); }, []);
 
-  const items = inventory?.items || [];
+  const items = useMemo(() => inventory?.items || [], [inventory]);
   const grouped = useMemo(() => items.reduce<Record<string, InventoryItem[]>>((acc, item) => {
     (acc[item.product_name] ||= []).push(item);
     return acc;

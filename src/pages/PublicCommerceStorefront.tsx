@@ -36,7 +36,7 @@ export function PublicCommerceStorefront() {
     setLoading(false);
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- storefront slug is fixed for this mounted route
 
   function add(product: Product, variant: Variant) {
     if (variant.inventory_policy === "deny" && variant.available_quantity <= 0) return;
