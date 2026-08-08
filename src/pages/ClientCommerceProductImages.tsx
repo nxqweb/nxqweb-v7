@@ -21,10 +21,6 @@ export function ClientCommerceProductImages() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    void loadProducts();
-  }, []);
-
   async function loadProducts() {
     setLoading(true);
     setError("");
@@ -53,6 +49,10 @@ export function ClientCommerceProductImages() {
 
     setLoading(false);
   }
+
+  useEffect(() => {
+    void loadProducts();
+  }, []);
 
   const selectedProduct = products.find((product) => product.id === selectedProductId);
 
