@@ -14,7 +14,7 @@ type AdminClient = ReturnType<typeof createClient>;
 
 const workerName = "build-business-website";
 const headers = { "Content-Type": "application/json" };
-const blueprintFiles = ["index.html", "app.js", "styles.css", "analytics.js"];
+const blueprintFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];
 
 function requiredSecret(name: string) {
   const value = Deno.env.get(name)?.trim();
@@ -159,7 +159,7 @@ function serviceDescription(service: string, businessType: string) {
   return `${service} from a professional ${businessType || "local service"} team, with clear communication and a straightforward path to getting started.`;
 }
 
-function buildSiteConfig(buildPlan: JsonRecord) {
+function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
   const business = (buildPlan.business || {}) as JsonRecord;
   const architecture = (buildPlan.information_architecture || {}) as JsonRecord;
   const services = Array.isArray(buildPlan.services) ? buildPlan.services.map(String).filter(Boolean).slice(0, 8) : [];
@@ -170,7 +170,11 @@ function buildSiteConfig(buildPlan: JsonRecord) {
   const desiredStyle = clean(buildPlan.desired_style);
   const primaryCta = clean(architecture.primary_cta) || "Contact us";
   const tierKey = clean(buildPlan.product_tier_key).toLowerCase() || "starter";
-  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";
+  const analyticsEndpoint = clean(runtime.analytics_endpoint);
+  const analyticsIngestKey = clean(runtime.analytics_ingest_key);
+  const analyticsProfileEnabled = runtime.analytics_profile_enabled === true;
+  const leadEndpoint = clean(runtime.lead_endpoint);
+  const leadFormKey = clean(runtime.lead_form_key);
   const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);
   const mouseTracking = tierKey === "premium";
 
@@ -206,9 +210,15 @@ function buildSiteConfig(buildPlan: JsonRecord) {
       title: `${businessName} | ${businessType}`,
       description: `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
     },
+    leads: {
+      enabled: Boolean(leadEndpoint && leadFormKey),
+      endpoint: leadEndpoint,
+      formKey: leadFormKey,
+    },
     analytics: {
-      enabled: advancedAnalytics && Boolean(analyticsEndpoint),
+      enabled: advancedAnalytics && analyticsProfileEnabled && Boolean(analyticsEndpoint && analyticsIngestKey),
       endpoint: analyticsEndpoint,
+      ingestKey: analyticsIngestKey,
       consentRequired: true,
       consentVersion: "v1",
       clicks: true,
@@ -280,6 +290,26 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   const runId = runRes.data.id;
   const sourceBranch = String(runRes.data.source_branch);
 
+  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";
+  const leadEndpoint = Deno.env.get("NXQ_PUBLIC_LEAD_ENDPOINT")?.trim() || "";
+  const analyticsSetup = await admin.rpc("configure_website_analytics_for_project", { target_client_id: job.client_id, target_project_id: job.project_id });
+  if (analyticsSetup.error) throw new Error(`Analytics profile setup failed: ${analyticsSetup.error.message}`);
+  const analyticsProfile = await admin.from("website_analytics_profiles").select("public_ingest_key,status").eq("project_id", job.project_id).single();
+  if (analyticsProfile.error) throw new Error(`Analytics profile load failed: ${analyticsProfile.error.message}`);
+  if (analyticsEndpoint) {
+    const analyticsFlag = await admin.from("website_analytics_profiles").update({ ingest_endpoint_configured: true, updated_at: new Date().toISOString() }).eq("project_id", job.project_id);
+    if (analyticsFlag.error) throw new Error(`Analytics endpoint state failed: ${analyticsFlag.error.message}`);
+  }
+  const leadForm = await admin.rpc("create_default_business_lead_form", { target_client_id: job.client_id, target_project_id: job.project_id });
+  if (leadForm.error) throw new Error(`Lead form setup failed: ${leadForm.error.message}`);
+  const runtimeConfig: JsonRecord = {
+    analytics_endpoint: analyticsEndpoint,
+    analytics_ingest_key: String(analyticsProfile.data?.public_ingest_key || ""),
+    analytics_profile_enabled: analyticsProfile.data?.status === "enabled",
+    lead_endpoint: leadEndpoint,
+    lead_form_key: String(leadForm.data || ""),
+  };
+
   const token = await githubInstallationToken();
   await updateStep(admin, runId, "prepare_safe_branch", "running");
   await ensureSafeBranch(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
@@ -290,12 +320,12 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     const content = await fetchBlueprintFile(file, token);
     await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQ Business v1: sync ${file}`);
   }
-  const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord), null, 2)};\n`;
+  const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig), null, 2)};\n`;
   await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");
   await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1" });
 
   await updateStep(admin, runId, "run_quality_checks", "running");
-  const generated = buildSiteConfig(projectRes.data.build_plan as JsonRecord);
+  const generated = buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig);
   const quality = {
     business_name: Boolean(generated.business.name),
     services: generated.services.length > 0,
