@@ -23,12 +23,14 @@ import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
+import { ClientWebsiteHealth } from "./pages/ClientWebsiteHealth";
 import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
 import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
 import { OwnerCommerceHub } from "./pages/OwnerCommerceHub";
 import { OwnerCommerceReviews } from "./pages/OwnerCommerceReviews";
 import { OwnerCommerceUsage } from "./pages/OwnerCommerceUsage";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
+import { OwnerExceptionCenter } from "./pages/OwnerExceptionCenter";
 import { OwnerFiles } from "./pages/OwnerFiles";
 import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
 import { OwnerPortal } from "./pages/OwnerPortal";
@@ -66,6 +68,7 @@ function App() {
   if (path === "/owner/production-launches") return <OwnerProtectedRoute><OwnerProductionLaunches /></OwnerProtectedRoute>;
   if (path === "/owner/preview-requests") return <OwnerProtectedRoute><OwnerPreviewRequests /></OwnerProtectedRoute>;
   if (path === "/owner/deployments") return <OwnerProtectedRoute><OwnerDeployments /></OwnerProtectedRoute>;
+  if (path === "/owner/exceptions") return <OwnerProtectedRoute><OwnerExceptionCenter /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
 
@@ -77,6 +80,7 @@ function App() {
           <a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a>
           <a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a>
           <a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a>
+          <a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a>
         </>
       </OwnerProtectedRoute>
     );
@@ -88,6 +92,7 @@ function App() {
   }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
+  if (path === "/client/health") return <ClientWebsiteHealth />;
   if (path === "/client/commerce/readiness") return <ClientCommerceReadiness />;
   if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
   if (path === "/client/commerce/preview") return <ClientCommercePreview />;
