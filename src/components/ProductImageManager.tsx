@@ -29,10 +29,6 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    void loadImages();
-  }, [productId]);
-
   async function loadImages() {
     if (!supabase) return;
     setError("");
@@ -49,6 +45,10 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     setClientId(data.client_id);
     setImages(Array.isArray(data.image_urls) ? data.image_urls : []);
   }
+
+  useEffect(() => {
+    void loadImages();
+  }, [productId]);
 
   async function persist(nextImages: string[]) {
     if (!supabase) return false;
