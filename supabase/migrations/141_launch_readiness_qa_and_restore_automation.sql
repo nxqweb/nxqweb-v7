@@ -76,12 +76,12 @@ begin
   end if;
   if deployment_row.last_deployment_status <> 'published'
      or deployment_row.production_url is null
-     or deployment_row.last_deployed_commit_sha is null then
+     or deployment_row.last_deployed_commit is null then
     raise exception 'Verified published deployment evidence is required before creating a restore point.';
   end if;
 
   snapshot_checksum := encode(digest(
-    coalesce(deployment_row.last_deployed_commit_sha, '') || '|' ||
+    coalesce(deployment_row.last_deployed_commit, '') || '|' ||
     coalesce(deployment_row.production_url, '') || '|' ||
     coalesce(project_row.build_plan::text, '{}') || '|' ||
     coalesce(deployment_row.github_owner, '') || '/' || coalesce(deployment_row.github_repo, ''),
@@ -104,7 +104,7 @@ begin
     project_row.client_id,
     project_row.id,
     target_restore_kind,
-    deployment_row.last_deployed_commit_sha,
+    deployment_row.last_deployed_commit,
     'main',
     deployment_row.production_url,
     jsonb_build_object('build_plan', coalesce(project_row.build_plan, '{}'::jsonb)),
@@ -242,7 +242,7 @@ declare
     'promote-business-production',
     'run-website-maintenance'
   ];
-  worker_key text;
+  required_worker_key text;
   details jsonb := '{}'::jsonb;
 begin
   if auth.role() <> 'service_role' then
@@ -265,12 +265,12 @@ begin
   ) into cron_ok;
 
   workers_ok := true;
-  foreach worker_key in array required_workers loop
+  foreach required_worker_key in array required_workers loop
     if not exists (
-      select 1 from public.automation_worker_heartbeats
-      where worker_key = worker_key
-        and status = 'healthy'
-        and heartbeat_at > now() - interval '10 minutes'
+      select 1 from public.automation_worker_heartbeats h
+      where h.worker_key = required_worker_key
+        and h.status = 'healthy'
+        and h.heartbeat_at > now() - interval '10 minutes'
     ) then
       workers_ok := false;
       exit;
