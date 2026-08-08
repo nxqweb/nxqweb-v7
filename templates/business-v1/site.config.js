@@ -31,4 +31,13 @@ export const siteConfig = {
     title: "Your Business | Local Professional Services",
     description: "Professional local services with clear communication and dependable support.",
   },
+  analytics: {
+    enabled: false,
+    endpoint: "",
+    consentRequired: true,
+    consentVersion: "v1",
+    clicks: true,
+    scrollDepth: true,
+    mouseTracking: false,
+  },
 };
