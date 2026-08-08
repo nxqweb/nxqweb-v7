@@ -1,7 +1,9 @@
 name: One-shot family Netlify config
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - safe/commerce-live-storefront
 
 permissions:
   contents: write
