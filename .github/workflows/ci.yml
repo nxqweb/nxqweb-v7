@@ -58,6 +58,11 @@ jobs:
         continue-on-error: true
         run: node scripts/validate-business-build-worker-contract.mjs
 
+      - name: Business production contract
+        id: business_production_contract
+        continue-on-error: true
+        run: node scripts/validate-business-production-contract.mjs
+
       - name: Lint with zero warnings
         id: lint
         continue-on-error: true
@@ -74,7 +79,7 @@ jobs:
         run: npm run build
 
       - name: Fail if validation failed
-        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.business_template_contract.outcome == 'failure' || steps.business_build_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
+        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.business_template_contract.outcome == 'failure' || steps.business_build_contract.outcome == 'failure' || steps.business_production_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
         run: |
-          echo "Validation failed. Provisioning: ${{ steps.provisioning_contract.outcome }} | Routing: ${{ steps.automation_routing_contract.outcome }} | Infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Build plan: ${{ steps.build_plan_contract.outcome }} | Business template: ${{ steps.business_template_contract.outcome }} | Business worker: ${{ steps.business_build_contract.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
+          echo "Validation failed. Provisioning: ${{ steps.provisioning_contract.outcome }} | Routing: ${{ steps.automation_routing_contract.outcome }} | Infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Build plan: ${{ steps.build_plan_contract.outcome }} | Business template: ${{ steps.business_template_contract.outcome }} | Business worker: ${{ steps.business_build_contract.outcome }} | Production: ${{ steps.business_production_contract.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
           exit 1
