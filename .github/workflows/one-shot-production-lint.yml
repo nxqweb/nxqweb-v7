@@ -38,3 +38,5 @@ jobs:
           git add supabase/functions/promote-business-production/index.ts
           git diff --cached --quiet || git commit -m "Clean production promotion worker lint"
           git push
+
+# one-shot trigger marker
