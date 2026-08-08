@@ -80,10 +80,6 @@ export function ClientCommerceWebsiteContent() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    void loadContent();
-  }, []);
-
   async function loadContent() {
     setLoading(true);
     setError("");
@@ -105,6 +101,10 @@ export function ClientCommerceWebsiteContent() {
     else if (result.data) setContent({ ...initialContent, ...(result.data as WebsiteContent) });
     setLoading(false);
   }
+
+  useEffect(() => {
+    void loadContent();
+  }, []);
 
   function update<K extends keyof WebsiteContent>(key: K, value: WebsiteContent[K]) {
     setContent((current) => ({ ...current, [key]: value }));
