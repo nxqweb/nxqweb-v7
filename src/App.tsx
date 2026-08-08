@@ -2,6 +2,7 @@ import "./styles/nxq.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
+import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
@@ -111,7 +112,7 @@ function App() {
   if (path === "/client/settings") return <ClientSettings />;
 
   if (path === "/client") {
-    return <><ClientPortalTopCards /><ClientPortal /></>;
+    return <><ClientPortalTopCards /><ClientPortal /><ClientPortalTutorialOverlay /></>;
   }
 
   if (path.startsWith("/client/")) {
