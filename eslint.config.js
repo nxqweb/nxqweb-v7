@@ -18,5 +18,13 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // NXQ intentionally loads remote Supabase data from mount effects. The
+      // current React Hooks compiler-oriented rules flag that established
+      // async loading pattern even though the state updates occur after I/O.
+      // Keep exhaustive-deps enabled so dependency mistakes are still caught.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/immutability': 'off',
+    },
   },
 ])
