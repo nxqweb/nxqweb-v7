@@ -7,8 +7,10 @@
     <title>NXQ Business Site</title>
     <meta name="description" content="Premium local business website managed by NXQ Web." />
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./a11y.css" />
   </head>
   <body>
+    <a class="sr-only" href="#main-content">Skip to content</a>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
 
@@ -25,7 +27,8 @@
       <a class="header-cta" id="header-cta" href="#contact">Request a Quote</a>
     </header>
 
-    <main id="top">
+    <main id="main-content">
+      <span id="top" class="sr-only">Top of page</span>
       <section class="hero section-shell">
         <div class="hero-copy">
           <p class="eyebrow" id="hero-eyebrow">Trusted local service</p>
@@ -83,6 +86,11 @@
     <footer>
       <strong id="footer-name">Your Business</strong>
       <span>Website managed by NXQ Web</span>
+      <nav aria-label="Legal links">
+        <a href="/privacy.html">Privacy</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/accessibility.html">Accessibility</a>
+      </nav>
     </footer>
 
     <script type="module" src="./app.js"></script>
