@@ -1,6 +1,28 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 
+
+type ProviderMetadata = {
+  github_full_name?: string;
+  netlify_build_triggered_at?: string;
+  [key: string]: unknown;
+};
+
+type ProvisioningJob = {
+  id: string;
+  client_id: string;
+  storefront_id: string;
+  repository_name?: string | null;
+  repository_owner?: string | null;
+  repository_url?: string | null;
+  netlify_site_id?: string | null;
+  launch_approved_at?: string | null;
+  provider_metadata?: ProviderMetadata | null;
+  [key: string]: unknown;
+};
+
+type SupabaseAdminClient = ReturnType<typeof createClient>;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -31,7 +53,7 @@ function slugify(value: string) {
     .slice(0, 70) || "nxq-storefront";
 }
 
-function normalizeClaimedJob(value: unknown): any | null {
+function normalizeClaimedJob(value: unknown): ProvisioningJob | null {
   if (value == null) return null;
 
   let normalized: unknown = value;
@@ -51,7 +73,7 @@ function normalizeClaimedJob(value: unknown): any | null {
     throw new Error(`Claim RPC returned an unsupported value type: ${typeof normalized}.`);
   }
 
-  const job = normalized as Record<string, unknown>;
+  const job = normalized as ProvisioningJob;
   const id = typeof job.id === "string" ? job.id.trim() : "";
   if (!id) {
     throw new Error(`Claim RPC result is missing a job id. Keys: ${Object.keys(job).join(", ") || "none"}.`);
@@ -71,7 +93,7 @@ async function timedFetch(
     return await fetch(input, { ...init, signal: controller.signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error(`Provider request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+      throw new Error(`Provider request timed out after ${Math.round(timeoutMs / 1000)} seconds.`, { cause: error });
     }
     throw error;
   } finally {
@@ -94,8 +116,8 @@ function response(body: unknown, status = 200) {
 }
 
 async function saveCheckpoint(
-  admin: any,
-  job: any,
+  admin: SupabaseAdminClient,
+  job: ProvisioningJob,
   workerToken: string,
   checkpoint: string,
   message: string,
@@ -164,7 +186,7 @@ async function githubInstallationToken() {
   return tokenBody.token as string;
 }
 
-async function ensureRepository(job: any, businessName: string) {
+async function ensureRepository(job: ProvisioningJob, businessName: string) {
   const owner = requiredSecret("GITHUB_REPOSITORY_OWNER");
   const templateOwner = requiredSecret("GITHUB_TEMPLATE_OWNER");
   const templateRepo = requiredSecret("GITHUB_TEMPLATE_REPO");
@@ -275,7 +297,15 @@ async function upsertNetlifyEnvVars(
   }
 
   const existingKeys = new Set(
-    Array.isArray(existing) ? existing.map((item: any) => item?.key).filter(Boolean) : [],
+    Array.isArray(existing)
+      ? existing
+          .map((item: unknown) => {
+            if (!item || typeof item !== "object" || !("key" in item)) return "";
+            const key = (item as Record<string, unknown>).key;
+            return typeof key === "string" ? key : "";
+          })
+          .filter(Boolean)
+      : [],
   );
 
   for (const [key, value] of Object.entries(values)) {
@@ -377,7 +407,7 @@ Deno.serve(async (request) => {
   });
   if (claim.error) return response({ error: claim.error.message }, 500);
 
-  let job: any | null = null;
+  let job: ProvisioningJob | null;
   try {
     job = normalizeClaimedJob(claim.data);
   } catch (error) {
