@@ -83,6 +83,26 @@ jobs:
         continue-on-error: true
         run: node scripts/simulate-autonomy-failures.mjs
 
+      - name: Domain autonomy contract
+        id: domain_autonomy_contract
+        continue-on-error: true
+        run: node scripts/validate-domain-autonomy-contract.mjs
+
+      - name: Denial hard-stop contract
+        id: denial_hard_stop_contract
+        continue-on-error: true
+        run: node scripts/validate-denial-hard-stop-contract.mjs
+
+      - name: Client tutorial and denial UX contract
+        id: client_tutorial_contract
+        continue-on-error: true
+        run: node scripts/validate-client-tutorial-contract.mjs
+
+      - name: Tier entitlement contract
+        id: tier_entitlement_contract
+        continue-on-error: true
+        run: node scripts/validate-tier-entitlement-contract.mjs
+
       - name: Lint with zero warnings
         id: lint
         continue-on-error: true
@@ -99,7 +119,7 @@ jobs:
         run: npm run build
 
       - name: Fail if validation failed
-        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.business_template_contract.outcome == 'failure' || steps.business_build_contract.outcome == 'failure' || steps.business_production_contract.outcome == 'failure' || steps.nxq_identity_contract.outcome == 'failure' || steps.maintenance_recovery_contract.outcome == 'failure' || steps.operational_control_contract.outcome == 'failure' || steps.autonomy_failure_simulator.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
+        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.business_template_contract.outcome == 'failure' || steps.business_build_contract.outcome == 'failure' || steps.business_production_contract.outcome == 'failure' || steps.nxq_identity_contract.outcome == 'failure' || steps.maintenance_recovery_contract.outcome == 'failure' || steps.operational_control_contract.outcome == 'failure' || steps.autonomy_failure_simulator.outcome == 'failure' || steps.domain_autonomy_contract.outcome == 'failure' || steps.denial_hard_stop_contract.outcome == 'failure' || steps.client_tutorial_contract.outcome == 'failure' || steps.tier_entitlement_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
         run: |
-          echo "Validation failed. Provisioning: ${{ steps.provisioning_contract.outcome }} | Routing: ${{ steps.automation_routing_contract.outcome }} | Infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Build plan: ${{ steps.build_plan_contract.outcome }} | Business template: ${{ steps.business_template_contract.outcome }} | Business worker: ${{ steps.business_build_contract.outcome }} | Production: ${{ steps.business_production_contract.outcome }} | NXQ ID: ${{ steps.nxq_identity_contract.outcome }} | Maintenance: ${{ steps.maintenance_recovery_contract.outcome }} | Operations: ${{ steps.operational_control_contract.outcome }} | Simulator: ${{ steps.autonomy_failure_simulator.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
+          echo "Validation failed. Provisioning: ${{ steps.provisioning_contract.outcome }} | Routing: ${{ steps.automation_routing_contract.outcome }} | Infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Build plan: ${{ steps.build_plan_contract.outcome }} | Business template: ${{ steps.business_template_contract.outcome }} | Business worker: ${{ steps.business_build_contract.outcome }} | Production: ${{ steps.business_production_contract.outcome }} | NXQ ID: ${{ steps.nxq_identity_contract.outcome }} | Maintenance: ${{ steps.maintenance_recovery_contract.outcome }} | Operations: ${{ steps.operational_control_contract.outcome }} | Simulator: ${{ steps.autonomy_failure_simulator.outcome }} | Domain: ${{ steps.domain_autonomy_contract.outcome }} | Denial: ${{ steps.denial_hard_stop_contract.outcome }} | Tutorial: ${{ steps.client_tutorial_contract.outcome }} | Tiers: ${{ steps.tier_entitlement_contract.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
           exit 1
