@@ -687,7 +687,7 @@ if (messageResult.error) {
         await loadOwnerData();
         return;
       }
-      let domainDecisionMessage: string | null = null;
+      const domainDecisionMessage: string | null = null;
 
 
       await supabase.from("activity_logs").insert({

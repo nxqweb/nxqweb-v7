@@ -528,7 +528,7 @@ Deno.serve(async (request) => {
       await upsertNetlifyEnvVars(accountId, String(job.netlify_site_id), token, {
         VITE_SUPABASE_URL: requiredSecret("PUBLIC_SUPABASE_URL"),
         VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
-        VITE_STOREFRONT_SLUG: storefront.store_slug,
+        VITE_NXQ_STOREFRONT_SLUG: storefront.store_slug,
       });
       await triggerNetlifyBuild(String(job.netlify_site_id), token);
       await admin.from("commerce_storefront_provisioning").update({
