@@ -214,7 +214,7 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
 
   if (sourceSha !== mainSha) await fastForwardMain(configRes.data.github_owner, configRes.data.github_repo, sourceSha, token);
 
-  let deploymentId = "";
+  let deploymentId: string;
   const existingDeployment = await admin.from("project_deployments").select("id").eq("project_id", job.project_id)
     .eq("deploy_kind", "production").eq("git_commit_sha", sourceSha).limit(1).maybeSingle();
   if (existingDeployment.data?.id) {
