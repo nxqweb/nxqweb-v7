@@ -2,7 +2,8 @@ import { siteConfig } from "./site.config.js";
 
 const config = siteConfig.analytics || {};
 const endpoint = typeof config.endpoint === "string" ? config.endpoint.trim() : "";
-const enabled = Boolean(config.enabled && endpoint);
+const ingestKey = typeof config.ingestKey === "string" ? config.ingestKey.trim() : "";
+const enabled = Boolean(config.enabled && endpoint && ingestKey);
 const consentRequired = config.consentRequired !== false;
 const consentKey = `nxq-analytics-consent:${siteConfig.schemaVersion || "business"}`;
 
@@ -89,6 +90,7 @@ function startAnalytics() {
         keepalive: true,
         body: JSON.stringify({
           schema_version: "nxq-analytics-v1",
+          ingest_key: ingestKey,
           events,
         }),
       });
