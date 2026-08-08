@@ -7,6 +7,12 @@ import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 import { CheckEmail } from "./pages/CheckEmail";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { ClientBillingStatus } from "./pages/ClientBillingStatus";
+import { ClientBusinessAnalytics } from "./pages/ClientBusinessAnalytics";
+import { ClientBusinessChanges } from "./pages/ClientBusinessChanges";
+import { ClientBusinessDashboard } from "./pages/ClientBusinessDashboard";
+import { ClientBusinessLeads } from "./pages/ClientBusinessLeads";
+import { ClientBusinessLocations } from "./pages/ClientBusinessLocations";
+import { ClientBusinessReports } from "./pages/ClientBusinessReports";
 import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
@@ -25,6 +31,7 @@ import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteConte
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSettings } from "./pages/ClientSettings";
 import { ClientWebsiteHealth } from "./pages/ClientWebsiteHealth";
+import { OwnerAutomationHealth } from "./pages/OwnerAutomationHealth";
 import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
 import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
 import { OwnerCommerceHub } from "./pages/OwnerCommerceHub";
@@ -33,12 +40,14 @@ import { OwnerCommerceUsage } from "./pages/OwnerCommerceUsage";
 import { OwnerDeployments } from "./pages/OwnerDeployments";
 import { OwnerExceptionCenter } from "./pages/OwnerExceptionCenter";
 import { OwnerFiles } from "./pages/OwnerFiles";
+import { OwnerLaunchReadiness } from "./pages/OwnerLaunchReadiness";
 import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
 import { OwnerPortal } from "./pages/OwnerPortal";
 import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
 import { OwnerProductFamilies } from "./pages/OwnerProductFamilies";
 import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
 import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
+import { OwnerProviderHealth } from "./pages/OwnerProviderHealth";
 import { OwnerStorefrontProvisioning } from "./pages/OwnerStorefrontProvisioning";
 import { PortalLanding } from "./pages/PortalLanding";
 import { PortalLogin } from "./pages/PortalLogin";
@@ -70,6 +79,9 @@ function App() {
   if (path === "/owner/preview-requests") return <OwnerProtectedRoute><OwnerPreviewRequests /></OwnerProtectedRoute>;
   if (path === "/owner/deployments") return <OwnerProtectedRoute><OwnerDeployments /></OwnerProtectedRoute>;
   if (path === "/owner/exceptions") return <OwnerProtectedRoute><OwnerExceptionCenter /></OwnerProtectedRoute>;
+  if (path === "/owner/providers") return <OwnerProtectedRoute><OwnerProviderHealth /></OwnerProtectedRoute>;
+  if (path === "/owner/automation-health") return <OwnerProtectedRoute><OwnerAutomationHealth /></OwnerProtectedRoute>;
+  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
 
@@ -82,6 +94,9 @@ function App() {
           <a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a>
           <a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a>
           <a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a>
+          <a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a>
+          <a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a>
+          <a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a>
         </>
       </OwnerProtectedRoute>
     );
@@ -94,6 +109,12 @@ function App() {
 
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
+  if (path === "/client/business/leads") return <ClientBusinessLeads />;
+  if (path === "/client/business/changes") return <ClientBusinessChanges />;
+  if (path === "/client/business/locations") return <ClientBusinessLocations />;
+  if (path === "/client/business/analytics") return <ClientBusinessAnalytics />;
+  if (path === "/client/business/reports") return <ClientBusinessReports />;
+  if (path === "/client/business") return <ClientBusinessDashboard />;
   if (path === "/client/commerce/readiness") return <ClientCommerceReadiness />;
   if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
   if (path === "/client/commerce/preview") return <ClientCommercePreview />;
