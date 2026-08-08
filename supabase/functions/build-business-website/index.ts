@@ -14,7 +14,7 @@ type AdminClient = ReturnType<typeof createClient>;
 
 const workerName = "build-business-website";
 const headers = { "Content-Type": "application/json" };
-const blueprintFiles = ["index.html", "app.js", "styles.css"];
+const blueprintFiles = ["index.html", "app.js", "styles.css", "analytics.js"];
 
 function requiredSecret(name: string) {
   const value = Deno.env.get(name)?.trim();
@@ -169,6 +169,10 @@ function buildSiteConfig(buildPlan: JsonRecord) {
   const goals = clean(buildPlan.goals);
   const desiredStyle = clean(buildPlan.desired_style);
   const primaryCta = clean(architecture.primary_cta) || "Contact us";
+  const tierKey = clean(buildPlan.product_tier_key).toLowerCase() || "starter";
+  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";
+  const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);
+  const mouseTracking = tierKey === "premium";
 
   return {
     schemaVersion: "nxq-business-v1",
@@ -201,6 +205,15 @@ function buildSiteConfig(buildPlan: JsonRecord) {
     seo: {
       title: `${businessName} | ${businessType}`,
       description: `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
+    },
+    analytics: {
+      enabled: advancedAnalytics && Boolean(analyticsEndpoint),
+      endpoint: analyticsEndpoint,
+      consentRequired: true,
+      consentVersion: "v1",
+      clicks: true,
+      scrollDepth: true,
+      mouseTracking,
     },
   };
 }
