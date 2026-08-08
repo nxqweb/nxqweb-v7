@@ -158,7 +158,7 @@ async function ensureRepository(
   return body || {};
 }
 
-async function createNetlifySite(repositoryFullName: string) {
+async function createNetlifySite(repositoryFullName: string, familySlug: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const installationId = Number(requiredSecret("NETLIFY_GITHUB_INSTALLATION_ID"));
   if (!Number.isSafeInteger(installationId) || installationId <= 0) {
@@ -166,6 +166,8 @@ async function createNetlifySite(repositoryFullName: string) {
   }
 
   const siteName = slugify(repositoryFullName.split("/")[1]);
+  const buildCommand = familySlug === "business" ? "" : "npm run build";
+  const publishDirectory = familySlug === "business" ? "." : "dist";
   const created = await timedFetch("https://api.netlify.com/api/v1/sites", {
     method: "POST",
     headers: netlifyHeaders(token),
@@ -178,8 +180,8 @@ async function createNetlifySite(repositoryFullName: string) {
         repo_url: `https://github.com/${repositoryFullName}`,
         repo_branch: "main",
         branch: "main",
-        cmd: "npm run build",
-        dir: "dist",
+        cmd: buildCommand,
+        dir: publishDirectory,
         public_repo: false,
         installation_id: installationId,
       },
@@ -332,7 +334,7 @@ Deno.serve(async (request) => {
     if (!netlifySiteId && typeof config.netlify_site_id === "string") netlifySiteId = config.netlify_site_id;
     let netlifySite: JsonRecord | null = null;
     if (!netlifySiteId) {
-      netlifySite = await createNetlifySite(repositoryFullName);
+      netlifySite = await createNetlifySite(repositoryFullName, familySlug);
       if (typeof netlifySite.id !== "string") throw new Error("Netlify site creation returned no site id.");
       netlifySiteId = netlifySite.id;
       await saveCheckpoint({ checkpoint: "netlify_site_ready", netlify_site_id: netlifySiteId });
