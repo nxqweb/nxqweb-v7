@@ -43,6 +43,11 @@ jobs:
         continue-on-error: true
         run: node scripts/validate-project-infrastructure-contract.mjs
 
+      - name: Build plan automation contract
+        id: build_plan_contract
+        continue-on-error: true
+        run: node scripts/validate-build-plan-automation-contract.mjs
+
       - name: Lint with zero warnings
         id: lint
         continue-on-error: true
@@ -59,7 +64,7 @@ jobs:
         run: npm run build
 
       - name: Fail if validation failed
-        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
+        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure'
         run: |
-          echo "Validation failed. Provisioning contract: ${{ steps.provisioning_contract.outcome }} | Automation routing: ${{ steps.automation_routing_contract.outcome }} | Project infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
+          echo "Validation failed. Provisioning contract: ${{ steps.provisioning_contract.outcome }} | Automation routing: ${{ steps.automation_routing_contract.outcome }} | Project infrastructure: ${{ steps.project_infrastructure_contract.outcome }} | Build plan: ${{ steps.build_plan_contract.outcome }} | Lint: ${{ steps.lint.outcome }} | Audit: ${{ steps.audit.outcome }} | Build: ${{ steps.build.outcome }}"
           exit 1
