@@ -26,8 +26,6 @@ export function PublicCommerceStorefront() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => { void load(); }, []);
-
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.variant.price) * item.quantity, 0), [cart]);
 
   async function load() {
@@ -37,6 +35,8 @@ export function PublicCommerceStorefront() {
     else setData(result.data as StoreData);
     setLoading(false);
   }
+
+  useEffect(() => { void load(); }, []);
 
   function add(product: Product, variant: Variant) {
     if (variant.inventory_policy === "deny" && variant.available_quantity <= 0) return;
