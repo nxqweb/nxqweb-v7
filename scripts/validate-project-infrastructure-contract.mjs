@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/119_automatic_project_infrastructure_after_approval.sql', 'utf8');
+const scheduler = fs.readFileSync('supabase/migrations/120_schedule_project_infrastructure_dispatcher.sql', 'utf8');
 const worker = fs.readFileSync('supabase/functions/provision-project-infrastructure/index.ts', 'utf8');
 
 const checks = [
@@ -23,6 +24,12 @@ const checks = [
   ['External retry system handles failures', worker.includes('fail_external_automation_job')],
   ['Successful infrastructure job completes shared automation job', worker.includes('complete_external_automation_job') && worker.includes('infrastructure_ready')],
   ['Production auto-publish remains disabled', worker.includes('production_publish_automatic: false') && worker.includes('auto_publish_locked: true')],
+  ['Dispatcher uses pg_cron and pg_net', scheduler.includes('create extension if not exists pg_cron') && scheduler.includes('create extension if not exists pg_net') && scheduler.includes('net.http_post')],
+  ['Dispatcher ensures Supabase Vault exists', scheduler.includes('create extension if not exists supabase_vault with schema vault')],
+  ['Dispatcher reads protected URL and worker token from Vault', scheduler.includes("name = 'nxq_automation_edge_url'") && scheduler.includes("name = 'nxq_automation_worker_token'") && scheduler.includes('vault.decrypted_secrets')],
+  ['Dispatcher does not fire when there are no due infrastructure jobs', scheduler.includes("'reason', 'no_due_jobs'") && scheduler.includes("j.job_type = 'provision_project_infrastructure'")],
+  ['Dispatcher sends dedicated worker token instead of embedding a service key', scheduler.includes("'x-nxq-worker-token', worker_token") && !scheduler.includes('SUPABASE_SERVICE_ROLE_KEY')],
+  ['Dispatcher schedule runs automatically every minute', scheduler.includes("'nxq-project-infrastructure-dispatch-every-minute'") && scheduler.includes("'* * * * *'")],
 ];
 
 let failed = 0;
