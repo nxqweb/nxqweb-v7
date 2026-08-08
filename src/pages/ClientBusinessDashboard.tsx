@@ -1,0 +1,18 @@
+import { useEffect, useState } from "react";
+import { Activity, ArrowLeft, BarChart3, Building2, FileClock, MapPin, MessageSquarePlus, Target } from "lucide-react";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+
+type Summary = { leads?: { new?: number; qualified?: number; won?: number; urgent?: number }; open_change_requests?: number; open_recommendations?: number };
+type Health = { health?: string; production_url?: string | null; deployment_status?: string | null; open_alerts?: number; nxq_id?: string | null };
+
+export function ClientBusinessDashboard() {
+  const [summary,setSummary]=useState<Summary|null>(null); const [health,setHealth]=useState<Health|null>(null); const [error,setError]=useState("");
+  useEffect(()=>{ let active=true; async function load(){ if(!isSupabaseConfigured||!supabase)return; const [s,h]=await Promise.all([supabase.rpc("current_client_business_summary"),supabase.rpc("current_client_operational_health")]); if(!active)return; if(s.error||h.error){setError(s.error?.message||h.error?.message||"Business dashboard could not load.");return;} setSummary((s.data||{}) as Summary);setHealth((h.data||{}) as Health);} void load(); return()=>{active=false;};},[]);
+  const cards=[
+    ["New leads",summary?.leads?.new||0,Target,"/client/business/leads"],
+    ["Qualified",summary?.leads?.qualified||0,BarChart3,"/client/business/leads"],
+    ["Open changes",summary?.open_change_requests||0,MessageSquarePlus,"/client/business/changes"],
+    ["Open improvements",summary?.open_recommendations||0,Activity,"/client/business/reports"],
+  ] as const;
+  return <main className="nxq-page"><section className="portal-shell"><div className="panel-title panel-title-row"><div className="panel-title"><Building2 size={22}/><div><h1>Business workspace</h1><p className="subtle">Your website, leads, locations, changes, analytics, and reports in one place.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16}/> Portal</a></div>{error?<div className="auth-error">{error}</div>:null}<div className="portal-grid">{cards.map(([label,value,Icon,href])=><a className="panel" href={href} key={label} style={{textDecoration:"none"}}><div className="panel-title"><Icon size={20}/><div><h2>{label}</h2><div className="status-summary">{value}</div></div></div></a>)}</div><div className="owner-detail-grid"><section className="panel panel-wide"><h2>Website</h2><p className="subtle">Health: {(health?.health||"setting up").replaceAll("_"," ")} · Deployment: {(health?.deployment_status||"setting up").replaceAll("_"," ")} · Alerts: {health?.open_alerts||0}</p>{health?.production_url?<a className="wide-btn" href={health.production_url} target="_blank" rel="noreferrer">Open live website</a>:null}</section><section className="panel panel-wide"><h2>Workspace</h2><div className="portal-grid"><a className="wide-btn" href="/client/business/leads"><Target size={16}/> Leads</a><a className="wide-btn" href="/client/business/changes"><MessageSquarePlus size={16}/> Website changes</a><a className="wide-btn" href="/client/business/locations"><MapPin size={16}/> Locations</a><a className="wide-btn" href="/client/business/analytics"><BarChart3 size={16}/> Analytics</a><a className="wide-btn" href="/client/business/reports"><FileClock size={16}/> Reports</a><a className="wide-btn" href="/client/health"><Activity size={16}/> Website health</a></div></section></div>{health?.nxq_id?<p className="subtle">NXQ ID: {health.nxq_id}</p>:null}</section></main>;
+}
