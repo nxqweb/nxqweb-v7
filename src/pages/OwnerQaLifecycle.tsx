@@ -25,6 +25,8 @@ export function OwnerQaLifecycle(){
     if(!clientId){const first=(next.candidate_clients||[]).find((candidate)=>!candidate.has_active_run);if(first)setClientId(first.id);}
   }
 
+  // Intentional initial owner dashboard load. User-driven refreshes call the same loader explicitly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{void load();},[]);
 
   async function register(){
