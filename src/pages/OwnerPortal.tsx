@@ -54,19 +54,6 @@ type ApprovalRow = {
   } | null;
   created_at: string;
 };
-type AiTaskOutputRow = {
-  id: string;
-  task_id: string | null;
-  client_id: string | null;
-  project_id: string | null;
-  output_type: string;
-  title: string;
-  content: string;
-  status: string;
-  needs_owner_review: boolean;
-  created_at: string;
-};
-
 type ClientMessageRow = {
   id: string;
   client_id: string | null;
@@ -82,6 +69,7 @@ type ProjectRow = {
   id: string;
   client_id: string | null;
   website_status: string;
+  build_plan: Record<string, unknown> | null;
 };
 
 type PaymentRecordRow = {
@@ -291,7 +279,6 @@ export function OwnerPortal() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
-  const [aiTaskOutputs, setAiTaskOutputs] = useState<AiTaskOutputRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
   const [ownerView, setOwnerView] = useState<"aps" | "chat">("aps");
@@ -410,47 +397,11 @@ const selectedReplyClientId = useMemo(() => {
   }
 
 
-function parseBuildPlanSections(content: string) {
-  const lines = content
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const sections: { title: string; body: string }[] = [];
-  let currentTitle = "Client summary";
-  let currentBody: string[] = [];
-
-  function pushSection() {
-    const body = currentBody.join("\n").trim();
-
-    if (!body && sections.length > 0) return;
-
-    sections.push({
-      title: currentTitle,
-      body: body || "No details provided yet.",
-    });
-  }
-
-  for (const line of lines) {
-    if (line === "NXQ PROJECT BUILD PLAN") continue;
-
-    const isHeading = line.endsWith(":") && line.length <= 72;
-
-    if (isHeading) {
-      pushSection();
-      currentTitle = line.replace(/:$/, "");
-      currentBody = [];
-      continue;
-    }
-
-    currentBody.push(line);
-  }
-
-  pushSection();
-
-  return sections.length > 0
-    ? sections
-    : [{ title: "Build plan", body: content || "No build plan content yet." }];
+function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
+  return Object.entries(buildPlan).map(([key, value]) => ({
+    title: formatStatus(key),
+    body: typeof value === "string" ? value : JSON.stringify(value, null, 2),
+  }));
 }
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
@@ -459,29 +410,6 @@ function parseBuildPlanSections(content: string) {
     return window.confirm(
       `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
     );
-  }
-
-  function useLatestAiDraft() {
-    if (!selectedReplyClientId) {
-      setErrorMessage("Pick a client before loading an AI draft.");
-      return;
-    }
-
-    const draft = aiTaskOutputs.find(
-      (output) =>
-        output.client_id === selectedReplyClientId &&
-        output.output_type === "client_reply_draft" &&
-        output.status === "draft_ready"
-    );
-
-    if (!draft) {
-      setErrorMessage("No ready AI draft found for this selected client yet.");
-      return;
-    }
-
-    setErrorMessage("");
-    setOwnerReplyText(draft.content);
-    setActionMessage("AI draft loaded into the reply box. Review it before sending.");
   }
 
   async function sendOwnerReply() {
@@ -557,9 +485,11 @@ function parseBuildPlanSections(content: string) {
         setErrorMessage(`Client load failed: ${clientResult.error.message}`);
       } else {
         setClients((clientResult.data || []) as ClientRow[]);
-      }      const projectResult = await supabase
+      }
+
+      const projectResult = await supabase
         .from("projects")
-        .select("id, client_id, website_status")
+        .select("id, client_id, website_status, build_plan")
         .order("created_at", { ascending: false });
 
       if (projectResult.error) {
@@ -579,21 +509,6 @@ function parseBuildPlanSections(content: string) {
         setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
       } else {
         setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
-      }
-
-      const outputResult = await supabase
-        .from("ai_task_outputs")
-        .select(
-          "id, task_id, client_id, project_id, output_type, title, content, status, needs_owner_review, created_at"
-        )
-        .in("output_type", ["client_reply_draft", "project_build_plan"])
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (outputResult.error) {
-        setErrorMessage(`AI outputs load failed: ${outputResult.error.message}`);
-      } else {
-        setAiTaskOutputs((outputResult.data || []) as AiTaskOutputRow[]);
       }
 
       const messageResult = await supabase
@@ -631,78 +546,37 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase
-        .from("owner_approval_requests")
-        .update({
-          status,
-          owner_response: ownerResponse,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq("id", approval.id);
-
-      if (error) {
-        setErrorMessage(`Action failed: ${error.message}`);
-        return;
-      }
-      if (status === "denied" && isPipelineStartApproval(approval)) {
-        const clientStatusResult = await supabase
-          .from("clients")
-          .update({
-            status: "denied",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", approval.client_id);
-
-        if (clientStatusResult.error) {
-          setErrorMessage(
-            `Approval was denied, but the client status could not be updated: ${clientStatusResult.error.message}`
-          );
-          return;
-        }
-      }
-
+      let decisionResult;
       if (isDomainConnectionReview(approval)) {
-        const domainDecision = await supabase.rpc("resolve_domain_connection_review", {
+        decisionResult = await supabase.rpc("resolve_domain_connection_review", {
           target_approval_id: approval.id,
           decision_status: status,
           owner_response_text: ownerResponse,
         });
-
-        if (domainDecision.error) {
-          setErrorMessage(`Domain decision failed: ${domainDecision.error.message}`);
+      } else if (isPipelineStartApproval(approval)) {
+        if (status !== "denied") {
+          setErrorMessage("Website setup acceptance must use the protected APPROVE workflow.");
           return;
         }
+        decisionResult = await supabase.rpc("deny_website_setup", {
+          approval_request_id: approval.id,
+          denial_reason: ownerResponse,
+        });
+      } else {
+        decisionResult = await supabase.rpc("resolve_owner_approval_decision", {
+          target_approval_id: approval.id,
+          decision_status: status,
+          owner_response_text: ownerResponse,
+        });
+      }
 
-        const domainDecisionData = domainDecision.data as { message?: string } | null;
-
-        setActionMessage(
-          domainDecisionData?.message
-            ? `Saved: ${ownerResponse} ${domainDecisionData.message}`
-            : `Saved: ${ownerResponse}`
-        );
-
-        await loadOwnerData();
+      if (decisionResult.error) {
+        setErrorMessage(`Action failed: ${decisionResult.error.message}`);
         return;
       }
-      const domainDecisionMessage: string | null = null;
 
-
-      await supabase.from("activity_logs").insert({
-        client_id: approval.client_id,
-        actor_type: "owner",
-        action: `approval_${status}`,
-        details: {
-          approval_id: approval.id,
-          owner_response: ownerResponse,
-          domain_decision: domainDecisionMessage,
-        },
-      });
-
-      setActionMessage(
-        domainDecisionMessage
-          ? `Saved: ${ownerResponse} ${domainDecisionMessage}`
-          : `Saved: ${ownerResponse}`
-      );
+      const resultData = decisionResult.data as { message?: string } | null;
+      setActionMessage(resultData?.message || `Saved: ${ownerResponse}`);
 
       await loadOwnerData();
     } catch (error) {
@@ -1056,29 +930,9 @@ if (messageResult.error) {
 
   const recentCompletedApprovals = completedApprovals.slice(0, 4);
 
-  const latestProjectBuildPlans = aiTaskOutputs
-    .filter((output) => output.output_type === "project_build_plan")
-    .reduce<AiTaskOutputRow[]>((latestPlans, output) => {
-      const existingIndex = latestPlans.findIndex(
-        (plan) => plan.client_id === output.client_id
-      );
-
-      if (existingIndex === -1) {
-        return [...latestPlans, output];
-      }
-
-      const existingPlan = latestPlans[existingIndex];
-      const outputDate = new Date(output.created_at).getTime();
-      const existingDate = new Date(existingPlan.created_at).getTime();
-
-      if (outputDate <= existingDate) {
-        return latestPlans;
-      }
-
-      const nextPlans = [...latestPlans];
-      nextPlans[existingIndex] = output;
-      return nextPlans;
-    }, []);
+  const latestProjectBuildPlans = projects.filter(
+    (project) => project.build_plan && Object.keys(project.build_plan).length > 0
+  );
 
   return (
     <main className="nxq-page">
@@ -1359,7 +1213,8 @@ if (messageResult.error) {
 
                       className={`approval-actions ${
 
-                        approval.request_type === "client_plan_change"
+                        approval.request_type === "client_plan_change" ||
+                        isLaunchPreviewReview(approval)
 
                           ? "plan-change-generic-actions-hidden"
 
@@ -1417,25 +1272,14 @@ if (messageResult.error) {
                         Deny
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateApprovalStatus(
-                            approval,
-                            "revision_requested",
-                            "Owner requested edits/revision."
-                          )
-                        }
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => requestMoreSetupInfo(approval, client, clientName)}
-                      >
-                        Ask More
-                      </button>
+                      {isPipelineStartApproval(approval) ? (
+                        <button
+                          type="button"
+                          onClick={() => requestMoreSetupInfo(approval, client, clientName)}
+                        >
+                          Ask More
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1500,17 +1344,22 @@ if (messageResult.error) {
                 </div>
               ) : null}
 
-              {latestProjectBuildPlans.map((output) => {
-                const client = output.client_id
-                  ? clients.find((clientItem) => clientItem.id === output.client_id) || null
+              {latestProjectBuildPlans.map((project) => {
+                const client = project.client_id
+                  ? clients.find((clientItem) => clientItem.id === project.client_id) || null
                   : null;
-                const project = output.client_id ? getProjectForClient(output.client_id) : null;
+                const enrichment = project.build_plan?.ai_enrichment as
+                  | Record<string, unknown>
+                  | undefined;
+                const planStatus = typeof enrichment?.status === "string"
+                  ? enrichment.status
+                  : "saved";
 
                 return (
-                  <article className="build-plan-card" key={output.id}>
+                  <article className="build-plan-card" key={project.id}>
                     <div className="approval-top">
-                      <span>{output.title}</span>
-                      <small>Saved draft: {formatStatus(output.status)}</small>
+                      <span>{client?.business_name || "Business"} build plan</span>
+                      <small>Canonical plan: {formatStatus(planStatus)}</small>
                     </div>
 
                     <div className="project-stage-box">
@@ -1523,8 +1372,8 @@ if (messageResult.error) {
                     </div>
 
                     <div className="build-plan-sections">
-                      {parseBuildPlanSections(output.content).map((section) => (
-                        <section className="build-plan-section" key={`${output.id}-${section.title}`}>
+                      {parseBuildPlanSections(project.build_plan || {}).map((section) => (
+                        <section className="build-plan-section" key={`${project.id}-${section.title}`}>
                           <div className="build-plan-section-title">
                             <span>{section.title}</span>
                           </div>
@@ -1741,15 +1590,6 @@ if (messageResult.error) {
 
               <button
                 className="wide-btn"
-                onClick={useLatestAiDraft}
-                type="button"
-                disabled={!selectedReplyClientId || aiTaskOutputs.length === 0}
-              >
-                Use latest AI draft
-              </button>
-
-              <button
-                className="wide-btn"
                 onClick={sendOwnerReply}
                 type="button"
                 disabled={!selectedReplyClientId}
@@ -1820,15 +1660,6 @@ if (messageResult.error) {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
 
 
 

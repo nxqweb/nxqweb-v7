@@ -40,6 +40,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave21-contract.mjs
       - name: Wave 22 schema replay and RPC repair
         run: node scripts/validate-autonomy-ops-wave22-contract.mjs
+      - name: Wave 23 decision authority and table capture
+        run: node scripts/validate-autonomy-ops-wave23-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint

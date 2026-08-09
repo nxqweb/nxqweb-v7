@@ -137,6 +137,26 @@ create table if not exists public.projects (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.client_domains (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id) on delete cascade,
+  domain_name text not null,
+  domain_type text not null default 'client_owned',
+  status text not null default 'owner_review',
+  registrar_name text,
+  dns_provider text,
+  ownership_confirmed boolean not null default false,
+  client_notes text,
+  dns_instructions text,
+  owner_notes text,
+  requested_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  connected_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (client_id, domain_name)
+);
+
 create table if not exists public.owner_approval_requests (
   id uuid primary key default gen_random_uuid(),
   client_id uuid references public.clients(id) on delete cascade,
@@ -232,6 +252,11 @@ create trigger set_projects_updated_at
 before update on public.projects
 for each row execute function public.set_updated_at();
 
+drop trigger if exists set_client_domains_updated_at on public.client_domains;
+create trigger set_client_domains_updated_at
+before update on public.client_domains
+for each row execute function public.set_updated_at();
+
 insert into public.packages (name, slug, monthly_price, description, features)
 values
   (
@@ -278,6 +303,7 @@ alter table public.owner_users enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_intakes enable row level security;
 alter table public.projects enable row level security;
+alter table public.client_domains enable row level security;
 alter table public.owner_approval_requests enable row level security;
 alter table public.client_messages enable row level security;
 alter table public.owner_ai_messages enable row level security;
@@ -300,6 +326,39 @@ to authenticated
 using (auth_user_id = auth.uid());
 
 grant select on public.owner_users to authenticated;
+
+drop policy if exists "Owners can manage client domains" on public.client_domains;
+create policy "Owners can manage client domains"
+on public.client_domains
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.owner_users
+    where owner_users.auth_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.owner_users
+    where owner_users.auth_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Clients can read own domains" on public.client_domains;
+create policy "Clients can read own domains"
+on public.client_domains
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.clients
+    where clients.id = client_domains.client_id
+      and clients.auth_user_id = auth.uid()
+  )
+);
+
+grant select on public.client_domains to authenticated;
 
 drop policy if exists "Temporary public read clients" on public.clients;
 create policy "Temporary public read clients"

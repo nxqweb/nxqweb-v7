@@ -635,67 +635,22 @@ export function ClientPortal() {
         `Payment note: Client understands payment/subscription activation will be required before final website access/live service in a later billing step.`,
       ].join("\n");
 
-      const updateResult = await supabase
-        .from("clients")
-        .update({
-          monthly_price: selectedPlan.price,
-          business_type: cleanIndustry,
-          service_area: cleanLocations || locationType,
-          status: "intake_received",
-          notes: setupReport,
-        })
-        .eq("id", client.id);
-
-      if (updateResult.error) {
-        setErrorMessage(`Website setup update failed: ${updateResult.error.message}`);
-        return;
-      }
-
-      const approvalResult = await supabase.from("owner_approval_requests").insert({
-        client_id: client.id,
-        project_id: null,
-        request_type: "website_setup_review",
-        title: isMoreInfoResubmission ? "Website setup resubmitted" : "Website setup submitted",
-        summary: isMoreInfoResubmission
-          ? `${client.business_name} resubmitted an updated website setup sheet after NXQ requested more information. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`
-          : `${client.business_name} submitted a website setup sheet. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`,
-        recommended_action: setupReport,
-        risk_level: "low",
-        status: "pending",
+      const setupResult = await supabase.rpc("submit_current_client_website_setup", {
+        target_setup_report: setupReport,
+        target_tier_key: selectedPackage,
+        target_business_type: cleanIndustry,
+        target_service_area: cleanLocations || locationType,
+        target_submission_kind: isMoreInfoResubmission ? "resubmission" : "initial",
+        target_requested_field_key: null,
+        target_requested_field_label: null,
+        target_requested_info: previousMoreInfoRequest || null,
+        target_client_answer: null,
       });
 
-      if (approvalResult.error) {
-        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
+      if (setupResult.error) {
+        setErrorMessage(`Website setup failed: ${setupResult.error.message}`);
         return;
       }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "website_setup_submitted",
-        details: {
-          package: selectedPlan.label,
-          monthly_price: selectedPlan.price,
-          company_scale: companyScale,
-          location_type: locationType,
-          business_phone: cleanBusinessPhone || null,
-          business_email: cleanBusinessEmail || null,
-          business_address: cleanBusinessAddress || null,
-          business_hours: cleanBusinessHours || null,
-          emergency_availability: cleanEmergencyAvailability || null,
-          industry: cleanIndustry,
-          preferred_contact_method: cleanPreferredContactMethod || null,
-          urgent_lead_rules: cleanUrgentLeadRules || null,
-          rejected_jobs: cleanRejectedJobs || null,
-          areas_not_served: cleanAreasNotServed || null,
-          ai_can_answer: cleanAiCanAnswer || null,
-          ai_never_promise: cleanAiNeverPromise || null,
-          escalation_rules: cleanEscalationRules || null,
-          agreement_accepted: agreementAccepted,
-          typed_signature: cleanSignature,
-          answered_more_info_request: previousMoreInfoRequest || null,
-        },
-      });
 
       setNotice(isMoreInfoResubmission ? "Updated website setup submitted. We will review your changes." : "Website setup submitted. We will review your project details.");
       setAgreementAccepted(false);
@@ -882,6 +837,10 @@ export function ClientPortal() {
         `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
         `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
         ``,
+        `Agreement accepted: Yes`,
+        `Typed signature: ${typedSignature.trim() || "Previously verified on the original setup submission"}`,
+        `Agreement evidence: Preserved from the original signed setup report.`,
+        ``,
         `Targeted more info response:`,
         `Requested field: ${request.fieldLabel}`,
         `Requested info: ${request.requestedInfo}`,
@@ -889,49 +848,22 @@ export function ClientPortal() {
         `Response date: ${new Date().toISOString()}`,
       ].join("\n");
 
-      const updateResult = await supabase
-        .from("clients")
-        .update({
-          monthly_price: selectedPlan.price,
-          business_type: industry.trim() || "Website Client",
-          service_area: locations.trim() || locationType,
-          status: "intake_received",
-          notes: setupReport,
-        })
-        .eq("id", client.id);
-
-      if (updateResult.error) {
-        setErrorMessage(`Client update failed: ${updateResult.error.message}`);
-        return;
-      }
-
-      const approvalResult = await supabase.from("owner_approval_requests").insert({
-        client_id: client.id,
-        project_id: null,
-        request_type: "website_setup_review",
-        title: "Website setup targeted update",
-        summary: `${client.business_name} answered a targeted setup request for ${request.fieldLabel}.`,
-        recommended_action: setupReport,
-        risk_level: "low",
-        status: "pending",
+      const setupResult = await supabase.rpc("submit_current_client_website_setup", {
+        target_setup_report: setupReport,
+        target_tier_key: selectedPackage,
+        target_business_type: industry.trim() || "Website Client",
+        target_service_area: locations.trim() || locationType,
+        target_submission_kind: "targeted",
+        target_requested_field_key: request.fieldKey,
+        target_requested_field_label: request.fieldLabel,
+        target_requested_info: request.requestedInfo,
+        target_client_answer: targetedAnswer,
       });
 
-      if (approvalResult.error) {
-        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
+      if (setupResult.error) {
+        setErrorMessage(`Requested update failed: ${setupResult.error.message}`);
         return;
       }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "targeted_more_info_submitted",
-        details: {
-          requested_field_key: request.fieldKey,
-          requested_field_label: request.fieldLabel,
-          requested_info: request.requestedInfo,
-          client_answer: targetedAnswer,
-        },
-      });
 
       setNotice("Requested update submitted. We will review your answer.");
       await loadClientPortalData();
@@ -1940,9 +1872,6 @@ export function ClientPortal() {
     </main>
   );
 }
-
-
-
 
 
 
