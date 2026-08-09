@@ -30,28 +30,32 @@ begin
   select count(*) into failed_count from public.qa_lifecycle_runs where status='failed';
 
   select coalesce(jsonb_agg(jsonb_build_object(
-    'id',r.id,
-    'run_code',r.run_code,
-    'client_id',r.client_id,
-    'business_name',c.business_name,
-    'project_id',r.project_id,
-    'test_kind',r.test_kind,
-    'status',r.status,
-    'disposable',r.disposable,
-    'sequence_group',r.sequence_group,
-    'sequence_number',r.sequence_number,
-    'monitor_version',r.monitor_version,
-    'evidence',r.evidence,
-    'failure_reason',r.failure_reason,
-    'started_at',r.started_at,
-    'deadline_at',r.deadline_at,
-    'completed_at',r.completed_at
-  ) order by r.created_at desc),'[]'::jsonb)
+    'id',bounded.id,
+    'run_code',bounded.run_code,
+    'client_id',bounded.client_id,
+    'business_name',bounded.business_name,
+    'project_id',bounded.project_id,
+    'test_kind',bounded.test_kind,
+    'status',bounded.status,
+    'disposable',bounded.disposable,
+    'sequence_group',bounded.sequence_group,
+    'sequence_number',bounded.sequence_number,
+    'monitor_version',bounded.monitor_version,
+    'evidence',bounded.evidence,
+    'failure_reason',bounded.failure_reason,
+    'started_at',bounded.started_at,
+    'deadline_at',bounded.deadline_at,
+    'completed_at',bounded.completed_at
+  ) order by bounded.created_at desc),'[]'::jsonb)
   into runs
-  from public.qa_lifecycle_runs r
-  left join public.clients c on c.id=r.client_id
-  where r.disposable=true
-  limit 100;
+  from (
+    select r.*,c.business_name
+    from public.qa_lifecycle_runs r
+    left join public.clients c on c.id=r.client_id
+    where r.disposable=true
+    order by r.created_at desc
+    limit 100
+  ) bounded;
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'id',c.id,
@@ -84,4 +88,4 @@ $$;
 revoke all on function public.owner_qa_lifecycle_summary() from public,anon;
 grant execute on function public.owner_qa_lifecycle_summary() to authenticated;
 
-comment on function public.owner_qa_lifecycle_summary() is 'Owner-only strict QA read model. It exposes evidence and registration candidates but never auto-approves or lets the browser mark a run passed.';
+comment on function public.owner_qa_lifecycle_summary() is 'Owner-only strict QA read model. It exposes a bounded evidence history and registration candidates but never auto-approves or lets the browser mark a run passed.';
