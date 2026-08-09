@@ -21,6 +21,7 @@ type Delivery = {
 type AdapterResponse = Record<string, unknown>;
 type DeliveryDecision={decision?:string;reason?:string;next_run_after?:string};
 const headers = { "Content-Type": "application/json" };
+const workerName = "dispatch-notifications";
 
 function secret(name: string) { const value = Deno.env.get(name)?.trim(); if (!value) throw new Error(`Missing protected secret: ${name}`); return value; }
 function response(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers }); }
@@ -45,7 +46,16 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
   if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) return response({ ok: false, error: "Unauthorized." }, 401);
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
+  const adapterConfigured = Boolean(Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim() && Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim());
   try {
+    const heartbeat = await admin.rpc("record_worker_heartbeat", {
+      target_worker_key: workerName,
+      target_execution_target: "provider",
+      target_status: adapterConfigured ? "healthy" : "degraded",
+      target_metadata: { adapter_configured: adapterConfigured, checked_at: new Date().toISOString() },
+      target_last_error: adapterConfigured ? null : "Notification adapter is not configured.",
+    });
+    if (heartbeat.error) throw new Error(`Notification heartbeat failed: ${heartbeat.error.message}`);
     const due = await admin.from("notification_deliveries").select("*").in("status", ["queued", "failed"]).lte("run_after", new Date().toISOString()).order("priority", { ascending: false }).order("created_at", { ascending: true }).limit(25);
     if (due.error) throw new Error(`Notification queue read failed: ${due.error.message}`);
     let delivered = 0, failed = 0, blocked = 0, deferred = 0, digestPending = 0;
@@ -87,6 +97,17 @@ Deno.serve(async (req) => {
         failed++;
       }
     }
+    await admin.rpc("record_worker_heartbeat", {
+      target_worker_key: workerName,
+      target_execution_target: "provider",
+      target_status: adapterConfigured ? "healthy" : "degraded",
+      target_metadata: { adapter_configured: adapterConfigured, delivered, failed, blocked, deferred, digest_pending: digestPending },
+      target_last_error: adapterConfigured ? null : "Notification adapter is not configured.",
+    });
     return response({ ok: true, processed: (due.data || []).length, delivered, failed, blocked, deferred, digest_pending: digestPending });
-  } catch (error) { return response({ ok: false, error: error instanceof Error ? error.message : "Notification dispatcher failed." }, 500); }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Notification dispatcher failed.";
+    await admin.rpc("record_worker_heartbeat", { target_worker_key: workerName, target_execution_target: "provider", target_status: "error", target_metadata: { adapter_configured: adapterConfigured }, target_last_error: message });
+    return response({ ok: false, error: message }, 500);
+  }
 });

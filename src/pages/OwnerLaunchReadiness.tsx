@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, FlaskConical, RefreshCcw, Rocket, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FlaskConical, RefreshCcw, Rocket, ServerCog, ShieldAlert } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type Check = {
@@ -34,6 +34,7 @@ export function OwnerLaunchReadiness() {
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
   const [startingQa, setStartingQa] = useState<"approve" | "deny" | null>(null);
+  const [bootstrappingRuntime, setBootstrappingRuntime] = useState(false);
 
   async function load() {
     if (!isSupabaseConfigured || !supabase) return;
@@ -80,6 +81,40 @@ export function OwnerLaunchReadiness() {
     await load();
   }
 
+  async function bootstrapRuntime() {
+    if (!supabase) return;
+    const requiredConfirmation = "CONFIGURE-NXQ-STAGING-RUNTIME";
+    const confirmation = window.prompt(
+      `Configure protected staging runtime routes now?\n\nNXQ will derive this staging project's Edge Function URLs and copy the already-configured internal worker token into Supabase Vault. It will not display secret values, deploy functions, create client infrastructure, touch billing, or change production.\n\nType ${requiredConfirmation} exactly to continue.`
+    );
+    if (confirmation === null) return;
+    if (confirmation !== requiredConfirmation) {
+      setError(`Runtime setup refused. Type ${requiredConfirmation} exactly.`);
+      return;
+    }
+    setBootstrappingRuntime(true);
+    setError("");
+    setActionMessage("");
+    const result = await supabase.functions.invoke("bootstrap-runtime-vault", {
+      body: { confirmation },
+    });
+    setBootstrappingRuntime(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    const data = (result.data || {}) as {
+      configured_secret_names?: string[];
+      configured_provider_keys?: string[];
+      missing_provider_secret_names?: Record<string, string[]>;
+    };
+    const missingCount = Object.values(data.missing_provider_secret_names || {}).flat().length;
+    setActionMessage(
+      `Staging runtime routes configured (${data.configured_secret_names?.length || 0}). ${data.configured_provider_keys?.length || 0} provider connections are ready to recheck${missingCount ? `; ${missingCount} provider secret name${missingCount === 1 ? " is" : "s are"} still missing.` : "."}`
+    );
+    await load();
+  }
+
   useEffect(() => {
     void load();
   }, []);
@@ -114,6 +149,22 @@ export function OwnerLaunchReadiness() {
           <section className="panel"><h2>Readiness</h2><div className="status-summary">{pct}%</div></section>
           <section className="panel"><h2>Blocking/unknown</h2><div className="status-summary">{blocked}</div></section>
         </div>
+
+        <section className="panel panel-wide">
+          <div className="panel-title panel-title-row">
+            <div className="panel-title">
+              <ServerCog size={20} />
+              <div>
+                <h2>Staging runtime routes</h2>
+                <p className="subtle">One-time setup after migrations, Edge functions, and provider secret names are present. NXQ writes internal scheduler routes to Vault without returning protected values.</p>
+              </div>
+            </div>
+            <button className="icon-btn" type="button" disabled={bootstrappingRuntime} onClick={() => void bootstrapRuntime()}>
+              <ServerCog size={16} /> {bootstrappingRuntime ? "Configuring…" : "Configure staging runtime routes"}
+            </button>
+          </div>
+          <p className="subtle">This does not create a client, repository, Netlify site, charge, domain change, merge, or production deployment.</p>
+        </section>
 
         <section className="panel panel-wide">
           {checks.map((check) => (

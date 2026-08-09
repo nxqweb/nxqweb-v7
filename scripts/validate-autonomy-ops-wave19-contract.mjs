@@ -5,6 +5,7 @@ const adapter = read("supabase/functions/generate-business-build-plan/index.ts")
 const worker = read("supabase/functions/prepare-build-plan/index.ts");
 const migration = read("supabase/migrations/179_business_build_plan_ai_runtime_adapter.sql");
 const deploy = read(".github/workflows/manual-supabase-stage.yml");
+const edgeManifest = read("scripts/edge-function-manifest.mjs");
 
 const checks = [
   ["Runtime adapter is a protected Edge function", adapter.includes('Deno.serve(async (request)') && adapter.includes("NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN") && adapter.includes("constantTimeEqual")],
@@ -26,7 +27,7 @@ const checks = [
   ["Readiness requires adapter and downstream worker proof", migration.includes("adapter_heartbeat_ready") && migration.includes("provider_call_proven") && migration.includes("successful_enrichment_proven") && migration.includes("deterministic_merge_proven")],
   ["Missing runtime evidence remains unknown", migration.includes("case when ready_now then 'ready' else 'unknown' end")],
   ["Provider registry stores names instead of secret values", migration.includes("NXQ_AI_MODEL_PROVIDER_TOKEN") && migration.includes("required_secret_names")],
-  ["Runtime adapter is included in guarded manual deployment", deploy.includes("generate-business-build-plan") && deploy.includes("workflow_dispatch")],
+  ["Runtime adapter is included in guarded manual deployment", edgeManifest.includes('entry("generate-business-build-plan", false, "adapter-token")') && deploy.includes("scripts/edge-function-manifest.mjs --group=no-verify-jwt") && deploy.includes("workflow_dispatch")],
   ["Authoritative worker still performs deep independent validation", worker.includes("validateAiStrategy") && worker.includes("deterministic_safety_merge: true")],
 ];
 

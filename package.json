@@ -13,7 +13,10 @@
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/smoke-built-routes.mjs",
-    "test:families": "node scripts/validate-autonomy-ops-wave30-contract.mjs"
+    "test:families": "node scripts/validate-autonomy-ops-wave30-contract.mjs",
+    "test:runtime-stage": "node scripts/check-runtime-stage-readiness.mjs",
+    "test:migrations": "node scripts/check-migration-integrity.mjs",
+    "test:release": "node scripts/run-release-gate.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

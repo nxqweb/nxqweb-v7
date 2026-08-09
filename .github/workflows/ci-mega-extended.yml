@@ -58,6 +58,12 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave29-contract.mjs
       - name: Wave 30 guarded product-family foundations
         run: npm run test:families
+      - name: Wave 31 runtime staging contract
+        run: node scripts/validate-autonomy-ops-wave31-contract.mjs
+      - name: Runtime deployment manifest and auth boundaries
+        run: npm run test:runtime-stage
+      - name: Migration integrity
+        run: npm run test:migrations
       - name: Frontend security audit
         run: npm run test:security
       - name: Frontend accessibility audit

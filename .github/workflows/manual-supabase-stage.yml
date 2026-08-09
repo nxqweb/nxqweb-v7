@@ -14,7 +14,7 @@ on:
           - deploy_functions
           - apply_all
       confirmation:
-        description: "For mutation actions type APPLY-NXQ-SUPABASE exactly"
+        description: "For mutation actions type APPLY-NXQ-SUPABASE-STAGING exactly"
         required: false
         type: string
 
@@ -24,19 +24,27 @@ permissions:
 jobs:
   stage:
     runs-on: ubuntu-latest
-    environment: nxq-production
+    environment: nxq-staging
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - uses: supabase/setup-cli@v1
+      - uses: actions/setup-node@v4
         with:
-          version: latest
+          node-version: 24
+          cache: npm
+
+      - name: Install locked tooling
+        run: npm ci
+
+      - name: Validate deployment manifest and auth boundaries
+        run: npm run test:runtime-stage
 
       - name: Require protected configuration
         shell: bash
@@ -46,65 +54,63 @@ jobs:
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
 
       - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+        run: npx --no-install supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Migration dry run
-        run: supabase db push --dry-run --linked
+        run: npx --no-install supabase db push --dry-run --linked
+
+      - name: Verify staging Edge secret names
+        if: inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-secrets.json"
+          node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
 
       - name: Require explicit mutation confirmation
         if: inputs.action != 'validate'
         shell: bash
         run: |
-          if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE" ]; then
+          if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING" ]; then
             echo "Mutation refused. Exact confirmation phrase is required."
             exit 1
           fi
 
       - name: Apply migrations
         if: inputs.action == 'apply_migrations' || inputs.action == 'apply_all'
-        run: supabase db push --linked
+        run: npx --no-install supabase db push --linked
 
-      - name: Deploy protected worker/public-ingest functions
+      - name: Deploy custom-auth and public-ingest functions
         if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
         shell: bash
         run: |
           set -euo pipefail
-          functions=(
-            provision-project-infrastructure
-            generate-business-build-plan
-            prepare-build-plan
-            build-business-website
-            promote-business-production
-            reconcile-domain
-            run-website-maintenance
-            scan-client-file
-            check-provider-health
-            dispatch-notifications
-            process-data-subject-request
-            build-business-location-pages
-            build-business-seo-artifacts
-            apply-business-change-request
-            classify-business-change-request
-            ingest-business-analytics
-            ingest-business-lead
-            ingest-billing-provider-event
-            run-backup-restore-drill
-            provision-storefront
-          )
+          mapfile -t functions < <(node scripts/edge-function-manifest.mjs --group=no-verify-jwt)
           for fn in "${functions[@]}"; do
-            echo "Deploying $fn with function-level authentication..."
-            supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+            echo "Deploying $fn with its independent source-level authentication boundary..."
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           done
 
-      - name: Deploy user-authenticated file access functions
+      - name: Deploy Supabase-JWT authenticated functions
         if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
         shell: bash
         run: |
           set -euo pipefail
-          supabase functions deploy secure-client-file-access --project-ref "$SUPABASE_PROJECT_REF"
-          supabase functions deploy secure-owner-file-access --project-ref "$SUPABASE_PROJECT_REF"
+          mapfile -t functions < <(node scripts/edge-function-manifest.mjs --group=verify-jwt)
+          for fn in "${functions[@]}"; do
+            echo "Deploying $fn with Supabase JWT verification enabled..."
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
+          done
+
+      - name: Verify complete remote function coverage
+        if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
+          node scripts/check-runtime-stage-readiness.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
 
       - name: Final safety note
         run: |
-          echo "NXQ Supabase stage action completed: ${{ inputs.action }}"
-          echo "This workflow does not merge GitHub branches, publish Netlify sites, change DNS, or mark QA runs passed."
+          echo "NXQ Supabase staging action completed: ${{ inputs.action }}"
+          echo "This workflow targets nxq-staging only. It does not merge GitHub branches, publish Netlify sites (preview or production), change DNS, enable billing, or mark QA runs passed."
