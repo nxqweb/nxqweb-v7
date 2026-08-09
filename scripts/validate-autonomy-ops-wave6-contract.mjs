@@ -9,7 +9,7 @@ const checks=[
   ["Client notification page is tenant-account based",notifications.includes('auth_user_id')&&notifications.includes('client_notification_preferences')],
   ["Notification settings expose channel and digest controls",notifications.includes('email_enabled')&&notifications.includes('sms_enabled')&&notifications.includes('digest_mode')&&notifications.includes('quiet_hours_start')],
   ["Client secure files require clean released scan",files.includes('scan.status!=="clean"')&&files.includes('scan.quarantine_status!=="released"')],
-  ["Restricted client files never receive signed URL",files.indexOf('scan.status!=="clean"')<files.indexOf('createSignedUrl')],
+  ["Restricted client files use protected access path instead of direct signed URL",files.includes('functions.invoke("secure-client-file-access"')&&!files.includes('createSignedUrl')],
   ["Client notifications and files routes are wired",app.includes('/client/notifications')&&app.includes('/client/files')&&app.includes('ClientNotificationPreferences')&&app.includes('ClientFiles')],
   ["Failure simulator covers notification digest",sim.includes('Normal notification enters digest instead of sending immediately')],
   ["Failure simulator covers quiet hours",sim.includes('Quiet-hours notification defers')],
