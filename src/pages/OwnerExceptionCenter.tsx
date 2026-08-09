@@ -37,6 +37,7 @@ export function OwnerExceptionCenter() {
   const [data, setData] = useState<ExceptionCenterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [actionId, setActionId] = useState("");
 
   async function load() {
     setLoading(true);
@@ -55,6 +56,19 @@ export function OwnerExceptionCenter() {
       setData(result.data as ExceptionCenterData);
     }
     setLoading(false);
+  }
+
+  async function retryAutomation(item: ExceptionItem) {
+    if (!supabase || item.source !== "automation") return;
+    setActionId(item.id);
+    setError("");
+    const result = await supabase.rpc("owner_retry_automation_exception", { target_job_id: item.id });
+    setActionId("");
+    if (result.error) {
+      setError(`Retry could not be queued: ${result.error.message}`);
+      return;
+    }
+    await load();
   }
 
   useEffect(() => {
@@ -137,6 +151,13 @@ export function OwnerExceptionCenter() {
                         {item.execution_target ? ` · Lane: ${item.execution_target}` : ""}
                         {` · ${formatTime(item.created_at)}`}
                       </div>
+                      {item.source === "automation" ? (
+                        <div style={{ marginTop: ".7rem" }}>
+                          <button className="icon-btn" type="button" disabled={actionId === item.id} onClick={() => void retryAutomation(item)}>
+                            <RotateCcw size={15} /> {actionId === item.id ? "Queueing…" : "Retry safely"}
+                          </button>
+                        </div>
+                      ) : null}
                     </article>
                   ))}
                 </div>
