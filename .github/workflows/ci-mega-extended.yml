@@ -60,6 +60,8 @@ jobs:
         run: npm run test:families
       - name: Wave 31 runtime staging contract
         run: node scripts/validate-autonomy-ops-wave31-contract.mjs
+      - name: Wave 32 client launch journey contract
+        run: node scripts/validate-autonomy-ops-wave32-contract.mjs
       - name: Runtime deployment manifest and auth boundaries
         run: npm run test:runtime-stage
       - name: Migration integrity

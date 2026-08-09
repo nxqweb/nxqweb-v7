@@ -5,7 +5,7 @@ const app = fs.readFileSync('src/App.tsx', 'utf8');
 const topCards = fs.readFileSync('src/components/ClientPortalTopCards.tsx', 'utf8');
 
 const checks = [
-  ['Tutorial is versioned for future reruns', tutorial.includes('nxq-client-portal-tutorial-v1-complete')],
+  ['Tutorial is versioned for future reruns', /nxq-client-portal-tutorial-v\d+-complete/.test(tutorial)],
   ['Tutorial appears only until completion', tutorial.includes('window.localStorage.getItem') && tutorial.includes('window.localStorage.setItem')],
   ['Tutorial explains NXQ ID', tutorial.includes('NXQ ID')],
   ['Tutorial explains domain action-required behavior', tutorial.includes('action-required')],

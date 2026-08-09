@@ -3,6 +3,8 @@ import { Activity, Ban, CheckCircle2, Clock3, Snowflake, TriangleAlert } from "l
 import { createPortal } from "react-dom";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { ClientCommercePortalTab } from "./ClientCommercePortalTab";
+import { ClientJourneySummaryCard } from "./ClientJourneySummaryCard";
+import type { ClientLaunchJourney } from "../lib/clientJourney";
 
 type BillingSummary = {
   billing_status: string;
@@ -21,6 +23,7 @@ export function ClientPortalTopCards() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [health, setHealth] = useState<HealthSummary | null>(null);
+  const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
 
   useEffect(() => {
     const portalHeader = document.querySelector(".portal-shell .portal-header");
@@ -49,18 +52,20 @@ export function ClientPortalTopCards() {
       const session = sessionResult.data.session;
       if (!session) return;
 
-      const [billingResult, healthResult] = await Promise.all([
+      const [billingResult, healthResult, journeyResult] = await Promise.all([
         supabase
           .from("clients")
           .select("billing_status,status,pipeline_stop_reason")
           .eq("auth_user_id", session.user.id)
           .maybeSingle(),
         supabase.rpc("current_client_operational_health"),
+        supabase.rpc("current_client_launch_journey"),
       ]);
 
       if (!active) return;
       if (!billingResult.error && billingResult.data) setBilling(billingResult.data as BillingSummary);
       if (!healthResult.error && healthResult.data) setHealth(healthResult.data as HealthSummary);
+      if (!journeyResult.error && journeyResult.data) setJourney(journeyResult.data as ClientLaunchJourney);
     }
 
     void loadPortalSummaries();
@@ -136,6 +141,7 @@ export function ClientPortalTopCards() {
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+      {journey ? <ClientJourneySummaryCard journey={journey} /> : null}
       {denied ? (
         <section className="notice-card portal-decision-notice danger">
           <div className="panel-title">

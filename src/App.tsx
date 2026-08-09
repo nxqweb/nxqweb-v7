@@ -35,6 +35,7 @@ const ClientCommerceTutorial = named(() => import("./pages/ClientCommerceTutoria
 const ClientCommerceUsage = named(() => import("./pages/ClientCommerceUsage"), "ClientCommerceUsage");
 const ClientCommerceWebsiteContent = named(() => import("./pages/ClientCommerceWebsiteContent"), "ClientCommerceWebsiteContent");
 const ClientDomainStatus = named(() => import("./pages/ClientDomainStatus"), "ClientDomainStatus");
+const ClientLaunchJourneyPage = named(() => import("./pages/ClientLaunchJourney"), "ClientLaunchJourneyPage");
 const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
 const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
 const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
@@ -95,6 +96,7 @@ function AppRoutes() {
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
   if (path === "/client/domain") return <ClientDomainStatus />;
+  if (path === "/client/journey") return <ClientLaunchJourneyPage />;
   if (path === "/client/files") return <ClientFiles />;
   if (path === "/client/notifications") return <ClientNotificationPreferences />;
   if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;

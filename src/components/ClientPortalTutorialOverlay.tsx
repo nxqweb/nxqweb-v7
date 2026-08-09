@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Compass, X } from "lucide-react";
 
-const tutorialKey = "nxq-client-portal-tutorial-v1-complete";
+const tutorialKey = "nxq-client-portal-tutorial-v2-complete";
 
 const steps = [
   {
@@ -10,7 +10,7 @@ const steps = [
   },
   {
     title: "Follow website progress here",
-    body: "NXQ updates your project automatically after approval. Website health and deployment status show when setup, launch, and monitoring are moving forward.",
+    body: "Your Website Journey shows a truthful setup-to-launch timeline. It separates the exact actions we need from you from work NXQ is already handling.",
   },
   {
     title: "Messages and files stay with the client record",
