@@ -23,8 +23,6 @@ export function OwnerBillingLifecycle(){
     if(result.error){setError(`Billing clients could not load: ${result.error.message}`);setLoading(false);return;}
     setClients((result.data||[]) as ClientRow[]);setLoading(false);
   }
-  // Intentional initial owner billing load. Refresh actions reuse the same loader.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{void loadClients();},[]);
   const attentionClients=useMemo(()=>clients.filter((client)=>["past_due","freeze_review","frozen"].includes(client.billing_status)),[clients]);
 
