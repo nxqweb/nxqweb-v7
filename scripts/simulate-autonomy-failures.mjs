@@ -1,204 +1,36 @@
 import assert from 'node:assert/strict';
 
 function createSystem() {
-  return {
-    clients: new Map(),
-    jobs: new Map(),
-    repos: new Map(),
-    sites: new Map(),
-    deployments: new Map(),
-    exceptions: [],
-  };
+  return { clients: new Map(), jobs: new Map(), repos: new Map(), sites: new Map(), deployments: new Map(), exceptions: [] };
 }
+function addClient(system, id, approved) { system.clients.set(id, { id, approved, denied: !approved, projectId: approved ? `project-${id}` : null }); }
+function queue(system, clientId, type, maxAttempts = 3) { const key = `${clientId}:${type}`; if (!system.jobs.has(key)) system.jobs.set(key, { key, clientId, type, status: 'queued', attempts: 0, maxAttempts, checkpoint: {} }); return system.jobs.get(key); }
+function fail(job, system, message) { job.attempts += 1; job.lastError = message; if (job.attempts >= job.maxAttempts) { job.status = 'failed'; system.exceptions.push({ clientId: job.clientId, job: job.type, message }); } else job.status = 'queued'; }
+function provision(system, clientId, fault = null) { const client = system.clients.get(clientId); assert(client, 'client must exist'); if (!client.approved || client.denied) return { stopped: true }; const job = queue(system, clientId, 'provision_project_infrastructure'); job.status = 'running'; const repoName = `repo-${client.projectId}`; if (!job.checkpoint.repo) { if (fault === 'github') { fail(job, system, 'github unavailable'); return { failed: true }; } if (!system.repos.has(repoName)) system.repos.set(repoName, { clientId, repoName }); job.checkpoint.repo = repoName; } const siteName = `site-${client.projectId}`; if (!job.checkpoint.site) { if (fault === 'netlify') { fail(job, system, 'netlify unavailable'); return { failed: true }; } if (!system.sites.has(siteName)) system.sites.set(siteName, { clientId, siteName, repoName }); job.checkpoint.site = siteName; } job.status = 'completed'; return { repoName, siteName }; }
+function preview(system, clientId) { const client = system.clients.get(clientId); assert(client?.approved, 'preview requires approved client'); const job = queue(system, clientId, 'website_prepare_safe_branch'); job.status = 'completed'; const url = `https://preview-${client.projectId}.example.test`; system.deployments.set(`${clientId}:preview`, { clientId, kind: 'preview', url, branch: `nxq/client-${clientId}` }); return url; }
+function publish(system, clientId, previewUrl) { const previewDeployment = system.deployments.get(`${clientId}:preview`); assert(previewDeployment, 'production requires saved preview'); assert.equal(previewDeployment.clientId, clientId, 'preview must belong to the same client'); assert.notEqual(previewDeployment.branch, 'main', 'preview branch cannot be production main'); const productionUrl = `https://live-${system.clients.get(clientId).projectId}.example.test`; assert.notEqual(productionUrl, previewUrl, 'preview URL cannot be silently reused as production'); system.deployments.set(`${clientId}:production`, { clientId, kind: 'production', url: productionUrl, branch: 'main' }); return productionUrl; }
+function notificationDecision({enabled=true,priority='normal',digest='daily',quiet=false,security=false,criticalOverride=true}) { if (!enabled) return 'blocked'; if (priority === 'urgent' || priority === 'high' || (security && criticalOverride)) return 'immediate'; if (quiet) return 'defer'; if (digest !== 'off') return 'digest'; return 'immediate'; }
+function canOpenFile(scan) { return scan?.status === 'clean' && scan?.quarantine_status === 'released'; }
+function seoTarget(baseUrl, branch) { const u = new URL(baseUrl); assert.equal(u.protocol, 'https:', 'SEO canonical URL must use HTTPS'); assert.notEqual(branch, 'main', 'SEO worker must use safe branch'); return { base: `${u.protocol}//${u.host}`, branch }; }
+function privacyDeleteAllowed(identityVerified) { return identityVerified === true; }
+function runScenario(name, fn) { try { fn(); console.log(`PASS  ${name}`); } catch (error) { console.error(`FAIL  ${name}`); throw error; } }
 
-function addClient(system, id, approved) {
-  system.clients.set(id, {
-    id,
-    approved,
-    denied: !approved,
-    projectId: approved ? `project-${id}` : null,
-  });
-}
+runScenario('DENY creates no downstream infrastructure', () => { const system=createSystem();addClient(system,'denied',false);const result=provision(system,'denied');assert.equal(result.stopped,true);assert.equal(system.repos.size,0);assert.equal(system.sites.size,0); });
+runScenario('Approved client provisions one repo and one site', () => { const system=createSystem();addClient(system,'a',true);provision(system,'a');assert.equal(system.repos.size,1);assert.equal(system.sites.size,1); });
+runScenario('GitHub retry does not duplicate infrastructure', () => { const system=createSystem();addClient(system,'a',true);provision(system,'a','github');provision(system,'a');provision(system,'a');assert.equal(system.repos.size,1);assert.equal(system.sites.size,1); });
+runScenario('Netlify failure resumes from GitHub checkpoint', () => { const system=createSystem();addClient(system,'a',true);provision(system,'a','netlify');assert.equal(system.repos.size,1);assert.equal(system.sites.size,0);provision(system,'a');assert.equal(system.repos.size,1);assert.equal(system.sites.size,1); });
+runScenario('Exhausted retries create exactly one owner exception signal', () => { const system=createSystem();addClient(system,'a',true);const job=queue(system,'a','provider_failure',3);fail(job,system,'provider unavailable');fail(job,system,'provider unavailable');fail(job,system,'provider unavailable');assert.equal(job.status,'failed');assert.equal(system.exceptions.length,1); });
+runScenario('Client infrastructure remains tenant-isolated', () => { const system=createSystem();addClient(system,'a',true);addClient(system,'b',true);provision(system,'a');provision(system,'b');for(const repo of system.repos.values())assert.ok(repo.repoName.includes(`project-${repo.clientId}`));for(const site of system.sites.values())assert.equal(system.repos.get(site.repoName)?.clientId,site.clientId); });
+runScenario('Preview and production stay distinct', () => { const system=createSystem();addClient(system,'a',true);provision(system,'a');const previewUrl=preview(system,'a');const productionUrl=publish(system,'a',previewUrl);assert.notEqual(previewUrl,productionUrl);assert.equal(system.deployments.get('a:preview').kind,'preview');assert.equal(system.deployments.get('a:production').kind,'production'); });
+runScenario('Cross-client preview cannot be promoted for another client', () => { const system=createSystem();addClient(system,'a',true);addClient(system,'b',true);provision(system,'a');provision(system,'b');preview(system,'a');system.deployments.set('b:preview',system.deployments.get('a:preview'));assert.throws(()=>publish(system,'b',system.deployments.get('a:preview').url),/same client/); });
+runScenario('Normal notification enters digest instead of sending immediately',()=>{assert.equal(notificationDecision({priority:'normal',digest:'daily'}),'digest');});
+runScenario('Quiet-hours notification defers',()=>{assert.equal(notificationDecision({priority:'normal',digest:'off',quiet:true}),'defer');});
+runScenario('Disabled notification channel blocks',()=>{assert.equal(notificationDecision({enabled:false}),'blocked');});
+runScenario('Urgent notification bypasses digest',()=>{assert.equal(notificationDecision({priority:'urgent',digest:'daily',quiet:true}),'immediate');});
+runScenario('Quarantined or pending files cannot open',()=>{assert.equal(canOpenFile({status:'pending',quarantine_status:'restricted'}),false);assert.equal(canOpenFile({status:'infected',quarantine_status:'quarantined'}),false);});
+runScenario('Only clean released files can open',()=>{assert.equal(canOpenFile({status:'clean',quarantine_status:'released'}),true);});
+runScenario('SEO rejects non-HTTPS canonical target',()=>{assert.throws(()=>seoTarget('http://example.test','safe/seo-a'),/HTTPS/);});
+runScenario('SEO rejects production main as working branch',()=>{assert.throws(()=>seoTarget('https://example.test','main'),/safe branch/);});
+runScenario('Privacy deletion requires identity verification',()=>{assert.equal(privacyDeleteAllowed(false),false);assert.equal(privacyDeleteAllowed(true),true);});
 
-function queue(system, clientId, type, maxAttempts = 3) {
-  const key = `${clientId}:${type}`;
-  if (!system.jobs.has(key)) {
-    system.jobs.set(key, {
-      key,
-      clientId,
-      type,
-      status: 'queued',
-      attempts: 0,
-      maxAttempts,
-      checkpoint: {},
-    });
-  }
-  return system.jobs.get(key);
-}
-
-function fail(job, system, message) {
-  job.attempts += 1;
-  job.lastError = message;
-  if (job.attempts >= job.maxAttempts) {
-    job.status = 'failed';
-    system.exceptions.push({ clientId: job.clientId, job: job.type, message });
-  } else {
-    job.status = 'queued';
-  }
-}
-
-function provision(system, clientId, fault = null) {
-  const client = system.clients.get(clientId);
-  assert(client, 'client must exist');
-  if (!client.approved || client.denied) return { stopped: true };
-
-  const job = queue(system, clientId, 'provision_project_infrastructure');
-  job.status = 'running';
-
-  const repoName = `repo-${client.projectId}`;
-  if (!job.checkpoint.repo) {
-    if (fault === 'github') {
-      fail(job, system, 'github unavailable');
-      return { failed: true };
-    }
-    if (!system.repos.has(repoName)) system.repos.set(repoName, { clientId, repoName });
-    job.checkpoint.repo = repoName;
-  }
-
-  const siteName = `site-${client.projectId}`;
-  if (!job.checkpoint.site) {
-    if (fault === 'netlify') {
-      fail(job, system, 'netlify unavailable');
-      return { failed: true };
-    }
-    if (!system.sites.has(siteName)) system.sites.set(siteName, { clientId, siteName, repoName });
-    job.checkpoint.site = siteName;
-  }
-
-  job.status = 'completed';
-  return { repoName, siteName };
-}
-
-function preview(system, clientId) {
-  const client = system.clients.get(clientId);
-  assert(client?.approved, 'preview requires approved client');
-  const job = queue(system, clientId, 'website_prepare_safe_branch');
-  job.status = 'completed';
-  const url = `https://preview-${client.projectId}.example.test`;
-  system.deployments.set(`${clientId}:preview`, { clientId, kind: 'preview', url, branch: `nxq/client-${clientId}` });
-  return url;
-}
-
-function publish(system, clientId, previewUrl) {
-  const previewDeployment = system.deployments.get(`${clientId}:preview`);
-  assert(previewDeployment, 'production requires saved preview');
-  assert.equal(previewDeployment.clientId, clientId, 'preview must belong to the same client');
-  assert.notEqual(previewDeployment.branch, 'main', 'preview branch cannot be production main');
-
-  const productionUrl = `https://live-${system.clients.get(clientId).projectId}.example.test`;
-  assert.notEqual(productionUrl, previewUrl, 'preview URL cannot be silently reused as production');
-  system.deployments.set(`${clientId}:production`, {
-    clientId,
-    kind: 'production',
-    url: productionUrl,
-    branch: 'main',
-  });
-  return productionUrl;
-}
-
-function runScenario(name, fn) {
-  try {
-    fn();
-    console.log(`PASS  ${name}`);
-  } catch (error) {
-    console.error(`FAIL  ${name}`);
-    throw error;
-  }
-}
-
-runScenario('DENY creates no downstream infrastructure', () => {
-  const system = createSystem();
-  addClient(system, 'denied', false);
-  const result = provision(system, 'denied');
-  assert.equal(result.stopped, true);
-  assert.equal(system.repos.size, 0);
-  assert.equal(system.sites.size, 0);
-});
-
-runScenario('Approved client provisions one repo and one site', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  provision(system, 'a');
-  assert.equal(system.repos.size, 1);
-  assert.equal(system.sites.size, 1);
-});
-
-runScenario('GitHub retry does not duplicate infrastructure', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  provision(system, 'a', 'github');
-  provision(system, 'a');
-  provision(system, 'a');
-  assert.equal(system.repos.size, 1);
-  assert.equal(system.sites.size, 1);
-});
-
-runScenario('Netlify failure resumes from GitHub checkpoint', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  provision(system, 'a', 'netlify');
-  assert.equal(system.repos.size, 1);
-  assert.equal(system.sites.size, 0);
-  provision(system, 'a');
-  assert.equal(system.repos.size, 1);
-  assert.equal(system.sites.size, 1);
-});
-
-runScenario('Exhausted retries create exactly one owner exception signal', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  const job = queue(system, 'a', 'provider_failure', 3);
-  fail(job, system, 'provider unavailable');
-  fail(job, system, 'provider unavailable');
-  fail(job, system, 'provider unavailable');
-  assert.equal(job.status, 'failed');
-  assert.equal(system.exceptions.length, 1);
-});
-
-runScenario('Client infrastructure remains tenant-isolated', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  addClient(system, 'b', true);
-  provision(system, 'a');
-  provision(system, 'b');
-  for (const repo of system.repos.values()) {
-    assert.ok(repo.repoName.includes(`project-${repo.clientId}`));
-  }
-  for (const site of system.sites.values()) {
-    assert.equal(system.repos.get(site.repoName)?.clientId, site.clientId);
-  }
-});
-
-runScenario('Preview and production stay distinct', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  provision(system, 'a');
-  const previewUrl = preview(system, 'a');
-  const productionUrl = publish(system, 'a', previewUrl);
-  assert.notEqual(previewUrl, productionUrl);
-  assert.equal(system.deployments.get('a:preview').kind, 'preview');
-  assert.equal(system.deployments.get('a:production').kind, 'production');
-});
-
-runScenario('Cross-client preview cannot be promoted for another client', () => {
-  const system = createSystem();
-  addClient(system, 'a', true);
-  addClient(system, 'b', true);
-  provision(system, 'a');
-  provision(system, 'b');
-  preview(system, 'a');
-  system.deployments.set('b:preview', system.deployments.get('a:preview'));
-  assert.throws(() => publish(system, 'b', system.deployments.get('a:preview').url), /same client/);
-});
-
-console.log('\n8/8 autonomous lifecycle failure simulations passed.');
+console.log('\n17/17 autonomous lifecycle failure simulations passed.');
