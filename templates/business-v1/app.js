@@ -8,7 +8,10 @@ function safeTel(value = '') {
 }
 
 function render() {
-  const { business, brand, services = [], trust, about, seo } = siteConfig;
+  const { business, brand, services = [], trust, about, seo, design } = siteConfig;
+  const allowedThemes = new Set(['midnight_blue', 'charcoal_gold', 'forest_emerald', 'royal_violet']);
+  const themeKey = allowedThemes.has(design?.themeKey) ? design.themeKey : 'midnight_blue';
+  document.documentElement.dataset.theme = themeKey;
 
   document.title = seo?.title || `${business.name} | Professional Services`;
   const description = document.querySelector('meta[name="description"]');

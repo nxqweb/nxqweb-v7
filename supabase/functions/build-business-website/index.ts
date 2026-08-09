@@ -15,6 +15,7 @@ type AdminClient = ReturnType<typeof createClient>;
 const workerName = "build-business-website";
 const headers = { "Content-Type": "application/json" };
 const blueprintFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];
+const supportedThemeKeys = new Set(["midnight_blue", "charcoal_gold", "forest_emerald", "royal_violet"]);
 
 function requiredSecret(name: string) {
   const value = Deno.env.get(name)?.trim();
@@ -155,21 +156,44 @@ function clean(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function record(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {};
+}
+
+function textList(value: unknown, max: number) {
+  return Array.isArray(value) ? value.map((item) => clean(item)).filter(Boolean).slice(0, max) : [];
+}
+
 function serviceDescription(service: string, businessType: string) {
   return `${service} from a professional ${businessType || "local service"} team, with clear communication and a straightforward path to getting started.`;
 }
 
 function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
-  const business = (buildPlan.business || {}) as JsonRecord;
-  const architecture = (buildPlan.information_architecture || {}) as JsonRecord;
+  const business = record(buildPlan.business);
+  const architecture = record(buildPlan.information_architecture);
+  const enrichment = record(buildPlan.ai_enrichment);
+  const enrichmentValidated = enrichment.status === "validated"
+    && enrichment.deterministic_safety_merge === true
+    && enrichment.schema_version === "nxq-business-build-plan-v1";
+  const contentStrategy = enrichmentValidated ? record(buildPlan.content_strategy) : {};
+  const designStrategy = enrichmentValidated ? record(buildPlan.design_strategy) : {};
+  const hero = record(contentStrategy.hero);
+  const strategySeo = record(contentStrategy.seo);
   const services = Array.isArray(buildPlan.services) ? buildPlan.services.map(String).filter(Boolean).slice(0, 8) : [];
+  const serviceCopy = Array.isArray(contentStrategy.service_descriptions)
+    ? contentStrategy.service_descriptions.map(record)
+    : [];
+  const serviceCopyLookup = new Map(serviceCopy.map((item) => [clean(item.service).toLowerCase(), clean(item.description)]));
   const businessName = clean(business.name) || "Local Business";
   const businessType = clean(business.type) || "local service business";
   const serviceArea = clean(business.service_area);
   const goals = clean(buildPlan.goals);
   const desiredStyle = clean(buildPlan.desired_style);
   const primaryCta = clean(architecture.primary_cta) || "Contact us";
+  const secondaryCta = clean(architecture.secondary_cta) || "View Services";
   const tierKey = clean(buildPlan.product_tier_key).toLowerCase() || "starter";
+  const requestedThemeKey = clean(designStrategy.theme_key).toLowerCase();
+  const themeKey = supportedThemeKeys.has(requestedThemeKey) ? requestedThemeKey : "midnight_blue";
   const analyticsEndpoint = clean(runtime.analytics_endpoint);
   const analyticsIngestKey = clean(runtime.analytics_ingest_key);
   const analyticsProfileEnabled = runtime.analytics_profile_enabled === true;
@@ -188,27 +212,49 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       serviceArea,
     },
     brand: {
-      eyebrow: serviceArea ? `Serving ${serviceArea}` : "Trusted local service",
-      headline: `${businessName}. Professional service. Clear results.`,
-      subheadline: goals || `Premium ${businessType} services with clear communication and dependable support.`,
+      eyebrow: clean(hero.eyebrow) || (serviceArea ? `Serving ${serviceArea}` : "Trusted local service"),
+      headline: clean(hero.headline) || `${businessName}. Professional service. Clear results.`,
+      subheadline: clean(hero.subheadline) || goals || `Premium ${businessType} services with clear communication and dependable support.`,
       primaryCta,
-      secondaryCta: "View Services",
+      secondaryCta,
       styleDirection: desiredStyle,
+      positioning: clean(contentStrategy.positioning),
+      valueProposition: clean(contentStrategy.value_proposition),
+      voice: clean(contentStrategy.voice),
     },
-    services: services.length ? services.map((service) => ({ title: service, description: serviceDescription(service, businessType) })) : [
+    services: services.length ? services.map((service) => ({
+      title: service,
+      description: serviceCopyLookup.get(service.toLowerCase()) || serviceDescription(service, businessType),
+    })) : [
       { title: "Professional Service", description: serviceDescription("Professional service", businessType) },
     ],
     trust: {
       heading: "Built around trust and reliable service",
-      points: ["Clear communication", "Professional service", serviceArea ? `Local to ${serviceArea}` : "Local support", "Straightforward next steps"],
+      points: textList(contentStrategy.trust_points, 6).length >= 3
+        ? textList(contentStrategy.trust_points, 6)
+        : ["Clear communication", "Professional service", serviceArea ? `Local to ${serviceArea}` : "Local support", "Straightforward next steps"],
     },
     about: {
       heading: `${businessName} is focused on doing the job right`,
-      body: goals || `${businessName} provides ${businessType} services with a focus on reliable work, clear communication, and a strong customer experience.`,
+      body: clean(contentStrategy.about_summary) || goals || `${businessName} provides ${businessType} services with a focus on reliable work, clear communication, and a strong customer experience.`,
     },
     seo: {
-      title: `${businessName} | ${businessType}`,
-      description: `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
+      title: clean(strategySeo.title) || `${businessName} | ${businessType}`,
+      description: clean(strategySeo.description) || `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
+      keywords: textList(strategySeo.keywords, 10),
+    },
+    design: {
+      themeKey,
+      mood: clean(designStrategy.mood),
+      paletteGuidance: textList(designStrategy.palette_guidance, 6),
+      typographyGuidance: clean(designStrategy.typography_guidance),
+      motionGuidance: clean(designStrategy.motion_guidance),
+      selectedThroughDeterministicAllowlist: true,
+    },
+    strategy: {
+      audiences: textList(contentStrategy.audiences, 5),
+      aiEnrichmentValidated: enrichmentValidated,
+      pageStrategy: Array.isArray(architecture.page_strategy) ? architecture.page_strategy.slice(0, 8) : [],
     },
     leads: {
       enabled: Boolean(leadEndpoint && leadFormKey),
