@@ -9,7 +9,7 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   extended:
@@ -17,37 +17,11 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: safe/mega-autonomy-pass
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Patch owner QA route when missing
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('src/App.tsx')
-          s=p.read_text()
-          if 'OwnerQaLifecycle' not in s:
-              s=s.replace(
-                  'const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");',
-                  'const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");\nconst OwnerQaLifecycle = named(() => import("./pages/OwnerQaLifecycle"), "OwnerQaLifecycle");'
-              )
-              s=s.replace(
-                  '  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;',
-                  '  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;\n  if (path === "/owner/qa-lifecycle") return <OwnerProtectedRoute><OwnerQaLifecycle /></OwnerProtectedRoute>;'
-              )
-              s=s.replace(
-                  '<a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a>',
-                  '<a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a><a className="owner-plan-change-shortcut" href="/owner/qa-lifecycle" style={{ bottom: "26.25rem" }}>Autonomous QA</a>'
-              )
-              p.write_text(s)
-          if 'OwnerQaLifecycle' not in p.read_text() or '"/owner/qa-lifecycle"' not in p.read_text():
-              raise SystemExit('Owner QA route patch did not apply cleanly.')
-          PY
       - name: Wave 14 classifier contract
         run: node scripts/validate-autonomy-ops-wave14-contract.mjs
       - name: Extended autonomy safety contract
@@ -58,6 +32,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave17-contract.mjs
       - name: Wave 18 consecutive QA orchestrator
         run: node scripts/validate-autonomy-ops-wave18-contract.mjs
+      - name: Wave 19 owner QA control surface
+        run: node scripts/validate-autonomy-ops-wave19-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint
@@ -68,12 +44,3 @@ jobs:
         run: npm run build
       - name: Production bundle budget
         run: node scripts/check-production-bundle-budget.mjs
-      - name: Commit verified owner QA route
-        if: github.event_name == 'push'
-        run: |
-          if git diff --quiet -- src/App.tsx; then exit 0; fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/App.tsx
-          git commit -m "feat: route owner autonomous QA lifecycle"
-          git push origin HEAD:safe/mega-autonomy-pass
