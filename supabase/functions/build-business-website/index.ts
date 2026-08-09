@@ -199,8 +199,8 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
   const analyticsProfileEnabled = runtime.analytics_profile_enabled === true;
   const leadEndpoint = clean(runtime.lead_endpoint);
   const leadFormKey = clean(runtime.lead_form_key);
-  const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);
-  const mouseTracking = tierKey === "premium";
+  const advancedAnalytics = ["growth", "intelligence", "enterprise"].includes(tierKey);
+  const mouseTracking = ["intelligence", "enterprise"].includes(tierKey);
 
   return {
     schemaVersion: "nxq-business-v1",

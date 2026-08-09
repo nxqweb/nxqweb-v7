@@ -25,6 +25,8 @@ values
   ('business','starter','advanced_analytics',false,'{}'),
   ('business','starter','advanced_seo',false,'{}'),
   ('business','starter','mouse_tracking',false,'{}'),
+  ('business','starter','location_management',true,jsonb_build_object('max_locations',1)),
+  ('business','starter','multi_location',false,jsonb_build_object('max_locations',1)),
 
   ('business','growth','managed_website',true,'{}'),
   ('business','growth','client_portal',true,'{}'),
@@ -34,24 +36,30 @@ values
   ('business','growth','advanced_analytics',true,'{}'),
   ('business','growth','advanced_seo',false,'{}'),
   ('business','growth','mouse_tracking',false,'{}'),
+  ('business','growth','location_management',true,jsonb_build_object('max_locations',1)),
+  ('business','growth','multi_location',false,jsonb_build_object('max_locations',1)),
 
-  ('business','pro','managed_website',true,'{}'),
-  ('business','pro','client_portal',true,'{}'),
-  ('business','pro','hosting_monitoring',true,'{}'),
-  ('business','pro','basic_seo',true,'{}'),
-  ('business','pro','lead_capture',true,'{}'),
-  ('business','pro','advanced_analytics',true,'{}'),
-  ('business','pro','advanced_seo',true,'{}'),
-  ('business','pro','mouse_tracking',false,'{}'),
+  ('business','intelligence','managed_website',true,'{}'),
+  ('business','intelligence','client_portal',true,'{}'),
+  ('business','intelligence','hosting_monitoring',true,'{}'),
+  ('business','intelligence','basic_seo',true,'{}'),
+  ('business','intelligence','lead_capture',true,'{}'),
+  ('business','intelligence','advanced_analytics',true,'{}'),
+  ('business','intelligence','advanced_seo',true,'{}'),
+  ('business','intelligence','mouse_tracking',true,jsonb_build_object('consent_required',true,'retention_days',90)),
+  ('business','intelligence','location_management',true,jsonb_build_object('max_locations',1)),
+  ('business','intelligence','multi_location',false,jsonb_build_object('max_locations',1)),
 
-  ('business','premium','managed_website',true,'{}'),
-  ('business','premium','client_portal',true,'{}'),
-  ('business','premium','hosting_monitoring',true,'{}'),
-  ('business','premium','basic_seo',true,'{}'),
-  ('business','premium','lead_capture',true,'{}'),
-  ('business','premium','advanced_analytics',true,'{}'),
-  ('business','premium','advanced_seo',true,'{}'),
-  ('business','premium','mouse_tracking',true,jsonb_build_object('consent_required',true,'retention_days',90))
+  ('business','enterprise','managed_website',true,'{}'),
+  ('business','enterprise','client_portal',true,'{}'),
+  ('business','enterprise','hosting_monitoring',true,'{}'),
+  ('business','enterprise','basic_seo',true,'{}'),
+  ('business','enterprise','lead_capture',true,'{}'),
+  ('business','enterprise','advanced_analytics',true,'{}'),
+  ('business','enterprise','advanced_seo',true,'{}'),
+  ('business','enterprise','mouse_tracking',true,jsonb_build_object('consent_required',true,'retention_days',90)),
+  ('business','enterprise','location_management',true,jsonb_build_object('max_locations',100)),
+  ('business','enterprise','multi_location',true,jsonb_build_object('max_locations',100))
 on conflict (product_family_slug, tier_key, feature_key) do update
 set enabled = excluded.enabled,
     limits = excluded.limits,
@@ -67,7 +75,7 @@ on public.nxq_tier_entitlements for all to authenticated
 using (exists (select 1 from public.owner_users where owner_users.auth_user_id = auth.uid()))
 with check (exists (select 1 from public.owner_users where owner_users.auth_user_id = auth.uid()));
 
-grant select, insert, update, delete on table public.nxq_tier_entitlements to authenticated;
+grant select on table public.nxq_tier_entitlements to authenticated;
 
 create or replace function public.current_client_feature_access(target_feature_key text)
 returns jsonb
@@ -120,9 +128,9 @@ begin
   end if;
 
   return jsonb_build_object(
-    'allowed', entitlement_row.enabled and client_row.status::text in ('approved','active'),
+    'allowed', entitlement_row.enabled and client_row.status::text in ('approved','active','overdue'),
     'reason', case
-      when client_row.status::text not in ('approved','active') then 'client_not_active'
+      when client_row.status::text not in ('approved','active','overdue') then 'client_not_active'
       when not entitlement_row.enabled then 'tier_not_entitled'
       else 'allowed'
     end,
@@ -172,7 +180,7 @@ begin
   where product_family_slug = family_slug and tier_key = tier_key_value and feature_key = target_feature_key;
 
   return jsonb_build_object(
-    'allowed', coalesce(entitlement_row.enabled, false) and client_row.status::text in ('approved','active'),
+    'allowed', coalesce(entitlement_row.enabled, false) and client_row.status::text in ('approved','active','overdue'),
     'product_family_slug', family_slug,
     'tier_key', tier_key_value,
     'feature_key', target_feature_key,
