@@ -16,7 +16,7 @@ async function getFile(owner:string,repo:string,branch:string,path:string,token:
 async function putFile(owner:string,repo:string,branch:string,path:string,content:string,token:string,message:string){const existing=await getFile(owner,repo,branch,path,token);const sha=typeof existing?.sha==="string"?existing.sha:undefined;const encoded=btoa(unescape(encodeURIComponent(content)));const res=await timedFetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`,{method:"PUT",headers:ghHeaders(token),body:JSON.stringify({message,content:encoded,branch,...(sha?{sha}:{})})});const body=await readJson(res);if(!res.ok)throw new Error(`GitHub write failed for ${path} (${res.status}): ${String(body?.message||"Unknown error")}`);return String(body?.commit?.sha||"");}
 async function sha256(text:string){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(text));return Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,"0")).join("");}
 function cleanBaseUrl(value:unknown){const raw=String(value||"").trim();if(!raw)return "";const u=new URL(raw);if(u.protocol!=="https:")throw new Error("SEO canonical base URL must use HTTPS.");return `${u.protocol}//${u.host}`;}
-function escXml(v:unknown){return String(v??"").replace(/[<>&'\"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;","'":"&apos;",'\"':"&quot;"}[c]||c));}
+function escXml(v:unknown){return String(v??"").replace(/[<>&'"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;","'":"&apos;",'"':"&quot;"}[c]||c));}
 
 async function processJob(admin:Admin,job:Job){
   if(job.job_type!=="website_project_seo_refresh")throw new Error("Unsupported SEO worker job type.");
