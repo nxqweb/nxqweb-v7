@@ -61,14 +61,42 @@ Deno.serve(async(req)=>{
     const {next,changed}=applyStructuredPatch(copyRecord(projectRes.data.build_plan),payload);
     const updateProject=await admin.from("projects").update({build_plan:next,updated_at:new Date().toISOString()}).eq("id",job.project_id).eq("client_id",job.client_id);
     if(updateProject.error)throw new Error(`Project build plan update failed: ${updateProject.error.message}`);
-    const changeUpdate=await admin.from("website_change_requests").update({status:"building",automation_plan:{route:"structured_rebuild",changed_fields:changed,build_plan_version:next.version},updated_at:new Date().toISOString()}).eq("id",changeId);
-    if(changeUpdate.error)throw new Error(`Change request state failed: ${changeUpdate.error.message}`);
+
     const revision=await admin.from("website_content_revisions").insert({client_id:job.client_id,project_id:job.project_id,change_request_id:changeId,content_key:"project_build_plan",revision_number:Number(next.version||1),state:"draft",payload:next,source:"autonomous_safe_change"});
     if(revision.error&&!String(revision.error.message).toLowerCase().includes("duplicate"))throw new Error(`Content revision save failed: ${revision.error.message}`);
-    const bootstrap=await admin.rpc("bootstrap_ready_website_automation"); if(bootstrap.error)throw new Error(`Website rebuild bootstrap failed: ${bootstrap.error.message}`);
-    const complete=await admin.rpc("complete_external_automation_job",{target_job_id:job.id,worker_name:workerName,target_result:{change_request_id:changeId,changed_fields:changed,build_plan_version:next.version,website_automation_bootstrap:bootstrap.data}});
+
+    const bootstrap=await admin.rpc("bootstrap_ready_website_automation");
+    if(bootstrap.error)throw new Error(`Website rebuild bootstrap failed: ${bootstrap.error.message}`);
+
+    const runRes=await admin.from("website_automation_runs")
+      .select("id,status,source_branch")
+      .eq("client_id",job.client_id)
+      .eq("project_id",job.project_id)
+      .not("status","in",'(published,failed,cancelled)')
+      .order("created_at",{ascending:false})
+      .limit(1)
+      .maybeSingle();
+    if(runRes.error)throw new Error(`Website rebuild run lookup failed: ${runRes.error.message}`);
+    if(!runRes.data?.id)throw new Error("Website rebuild bootstrap did not produce an active automation run.");
+
+    const automationPlan={
+      route:"structured_rebuild",
+      changed_fields:changed,
+      build_plan_version:next.version,
+      website_automation_run_id:runRes.data.id,
+      source_branch:runRes.data.source_branch,
+      run_status:runRes.data.status,
+    };
+    const changeUpdate=await admin.from("website_change_requests")
+      .update({status:"building",automation_plan:automationPlan,updated_at:new Date().toISOString()})
+      .eq("id",changeId)
+      .eq("client_id",job.client_id)
+      .eq("project_id",job.project_id);
+    if(changeUpdate.error)throw new Error(`Change request state failed: ${changeUpdate.error.message}`);
+
+    const complete=await admin.rpc("complete_external_automation_job",{target_job_id:job.id,worker_name:workerName,target_result:{change_request_id:changeId,changed_fields:changed,build_plan_version:next.version,website_automation_run_id:runRes.data.id,website_automation_bootstrap:bootstrap.data}});
     if(complete.error)throw new Error(`Change job completion failed: ${complete.error.message}`);
-    return response({ok:true,claimed:true,job_id:job.id,change_request_id:changeId,changed_fields:changed});
+    return response({ok:true,claimed:true,job_id:job.id,change_request_id:changeId,changed_fields:changed,website_automation_run_id:runRes.data.id});
   }catch(error){
     const message=error instanceof Error?error.message:"Unknown change request worker failure";
     if(job?.id)await admin.rpc("fail_external_automation_job",{target_job_id:job.id,worker_name:workerName,target_error:message});
