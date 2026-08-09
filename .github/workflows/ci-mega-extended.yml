@@ -36,6 +36,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave19-contract.mjs
       - name: Wave 20 single owner decision authority
         run: node scripts/validate-autonomy-ops-wave20-contract.mjs
+      - name: Wave 21 disposable Business QA runner
+        run: node scripts/validate-autonomy-ops-wave21-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint

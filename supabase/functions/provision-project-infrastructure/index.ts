@@ -158,6 +158,21 @@ async function ensureRepository(
   return body || {};
 }
 
+async function verifyPrivateRepository(repositoryFullName: string) {
+  const token = await githubInstallationToken();
+  const res = await timedFetch(`https://api.github.com/repos/${repositoryFullName}`, {
+    headers: githubHeaders(token),
+  });
+  const body = await readJson(res) as JsonRecord | null;
+  if (!res.ok || !body) {
+    throw new Error(`GitHub repository privacy verification failed (${res.status}).`);
+  }
+  if (body.full_name !== repositoryFullName || body.private !== true) {
+    throw new Error("Generated GitHub repository is not verified private.");
+  }
+  return { fullName: repositoryFullName, private: true };
+}
+
 async function createNetlifySite(repositoryFullName: string, familySlug: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const installationId = Number(requiredSecret("NETLIFY_GITHUB_INSTALLATION_ID"));
@@ -330,6 +345,14 @@ Deno.serve(async (request) => {
       config = saved.data as JsonRecord;
     }
 
+    const repositoryPrivacy = await verifyPrivateRepository(repositoryFullName);
+    await saveCheckpoint({
+      checkpoint: "github_repository_privacy_verified",
+      github_full_name: repositoryPrivacy.fullName,
+      github_repository_private_verified: repositoryPrivacy.private,
+      github_repository_private_verified_at: new Date().toISOString(),
+    });
+
     let netlifySiteId = typeof checkpoint.netlify_site_id === "string" ? checkpoint.netlify_site_id : "";
     if (!netlifySiteId && typeof config.netlify_site_id === "string") netlifySiteId = config.netlify_site_id;
     let netlifySite: JsonRecord | null = null;
@@ -371,6 +394,7 @@ Deno.serve(async (request) => {
         checkpoint: "infrastructure_ready",
         product_family_slug: familySlug,
         github_full_name: repositoryFullName,
+        github_repository_private_verified: repositoryPrivacy.private,
         netlify_site_id: netlifySiteId,
         auto_publish_locked: true,
       },
@@ -383,6 +407,7 @@ Deno.serve(async (request) => {
       project_id: job.project_id,
       product_family_slug: familySlug,
       github_repository: repositoryFullName,
+      github_repository_private_verified: repositoryPrivacy.private,
       netlify_site_id: netlifySiteId,
       production_publish_automatic: false,
     });

@@ -32,6 +32,7 @@ type ClientRow = {
   billing_overdue_since: string | null;
   billing_frozen_at: string | null;
   notes: string | null;
+  qa_only: boolean;
 };
 
 type ApprovalRow = {
@@ -552,7 +553,7 @@ function parseBuildPlanSections(content: string) {
       const clientResult = await supabase
         .from("clients")
         .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes"
+          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes, qa_only"
         )
         .order("created_at", { ascending: false });
 
@@ -1796,9 +1797,14 @@ if (messageResult.error) {
                   <strong>{client.business_name}</strong>
                   <span>{client.business_type || "Business type missing"}</span>
                   <small>{formatStatus(client.status)}</small>
-                  <b>{formatMoney(Number(client.monthly_price || 0))}/mo</b>
+                  <b>{client.qa_only ? "Disposable QA · billing locked" : `${formatMoney(Number(client.monthly_price || 0))}/mo`}</b>
 
-                  <div className="client-control-row">
+                  {client.qa_only ? (
+                    <div className="project-stage-box">
+                      <span>QA-only client</span>
+                      <small>Use its pending APPROVE or DENY item. Manual client, project, and billing controls are disabled so strict evidence stays valid.</small>
+                    </div>
+                  ) : <div className="client-control-row">
 <button
                       type="button"
                       onClick={() => updateClientStatus(client, "approved", "Approve client")}
@@ -1819,7 +1825,7 @@ if (messageResult.error) {
                     >
                       Archive
                     </button>
-                  </div>
+                  </div>}
 
                   <div className="project-stage-box">
                     <span>
@@ -1828,7 +1834,7 @@ if (messageResult.error) {
                         : "No project yet"}
                     </span>
 
-                    {!getProjectForClient(client.id) ? (
+                    {!client.qa_only && !getProjectForClient(client.id) ? (
                       <button
                         className="create-project-btn"
                         type="button"
@@ -1838,7 +1844,7 @@ if (messageResult.error) {
                       </button>
                     ) : null}
 
-                    <div className="project-stage-row">
+                    {!client.qa_only ? <div className="project-stage-row">
                       <button
                         type="button"
                         onClick={() => updateProjectStage(client, "planning", "Move to planning")}
@@ -1866,10 +1872,10 @@ if (messageResult.error) {
                       >
                         Frozen
                       </button>
-                    </div>
+                    </div> : null}
                   </div>
 
-                  <div className="project-stage-box">
+                  {!client.qa_only ? <div className="project-stage-box">
                     <span>
                       Billing: {formatStatus(client.billing_status || "not_configured")}
                     </span>
@@ -1950,7 +1956,7 @@ if (messageResult.error) {
                         Activate Subscription
                       </button>
                     ) : null}
-                  </div>
+                  </div> : null}
                 </article>
               ))}
             </div>
@@ -2105,7 +2111,6 @@ if (messageResult.error) {
     </main>
   );
 }
-
 
 
 
