@@ -28,7 +28,7 @@ const checks=[
 ["Billing provider event cannot directly freeze",billing.includes("'auto_freeze',false")&&!billing.includes("billing_status='frozen'")],
 ["Verified payment can restore billing",billing.includes("payment_succeeded")&&billing.includes("billing_status='active'")],
 ["Billing adapter is protected by dedicated token",billingWorker.includes("NXQ_BILLING_ADAPTER_TOKEN")&&billingWorker.includes("x-nxq-billing-adapter-token")],
-["Online billing remains optional for current launch",billingReady.includes("required,false")&&billingReady.includes("manual_billing_supported")],
+["Online billing remains optional for current launch",billingReady.includes("'billing_provider_hook_ready'")&&billingReady.includes("'not_applicable'")&&billingReady.includes("set required=false")&&billingReady.includes("manual_billing_supported")],
 ["Lead forms cannot be active without explicit origins",leadOrigin.includes("business_lead_forms_active_origin_check")&&leadOrigin.includes("cardinality(allowed_origins)>0")],
 ["Lead origins auto-sync from verified HTTPS production",leadOrigin.includes("last_deployment_status='published'")&&leadOrigin.includes("production_url like 'https://%'")],
 ["Lead worker has no wildcard CORS",!leadWorker.includes('Access-Control-Allow-Origin":"*')&&leadWorker.includes('Vary":"Origin"')],
