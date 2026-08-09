@@ -30,11 +30,11 @@ begin
     and exists(select 1 from vault.decrypted_secrets where name='nxq_automation_worker_token' and nullif(btrim(decrypted_secret),'') is not null)
   into secrets_ready;
 
-  select max(last_seen_at) into latest_heartbeat
+  select max(heartbeat_at) into latest_heartbeat
   from public.automation_worker_heartbeats
-  where worker_name='build-business-seo-artifacts'
+  where worker_key='build-business-seo-artifacts'
     and execution_target='edge'
-    and health_status='healthy';
+    and status='healthy';
 
   heartbeat_ready := latest_heartbeat is not null and latest_heartbeat >= now()-interval '15 minutes';
   ready_now := ledger_ready and cron_ready and secrets_ready and heartbeat_ready;
@@ -47,7 +47,7 @@ begin
         'vault_secrets_ready',secrets_ready,
         'recent_worker_heartbeat',heartbeat_ready,
         'latest_worker_heartbeat',latest_heartbeat,
-        'worker_name','build-business-seo-artifacts',
+        'worker_key','build-business-seo-artifacts',
         'max_heartbeat_age_minutes',15
       ),
       last_checked_at=now(),
