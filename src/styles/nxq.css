@@ -836,6 +836,218 @@ textarea:focus {
   }
 }
 
+/* Registrar-aware domain connection guidance. */
+.domain-guide-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.domain-guide-card {
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.domain-guide-card.connected {
+  border-color: rgba(74, 222, 128, 0.28);
+}
+
+.domain-guide-card.action-required {
+  border-color: rgba(251, 191, 36, 0.35);
+  box-shadow: 0 16px 60px rgba(251, 191, 36, 0.06);
+}
+
+.domain-success-state,
+.domain-checking-state {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 1rem;
+  background: rgba(74, 222, 128, 0.045);
+}
+
+.domain-success-state > svg {
+  flex: 0 0 auto;
+  color: #86efac;
+}
+
+.domain-success-state p,
+.domain-checking-state p {
+  margin: 0.25rem 0 0;
+}
+
+.domain-checking-state {
+  border-color: rgba(96, 165, 250, 0.18);
+  background: rgba(96, 165, 250, 0.04);
+}
+
+.domain-checking-state > svg {
+  color: #93c5fd;
+}
+
+.domain-action-panel {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: clamp(1rem, 3vw, 1.35rem);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(251, 191, 36, 0.075), rgba(255, 255, 255, 0.02));
+}
+
+.domain-provider-path {
+  padding: 1rem;
+  border-radius: 0.9rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.domain-provider-path > span,
+.domain-exact-instructions > span {
+  color: var(--muted, #a9acb7);
+  font-size: 0.76rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.domain-provider-path ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.8rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.domain-provider-path li {
+  position: relative;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.045);
+  font-weight: 750;
+}
+
+.domain-provider-path li:not(:last-child)::after {
+  position: absolute;
+  right: -0.48rem;
+  color: #f2c96d;
+  content: "›";
+}
+
+.domain-provider-path p {
+  margin: 0;
+}
+
+.domain-exact-instructions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.domain-exact-instructions pre {
+  margin: 0;
+  padding: 1rem;
+  overflow-x: auto;
+  border: 1px solid rgba(242, 201, 109, 0.22);
+  border-radius: 0.85rem;
+  background: rgba(3, 5, 9, 0.62);
+  color: #fff4cb;
+  font: 650 0.9rem/1.6 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.domain-safety-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  padding-top: 0.9rem;
+}
+
+.domain-safety-details summary {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  color: #fde68a;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.domain-safety-details ul {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.domain-safety-details li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.domain-safety-details li svg {
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  color: #86efac;
+}
+
+.domain-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1rem 0;
+}
+
+.domain-meta-grid span {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+  overflow-wrap: anywhere;
+}
+
+.domain-meta-grid strong {
+  display: block;
+  margin-bottom: 0.22rem;
+  color: var(--muted, #a9acb7);
+  font-size: 0.72rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+body[data-nxq-theme="light"] .domain-provider-path,
+body[data-nxq-theme="light"] .domain-exact-instructions pre {
+  background: rgba(30, 41, 59, 0.055);
+  color: #47350e;
+}
+
+@media (max-width: 850px) {
+  .domain-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .domain-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .domain-provider-path ol {
+    display: grid;
+  }
+
+  .domain-provider-path li:not(:last-child)::after {
+    right: auto;
+    bottom: -0.72rem;
+    left: 50%;
+    transform: rotate(90deg);
+  }
+}
+
 /* NXQ premium gold public website */
 
 .lux-home {
