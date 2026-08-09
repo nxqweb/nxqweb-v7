@@ -122,10 +122,6 @@ function isWebsiteSetupReport(approval: ApprovalRow) {
   );
 }
 
-function isAiTaskApproval(approval: ApprovalRow) {
-  return approval.request_type === "ai_task_approval";
-}
-
 function isDomainConnectionReview(approval: ApprovalRow) {
   return approval.request_type === "domain_connection_review";
 }
@@ -729,186 +725,6 @@ if (messageResult.error) {
     await requestMoreInfoFromClientCard(client);
   }
 
-  async function updateClientStatus(
-    client: ClientRow,
-    nextStatus: string,
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\n\nSupabase will update the client status only. This will not charge, launch, mark paid, freeze billing, or delete project data. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const statusResult = await supabase.rpc("update_client_status", {
-        target_client_id: client.id,
-        next_client_status: nextStatus,
-        action_label: actionLabel,
-      });
-
-      if (statusResult.error) {
-        setErrorMessage(`Client status update failed: ${statusResult.error.message}`);
-        return;
-      }
-
-      const resultData = statusResult.data as { message?: string } | null;
-
-      setActionMessage(resultData?.message || `${client.business_name}: ${actionLabel} complete.`);
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown client status update error";
-      setErrorMessage(`Client status update failed: ${message}`);
-    }
-  }
-
-  async function approveLaunchPreview(approval: ApprovalRow, clientName: string) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const previewUrl = getLaunchPreviewUrl(approval);
-
-    const ownerNotes = window.prompt(
-      `Approve website preview for launch?\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nThis approves the preview gate only. It does not automatically deploy or launch the live website.`,
-      "Owner inspected preview link and approved this website preview for launch."
-    );
-
-    if (ownerNotes === null) return;
-
-    const cleanOwnerNotes = ownerNotes.trim();
-
-    if (!cleanOwnerNotes) {
-      setErrorMessage("Preview approval cancelled because no owner note was entered.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Confirm preview approval\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nYou are confirming that you opened the preview link and checked the website. This will allow the project to move live later, but it will NOT launch automatically. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const previewResult = await supabase.rpc("approve_launch_preview", {
-        approval_request_id: approval.id,
-        owner_notes: cleanOwnerNotes,
-      });
-
-      if (previewResult.error) {
-        setErrorMessage(`Preview approval failed: ${previewResult.error.message}`);
-        return;
-      }
-
-      const resultData = previewResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${clientName}: website preview approved for launch.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown preview approval error";
-      setErrorMessage(`Preview approval failed: ${message}`);
-    }
-  }
-  async function createProjectForClient(client: ClientRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const existingProject = getProjectForClient(client.id);
-
-    if (existingProject) {
-      setErrorMessage(`${client.business_name} already has a project record.`);
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Create project\n\nClient: ${client.business_name}\n\nSupabase will create a website project record only. This will not launch, charge, mark paid, activate billing, or freeze anything. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const projectResult = await supabase.rpc("create_project_for_client", {
-        target_client_id: client.id,
-      });
-
-      if (projectResult.error) {
-        setErrorMessage(`Project create failed: ${projectResult.error.message}`);
-        return;
-      }
-
-      const resultData = projectResult.data as { message?: string } | null;
-
-      setActionMessage(resultData?.message || `${client.business_name}: project created.`);
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown project create error";
-      setErrorMessage(`Project create failed: ${message}`);
-    }
-  }
-  async function acceptApprovalAndStartPipelineCloud(
-    approval: ApprovalRow,
-    client: ClientRow | null,
-    clientName: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    if (!client) {
-      setErrorMessage("Cannot start backend pipeline because the client record was not found.");
-      return;
-    }
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const { data, error } = await supabase.rpc("approve_website_setup", {
-        approval_request_id: approval.id,
-      });
-
-      if (error) {
-        setErrorMessage(`Backend approval workflow failed: ${error.message}`);
-        return;
-      }
-
-      const result = data as { message?: string } | null;
-
-      setActionMessage(
-        result?.message ||
-          `${clientName}: approved, moved into planning, and build plan created by Supabase.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown backend workflow error";
-      setErrorMessage(`Backend approval workflow failed: ${message}`);
-    }
-  }
-
   async function acceptApprovalAndStartPipeline(
     approval: ApprovalRow,
     client: ClientRow | null,
@@ -1231,56 +1047,6 @@ if (messageResult.error) {
       setErrorMessage(`Targeted more info request failed: ${message}`);
     }
   }
-  async function updateProjectStage(
-    client: ClientRow,
-    nextStage: string,
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const project = getProjectForClient(client.id);
-
-    if (!project) {
-      setErrorMessage(`${client.business_name} does not have a project record yet.`);
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\nProject stage: ${nextStage}\n\nSupabase will update the project stage only. This will not launch, charge, mark paid, or freeze billing. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const stageResult = await supabase.rpc("update_project_stage", {
-        target_client_id: client.id,
-        next_website_status: nextStage,
-      });
-
-      if (stageResult.error) {
-        setErrorMessage(`Project stage update failed: ${stageResult.error.message}`);
-        return;
-      }
-
-      const resultData = stageResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name}: ${actionLabel} complete.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown project update error";
-      setErrorMessage(`Project stage update failed: ${message}`);
-    }
-  }
   useEffect(() => {
     loadOwnerData();
   }, []);
@@ -1601,14 +1367,10 @@ if (messageResult.error) {
 
                       }`}
 
-                    >                      <button
+                    >
+                      <button
                         type="button"
                         onClick={() => {
-                          if (isLaunchPreviewReview(approval)) {
-                            approveLaunchPreview(approval, clientName);
-                            return;
-                          }
-
                           if (!confirmHighRiskAction("accept", clientName)) return;
 
                           if (isPipelineStartApproval(approval)) {
@@ -1616,16 +1378,11 @@ if (messageResult.error) {
                             return;
                           }
 
-                          if (isAiTaskApproval(approval) || !isPipelineStartApproval(approval)) {
-                            updateApprovalStatus(
-                              approval,
-                              "accepted",
-                              "Owner accepted this approval request."
-                            );
-                            return;
-                          }
-
-                          acceptApprovalAndStartPipelineCloud(approval, client, clientName);
+                          updateApprovalStatus(
+                            approval,
+                            "accepted",
+                            "Owner accepted this approval request."
+                          );
                         }}
                       >
                         Accept
@@ -1804,28 +1561,18 @@ if (messageResult.error) {
                       <span>QA-only client</span>
                       <small>Use its pending APPROVE or DENY item. Manual client, project, and billing controls are disabled so strict evidence stays valid.</small>
                     </div>
-                  ) : <div className="client-control-row">
-<button
-                      type="button"
-                      onClick={() => updateClientStatus(client, "approved", "Approve client")}
-                    >
-                      Approve
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => requestMoreInfoFromClientCard(client)}
-                    >
-                      Needs Info
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => updateClientStatus(client, "archived", "Archive client")}
-                    >
-                      Archive
-                    </button>
-                  </div>}
+                  ) : (
+                    <div className="project-stage-box">
+                      <small>Client and project lifecycle changes come from the normal APPROVE or DENY decision and protected automation.</small>
+                      <button
+                        type="button"
+                        disabled={!['lead', 'intake_received', 'needs_owner_review'].includes(client.status)}
+                        onClick={() => requestMoreInfoFromClientCard(client)}
+                      >
+                        Needs Info
+                      </button>
+                    </div>
+                  )}
 
                   <div className="project-stage-box">
                     <span>
@@ -1834,45 +1581,7 @@ if (messageResult.error) {
                         : "No project yet"}
                     </span>
 
-                    {!client.qa_only && !getProjectForClient(client.id) ? (
-                      <button
-                        className="create-project-btn"
-                        type="button"
-                        onClick={() => createProjectForClient(client)}
-                      >
-                        Create Project
-                      </button>
-                    ) : null}
-
-                    {!client.qa_only ? <div className="project-stage-row">
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "planning", "Move to planning")}
-                      >
-                        Planning
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "building", "Move to building")}
-                      >
-                        Building
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "live", "Move to live")}
-                      >
-                        Live
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "frozen", "Freeze project")}
-                      >
-                        Frozen
-                      </button>
-                    </div> : null}
+                    <small>Stage is automation-owned; manual stage mutation is disabled.</small>
                   </div>
 
                   {!client.qa_only ? <div className="project-stage-box">
@@ -2111,14 +1820,6 @@ if (messageResult.error) {
     </main>
   );
 }
-
-
-
-
-
-
-
-
 
 
 

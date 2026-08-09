@@ -64,6 +64,12 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+create table if not exists public.owner_users (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.packages (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
@@ -77,6 +83,7 @@ create table if not exists public.packages (
 
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique references auth.users(id) on delete set null,
   package_id uuid references public.packages(id) on delete set null,
   business_name text not null,
   contact_name text,
@@ -119,6 +126,10 @@ create table if not exists public.projects (
   client_id uuid not null references public.clients(id) on delete cascade,
   project_name text not null,
   stage public.project_stage not null default 'intake',
+  website_status text not null default 'intake' check (website_status in (
+    'intake','owner_review','planning','building','review','approved_for_launch',
+    'launching','live','maintenance','frozen','cancelled'
+  )),
   build_plan jsonb not null default '{}'::jsonb,
   current_blocker text,
   next_step text,
@@ -263,6 +274,7 @@ values
 on conflict (rule_key) do nothing;
 
 alter table public.packages enable row level security;
+alter table public.owner_users enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_intakes enable row level security;
 alter table public.projects enable row level security;
@@ -279,6 +291,15 @@ create policy "Public can read active packages"
 on public.packages
 for select
 using (is_active = true);
+
+drop policy if exists "Owner can read own owner record" on public.owner_users;
+create policy "Owner can read own owner record"
+on public.owner_users
+for select
+to authenticated
+using (auth_user_id = auth.uid());
+
+grant select on public.owner_users to authenticated;
 
 drop policy if exists "Temporary public read clients" on public.clients;
 create policy "Temporary public read clients"
