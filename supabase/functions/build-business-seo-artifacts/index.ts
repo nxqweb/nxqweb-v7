@@ -41,7 +41,13 @@ async function processJob(admin:Admin,job:Job){
 
   const locationById=new Map((locationsRes.data||[]).map((l)=>[String(l.id),l]));
   const urls=[`${baseUrl}/`];
-  for(const page of pagesRes.data||[]){const loc=locationById.get(String(page.location_id));const path=String(page.canonical_path||loc?.seo_slug?`/locations/${String(loc?.seo_slug||"")}/`:"");if(path)urls.push(new URL(path,baseUrl).toString());}
+  for(const page of pagesRes.data||[]){
+    const loc=locationById.get(String(page.location_id));
+    const canonicalPath=String(page.canonical_path||"").trim();
+    const fallbackPath=loc?.seo_slug?`/locations/${String(loc.seo_slug)}/`:"";
+    const path=canonicalPath||fallbackPath;
+    if(path)urls.push(new URL(path,baseUrl).toString());
+  }
   const uniqueUrls=[...new Set(urls)];
   const sitemap=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${uniqueUrls.map(u=>`  <url><loc>${escXml(u)}</loc></url>`).join("\n")}\n</urlset>\n`;
   const robots=`User-agent: *\nAllow: /\nSitemap: ${baseUrl}/sitemap.xml\n`;
