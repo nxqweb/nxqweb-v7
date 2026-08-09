@@ -10,7 +10,7 @@ type AutomationJob = {
 };
 
 type JsonRecord = Record<string, unknown>;
-type AdminClient = ReturnType<typeof createClient>;
+type AdminClient = ReturnType<typeof createClient<any>>;
 
 const workerName = "promote-business-production";
 const headers = { "Content-Type": "application/json" };

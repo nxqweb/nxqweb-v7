@@ -139,7 +139,7 @@ function AppRoutes() {
 }
 
 function App() {
-  return <Suspense fallback={<main className="nxq-page"><div className="empty-state">Loading NXQ…</div></main>}><AppRoutes /></Suspense>;
+  return <div id="main-content" tabIndex={-1}><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQ…</div></main>}><AppRoutes /></Suspense></div>;
 }
 
 export default App;

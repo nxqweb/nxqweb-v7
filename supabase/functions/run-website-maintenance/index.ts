@@ -233,7 +233,7 @@ async function seoCheck(urlText: string) {
   };
 }
 
-async function backupCheck(admin: ReturnType<typeof createClient>, projectId: string) {
+async function backupCheck(admin: ReturnType<typeof createClient<any>>, projectId: string) {
   const config = await admin.from("project_deployment_configs")
     .select("github_owner,github_repo,production_branch,last_production_commit,last_deployment_status")
     .eq("project_id", projectId).maybeSingle();
@@ -264,7 +264,7 @@ async function backupCheck(admin: ReturnType<typeof createClient>, projectId: st
   };
 }
 
-async function monthlyReport(admin: ReturnType<typeof createClient>, task: MaintenanceTask) {
+async function monthlyReport(admin: ReturnType<typeof createClient<any>>, task: MaintenanceTask) {
   const reportMonth = clean(task.input?.report_month) || new Date().toISOString().slice(0, 7) + "-01";
   const monthStart = new Date(reportMonth + "T00:00:00.000Z");
   const monthEnd = new Date(monthStart);

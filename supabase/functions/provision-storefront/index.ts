@@ -21,7 +21,7 @@ type ProvisioningJob = {
   [key: string]: unknown;
 };
 
-type SupabaseAdminClient = ReturnType<typeof createClient>;
+type SupabaseAdminClient = ReturnType<typeof createClient<any>>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

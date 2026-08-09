@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Compass, X } from "lucide-react";
 
 const tutorialKey = "nxq-client-portal-tutorial-v1-complete";
@@ -29,8 +29,37 @@ const steps = [
 export function ClientPortalTutorialOverlay() {
   const [open, setOpen] = useState(() => window.localStorage.getItem(tutorialKey) !== "true");
   const [index, setIndex] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const step = useMemo(() => steps[index], [index]);
+
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog?.querySelector<HTMLElement>("button")?.focus();
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        window.localStorage.setItem(tutorialKey, "true");
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !dialog) return;
+      const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [open]);
+
   if (!open) return null;
 
   function finish() {
@@ -43,6 +72,8 @@ export function ClientPortalTutorialOverlay() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="nxq-client-tutorial-title"
+      aria-describedby="nxq-client-tutorial-description"
+      ref={dialogRef}
       style={{
         position: "fixed",
         inset: 0,
@@ -68,7 +99,7 @@ export function ClientPortalTutorialOverlay() {
           </button>
         </div>
 
-        <p style={{ fontSize: "1.05rem", lineHeight: 1.65 }}>{step.body}</p>
+        <p id="nxq-client-tutorial-description" style={{ fontSize: "1.05rem", lineHeight: 1.65 }}>{step.body}</p>
 
         <div style={{ display: "flex", gap: ".65rem", justifyContent: "space-between", flexWrap: "wrap", marginTop: "1.2rem" }}>
           <button className="icon-btn" type="button" disabled={index === 0} onClick={() => setIndex((current) => Math.max(0, current - 1))}>

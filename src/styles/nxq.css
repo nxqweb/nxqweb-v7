@@ -3677,6 +3677,42 @@ body[data-nxq-theme="light"] .owner-message-ping small {
   grid-row: 1;
 }
 
+/* Global keyboard and skip-navigation safety for every public and portal route. */
+.nxq-skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 20000;
+  padding: 0.7rem 1rem;
+  border: 2px solid #fde68a;
+  border-radius: 0.7rem;
+  background: #090806;
+  color: #fff7d6;
+  font-weight: 800;
+  transform: translateY(-180%);
+  transition: transform 120ms ease;
+}
+
+.nxq-skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #fde68a !important;
+  outline-offset: 3px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 .build-plan-panel {
   grid-column: 2;
   grid-row: 1;

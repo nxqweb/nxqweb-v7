@@ -3,7 +3,7 @@ import { SignJWT, importPKCS8 } from "npm:jose@6";
 
 type Job={id:string;client_id:string;project_id:string;job_type:string;payload?:Record<string,unknown>|null};
 type JsonRecord=Record<string,unknown>;
-type Admin=ReturnType<typeof createClient>;
+type Admin=ReturnType<typeof createClient<any>>;
 const workerName="build-business-seo-artifacts";
 const jsonHeaders={"Content-Type":"application/json"};
 

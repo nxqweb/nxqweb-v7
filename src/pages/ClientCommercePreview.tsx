@@ -244,6 +244,7 @@ export function ClientCommercePreview() {
       {selectedProduct ? (
         <div
           aria-modal="true"
+          aria-labelledby="commerce-product-preview-title"
           role="dialog"
           style={{
             alignItems: "center",
@@ -275,7 +276,7 @@ export function ClientCommercePreview() {
 
               <div style={{ alignContent: "start", display: "grid", gap: "0.85rem" }}>
                 <span className="subtle">{selectedProduct.category_name || "Uncategorized"}</span>
-                <h2 style={{ margin: 0 }}>{selectedProduct.name}</h2>
+                <h2 id="commerce-product-preview-title" style={{ margin: 0 }}>{selectedProduct.name}</h2>
                 {selectedProduct.short_description ? <p>{selectedProduct.short_description}</p> : null}
                 <strong style={{ fontSize: "1.35rem" }}>{money(selectedProduct.base_price)}</strong>
                 <p className="subtle">

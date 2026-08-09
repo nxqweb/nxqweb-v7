@@ -1527,7 +1527,7 @@ if (messageResult.error) {
       <h2>Client chat</h2>
     </div>
 
-    <button className="icon-btn" onClick={loadOwnerData} type="button">
+    <button aria-label="Refresh client chat" className="icon-btn" onClick={loadOwnerData} type="button">
       <RefreshCcw size={16} />
     </button>
   </div>
@@ -1619,7 +1619,7 @@ if (messageResult.error) {
                 <h2>Payment records</h2>
               </div>
 
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
+              <button aria-label="Refresh payment records" className="icon-btn" onClick={loadOwnerData} type="button">
                 <RefreshCcw size={16} />
               </button>
             </div>
@@ -1660,7 +1660,6 @@ if (messageResult.error) {
     </main>
   );
 }
-
 
 
 

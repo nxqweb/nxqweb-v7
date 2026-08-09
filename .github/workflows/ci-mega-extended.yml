@@ -54,6 +54,14 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave28-contract.mjs
       - name: Ten-run local lifecycle simulation
         run: node scripts/simulate-business-lifecycle-e2e.mjs --runs=10
+      - name: Wave 29 release security and accessibility contract
+        run: node scripts/validate-autonomy-ops-wave29-contract.mjs
+      - name: Frontend security audit
+        run: npm run test:security
+      - name: Frontend accessibility audit
+        run: npm run test:accessibility
+      - name: Edge function type checks
+        run: npm run test:edge
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint
@@ -62,5 +70,9 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Production build
         run: npm run build
+      - name: Built bundle security scan
+        run: npm run test:security
+      - name: Built route smoke checks
+        run: npm run test:routes
       - name: Production bundle budget
         run: node scripts/check-production-bundle-budget.mjs
