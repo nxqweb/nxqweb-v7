@@ -17,7 +17,7 @@ const checks=[
   ["Client cannot choose bucket or storage path in request",secureFile.includes("client_file_id?: unknown")&&!secureFile.includes("bucket_id?:")&&!secureFile.includes("storage_path?:")],
   ["Temporary client file URL expires quickly",secureFile.includes("createSignedUrl(storagePath, 60")&&secureFile.includes("expires_in_seconds: 60")],
   ["Secure file access writes audit evidence",secureFile.includes("client_file_secure_access_issued")],
-  ["Notification timezone integrity is database enforced",notificationIntegrity.includes("pg_timezone_names")&&notificationIntegrity.includes("raise exception 'Invalid notification timezone.'")],
+  ["Notification timezone integrity is database enforced",notificationIntegrity.includes("pg_timezone_names")&&notificationIntegrity.includes("raise exception 'Unsupported timezone.'")&&notificationIntegrity.includes("before insert or update on public.client_notification_preferences")],
   ["Digest batching does not cancel originals with no enabled digest channel",notificationIntegrity.includes("(p.email_enabled or p.push_enabled)")],
   ["SEO worker creates or reuses a safe branch",seoWorker.includes("ensureSafeBranch")&&seoWorker.includes("refs/heads/")&&seoWorker.includes("safe/seo-")],
   ["SEO worker never force-updates production main",!seoWorker.includes('force:true')&&!seoWorker.includes('force: true')],
