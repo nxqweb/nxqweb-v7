@@ -1,0 +1,59 @@
+name: One-shot owner QA route
+
+on:
+  push:
+    branches:
+      - safe/mega-autonomy-pass
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/mega-autonomy-pass
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch owner QA route
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/App.tsx')
+          s=p.read_text()
+          if 'OwnerQaLifecycle' in s:
+              print('Owner QA route already present; no patch needed.')
+              raise SystemExit(0)
+          s=s.replace(
+              'const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");',
+              'const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");\nconst OwnerQaLifecycle = named(() => import("./pages/OwnerQaLifecycle"), "OwnerQaLifecycle");'
+          )
+          s=s.replace(
+              '  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;',
+              '  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;\n  if (path === "/owner/qa-lifecycle") return <OwnerProtectedRoute><OwnerQaLifecycle /></OwnerProtectedRoute>;'
+          )
+          s=s.replace(
+              '<a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a>',
+              '<a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a><a className="owner-plan-change-shortcut" href="/owner/qa-lifecycle" style={{ bottom: "26.25rem" }}>Autonomous QA</a>'
+          )
+          if 'OwnerQaLifecycle' not in s or '"/owner/qa-lifecycle"' not in s:
+              raise SystemExit('Owner QA route patch did not apply cleanly.')
+          p.write_text(s)
+          PY
+      - run: npm run lint -- --max-warnings=0
+      - run: npm run build
+      - name: Commit route
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/App.tsx
+          git commit -m "feat: route owner autonomous QA lifecycle"
+          git push origin HEAD:safe/mega-autonomy-pass
