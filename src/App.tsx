@@ -29,6 +29,7 @@ import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
 import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
+import { ClientDomainStatus } from "./pages/ClientDomainStatus";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSecurityPrivacy } from "./pages/ClientSecurityPrivacy";
 import { ClientSettings } from "./pages/ClientSettings";
@@ -63,7 +64,6 @@ import { ResetPassword } from "./pages/ResetPassword";
 
 function App() {
   const path = window.location.pathname;
-
   if (path === "/owner/login") { window.location.replace("/portal/login"); return null; }
   if (path === "/owner/product-families") return <OwnerProtectedRoute><OwnerProductFamilies /></OwnerProtectedRoute>;
   if (path === "/owner/billing") return <OwnerProtectedRoute><OwnerBillingLifecycle /></OwnerProtectedRoute>;
@@ -82,12 +82,12 @@ function App() {
   if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
-
   if (path === "/owner") return <OwnerProtectedRoute><><OwnerPortal /><a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a><a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a><a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a><a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a><a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a><a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a><a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a></></OwnerProtectedRoute>;
   if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
+  if (path === "/client/domain") return <ClientDomainStatus />;
   if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
@@ -128,5 +128,4 @@ function App() {
   if (path.startsWith("/portal/")) { window.location.replace("/portal"); return null; }
   return <PublicHome />;
 }
-
 export default App;
