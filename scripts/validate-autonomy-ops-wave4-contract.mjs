@@ -8,7 +8,7 @@ const privacyRoute=read("supabase/migrations/148_route_privacy_requests_safely.s
 const readiness=read("supabase/migrations/153_extended_launch_readiness_evidence.sql");
 const checks=[
   ["Client domain recheck resolves current authenticated client",domainRpc.includes("auth_user_id=auth.uid()")&&domainRpc.includes("client_id=client_uuid")],
-  ["Client cannot mark its own domain connected",!domainRpc.includes("automation_state='connected'")&&domainRpc.includes("case when automation_state='connected' then 'connected' else 'queued' end")],
+  ["Client cannot mark its own domain connected",domainRpc.includes("automation_state=case when automation_state='connected' then 'connected' else 'queued' end")&&!domainRpc.includes("set automation_state='connected'")&&!domainRpc.includes("automation_state = 'connected',")],
   ["Domain page shows DNS and SSL evidence",domainPage.includes("dns_status")&&domainPage.includes("ssl_status")&&domainPage.includes("action_required_message")],
   ["Domain page uses safe recheck RPC",domainPage.includes("current_client_request_domain_recheck")],
   ["Domain status route is wired",app.includes("/client/domain")&&app.includes("ClientDomainStatus")],
