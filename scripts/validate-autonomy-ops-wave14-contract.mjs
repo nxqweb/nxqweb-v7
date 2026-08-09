@@ -20,6 +20,6 @@ const checks=[
 ["Missing runtime classifier evidence remains unknown",dispatch.includes("then 'ready' else 'unknown'")],
 ["Classifier readiness requires recent worker heartbeat",dispatch.includes("worker_key='classify-business-change-request'")&&dispatch.includes("interval '15 minutes'")],
 ["Blocked change requests enter owner exception center",exceptions.includes("'source','change_request'")&&exceptions.includes("where r.status in ('blocked','failed')")],
-["Owner exception RPC remains owner gated",exceptions.includes("owner_users.auth_user_id=auth.uid()")&&exceptions.includes("Owner access required"))],
+["Owner exception RPC remains owner gated",exceptions.includes("owner_users.auth_user_id=auth.uid()")&&exceptions.includes("Owner access required")],
 ];
 let passed=0;for(const [label,ok] of checks){if(ok){console.log(`PASS  ${label}`);passed++;}else console.error(`FAIL  ${label}`);}console.log(`\n${passed}/${checks.length} autonomy ops wave-fourteen checks passed.`);if(passed!==checks.length)process.exit(1);
