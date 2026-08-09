@@ -49,7 +49,7 @@ export function ClientLaunchJourneyPage() {
               <p className="subtle">One truthful timeline showing what is complete, what NXQ is handling, and the exact moments when we need you.</p>
             </div>
           </div>
-          <a className="icon-btn" href="/client"><ArrowLeft size={16} /> Portal</a>
+          <div className="client-control-row"><a className="icon-btn" href="/client/history">NXQ value & history</a><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Portal</a></div>
         </div>
 
         {error ? <div className="auth-error" role="alert">{error}</div> : null}

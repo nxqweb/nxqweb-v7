@@ -1048,6 +1048,105 @@ body[data-nxq-theme="light"] .domain-exact-instructions pre {
   }
 }
 
+/* Client evidence and value history. */
+.value-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.value-summary-card {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.value-summary-card svg {
+  color: #f2c96d;
+}
+
+.value-summary-card span {
+  color: var(--muted, #a9acb7);
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.value-summary-card strong {
+  font-size: 1.8rem;
+}
+
+.value-event-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.value-event-list > li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: start;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.value-event-list > li > svg {
+  color: #f2c96d;
+}
+
+.value-event-list p,
+.value-payment-list p {
+  margin: 0.3rem 0;
+}
+
+.value-event-list .panel-title-row > span {
+  color: var(--muted, #a9acb7);
+  font-size: 0.78rem;
+}
+
+.value-payment-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+.value-payment-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+@media (max-width: 900px) {
+  .value-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .value-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .value-event-list > li {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+  }
+
+  .value-event-list > li > .icon-btn {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+
 /* NXQ premium gold public website */
 
 .lux-home {

@@ -42,6 +42,7 @@ const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal")
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
 const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
+const ClientValueHistory = named(() => import("./pages/ClientValueHistory"), "ClientValueHistory");
 const OwnerAutomationHealth = named(() => import("./pages/OwnerAutomationHealth"), "OwnerAutomationHealth");
 const OwnerBillingLifecycle = named(() => import("./pages/OwnerBillingLifecycle"), "OwnerBillingLifecycle");
 const OwnerCommerceBuildQueue = named(() => import("./pages/OwnerCommerceBuildQueue"), "OwnerCommerceBuildQueue");
@@ -95,6 +96,7 @@ function AppRoutes() {
 
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
+  if (path === "/client/history") return <ClientValueHistory />;
   if (path === "/client/domain") return <ClientDomainStatus />;
   if (path === "/client/journey") return <ClientLaunchJourneyPage />;
   if (path === "/client/files") return <ClientFiles />;
