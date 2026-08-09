@@ -44,6 +44,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave23-contract.mjs
       - name: Wave 24 deployment authority boundaries
         run: node scripts/validate-autonomy-ops-wave24-contract.mjs
+      - name: Wave 25 tenant-safe client mutations
+        run: node scripts/validate-autonomy-ops-wave25-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint

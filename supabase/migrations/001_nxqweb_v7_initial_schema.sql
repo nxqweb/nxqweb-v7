@@ -197,12 +197,18 @@ create table if not exists public.client_files (
   id uuid primary key default gen_random_uuid(),
   client_id uuid references public.clients(id) on delete cascade,
   bucket_name text not null default 'client-files',
+  bucket_id text not null default 'client-files',
   storage_path text not null,
   file_name text not null,
   file_type text,
   file_size bigint,
+  status text not null default 'uploaded',
+  uploaded_at timestamptz not null default now(),
+  expires_at timestamptz,
   ai_notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (bucket_id, storage_path),
+  check (file_size is null or file_size between 0 and 26214400)
 );
 
 create table if not exists public.activity_logs (

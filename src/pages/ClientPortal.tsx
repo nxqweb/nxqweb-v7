@@ -939,6 +939,20 @@ export function ClientPortal() {
       return;
     }
 
+    const allowedFileTypes = new Set([
+      "application/pdf", "image/jpeg", "image/png", "image/webp", "text/plain", "text/csv",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]);
+    if (!allowedFileTypes.has(selectedFile.type)) {
+      setErrorMessage("Supported files: PDF, JPG, PNG, WebP, TXT, CSV, DOCX, and XLSX.");
+      return;
+    }
+    if (selectedFile.size < 1 || selectedFile.size > 25 * 1024 * 1024) {
+      setErrorMessage("Files must be between 1 byte and 25 MB.");
+      return;
+    }
+
     setIsUploadingFile(true);
 
     try {
@@ -958,15 +972,11 @@ export function ClientPortal() {
         return;
       }
 
-      const fileRecordResult = await supabase.from("client_files").insert({
-        client_id: client.id,
-        bucket_id: "client-files",
-        storage_path: filePath,
-        file_name: selectedFile.name,
-        file_type: selectedFile.type || null,
-        file_size: selectedFile.size,
-        status: "uploaded",
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      const fileRecordResult = await supabase.rpc("current_client_register_uploaded_file", {
+        target_storage_path: filePath,
+        target_file_name: selectedFile.name,
+        target_file_type: selectedFile.type,
+        target_file_size: selectedFile.size,
       });
 
       if (fileRecordResult.error) {
@@ -989,21 +999,8 @@ export function ClientPortal() {
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "client_file_uploaded",
-        details: {
-          file_name: selectedFile.name,
-          file_path: filePath,
-          file_size: selectedFile.size,
-          file_type: selectedFile.type,
-          expires_in_days: 30,
-        },
-      });
-
       setSelectedFile(null);
-      setNotice("File uploaded to your website team.");
+      setNotice("File uploaded securely. NXQ file security is scanning it before anyone can open it.");
       await loadClientPortalData();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown file upload error";
@@ -1872,7 +1869,6 @@ export function ClientPortal() {
     </main>
   );
 }
-
 
 
 
