@@ -12,6 +12,8 @@ function publish(system, clientId, previewUrl) { const previewDeployment = syste
 function notificationDecision({enabled=true,priority='normal',digest='daily',quiet=false,security=false,criticalOverride=true}) { if (!enabled) return 'blocked'; if (priority === 'urgent' || priority === 'high' || (security && criticalOverride)) return 'immediate'; if (quiet) return 'defer'; if (digest !== 'off') return 'digest'; return 'immediate'; }
 function canOpenFile(scan) { return scan?.status === 'clean' && scan?.quarantine_status === 'released'; }
 function seoTarget(baseUrl, branch) { const u = new URL(baseUrl); assert.equal(u.protocol, 'https:', 'SEO canonical URL must use HTTPS'); assert.notEqual(branch, 'main', 'SEO worker must use safe branch'); return { base: `${u.protocol}//${u.host}`, branch }; }
+function seoPromotionDecision({approved=true,baseMain, currentMain, previewCommit, sourceHead}) { if (!approved) return 'blocked_client'; if (previewCommit !== sourceHead) return 'blocked_preview_mismatch'; if (currentMain !== baseMain) return 'regenerate'; return 'promote'; }
+function seoProductionVerified(expectedCommit, actualCommit) { return Boolean(expectedCommit && expectedCommit === actualCommit); }
 function privacyDeleteAllowed(identityVerified) { return identityVerified === true; }
 function runScenario(name, fn) { try { fn(); console.log(`PASS  ${name}`); } catch (error) { console.error(`FAIL  ${name}`); throw error; } }
 
@@ -31,6 +33,10 @@ runScenario('Quarantined or pending files cannot open',()=>{assert.equal(canOpen
 runScenario('Only clean released files can open',()=>{assert.equal(canOpenFile({status:'clean',quarantine_status:'released'}),true);});
 runScenario('SEO rejects non-HTTPS canonical target',()=>{assert.throws(()=>seoTarget('http://example.test','safe/seo-a'),/HTTPS/);});
 runScenario('SEO rejects production main as working branch',()=>{assert.throws(()=>seoTarget('https://example.test','main'),/safe branch/);});
+runScenario('SEO main drift queues regeneration instead of overwrite',()=>{assert.equal(seoPromotionDecision({baseMain:'aaa',currentMain:'bbb',previewCommit:'seo1',sourceHead:'seo1'}),'regenerate');});
+runScenario('SEO preview commit mismatch blocks promotion',()=>{assert.equal(seoPromotionDecision({baseMain:'aaa',currentMain:'aaa',previewCommit:'wrong',sourceHead:'seo1'}),'blocked_preview_mismatch');});
+runScenario('SEO production commit mismatch cannot be marked published',()=>{assert.equal(seoProductionVerified('seo1','other'),false);assert.equal(seoProductionVerified('seo1','seo1'),true);});
+runScenario('Denied client after SEO preview cannot promote',()=>{assert.equal(seoPromotionDecision({approved:false,baseMain:'aaa',currentMain:'aaa',previewCommit:'seo1',sourceHead:'seo1'}),'blocked_client');});
 runScenario('Privacy deletion requires identity verification',()=>{assert.equal(privacyDeleteAllowed(false),false);assert.equal(privacyDeleteAllowed(true),true);});
 
-console.log('\n17/17 autonomous lifecycle failure simulations passed.');
+console.log('\n21/21 autonomous lifecycle failure simulations passed.');
