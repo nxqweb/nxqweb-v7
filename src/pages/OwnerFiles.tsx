@@ -101,14 +101,19 @@ export function OwnerFiles() {
       setErrorMessage(`Access to ${file.file_name} is blocked until NXQ file security releases it clean (${label}).`);
       return null;
     }
-    const signedUrlResult = await supabase.storage
-      .from(file.bucket_id || "client-files")
-      .createSignedUrl(file.storage_path, 60, download ? { download: file.file_name } : undefined);
-    if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
-      setErrorMessage(signedUrlResult.error?.message || "Unable to create a secure file link.");
+    const result = await supabase.functions.invoke("secure-owner-file-access", {
+      body: { client_file_id: file.id, download },
+    });
+    if (result.error) {
+      setErrorMessage(result.error.message || "Unable to create a secure file link.");
       return null;
     }
-    return signedUrlResult.data.signedUrl;
+    const data = result.data as { ok?: boolean; signed_url?: string; error?: string } | null;
+    if (!data?.ok || !data.signed_url) {
+      setErrorMessage(data?.error || "Unable to create a secure file link.");
+      return null;
+    }
+    return data.signed_url;
   }
 
   async function openFile(file: ClientFileRow) {
