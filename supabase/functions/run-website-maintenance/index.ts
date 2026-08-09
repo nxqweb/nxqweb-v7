@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 
 type JsonRecord = Record<string, unknown>;
 type MaintenanceTask = {
@@ -233,7 +234,7 @@ async function seoCheck(urlText: string) {
   };
 }
 
-async function backupCheck(admin: ReturnType<typeof createClient<any>>, projectId: string) {
+async function backupCheck(admin: ReturnType<typeof createClient<DynamicDatabase>>, projectId: string) {
   const config = await admin.from("project_deployment_configs")
     .select("github_owner,github_repo,production_branch,last_production_commit,last_deployment_status")
     .eq("project_id", projectId).maybeSingle();
@@ -264,7 +265,7 @@ async function backupCheck(admin: ReturnType<typeof createClient<any>>, projectI
   };
 }
 
-async function monthlyReport(admin: ReturnType<typeof createClient<any>>, task: MaintenanceTask) {
+async function monthlyReport(admin: ReturnType<typeof createClient<DynamicDatabase>>, task: MaintenanceTask) {
   const reportMonth = clean(task.input?.report_month) || new Date().toISOString().slice(0, 7) + "-01";
   const monthStart = new Date(reportMonth + "T00:00:00.000Z");
   const monthEnd = new Date(monthStart);

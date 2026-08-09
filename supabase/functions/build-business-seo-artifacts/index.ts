@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 
 type Job={id:string;client_id:string;project_id:string;job_type:string;payload?:Record<string,unknown>|null};
 type JsonRecord=Record<string,unknown>;
-type Admin=ReturnType<typeof createClient<any>>;
+type Admin=ReturnType<typeof createClient<DynamicDatabase>>;
 const workerName="build-business-seo-artifacts";
 const jsonHeaders={"Content-Type":"application/json"};
 

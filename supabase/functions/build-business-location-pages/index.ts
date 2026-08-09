@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 
 type Job = { id:string; client_id:string; project_id:string; job_type:string; payload?:Record<string,unknown>|null };
 type JsonRecord = Record<string, unknown>;
-type Admin = ReturnType<typeof createClient<any>>;
+type Admin = ReturnType<typeof createClient<DynamicDatabase>>;
 
 const workerName = "build-business-location-pages";
 const headers = { "Content-Type":"application/json" };
@@ -63,7 +64,7 @@ async function processJob(admin:Admin,job:Job){
   const token=await githubToken();
   const path=`locations/${String(locationRes.data.seo_slug)}/index.html`;
   const html=locationHtml(String(clientRes.data.business_name||"Business"),locationRes.data as JsonRecord,(servicesRes.data||[]) as JsonRecord[]);
-  const write=await putFile(deployRes.data.github_owner,deployRes.data.github_repo,branch,path,html,token,`NXQ: refresh location page ${String(locationRes.data.display_name)}`);
+  const write=await putFile(String(deployRes.data.github_owner),String(deployRes.data.github_repo),branch,path,html,token,`NXQ: refresh location page ${String(locationRes.data.display_name)}`);
   const commitSha=String(write?.commit?.sha||"");
   const pageTitle=String(locationRes.data.seo_title||`${clientRes.data.business_name} in ${[locationRes.data.city,locationRes.data.state_region].filter(Boolean).join(", ")}`);
   const canonical=`/locations/${String(locationRes.data.seo_slug)}/`;

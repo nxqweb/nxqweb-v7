@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 
 
 type ProviderMetadata = {
@@ -21,7 +22,7 @@ type ProvisioningJob = {
   [key: string]: unknown;
 };
 
-type SupabaseAdminClient = ReturnType<typeof createClient<any>>;
+type SupabaseAdminClient = ReturnType<typeof createClient<DynamicDatabase>>;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

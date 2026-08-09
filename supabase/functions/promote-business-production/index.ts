@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 
 type AutomationJob = {
   id: string;
@@ -10,7 +11,7 @@ type AutomationJob = {
 };
 
 type JsonRecord = Record<string, unknown>;
-type AdminClient = ReturnType<typeof createClient<any>>;
+type AdminClient = ReturnType<typeof createClient<DynamicDatabase>>;
 
 const workerName = "promote-business-production";
 const headers = { "Content-Type": "application/json" };

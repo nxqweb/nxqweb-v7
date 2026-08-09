@@ -56,6 +56,8 @@ jobs:
         run: node scripts/simulate-business-lifecycle-e2e.mjs --runs=10
       - name: Wave 29 release security and accessibility contract
         run: node scripts/validate-autonomy-ops-wave29-contract.mjs
+      - name: Wave 30 guarded product-family foundations
+        run: npm run test:families
       - name: Frontend security audit
         run: npm run test:security
       - name: Frontend accessibility audit
