@@ -3,8 +3,7 @@ name: NXQ Safe CI
 on:
   push:
     branches:
-      - safe/commerce-live-storefront
-      - safe/mega-autonomy-pass
+      - "safe/**"
   pull_request:
     branches:
       - main

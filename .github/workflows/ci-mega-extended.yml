@@ -3,7 +3,7 @@ name: NXQ Mega Extended CI
 on:
   push:
     branches:
-      - safe/mega-autonomy-pass
+      - "safe/**"
   pull_request:
     branches:
       - main
@@ -32,6 +32,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave17-contract.mjs
       - name: Wave 18 AI build-plan enrichment
         run: node scripts/validate-autonomy-ops-wave18-contract.mjs
+      - name: Wave 19 structured AI runtime adapter
+        run: node scripts/validate-autonomy-ops-wave19-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint

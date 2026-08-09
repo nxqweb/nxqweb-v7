@@ -71,6 +71,7 @@ jobs:
           set -euo pipefail
           functions=(
             provision-project-infrastructure
+            generate-business-build-plan
             prepare-build-plan
             build-business-website
             promote-business-production
