@@ -29,6 +29,7 @@ import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
 import { ClientPortal } from "./pages/ClientPortal";
+import { ClientSecurityPrivacy } from "./pages/ClientSecurityPrivacy";
 import { ClientSettings } from "./pages/ClientSettings";
 import { ClientWebsiteHealth } from "./pages/ClientWebsiteHealth";
 import { OwnerAutomationHealth } from "./pages/OwnerAutomationHealth";
@@ -109,6 +110,7 @@ function App() {
 
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
+  if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
   if (path === "/client/business/locations") return <ClientBusinessLocations />;
