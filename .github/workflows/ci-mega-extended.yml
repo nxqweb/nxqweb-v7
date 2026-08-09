@@ -50,6 +50,10 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave26-contract.mjs
       - name: Wave 27 human billing freeze and safe recovery
         run: node scripts/validate-autonomy-ops-wave27-contract.mjs
+      - name: Wave 28 deterministic lifecycle contract
+        run: node scripts/validate-autonomy-ops-wave28-contract.mjs
+      - name: Ten-run local lifecycle simulation
+        run: node scripts/simulate-business-lifecycle-e2e.mjs --runs=10
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint
