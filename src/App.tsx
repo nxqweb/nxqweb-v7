@@ -13,6 +13,7 @@ import { ClientBusinessDashboard } from "./pages/ClientBusinessDashboard";
 import { ClientBusinessLeads } from "./pages/ClientBusinessLeads";
 import { ClientBusinessLocations } from "./pages/ClientBusinessLocations";
 import { ClientBusinessReports } from "./pages/ClientBusinessReports";
+import { ClientBusinessSeo } from "./pages/ClientBusinessSeo";
 import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
 import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
 import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
@@ -63,11 +64,7 @@ import { ResetPassword } from "./pages/ResetPassword";
 function App() {
   const path = window.location.pathname;
 
-  if (path === "/owner/login") {
-    window.location.replace("/portal/login");
-    return null;
-  }
-
+  if (path === "/owner/login") { window.location.replace("/portal/login"); return null; }
   if (path === "/owner/product-families") return <OwnerProtectedRoute><OwnerProductFamilies /></OwnerProtectedRoute>;
   if (path === "/owner/billing") return <OwnerProtectedRoute><OwnerBillingLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner/commerce") return <OwnerProtectedRoute><OwnerCommerceHub /></OwnerProtectedRoute>;
@@ -86,27 +83,8 @@ function App() {
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
 
-  if (path === "/owner") {
-    return (
-      <OwnerProtectedRoute>
-        <>
-          <OwnerPortal />
-          <a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a>
-          <a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a>
-          <a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a>
-          <a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a>
-          <a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a>
-          <a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a>
-          <a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a>
-        </>
-      </OwnerProtectedRoute>
-    );
-  }
-
-  if (path.startsWith("/owner/")) {
-    window.location.replace("/owner");
-    return null;
-  }
+  if (path === "/owner") return <OwnerProtectedRoute><><OwnerPortal /><a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a><a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a><a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a><a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a><a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a><a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a><a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a></></OwnerProtectedRoute>;
+  if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
@@ -116,6 +94,7 @@ function App() {
   if (path === "/client/business/locations") return <ClientBusinessLocations />;
   if (path === "/client/business/analytics") return <ClientBusinessAnalytics />;
   if (path === "/client/business/reports") return <ClientBusinessReports />;
+  if (path === "/client/business/seo") return <ClientBusinessSeo />;
   if (path === "/client/business") return <ClientBusinessDashboard />;
   if (path === "/client/commerce/readiness") return <ClientCommerceReadiness />;
   if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
@@ -133,15 +112,8 @@ function App() {
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
   if (path === "/client/commerce") return <ClientCommerceDashboard />;
   if (path === "/client/settings") return <ClientSettings />;
-
-  if (path === "/client") {
-    return <><ClientPortalTopCards /><ClientPortal /><ClientPortalTutorialOverlay /></>;
-  }
-
-  if (path.startsWith("/client/")) {
-    window.location.replace("/client");
-    return null;
-  }
+  if (path === "/client") return <><ClientPortalTopCards /><ClientPortal /><ClientPortalTutorialOverlay /></>;
+  if (path.startsWith("/client/")) { window.location.replace("/client"); return null; }
 
   if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (path === "/store/checkout") return <PublicCommerceCheckout />;
@@ -153,12 +125,7 @@ function App() {
   if (path === "/portal/forgot-password") return <ForgotPassword />;
   if (path === "/portal/reset-password") return <ResetPassword />;
   if (path === "/portal") return <PortalLanding />;
-
-  if (path.startsWith("/portal/")) {
-    window.location.replace("/portal");
-    return null;
-  }
-
+  if (path.startsWith("/portal/")) { window.location.replace("/portal"); return null; }
   return <PublicHome />;
 }
 
