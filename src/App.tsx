@@ -30,6 +30,8 @@ import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
 import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
 import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
 import { ClientDomainStatus } from "./pages/ClientDomainStatus";
+import { ClientFiles } from "./pages/ClientFiles";
+import { ClientNotificationPreferences } from "./pages/ClientNotificationPreferences";
 import { ClientPortal } from "./pages/ClientPortal";
 import { ClientSecurityPrivacy } from "./pages/ClientSecurityPrivacy";
 import { ClientSettings } from "./pages/ClientSettings";
@@ -88,6 +90,8 @@ function App() {
   if (path === "/client/billing") return <ClientBillingStatus />;
   if (path === "/client/health") return <ClientWebsiteHealth />;
   if (path === "/client/domain") return <ClientDomainStatus />;
+  if (path === "/client/files") return <ClientFiles />;
+  if (path === "/client/notifications") return <ClientNotificationPreferences />;
   if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
