@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shared/business-industry-presets.ts";
 
 type AutomationJob = {
   id: string;
@@ -188,6 +189,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
   const businessName = clean(business.name) || "Local Business";
   const businessType = clean(business.type) || "local service business";
   const serviceArea = clean(business.service_area);
+  const industryPreset = getBusinessIndustryPreset(businessType);
   const goals = clean(buildPlan.goals);
   const desiredStyle = clean(buildPlan.desired_style);
   const primaryCta = clean(architecture.primary_cta) || "Contact us";
@@ -213,11 +215,11 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       serviceArea,
     },
     brand: {
-      eyebrow: clean(hero.eyebrow) || (serviceArea ? `Serving ${serviceArea}` : "Trusted local service"),
-      headline: clean(hero.headline) || `${businessName}. Professional service. Clear results.`,
-      subheadline: clean(hero.subheadline) || goals || `Premium ${businessType} services with clear communication and dependable support.`,
-      primaryCta,
-      secondaryCta,
+      eyebrow: clean(hero.eyebrow) || industryPreset?.heroEyebrow(serviceArea) || (serviceArea ? `Serving ${serviceArea}` : "Trusted local service"),
+      headline: clean(hero.headline) || industryPreset?.heroHeadline(businessName) || `${businessName}. Professional service. Clear results.`,
+      subheadline: clean(hero.subheadline) || goals || industryPreset?.heroSubheadline || `Premium ${businessType} services with clear communication and dependable support.`,
+      primaryCta: clean(architecture.primary_cta) || industryPreset?.primaryCta || primaryCta,
+      secondaryCta: clean(architecture.secondary_cta) || industryPreset?.secondaryCta || secondaryCta,
       styleDirection: desiredStyle,
       positioning: clean(contentStrategy.positioning),
       valueProposition: clean(contentStrategy.value_proposition),
@@ -225,24 +227,24 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
     },
     services: services.length ? services.map((service) => ({
       title: service,
-      description: serviceCopyLookup.get(service.toLowerCase()) || serviceDescription(service, businessType),
+      description: serviceCopyLookup.get(service.toLowerCase()) || getPresetServiceDescription(industryPreset, service) || serviceDescription(service, businessType),
     })) : [
       { title: "Professional Service", description: serviceDescription("Professional service", businessType) },
     ],
     trust: {
-      heading: "Built around trust and reliable service",
+      heading: industryPreset?.trustHeading || "Built around trust and reliable service",
       points: textList(contentStrategy.trust_points, 6).length >= 3
         ? textList(contentStrategy.trust_points, 6)
-        : ["Clear communication", "Professional service", serviceArea ? `Local to ${serviceArea}` : "Local support", "Straightforward next steps"],
+        : industryPreset?.trustPoints || ["Clear communication", "Professional service", serviceArea ? `Local to ${serviceArea}` : "Local support", "Straightforward next steps"],
     },
     about: {
       heading: `${businessName} is focused on doing the job right`,
-      body: clean(contentStrategy.about_summary) || goals || `${businessName} provides ${businessType} services with a focus on reliable work, clear communication, and a strong customer experience.`,
+      body: clean(contentStrategy.about_summary) || goals || industryPreset?.aboutBody(businessName, serviceArea) || `${businessName} provides ${businessType} services with a focus on reliable work, clear communication, and a strong customer experience.`,
     },
     seo: {
       title: clean(strategySeo.title) || `${businessName} | ${businessType}`,
       description: clean(strategySeo.description) || `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
-      keywords: textList(strategySeo.keywords, 10),
+      keywords: textList(strategySeo.keywords, 10).length ? textList(strategySeo.keywords, 10) : (industryPreset?.seoKeywords || []),
     },
     design: {
       themeKey,
@@ -256,6 +258,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       audiences: textList(contentStrategy.audiences, 5),
       aiEnrichmentValidated: enrichmentValidated,
       pageStrategy: Array.isArray(architecture.page_strategy) ? architecture.page_strategy.slice(0, 8) : [],
+      industryPresetKey: industryPreset?.key || null,
     },
     leads: {
       enabled: Boolean(leadEndpoint && leadFormKey),
