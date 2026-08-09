@@ -19,6 +19,6 @@ const checks=[
   ["Failure simulator covers preview commit mismatch",simulator.includes("SEO preview commit mismatch blocks promotion")],
   ["Failure simulator covers production commit mismatch",simulator.includes("SEO production commit mismatch cannot be marked published")],
   ["Failure simulator covers denial after SEO preview",simulator.includes("Denied client after SEO preview cannot promote")],
-  ["Failure simulator total increased to twenty one",simulator.includes("21/21 autonomous lifecycle failure simulations passed")],
+  ["Failure simulator includes all current twenty-three scenarios",simulator.includes("23/23 autonomous lifecycle failure simulations passed")],
 ];
 let passed=0;for(const [label,ok] of checks){if(ok){console.log(`PASS  ${label}`);passed++;}else console.error(`FAIL  ${label}`);}console.log(`\n${passed}/${checks.length} autonomy ops wave-nine checks passed.`);if(passed!==checks.length)process.exit(1);
