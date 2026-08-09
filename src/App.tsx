@@ -1,70 +1,75 @@
+import { lazy, Suspense } from "react";
 import "./styles/nxq.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
-import { CheckEmail } from "./pages/CheckEmail";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ClientBillingStatus } from "./pages/ClientBillingStatus";
-import { ClientBusinessAnalytics } from "./pages/ClientBusinessAnalytics";
-import { ClientBusinessChanges } from "./pages/ClientBusinessChanges";
-import { ClientBusinessDashboard } from "./pages/ClientBusinessDashboard";
-import { ClientBusinessLeads } from "./pages/ClientBusinessLeads";
-import { ClientBusinessLocations } from "./pages/ClientBusinessLocations";
-import { ClientBusinessReports } from "./pages/ClientBusinessReports";
-import { ClientBusinessSeo } from "./pages/ClientBusinessSeo";
-import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
-import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
-import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
-import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
-import { ClientCommerceLiveStore } from "./pages/ClientCommerceLiveStore";
-import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
-import { ClientCommercePreview } from "./pages/ClientCommercePreview";
-import { ClientCommerceProductImages } from "./pages/ClientCommerceProductImages";
-import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
-import { ClientCommerceReadiness } from "./pages/ClientCommerceReadiness";
-import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
-import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
-import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
-import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
-import { ClientCommerceWebsiteContent } from "./pages/ClientCommerceWebsiteContent";
-import { ClientDomainStatus } from "./pages/ClientDomainStatus";
-import { ClientFiles } from "./pages/ClientFiles";
-import { ClientNotificationPreferences } from "./pages/ClientNotificationPreferences";
-import { ClientPortal } from "./pages/ClientPortal";
-import { ClientSecurityPrivacy } from "./pages/ClientSecurityPrivacy";
-import { ClientSettings } from "./pages/ClientSettings";
-import { ClientWebsiteHealth } from "./pages/ClientWebsiteHealth";
-import { OwnerAutomationHealth } from "./pages/OwnerAutomationHealth";
-import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
-import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
-import { OwnerCommerceHub } from "./pages/OwnerCommerceHub";
-import { OwnerCommerceReviews } from "./pages/OwnerCommerceReviews";
-import { OwnerCommerceUsage } from "./pages/OwnerCommerceUsage";
-import { OwnerDeployments } from "./pages/OwnerDeployments";
-import { OwnerExceptionCenter } from "./pages/OwnerExceptionCenter";
-import { OwnerFiles } from "./pages/OwnerFiles";
-import { OwnerLaunchReadiness } from "./pages/OwnerLaunchReadiness";
-import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
-import { OwnerPortal } from "./pages/OwnerPortal";
-import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
-import { OwnerProductFamilies } from "./pages/OwnerProductFamilies";
-import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
-import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
-import { OwnerProviderHealth } from "./pages/OwnerProviderHealth";
-import { OwnerStorefrontProvisioning } from "./pages/OwnerStorefrontProvisioning";
-import { PortalLanding } from "./pages/PortalLanding";
-import { PortalLogin } from "./pages/PortalLogin";
-import { PortalSignup } from "./pages/PortalSignup";
-import { PublicCommerceCheckout } from "./pages/PublicCommerceCheckout";
-import { PublicCommerceRequest } from "./pages/PublicCommerceRequest";
-import { PublicCommerceStorefront } from "./pages/PublicCommerceStorefront";
-import { PublicHome } from "./pages/PublicHome";
-import { PublicPlans } from "./pages/PublicPlans";
-import { ResetPassword } from "./pages/ResetPassword";
 
-function App() {
+const named = <T extends Record<string, unknown>, K extends keyof T>(loader: () => Promise<T>, key: K) =>
+  lazy(async () => ({ default: (await loader())[key] as React.ComponentType }));
+
+const CheckEmail = named(() => import("./pages/CheckEmail"), "CheckEmail");
+const ForgotPassword = named(() => import("./pages/ForgotPassword"), "ForgotPassword");
+const ClientBillingStatus = named(() => import("./pages/ClientBillingStatus"), "ClientBillingStatus");
+const ClientBusinessAnalytics = named(() => import("./pages/ClientBusinessAnalytics"), "ClientBusinessAnalytics");
+const ClientBusinessChanges = named(() => import("./pages/ClientBusinessChanges"), "ClientBusinessChanges");
+const ClientBusinessDashboard = named(() => import("./pages/ClientBusinessDashboard"), "ClientBusinessDashboard");
+const ClientBusinessLeads = named(() => import("./pages/ClientBusinessLeads"), "ClientBusinessLeads");
+const ClientBusinessLocations = named(() => import("./pages/ClientBusinessLocations"), "ClientBusinessLocations");
+const ClientBusinessReports = named(() => import("./pages/ClientBusinessReports"), "ClientBusinessReports");
+const ClientBusinessSeo = named(() => import("./pages/ClientBusinessSeo"), "ClientBusinessSeo");
+const ClientCommerceCatalog = named(() => import("./pages/ClientCommerceCatalog"), "ClientCommerceCatalog");
+const ClientCommerceCategories = named(() => import("./pages/ClientCommerceCategories"), "ClientCommerceCategories");
+const ClientCommerceDashboard = named(() => import("./pages/ClientCommerceDashboard"), "ClientCommerceDashboard");
+const ClientCommerceInventory = named(() => import("./pages/ClientCommerceInventory"), "ClientCommerceInventory");
+const ClientCommerceLiveStore = named(() => import("./pages/ClientCommerceLiveStore"), "ClientCommerceLiveStore");
+const ClientCommerceOrders = named(() => import("./pages/ClientCommerceOrders"), "ClientCommerceOrders");
+const ClientCommercePreview = named(() => import("./pages/ClientCommercePreview"), "ClientCommercePreview");
+const ClientCommerceProductImages = named(() => import("./pages/ClientCommerceProductImages"), "ClientCommerceProductImages");
+const ClientCommerceProducts = named(() => import("./pages/ClientCommerceProducts"), "ClientCommerceProducts");
+const ClientCommerceReadiness = named(() => import("./pages/ClientCommerceReadiness"), "ClientCommerceReadiness");
+const ClientCommerceRequests = named(() => import("./pages/ClientCommerceRequests"), "ClientCommerceRequests");
+const ClientCommerceSetup = named(() => import("./pages/ClientCommerceSetup"), "ClientCommerceSetup");
+const ClientCommerceTutorial = named(() => import("./pages/ClientCommerceTutorial"), "ClientCommerceTutorial");
+const ClientCommerceUsage = named(() => import("./pages/ClientCommerceUsage"), "ClientCommerceUsage");
+const ClientCommerceWebsiteContent = named(() => import("./pages/ClientCommerceWebsiteContent"), "ClientCommerceWebsiteContent");
+const ClientDomainStatus = named(() => import("./pages/ClientDomainStatus"), "ClientDomainStatus");
+const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
+const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
+const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
+const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
+const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
+const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
+const OwnerAutomationHealth = named(() => import("./pages/OwnerAutomationHealth"), "OwnerAutomationHealth");
+const OwnerBillingLifecycle = named(() => import("./pages/OwnerBillingLifecycle"), "OwnerBillingLifecycle");
+const OwnerCommerceBuildQueue = named(() => import("./pages/OwnerCommerceBuildQueue"), "OwnerCommerceBuildQueue");
+const OwnerCommerceHub = named(() => import("./pages/OwnerCommerceHub"), "OwnerCommerceHub");
+const OwnerCommerceReviews = named(() => import("./pages/OwnerCommerceReviews"), "OwnerCommerceReviews");
+const OwnerCommerceUsage = named(() => import("./pages/OwnerCommerceUsage"), "OwnerCommerceUsage");
+const OwnerDeployments = named(() => import("./pages/OwnerDeployments"), "OwnerDeployments");
+const OwnerExceptionCenter = named(() => import("./pages/OwnerExceptionCenter"), "OwnerExceptionCenter");
+const OwnerFiles = named(() => import("./pages/OwnerFiles"), "OwnerFiles");
+const OwnerLaunchReadiness = named(() => import("./pages/OwnerLaunchReadiness"), "OwnerLaunchReadiness");
+const OwnerPlanChanges = named(() => import("./pages/OwnerPlanChanges"), "OwnerPlanChanges");
+const OwnerPortal = named(() => import("./pages/OwnerPortal"), "OwnerPortal");
+const OwnerPreviewRequests = named(() => import("./pages/OwnerPreviewRequests"), "OwnerPreviewRequests");
+const OwnerProductFamilies = named(() => import("./pages/OwnerProductFamilies"), "OwnerProductFamilies");
+const OwnerProductionLaunches = named(() => import("./pages/OwnerProductionLaunches"), "OwnerProductionLaunches");
+const OwnerProductionStatus = named(() => import("./pages/OwnerProductionStatus"), "OwnerProductionStatus");
+const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");
+const OwnerStorefrontProvisioning = named(() => import("./pages/OwnerStorefrontProvisioning"), "OwnerStorefrontProvisioning");
+const PortalLanding = named(() => import("./pages/PortalLanding"), "PortalLanding");
+const PortalLogin = named(() => import("./pages/PortalLogin"), "PortalLogin");
+const PortalSignup = named(() => import("./pages/PortalSignup"), "PortalSignup");
+const PublicCommerceCheckout = named(() => import("./pages/PublicCommerceCheckout"), "PublicCommerceCheckout");
+const PublicCommerceRequest = named(() => import("./pages/PublicCommerceRequest"), "PublicCommerceRequest");
+const PublicCommerceStorefront = named(() => import("./pages/PublicCommerceStorefront"), "PublicCommerceStorefront");
+const PublicHome = named(() => import("./pages/PublicHome"), "PublicHome");
+const PublicPlans = named(() => import("./pages/PublicPlans"), "PublicPlans");
+const ResetPassword = named(() => import("./pages/ResetPassword"), "ResetPassword");
+
+function AppRoutes() {
   const path = window.location.pathname;
   if (path === "/owner/login") { window.location.replace("/portal/login"); return null; }
   if (path === "/owner/product-families") return <OwnerProtectedRoute><OwnerProductFamilies /></OwnerProtectedRoute>;
@@ -132,4 +137,9 @@ function App() {
   if (path.startsWith("/portal/")) { window.location.replace("/portal"); return null; }
   return <PublicHome />;
 }
+
+function App() {
+  return <Suspense fallback={<main className="nxq-page"><div className="empty-state">Loading NXQ…</div></main>}><AppRoutes /></Suspense>;
+}
+
 export default App;
