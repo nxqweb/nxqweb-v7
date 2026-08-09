@@ -28,6 +28,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave15-contract.mjs
       - name: Wave 16 classifier readiness hardening
         run: node scripts/validate-autonomy-ops-wave16-contract.mjs
+      - name: Wave 17 ordered billing hardening
+        run: node scripts/validate-autonomy-ops-wave17-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint
