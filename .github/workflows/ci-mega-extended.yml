@@ -1,0 +1,38 @@
+name: NXQ Mega Extended CI
+
+on:
+  push:
+    branches:
+      - safe/mega-autonomy-pass
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Wave 14 classifier contract
+        run: node scripts/validate-autonomy-ops-wave14-contract.mjs
+      - name: Extended autonomy safety contract
+        run: node scripts/validate-autonomy-ops-wave15-contract.mjs
+      - name: Generated Business site quality
+        run: node scripts/validate-business-generated-site-quality.mjs
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Production build
+        run: npm run build
+      - name: Production bundle budget
+        run: node scripts/check-production-bundle-budget.mjs
