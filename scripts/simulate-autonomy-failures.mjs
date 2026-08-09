@@ -14,6 +14,7 @@ function canOpenFile(scan) { return scan?.status === 'clean' && scan?.quarantine
 function seoTarget(baseUrl, branch) { const u = new URL(baseUrl); assert.equal(u.protocol, 'https:', 'SEO canonical URL must use HTTPS'); assert.notEqual(branch, 'main', 'SEO worker must use safe branch'); return { base: `${u.protocol}//${u.host}`, branch }; }
 function seoPromotionDecision({approved=true,baseMain, currentMain, previewCommit, sourceHead}) { if (!approved) return 'blocked_client'; if (previewCommit !== sourceHead) return 'blocked_preview_mismatch'; if (currentMain !== baseMain) return 'regenerate'; return 'promote'; }
 function seoProductionVerified(expectedCommit, actualCommit) { return Boolean(expectedCommit && expectedCommit === actualCommit); }
+function routeChangeRequest({risk='low',patch={}}) { const supported=['contact_phone','contact_email','service_area','goals','desired_style','about','add_services','remove_services']; const structuredSafe=patch&&typeof patch==='object'&&!Array.isArray(patch)&&supported.some((key)=>Object.hasOwn(patch,key)); return risk==='low'&&structuredSafe?'edge':'ai'; }
 function privacyDeleteAllowed(identityVerified) { return identityVerified === true; }
 function runScenario(name, fn) { try { fn(); console.log(`PASS  ${name}`); } catch (error) { console.error(`FAIL  ${name}`); throw error; } }
 
@@ -37,6 +38,8 @@ runScenario('SEO main drift queues regeneration instead of overwrite',()=>{asser
 runScenario('SEO preview commit mismatch blocks promotion',()=>{assert.equal(seoPromotionDecision({baseMain:'aaa',currentMain:'aaa',previewCommit:'wrong',sourceHead:'seo1'}),'blocked_preview_mismatch');});
 runScenario('SEO production commit mismatch cannot be marked published',()=>{assert.equal(seoProductionVerified('seo1','other'),false);assert.equal(seoProductionVerified('seo1','seo1'),true);});
 runScenario('Denied client after SEO preview cannot promote',()=>{assert.equal(seoPromotionDecision({approved:false,baseMain:'aaa',currentMain:'aaa',previewCommit:'seo1',sourceHead:'seo1'}),'blocked_client');});
+runScenario('Low-risk structured change routes to deterministic Edge',()=>{assert.equal(routeChangeRequest({risk:'low',patch:{contact_phone:'555'}}),'edge');});
+runScenario('Low-risk unstructured change routes to AI classification',()=>{assert.equal(routeChangeRequest({risk:'low',patch:{}}),'ai');});
 runScenario('Privacy deletion requires identity verification',()=>{assert.equal(privacyDeleteAllowed(false),false);assert.equal(privacyDeleteAllowed(true),true);});
 
-console.log('\n21/21 autonomous lifecycle failure simulations passed.');
+console.log('\n23/23 autonomous lifecycle failure simulations passed.');
