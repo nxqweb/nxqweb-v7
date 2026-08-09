@@ -11,7 +11,7 @@ const checks=[
 ["Classifier accepts only safe patch needs-info or owner-review",worker.includes('"safe_patch"|"needs_info"|"owner_review"')],
 ["Safe AI patch needs high confidence",worker.includes('result.confidence<0.9')],
 ["Safe AI patch keys are allowlisted",worker.includes('supportedPatchKeys')&&worker.includes('keys.some((k)=>!supportedPatchKeys.has(k))')],
-["Safe AI result routes back into deterministic Edge worker",worker.includes('target_job_type:"website_apply_change_request"')&&worker.includes('execution_target:"edge"')],
+["Safe classifier result returns to database routing authority",worker.includes('status:"submitted"')&&worker.includes('routing_authority:"database_trigger"')&&!worker.includes('target_job_type:"website_apply_change_request"')],
 ["Needs-info never becomes automatic edit",worker.includes('status:"needs_info"')],
 ["Unsafe classifier output becomes owner review",worker.includes('status:"blocked"')&&worker.includes('route:"owner_review"')],
 ["Classifier dispatcher is Vault backed",dispatch.includes('vault.decrypted_secrets')&&dispatch.includes('nxq_change_classifier_edge_url')&&dispatch.includes('nxq_automation_worker_token')],
