@@ -56,7 +56,7 @@ export function ClientCommerceCatalog() {
 
   useEffect(() => {
     void loadCatalog();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial authenticated catalog load only
 
   useEffect(() => {
     setSelectedCategoryId(selectedProduct?.category_id || "");

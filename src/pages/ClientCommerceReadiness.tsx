@@ -144,7 +144,7 @@ export function ClientCommerceReadiness() {
     setSaving(false);
   }
 
-  const checks = data?.checks || [];
+  const checks = useMemo(() => data?.checks || [], [data]);
   const passedCount = useMemo(() => checks.filter((check) => check.passed).length, [checks]);
   const nonPaymentChecks = useMemo(() => checks.filter((check) => check.key !== "payment"), [checks]);
   const nonPaymentPassed = nonPaymentChecks.filter((check) => check.passed).length;

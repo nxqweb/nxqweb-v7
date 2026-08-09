@@ -1,0 +1,109 @@
+name: NXQ Manual Supabase Stage
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose validation or explicit runtime mutation"
+        required: true
+        default: validate
+        type: choice
+        options:
+          - validate
+          - apply_migrations
+          - deploy_functions
+          - apply_all
+      confirmation:
+        description: "For mutation actions type APPLY-NXQ-SUPABASE exactly"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    environment: nxq-production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Require protected configuration
+        shell: bash
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
+          test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
+          test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
+
+      - name: Link project
+        run: supabase link --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Migration dry run
+        run: supabase db push --dry-run --linked
+
+      - name: Require explicit mutation confirmation
+        if: inputs.action != 'validate'
+        shell: bash
+        run: |
+          if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE" ]; then
+            echo "Mutation refused. Exact confirmation phrase is required."
+            exit 1
+          fi
+
+      - name: Apply migrations
+        if: inputs.action == 'apply_migrations' || inputs.action == 'apply_all'
+        run: supabase db push --linked
+
+      - name: Deploy protected worker/public-ingest functions
+        if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            provision-project-infrastructure
+            prepare-build-plan
+            build-business-website
+            promote-business-production
+            reconcile-domain
+            run-website-maintenance
+            scan-client-file
+            check-provider-health
+            dispatch-notifications
+            process-data-subject-request
+            build-business-location-pages
+            build-business-seo-artifacts
+            apply-business-change-request
+            classify-business-change-request
+            ingest-business-analytics
+            ingest-business-lead
+            ingest-billing-provider-event
+            run-backup-restore-drill
+            provision-storefront
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying $fn with function-level authentication..."
+            supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          done
+
+      - name: Deploy user-authenticated file access functions
+        if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase functions deploy secure-client-file-access --project-ref "$SUPABASE_PROJECT_REF"
+          supabase functions deploy secure-owner-file-access --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Final safety note
+        run: |
+          echo "NXQ Supabase stage action completed: ${{ inputs.action }}"
+          echo "This workflow does not merge GitHub branches, publish Netlify sites, change DNS, or mark QA runs passed."

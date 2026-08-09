@@ -44,7 +44,7 @@ export function ClientCommercePreview() {
 
   useEffect(() => {
     void loadPreview();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial authenticated preview load only
 
   async function loadPreview() {
     setLoading(true);

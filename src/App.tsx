@@ -1,110 +1,132 @@
+import { lazy, Suspense } from "react";
 import "./styles/nxq.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
+import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
-import { CheckEmail } from "./pages/CheckEmail";
-import { ForgotPassword } from "./pages/ForgotPassword";
-import { ClientBillingStatus } from "./pages/ClientBillingStatus";
-import { ClientCommerceCatalog } from "./pages/ClientCommerceCatalog";
-import { ClientCommerceCategories } from "./pages/ClientCommerceCategories";
-import { ClientCommerceDashboard } from "./pages/ClientCommerceDashboard";
-import { ClientCommerceInventory } from "./pages/ClientCommerceInventory";
-import { ClientCommerceOrders } from "./pages/ClientCommerceOrders";
-import { ClientCommercePreview } from "./pages/ClientCommercePreview";
-import { ClientCommerceProducts } from "./pages/ClientCommerceProducts";
-import { ClientCommerceReadiness } from "./pages/ClientCommerceReadiness";
-import { ClientCommerceRequests } from "./pages/ClientCommerceRequests";
-import { ClientCommerceSetup } from "./pages/ClientCommerceSetup";
-import { ClientCommerceTutorial } from "./pages/ClientCommerceTutorial";
-import { ClientCommerceUsage } from "./pages/ClientCommerceUsage";
-import { ClientPortal } from "./pages/ClientPortal";
-import { ClientSettings } from "./pages/ClientSettings";
-import { OwnerBillingLifecycle } from "./pages/OwnerBillingLifecycle";
-import { OwnerCommerceBuildQueue } from "./pages/OwnerCommerceBuildQueue";
-import { OwnerCommerceHub } from "./pages/OwnerCommerceHub";
-import { OwnerCommerceReviews } from "./pages/OwnerCommerceReviews";
-import { OwnerCommerceUsage } from "./pages/OwnerCommerceUsage";
-import { OwnerDeployments } from "./pages/OwnerDeployments";
-import { OwnerFiles } from "./pages/OwnerFiles";
-import { OwnerPlanChanges } from "./pages/OwnerPlanChanges";
-import { OwnerPortal } from "./pages/OwnerPortal";
-import { OwnerPreviewRequests } from "./pages/OwnerPreviewRequests";
-import { OwnerProductFamilies } from "./pages/OwnerProductFamilies";
-import { OwnerProductionLaunches } from "./pages/OwnerProductionLaunches";
-import { OwnerProductionStatus } from "./pages/OwnerProductionStatus";
-import { PortalLanding } from "./pages/PortalLanding";
-import { PortalLogin } from "./pages/PortalLogin";
-import { PortalSignup } from "./pages/PortalSignup";
-import { PublicCommerceCheckout } from "./pages/PublicCommerceCheckout";
-import { PublicCommerceRequest } from "./pages/PublicCommerceRequest";
-import { PublicHome } from "./pages/PublicHome";
-import { PublicPlans } from "./pages/PublicPlans";
-import { ResetPassword } from "./pages/ResetPassword";
 
-function App() {
+const named = <T extends Record<string, unknown>, K extends keyof T>(loader: () => Promise<T>, key: K) =>
+  lazy(async () => ({ default: (await loader())[key] as React.ComponentType }));
+
+const CheckEmail = named(() => import("./pages/CheckEmail"), "CheckEmail");
+const ForgotPassword = named(() => import("./pages/ForgotPassword"), "ForgotPassword");
+const ClientBillingStatus = named(() => import("./pages/ClientBillingStatus"), "ClientBillingStatus");
+const ClientBusinessAnalytics = named(() => import("./pages/ClientBusinessAnalytics"), "ClientBusinessAnalytics");
+const ClientBusinessChanges = named(() => import("./pages/ClientBusinessChanges"), "ClientBusinessChanges");
+const ClientBusinessDashboard = named(() => import("./pages/ClientBusinessDashboard"), "ClientBusinessDashboard");
+const ClientBusinessLeads = named(() => import("./pages/ClientBusinessLeads"), "ClientBusinessLeads");
+const ClientBusinessLocations = named(() => import("./pages/ClientBusinessLocations"), "ClientBusinessLocations");
+const ClientBusinessReports = named(() => import("./pages/ClientBusinessReports"), "ClientBusinessReports");
+const ClientBusinessSeo = named(() => import("./pages/ClientBusinessSeo"), "ClientBusinessSeo");
+const ClientCommerceCatalog = named(() => import("./pages/ClientCommerceCatalog"), "ClientCommerceCatalog");
+const ClientCommerceCategories = named(() => import("./pages/ClientCommerceCategories"), "ClientCommerceCategories");
+const ClientCommerceDashboard = named(() => import("./pages/ClientCommerceDashboard"), "ClientCommerceDashboard");
+const ClientCommerceInventory = named(() => import("./pages/ClientCommerceInventory"), "ClientCommerceInventory");
+const ClientCommerceLiveStore = named(() => import("./pages/ClientCommerceLiveStore"), "ClientCommerceLiveStore");
+const ClientCommerceOrders = named(() => import("./pages/ClientCommerceOrders"), "ClientCommerceOrders");
+const ClientCommercePreview = named(() => import("./pages/ClientCommercePreview"), "ClientCommercePreview");
+const ClientCommerceProductImages = named(() => import("./pages/ClientCommerceProductImages"), "ClientCommerceProductImages");
+const ClientCommerceProducts = named(() => import("./pages/ClientCommerceProducts"), "ClientCommerceProducts");
+const ClientCommerceReadiness = named(() => import("./pages/ClientCommerceReadiness"), "ClientCommerceReadiness");
+const ClientCommerceRequests = named(() => import("./pages/ClientCommerceRequests"), "ClientCommerceRequests");
+const ClientCommerceSetup = named(() => import("./pages/ClientCommerceSetup"), "ClientCommerceSetup");
+const ClientCommerceTutorial = named(() => import("./pages/ClientCommerceTutorial"), "ClientCommerceTutorial");
+const ClientCommerceUsage = named(() => import("./pages/ClientCommerceUsage"), "ClientCommerceUsage");
+const ClientCommerceWebsiteContent = named(() => import("./pages/ClientCommerceWebsiteContent"), "ClientCommerceWebsiteContent");
+const ClientDomainStatus = named(() => import("./pages/ClientDomainStatus"), "ClientDomainStatus");
+const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
+const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
+const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
+const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
+const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
+const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
+const OwnerAutomationHealth = named(() => import("./pages/OwnerAutomationHealth"), "OwnerAutomationHealth");
+const OwnerBillingLifecycle = named(() => import("./pages/OwnerBillingLifecycle"), "OwnerBillingLifecycle");
+const OwnerCommerceBuildQueue = named(() => import("./pages/OwnerCommerceBuildQueue"), "OwnerCommerceBuildQueue");
+const OwnerCommerceHub = named(() => import("./pages/OwnerCommerceHub"), "OwnerCommerceHub");
+const OwnerCommerceReviews = named(() => import("./pages/OwnerCommerceReviews"), "OwnerCommerceReviews");
+const OwnerCommerceUsage = named(() => import("./pages/OwnerCommerceUsage"), "OwnerCommerceUsage");
+const OwnerDeployments = named(() => import("./pages/OwnerDeployments"), "OwnerDeployments");
+const OwnerExceptionCenter = named(() => import("./pages/OwnerExceptionCenter"), "OwnerExceptionCenter");
+const OwnerFiles = named(() => import("./pages/OwnerFiles"), "OwnerFiles");
+const OwnerLaunchReadiness = named(() => import("./pages/OwnerLaunchReadiness"), "OwnerLaunchReadiness");
+const OwnerPlanChanges = named(() => import("./pages/OwnerPlanChanges"), "OwnerPlanChanges");
+const OwnerPortal = named(() => import("./pages/OwnerPortal"), "OwnerPortal");
+const OwnerPreviewRequests = named(() => import("./pages/OwnerPreviewRequests"), "OwnerPreviewRequests");
+const OwnerProductFamilies = named(() => import("./pages/OwnerProductFamilies"), "OwnerProductFamilies");
+const OwnerProductionLaunches = named(() => import("./pages/OwnerProductionLaunches"), "OwnerProductionLaunches");
+const OwnerProductionStatus = named(() => import("./pages/OwnerProductionStatus"), "OwnerProductionStatus");
+const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");
+const OwnerQaLifecycle = named(() => import("./pages/OwnerQaLifecycle"), "OwnerQaLifecycle");
+const OwnerStorefrontProvisioning = named(() => import("./pages/OwnerStorefrontProvisioning"), "OwnerStorefrontProvisioning");
+const PortalLanding = named(() => import("./pages/PortalLanding"), "PortalLanding");
+const PortalLogin = named(() => import("./pages/PortalLogin"), "PortalLogin");
+const PortalSignup = named(() => import("./pages/PortalSignup"), "PortalSignup");
+const PublicCommerceCheckout = named(() => import("./pages/PublicCommerceCheckout"), "PublicCommerceCheckout");
+const PublicCommerceRequest = named(() => import("./pages/PublicCommerceRequest"), "PublicCommerceRequest");
+const PublicCommerceStorefront = named(() => import("./pages/PublicCommerceStorefront"), "PublicCommerceStorefront");
+const PublicHome = named(() => import("./pages/PublicHome"), "PublicHome");
+const PublicPlans = named(() => import("./pages/PublicPlans"), "PublicPlans");
+const ResetPassword = named(() => import("./pages/ResetPassword"), "ResetPassword");
+
+function AppRoutes() {
   const path = window.location.pathname;
-
-  if (path === "/owner/login") {
-    window.location.replace("/portal/login");
-    return null;
-  }
-
+  if (path === "/owner/login") { window.location.replace("/portal/login"); return null; }
   if (path === "/owner/product-families") return <OwnerProtectedRoute><OwnerProductFamilies /></OwnerProtectedRoute>;
   if (path === "/owner/billing") return <OwnerProtectedRoute><OwnerBillingLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner/commerce") return <OwnerProtectedRoute><OwnerCommerceHub /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-usage") return <OwnerProtectedRoute><OwnerCommerceUsage /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-builds") return <OwnerProtectedRoute><OwnerCommerceBuildQueue /></OwnerProtectedRoute>;
   if (path === "/owner/commerce-reviews") return <OwnerProtectedRoute><OwnerCommerceReviews /></OwnerProtectedRoute>;
+  if (path === "/owner/storefront-provisioning") return <OwnerProtectedRoute><OwnerStorefrontProvisioning /></OwnerProtectedRoute>;
   if (path === "/owner/production-status") return <OwnerProtectedRoute><OwnerProductionStatus /></OwnerProtectedRoute>;
   if (path === "/owner/production-launches") return <OwnerProtectedRoute><OwnerProductionLaunches /></OwnerProtectedRoute>;
   if (path === "/owner/preview-requests") return <OwnerProtectedRoute><OwnerPreviewRequests /></OwnerProtectedRoute>;
   if (path === "/owner/deployments") return <OwnerProtectedRoute><OwnerDeployments /></OwnerProtectedRoute>;
+  if (path === "/owner/exceptions") return <OwnerProtectedRoute><OwnerExceptionCenter /></OwnerProtectedRoute>;
+  if (path === "/owner/providers") return <OwnerProtectedRoute><OwnerProviderHealth /></OwnerProtectedRoute>;
+  if (path === "/owner/automation-health") return <OwnerProtectedRoute><OwnerAutomationHealth /></OwnerProtectedRoute>;
+  if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;
+  if (path === "/owner/qa-lifecycle") return <OwnerProtectedRoute><OwnerQaLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
-
-  if (path === "/owner") {
-    return (
-      <OwnerProtectedRoute>
-        <>
-          <OwnerPortal />
-          <a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a>
-          <a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a>
-          <a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a>
-        </>
-      </OwnerProtectedRoute>
-    );
-  }
-
-  if (path.startsWith("/owner/")) {
-    window.location.replace("/owner");
-    return null;
-  }
+  if (path === "/owner") return <OwnerProtectedRoute><><OwnerPortal /><a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a><a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a><a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a><a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a><a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a><a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a><a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a><a className="owner-plan-change-shortcut" href="/owner/qa-lifecycle" style={{ bottom: "26.25rem" }}>Autonomous QA</a></></OwnerProtectedRoute>;
+  if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
+  if (path === "/client/health") return <ClientWebsiteHealth />;
+  if (path === "/client/domain") return <ClientDomainStatus />;
+  if (path === "/client/files") return <ClientFiles />;
+  if (path === "/client/notifications") return <ClientNotificationPreferences />;
+  if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
+  if (path === "/client/business/leads") return <ClientBusinessLeads />;
+  if (path === "/client/business/changes") return <ClientBusinessChanges />;
+  if (path === "/client/business/locations") return <ClientBusinessLocations />;
+  if (path === "/client/business/analytics") return <ClientBusinessAnalytics />;
+  if (path === "/client/business/reports") return <ClientBusinessReports />;
+  if (path === "/client/business/seo") return <ClientBusinessSeo />;
+  if (path === "/client/business") return <ClientBusinessDashboard />;
   if (path === "/client/commerce/readiness") return <ClientCommerceReadiness />;
   if (path === "/client/commerce/tutorial") return <ClientCommerceTutorial />;
   if (path === "/client/commerce/preview") return <ClientCommercePreview />;
   if (path === "/client/commerce/catalog") return <ClientCommerceCatalog />;
   if (path === "/client/commerce/categories") return <ClientCommerceCategories />;
   if (path === "/client/commerce/inventory") return <ClientCommerceInventory />;
+  if (path === "/client/commerce/live") return <ClientCommerceLiveStore />;
   if (path === "/client/commerce/orders") return <ClientCommerceOrders />;
   if (path === "/client/commerce/requests") return <ClientCommerceRequests />;
+  if (path === "/client/commerce/images") return <ClientCommerceProductImages />;
+  if (path === "/client/commerce/content") return <ClientCommerceWebsiteContent />;
   if (path === "/client/commerce/products") return <ClientCommerceProducts />;
   if (path === "/client/commerce/usage") return <ClientCommerceUsage />;
   if (path === "/client/commerce/setup") return <ClientCommerceSetup />;
   if (path === "/client/commerce") return <ClientCommerceDashboard />;
   if (path === "/client/settings") return <ClientSettings />;
+  if (path === "/client") return <><ClientPortalTopCards /><ClientPortal /><ClientPortalTutorialOverlay /></>;
+  if (path.startsWith("/client/")) { window.location.replace("/client"); return null; }
 
-  if (path === "/client") {
-    return <><ClientPortalTopCards /><ClientPortal /></>;
-  }
-
-  if (path.startsWith("/client/")) {
-    window.location.replace("/client");
-    return null;
-  }
-
+  if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (path === "/store/checkout") return <PublicCommerceCheckout />;
   if (path === "/store/request") return <PublicCommerceRequest />;
   if (path === "/plans") return <PublicPlans />;
@@ -114,13 +136,12 @@ function App() {
   if (path === "/portal/forgot-password") return <ForgotPassword />;
   if (path === "/portal/reset-password") return <ResetPassword />;
   if (path === "/portal") return <PortalLanding />;
-
-  if (path.startsWith("/portal/")) {
-    window.location.replace("/portal");
-    return null;
-  }
-
+  if (path.startsWith("/portal/")) { window.location.replace("/portal"); return null; }
   return <PublicHome />;
+}
+
+function App() {
+  return <Suspense fallback={<main className="nxq-page"><div className="empty-state">Loading NXQ…</div></main>}><AppRoutes /></Suspense>;
 }
 
 export default App;

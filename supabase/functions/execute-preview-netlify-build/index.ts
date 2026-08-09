@@ -300,7 +300,7 @@ Deno.serve(async (request) => {
   }
 
   const responseText = await buildResponse.text();
-  let buildData: Record<string, unknown> = {};
+  let buildData: Record<string, unknown>;
 
   try {
     buildData = responseText ? JSON.parse(responseText) : {};
