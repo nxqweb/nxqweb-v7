@@ -37,6 +37,7 @@ export function OwnerExceptionCenter() {
   const [data, setData] = useState<ExceptionCenterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [actionId, setActionId] = useState("");
 
   async function load() {
@@ -58,16 +59,20 @@ export function OwnerExceptionCenter() {
     setLoading(false);
   }
 
-  async function retryAutomation(item: ExceptionItem) {
-    if (!supabase || item.source !== "automation") return;
+  async function retryException(item: ExceptionItem) {
+    if (!supabase || !["automation", "maintenance"].includes(item.source)) return;
     setActionId(item.id);
     setError("");
-    const result = await supabase.rpc("owner_retry_automation_exception", { target_job_id: item.id });
+    setNotice("");
+    const result = item.source === "automation"
+      ? await supabase.rpc("owner_retry_automation_exception", { target_job_id: item.id })
+      : await supabase.rpc("owner_retry_maintenance_exception", { target_alert_id: item.id });
     setActionId("");
     if (result.error) {
       setError(`Retry could not be queued: ${result.error.message}`);
       return;
     }
+    setNotice(`${item.business_name || "Client"}: ${item.type.replaceAll("_", " ")} was safely requeued.`);
     await load();
   }
 
@@ -99,7 +104,8 @@ export function OwnerExceptionCenter() {
           </div>
         </div>
 
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
+        {notice ? <div className="notice-card success" role="status">{notice}</div> : null}
         {loading ? <div className="empty-state">Loading operational health...</div> : null}
 
         {!loading && data ? (
@@ -145,15 +151,21 @@ export function OwnerExceptionCenter() {
                         <span className="status-chip">{item.severity}</span>
                       </div>
                       <p>{item.summary}</p>
+                      <p className="subtle">
+                        {item.source === "automation" ? "Next step: retry through the normal worker lane; every approval, tenant, provider, and publication check runs again." : null}
+                        {item.source === "maintenance" ? "Next step: requeue the original check. The alert stays acknowledged until a worker completes the task successfully." : null}
+                        {item.source === "seo_publish" ? "Next step: check Automation Health for its matching SEO worker job. Production remains unchanged while this run is blocked." : null}
+                        {item.source === "change_request" ? "Next step: review the requested risk and missing information. Unsafe or ambiguous changes are never force-published." : null}
+                      </p>
                       <div className="subtle">
                         Source: {item.source} · Type: {item.type}
                         {typeof item.attempts === "number" ? ` · Attempts: ${item.attempts}/${item.max_attempts ?? "?"}` : ""}
                         {item.execution_target ? ` · Lane: ${item.execution_target}` : ""}
                         {` · ${formatTime(item.created_at)}`}
                       </div>
-                      {item.source === "automation" ? (
+                      {["automation", "maintenance"].includes(item.source) ? (
                         <div style={{ marginTop: ".7rem" }}>
-                          <button className="icon-btn" type="button" disabled={actionId === item.id} onClick={() => void retryAutomation(item)}>
+                          <button className="icon-btn" type="button" disabled={actionId === item.id} onClick={() => void retryException(item)}>
                             <RotateCcw size={15} /> {actionId === item.id ? "Queueing…" : "Retry safely"}
                           </button>
                         </div>
@@ -162,6 +174,12 @@ export function OwnerExceptionCenter() {
                   ))}
                 </div>
               )}
+            </section>
+            <section className="panel panel-wide">
+              <div className="panel-title panel-title-row">
+                <div><h2>Recovery controls</h2><p className="subtle">Retries re-run the original safety gates. Nothing here can mark a job successful, merge production, or bypass approval.</p></div>
+                <a className="icon-btn" href="/owner/automation-health">Open automation health</a>
+              </div>
             </section>
           </>
         ) : null}

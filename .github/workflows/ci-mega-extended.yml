@@ -48,6 +48,8 @@ jobs:
         run: node scripts/validate-autonomy-ops-wave25-contract.mjs
       - name: Wave 26 canonical tier runtime
         run: node scripts/validate-autonomy-ops-wave26-contract.mjs
+      - name: Wave 27 human billing freeze and safe recovery
+        run: node scripts/validate-autonomy-ops-wave27-contract.mjs
       - name: Generated Business site quality
         run: node scripts/validate-business-generated-site-quality.mjs
       - name: Zero-warning lint
