@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-const read = (file) => fs.readFileSync(file, "utf8");
+const read = (file) => fs.readFileSync(file, "utf8").replaceAll("\r\n", "\n");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const preflight = read("scripts/check-runtime-stage-readiness.mjs");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-const read = (file) => fs.readFileSync(file, "utf8");
+const read = (file) => fs.readFileSync(file, "utf8").replaceAll("\r\n", "\n");
 const migration = read("supabase/migrations/190_client_launch_journey_read_model.sql");
 const summary = read("src/components/ClientJourneySummaryCard.tsx");
 const topCards = read("src/components/ClientPortalTopCards.tsx");

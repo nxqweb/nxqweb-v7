@@ -1,7 +1,7 @@
 import fs from "node:fs";
 
-const source = fs.readFileSync("supabase/migrations/143_shared_worker_heartbeat_instrumentation.sql", "utf8");
-const foundation = fs.readFileSync("supabase/migrations/134_provider_observability_and_recovery_foundation.sql", "utf8");
+const source = fs.readFileSync("supabase/migrations/143_shared_worker_heartbeat_instrumentation.sql", "utf8").replaceAll("\r\n", "\n");
+const foundation = fs.readFileSync("supabase/migrations/134_provider_observability_and_recovery_foundation.sql", "utf8").replaceAll("\r\n", "\n");
 
 const checks = [
   ["Heartbeat table exists", foundation.includes("automation_worker_heartbeats")],
