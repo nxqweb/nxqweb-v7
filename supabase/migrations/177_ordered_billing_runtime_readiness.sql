@@ -1,9 +1,9 @@
 -- Wave 17: online billing becomes a required readiness gate only when explicitly enabled.
 update public.nxq_provider_connections
-set capabilities=array(
+set capabilities=array[
       'normalized_payment_events','idempotent_event_ingest','ordered_event_apply',
       'server_mapped_customers','payment_restore','past_due_start'
-    ),
+    ],
     required_secret_names=array['NXQ_BILLING_ADAPTER_TOKEN'],
     config=coalesce(config,'{}'::jsonb)||jsonb_build_object(
       'ingest_function','ingest-billing-provider-event',

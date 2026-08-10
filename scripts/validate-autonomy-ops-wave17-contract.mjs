@@ -16,6 +16,7 @@ const checks=[
 ["Verified success auto-unfreezes",migration.includes("billing_frozen_at=null")&&migration.includes("auto_unfreeze_on_verified_payment")],
 ["Single provider event never auto-freezes",migration.includes("'auto_freeze',false")&&!migration.includes("set billing_status='frozen'")],
 ["Billing worker records hardened runtime evidence",worker.includes("server_mapped_customer:true")&&worker.includes("ordered_event_apply:true")],
+["Billing capabilities use valid PostgreSQL array syntax",readiness.includes("set capabilities=array[")&&!readiness.includes("set capabilities=array(")],
 ["Online billing stays optional until explicitly enabled",readiness.includes("online_billing_enabled")&&readiness.includes("status='not_applicable'")&&readiness.includes("manual_billing_supported")],
 ["Enabled online billing becomes required",readiness.includes("set required=true")],
 ["Enabled billing requires provider health heartbeat and mappings",readiness.includes("provider_healthy and heartbeat_ready and customer_mapping_ready")],
