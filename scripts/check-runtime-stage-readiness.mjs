@@ -109,6 +109,8 @@ const workflowProof = [
   'npx --no-install supabase db push --dry-run --linked',
   'edge-function-manifest.mjs --group=no-verify-jwt',
   'edge-function-manifest.mjs --group=verify-jwt',
+  'check-runtime-stage-readiness.mjs --profile=business-configured-foundation',
+  'check-runtime-stage-readiness.mjs --profile=business-non-ai-staging',
   'check-runtime-stage-readiness.mjs --profile=business-external-qa',
   'check-runtime-stage-readiness.mjs --supabase-functions-json=',
   'APPLY-NXQ-SUPABASE-STAGING',
