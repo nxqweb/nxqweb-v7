@@ -5,6 +5,7 @@ import {
   Clock,
   MessageSquareText,
   RefreshCcw,
+  ShoppingBag,
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -72,18 +73,6 @@ type ProjectRow = {
   build_plan: Record<string, unknown> | null;
 };
 
-type PaymentRecordRow = {
-  id: string;
-  client_id: string | null;
-  provider: string;
-  status: string;
-  amount: number;
-  currency: string;
-  note: string | null;
-  created_at: string;
-};
-
-
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -94,6 +83,12 @@ function formatMoney(value: number) {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ");
+}
+
+function formatClientOnboardingStatus(status: string) {
+  if (status === "lead") return "Waiting for client intake";
+  if (["intake_received", "needs_owner_review"].includes(status)) return "Ready for owner review";
+  return formatStatus(status);
 }
 
 function formatDateTime(value: string) {
@@ -277,7 +272,6 @@ export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
@@ -392,11 +386,6 @@ const selectedReplyClientId = useMemo(() => {
   return clients.find((client) => client.id === message.client_id) || null;
 }
 
-  function getClientForPayment(payment: PaymentRecordRow) {
-    return clients.find((client) => client.id === payment.client_id) || null;
-  }
-
-
 function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
   return Object.entries(buildPlan).map(([key, value]) => ({
     title: formatStatus(key),
@@ -405,7 +394,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
 }
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
-    const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
+    const actionLabel = action === "accept" ? "APPROVE" : "DENY";
 
     return window.confirm(
       `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
@@ -498,18 +487,6 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
         setProjects((projectResult.data || []) as ProjectRow[]);
       }
 
-
-      const paymentResult = await supabase
-        .from("payment_records")
-        .select("id, client_id, provider, status, amount, currency, note, created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (paymentResult.error) {
-        setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
-      } else {
-        setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
-      }
 
       const messageResult = await supabase
   .from("client_messages")
@@ -645,111 +622,6 @@ if (messageResult.error) {
     }
   }
 
-  async function activateManualSubscription(client: ClientRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Activate manual subscription\n\nClient: ${client.business_name}\nAmount: ${formatMoney(Number(client.monthly_price || 0))}/mo\n\nThis is MANUAL/CASH tracking only. Supabase will mark the client active and save a manual payment record. If a project already exists, live/launch-ready projects will stay in their current stage instead of being moved backward. If no project exists yet, Supabase may create one in building.\n\nThis will NOT charge a card, bank account, or any online payment method. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const activationResult = await supabase.rpc("activate_manual_subscription", {
-        target_client_id: client.id,
-      });
-
-      if (activationResult.error) {
-        setErrorMessage(`Manual activation failed: ${activationResult.error.message}`);
-        return;
-      }
-
-      const resultData = activationResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name} subscription manually activated. No online charge was processed.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown manual activation error";
-      setErrorMessage(`Manual activation failed: ${message}`);
-    }
-  }
-
-  async function updateClientBillingState(
-    client: ClientRow,
-    nextBillingStatus: "active" | "past_due" | "freeze_review" | "frozen",
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      [
-        actionLabel,
-        "",
-        `Client: ${client.business_name}`,
-        `Current billing status: ${formatStatus(client.billing_status || "not_configured")}`,
-        `New billing status: ${formatStatus(nextBillingStatus)}`,
-        "",
-        "This changes billing status only.",
-        "It will not change the website project stage.",
-        "It will not charge a card, bank account, or online payment method.",
-        "",
-        "Continue?",
-      ].join("\n")
-    );
-
-    if (!confirmed) return;
-
-    const billingNote = window.prompt(
-      `Optional billing note for ${client.business_name}:`,
-      ""
-    );
-
-    if (billingNote === null) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const billingResult = await supabase.rpc("set_client_billing_state", {
-        target_client_id: client.id,
-        next_billing_status: nextBillingStatus,
-        next_billing_provider: client.billing_provider || "manual",
-        billing_note: billingNote.trim() || null,
-      });
-
-      if (billingResult.error) {
-        setErrorMessage(`Billing update failed: ${billingResult.error.message}`);
-        return;
-      }
-
-      const resultData = billingResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name} billing changed to ${formatStatus(nextBillingStatus)}.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown billing update error";
-
-      setErrorMessage(`Billing update failed: ${message}`);
-    }
-  }
   async function requestMoreInfoFromClientCard(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
@@ -925,7 +797,14 @@ if (messageResult.error) {
     loadOwnerData();
   }, []);
 
-  const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
+  const normalApprovalTypes = new Set(["website_setup_review", "commerce_intake_review"]);
+  const pendingApprovals = approvals.filter(
+    (approval) => approval.status === "pending" && normalApprovalTypes.has(approval.request_type)
+  );
+  const pendingExceptionApprovals = approvals.filter(
+    (approval) => approval.status === "pending" && !normalApprovalTypes.has(approval.request_type)
+  );
+  const pendingIntakeClients = clients.filter((client) => client.status === "lead");
   const completedApprovals = approvals.filter((approval) => approval.status !== "pending");
 
   const recentCompletedApprovals = completedApprovals.slice(0, 4);
@@ -939,10 +818,10 @@ if (messageResult.error) {
       <section className="portal-shell">
         <div className="portal-header">
           <div>
-            <p className="eyebrow">Owner APS</p>
-            <h1>{ownerView === "aps" ? "NXQ command chat" : "NXQ client chat"}</h1>
+            <p className="eyebrow">Owner Portal</p>
+            <h1>{ownerView === "aps" ? "NXQ approvals" : "NXQ client chat"}</h1>
             <p className="subtle">
-              {ownerView === "aps" ? "AI approval cockpit and owner decisions." : "Pick one client and text them directly."}
+              {ownerView === "aps" ? "One decision starts the normal autonomous workflow." : "Pick one client and text them directly."}
             </p>
           </div>
 
@@ -980,7 +859,7 @@ if (messageResult.error) {
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Bot size={20} />
-                <h2>AI approval chat</h2>
+                <h2>Client approvals</h2>
               </div>
 
               <button className="icon-btn" onClick={loadOwnerData} type="button">
@@ -1087,13 +966,28 @@ if (messageResult.error) {
                 <p>
                   {isLoading
                     ? "Loading approval queue from Supabase..."
-                    : `Approval queue loaded. ${pendingApprovals.length} pending item(s) need owner review.`}
+                    : `${pendingApprovals.length} ready for your decision · ${pendingIntakeClients.length} waiting for client intake.`}
                 </p>
               </div>
 
               {!isLoading && pendingApprovals.length === 0 ? (
                 <div className="empty-state">
-                  No pending approvals right now. The AI agency manager is standing by.
+                  No completed intake is waiting for approval right now.
+                </div>
+              ) : null}
+
+              {!isLoading && pendingIntakeClients.length > 0 ? (
+                <div className="completed-section owner-intake-waiting-list">
+                  <h3>Waiting for client intake</h3>
+                  <p className="subtle">
+                    These accounts are created, but APPROVE appears only after the client submits their setup details and agreement.
+                  </p>
+                  {pendingIntakeClients.map((client) => (
+                    <div className="completed-row" key={`intake-${client.id}`}>
+                      <span>{client.business_name}</span>
+                      <strong>{formatMoney(Number(client.monthly_price || 0))}/mo</strong>
+                    </div>
+                  ))}
                 </div>
               ) : null}
 
@@ -1240,7 +1134,7 @@ if (messageResult.error) {
                           );
                         }}
                       >
-                        Accept
+                        APPROVE
                       </button>
 
                       <button
@@ -1269,7 +1163,7 @@ if (messageResult.error) {
                           );
                         }}
                       >
-                        Deny
+                        DENY
                       </button>
 
                       {isPipelineStartApproval(approval) ? (
@@ -1314,14 +1208,33 @@ if (messageResult.error) {
             </div>
 
             <div className="client-control-row">
-              <a className="icon-btn" href="/owner">
-                Owner dashboard
+              <a className="icon-btn" href="/owner/commerce">
+                <ShoppingBag size={16} /> Commerce
               </a>
 
               <a className="icon-btn" href="/owner/files">
                 Client files
               </a>
             </div>
+
+            <details className="owner-system-tools">
+              <summary>
+                System and exception tools{pendingExceptionApprovals.length ? ` (${pendingExceptionApprovals.length})` : ""}
+              </summary>
+              <p className="subtle">
+                These are for setup, outages, billing exceptions, and launch diagnostics—not the normal client workflow.
+              </p>
+              <div className="client-control-row">
+                <a className="icon-btn" href="/owner/automation-health">Automation health</a>
+                <a className="icon-btn" href="/owner/providers">Provider health</a>
+                <a className="icon-btn" href="/owner/exceptions">Exceptions</a>
+                <a className="icon-btn" href="/owner/billing">Billing exceptions</a>
+                <a className="icon-btn" href="/owner/launch-readiness">Launch readiness</a>
+                <a className="icon-btn" href="/owner/product-families">Product families</a>
+                <a className="icon-btn" href="/owner/plan-changes">Plan changes</a>
+                <a className="icon-btn" href="/owner/sales">Sales pipeline</a>
+              </div>
+            </details>
           </section>
 
           <section className="panel build-plan-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
@@ -1401,27 +1314,9 @@ if (messageResult.error) {
               {clients.map((client) => (
                 <article className="mini-client-card" key={client.id}>
                   <strong>{client.business_name}</strong>
-                  <span>{client.business_type || "Business type missing"}</span>
-                  <small>{formatStatus(client.status)}</small>
+                  <span>{client.business_type || (client.status === "lead" ? "Setup not submitted yet" : "Business details pending")}</span>
+                  <small>{formatClientOnboardingStatus(client.status)}</small>
                   <b>{client.qa_only ? "Disposable QA · billing locked" : `${formatMoney(Number(client.monthly_price || 0))}/mo`}</b>
-
-                  {client.qa_only ? (
-                    <div className="project-stage-box">
-                      <span>QA-only client</span>
-                      <small>Use its pending APPROVE or DENY item. Manual client, project, and billing controls are disabled so strict evidence stays valid.</small>
-                    </div>
-                  ) : (
-                    <div className="project-stage-box">
-                      <small>Client and project lifecycle changes come from the normal APPROVE or DENY decision and protected automation.</small>
-                      <button
-                        type="button"
-                        disabled={!['lead', 'intake_received', 'needs_owner_review'].includes(client.status)}
-                        onClick={() => requestMoreInfoFromClientCard(client)}
-                      >
-                        Needs Info
-                      </button>
-                    </div>
-                  )}
 
                   <div className="project-stage-box">
                     <span>
@@ -1429,92 +1324,19 @@ if (messageResult.error) {
                         ? formatStatus(getProjectForClient(client.id)?.website_status || "")
                         : "No project yet"}
                     </span>
-
-                    <small>Stage is automation-owned; manual stage mutation is disabled.</small>
+                    <small>
+                      {client.qa_only
+                        ? "Manual client, project, and billing controls are disabled for disposable QA."
+                        : client.status === "lead"
+                        ? "The client must finish intake before an approval decision is created."
+                        : "APPROVE or DENY owns the client lifecycle; automation owns project stages."}
+                    </small>
                   </div>
 
-                  {!client.qa_only ? <div className="project-stage-box">
-                    <span>
-                      Billing: {formatStatus(client.billing_status || "not_configured")}
-                    </span>
-
-                    <small>
-                      Provider: {client.billing_provider || "Not configured"}
-                    </small>
-
-                    <div className="project-stage-row">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "past_due",
-                            "Mark billing past due"
-                          )
-                        }
-                      >
-                        Past Due
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "freeze_review",
-                            "Send billing to freeze review"
-                          )
-                        }
-                      >
-                        Freeze Review
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "frozen",
-                            "Freeze billing"
-                          )
-                        }
-                      >
-                        Freeze Billing
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "active",
-                            "Restore active billing"
-                          )
-                        }
-                      >
-                        Restore Active
-                      </button>
-                    </div>
-
-                    {client.billing_status === "active" ? (
-                      <button
-                        className="manual-activate-btn is-active"
-                        type="button"
-                        disabled
-                      >
-                        Subscription Active
-                      </button>
-                    ) : ["approved", "needs_review", "intake_received"].includes(client.status) &&
-                      Number(client.monthly_price || 0) > 0 ? (
-                      <button
-                        className="manual-activate-btn"
-                        type="button"
-                        onClick={() => activateManualSubscription(client)}
-                      >
-                        Activate Subscription
-                      </button>
-                    ) : null}
-                  </div> : null}
+                  <div className="project-stage-box">
+                    <span>Billing: {formatStatus(client.billing_status || "not_configured")}</span>
+                    <small>Billing exceptions are handled from System and exception tools.</small>
+                  </div>
                 </article>
               ))}
             </div>
@@ -1612,63 +1434,11 @@ if (messageResult.error) {
   </div>
 </section>
 
-          <aside className="panel owner-payments-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
-            <div className="panel-title panel-title-row">
-              <div className="panel-title">
-                <Clock size={20} />
-                <h2>Payment records</h2>
-              </div>
-
-              <button aria-label="Refresh payment records" className="icon-btn" onClick={loadOwnerData} type="button">
-                <RefreshCcw size={16} />
-              </button>
-            </div>
-
-            <div className="owner-message-list">
-              {paymentRecords.length === 0 && !isLoading ? (
-                <div className="empty-state">No payment records yet.</div>
-              ) : null}
-
-              {paymentRecords.map((payment) => {
-                const client = getClientForPayment(payment);
-
-                return (
-                  <article className="owner-message-card" key={payment.id}>
-                    <div className="owner-message-top">
-                      <strong>{client?.business_name || "Unknown client"}</strong>
-                      <span>{formatDateTime(payment.created_at)}</span>
-                    </div>
-
-                    <p>
-                      {payment.provider} · {formatStatus(payment.status)} ·{" "}
-                      {formatMoney(Number(payment.amount || 0))}
-                    </p>
-
-                    <small>{payment.note || "No payment note saved."}</small>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div className="history-item">
-              <CheckCircle2 size={16} />
-              <p>Manual payment records appear here. Online billing integrations can be added later.</p>
-            </div>
-          </aside>
         </div>
       </section>
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
 
 
 

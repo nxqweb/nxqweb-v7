@@ -4,7 +4,19 @@ import path from "node:path";
 const read = (file) => fs.readFileSync(file, "utf8");
 const initial = read("supabase/migrations/001_nxqweb_v7_initial_schema.sql");
 const migration = read("supabase/migrations/182_project_status_replay_and_targeted_info_rpc.sql");
+const signupRepair = read("supabase/migrations/193_restore_signup_plan_capture.sql");
+const automaticProduction = read("supabase/migrations/123_automatic_business_production_promotion.sql");
 const ownerPortal = read("src/pages/OwnerPortal.tsx");
+const portalLogin = read("src/pages/PortalLogin.tsx");
+const ownerRoute = read("src/components/OwnerProtectedRoute.tsx");
+const app = read("src/App.tsx");
+const baseStyles = read("src/index.css");
+const nxqStyles = read("src/styles/nxq.css");
+const planStyles = read("src/styles/plan-forms.css");
+const publicCardBorder = nxqStyles.slice(
+  nxqStyles.indexOf(".lux-card::before"),
+  nxqStyles.indexOf(".lux-card > *")
+);
 const ci = read(".github/workflows/ci-mega-extended.yml");
 const infoFunction = migration.slice(migration.indexOf("create or replace function public.request_targeted_more_info"));
 
@@ -42,6 +54,25 @@ const checks = [
   ["Fresh base schema declares owner identity before migration 007", initial.includes("create table if not exists public.owner_users") && initial.includes("auth_user_id uuid not null unique references auth.users")],
   ["Fresh base schema links client logins before migration 007", initial.includes("auth_user_id uuid unique references auth.users(id) on delete set null")],
   ["Owner identity is self-readable but not client-writable", initial.includes('create policy "Owner can read own owner record"') && initial.includes("grant select on public.owner_users to authenticated") && !initial.includes("grant insert on public.owner_users to authenticated")],
+  ["Shared portal and protected owner route request only captured owner columns", [portalLogin, ownerRoute].every((source) => source.includes('.from("owner_users")') && source.includes('.select("id")'))],
+  ["Owner access checks never depend on an uncaptured role column", [portalLogin, ownerRoute].every((source) => !source.includes('.select("id, role")'))],
+  ["Legacy owner login always redirects into the one shared portal login", app.includes('path === "/owner/login"') && app.includes('window.location.replace("/portal/login")') && !app.includes('import("./pages/OwnerLogin")')],
+  ["Shared login routes owners and clients to their protected portals", portalLogin.includes('window.location.href = "/owner"') && portalLogin.includes('window.location.href = "/client"')],
+  ["Public root has no legacy fixed-width light template shell", baseStyles.includes("#030712") && !baseStyles.includes("width: 1126px") && !baseStyles.includes("--bg: #fff")],
+  ["Netlify preview drawer cannot cover the NXQ staging interface", baseStyles.includes("[data-netlify-deploy-id][data-netlify-site-id]") && baseStyles.includes("display: none !important")],
+  ["Homepage premium cards avoid mask compositing artifacts", !publicCardBorder.includes("-webkit-mask") && !publicCardBorder.includes("mask-composite")],
+  ["Owner dashboard has no floating debug shortcut stack", !app.includes("owner-plan-change-shortcut") && !planStyles.includes(".owner-plan-change-shortcut")],
+  ["Daily owner tools surface Commerce without burying normal approvals", ownerPortal.includes('href="/owner/commerce"') && ownerPortal.includes("System and exception tools")],
+  ["Internal controls are collapsed away from the normal workflow", ownerPortal.includes('<details className="owner-system-tools">') && ownerPortal.includes("These are for setup, outages, billing exceptions, and launch diagnostics")],
+  ["Owner dashboard no longer directly loads payment records", !ownerPortal.includes('.from("payment_records")') && !ownerPortal.includes("Payment records load failed")],
+  ["Owner dashboard removes manual lifecycle and billing mutation buttons", !ownerPortal.includes("Past Due") && !ownerPortal.includes("Freeze Billing") && !ownerPortal.includes("Activate Subscription")],
+  ["Lead accounts are shown honestly as waiting for intake", ownerPortal.includes("Waiting for client intake") && ownerPortal.includes("APPROVE appears only after the client submits their setup details")],
+  ["Normal approvals use the explicit APPROVE and DENY decision language", ownerPortal.includes(">\n                        APPROVE\n") && ownerPortal.includes(">\n                        DENY\n")],
+  ["Routine approval queue excludes internal and exception requests", ownerPortal.includes('new Set(["website_setup_review", "commerce_intake_review"])') && ownerPortal.includes("pendingExceptionApprovals")],
+  ["Signup repair captures family, tier, and monthly price atomically", signupRepair.includes("product_family_id") && signupRepair.includes("product_tier_id") && signupRepair.includes("monthly_price") && signupRepair.includes("selected_tier.monthly_price")],
+  ["Signup repair changes only pre-approval lead accounts", signupRepair.includes("client.status::text = 'lead'") && signupRepair.includes("approved client's negotiated plan")],
+  ["Signup does not fabricate an approval before intake", !signupRepair.includes("insert into public.owner_approval_requests") && signupRepair.includes("Intake submission remains the approval-creation boundary")],
+  ["Business production reuses the original setup approval", automaticProduction.includes("single normal owner approval authority") && automaticProduction.includes("'single_owner_approval_source', 'website_setup_review'")],
   ["Forward migration repairs owner and client identity schema", migration.includes("create table if not exists public.owner_users") && migration.includes("add column if not exists auth_user_id uuid") && migration.includes("clients_auth_user_id_uidx")],
   ["Fresh base schema declares website_status before migration 010", initial.includes("website_status text not null default 'intake'")],
   ["Forward migration repairs existing project tables", migration.includes("add column if not exists website_status text not null default 'intake'")],
@@ -54,7 +85,7 @@ const checks = [
   ["Stale manual project-stage RPC call was removed", !ownerPortal.includes('rpc("update_project_stage"')],
   ["Stale legacy preview-approval RPC call was removed", !ownerPortal.includes('rpc("approve_launch_preview"')],
   ["Dead duplicate setup approval handler was removed", !ownerPortal.includes("acceptApprovalAndStartPipelineCloud") && !ownerPortal.includes("isAiTaskApproval")],
-  ["Owner Portal explains lifecycle automation authority", ownerPortal.includes("lifecycle changes come from the normal APPROVE or DENY decision") && ownerPortal.includes("Stage is automation-owned")],
+  ["Owner Portal explains lifecycle automation authority", ownerPortal.includes("APPROVE or DENY owns the client lifecycle") && ownerPortal.includes("automation owns project stages")],
   ["Needs Info has a captured owner-only RPC", migration.includes("create or replace function public.request_targeted_more_info") && migration.includes("Authenticated owner access required")],
   ["Needs Info field keys are an explicit allowlist", migration.includes("preferred_contact_method") && migration.includes("assistant_rules") && migration.includes("Unsupported targeted information field")],
   ["Needs Info labels and request bodies are bounded", migration.includes("between 1 and 80") && migration.includes("between 5 and 1000")],
