@@ -4257,22 +4257,42 @@ body[data-nxq-theme="light"] .owner-message-ping small {
   min-height: 100%;
 }
 
+.owner-system-tools {
+  margin-top: 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.34);
+  padding: 0.9rem;
+}
+
+.owner-system-tools summary {
+  cursor: pointer;
+  color: #cbd5e1;
+  font-weight: 800;
+}
+
+.owner-system-tools[open] summary {
+  margin-bottom: 0.75rem;
+}
+
+.owner-system-tools .client-control-row {
+  margin-top: 0.8rem;
+}
+
+.owner-intake-waiting-list {
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
 .owner-clients-panel {
   grid-column: 2;
   grid-row: 2;
-}
-
-.owner-payments-panel {
-  grid-column: 1;
-  grid-row: 3;
 }
 
 @media (max-width: 980px) {
   .owner-approval-panel,
   .build-plan-panel,
   .owner-tools-panel,
-  .owner-clients-panel,
-  .owner-payments-panel {
+  .owner-clients-panel {
     grid-column: auto;
     grid-row: auto;
     min-height: 0;

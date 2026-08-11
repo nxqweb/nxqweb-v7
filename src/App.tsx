@@ -93,7 +93,7 @@ function AppRoutes() {
   if (path === "/owner/sales") return <OwnerProtectedRoute><OwnerSalesPipeline /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
-  if (path === "/owner") return <OwnerProtectedRoute><><OwnerPortal /><a className="owner-plan-change-shortcut" href="/owner/plan-changes">Review plan changes</a><a className="owner-plan-change-shortcut" href="/owner/product-families" style={{ bottom: "5.25rem" }}>Product families</a><a className="owner-plan-change-shortcut" href="/owner/billing" style={{ bottom: "8.75rem" }}>Billing lifecycle</a><a className="owner-plan-change-shortcut" href="/owner/exceptions" style={{ bottom: "12.25rem" }}>Exception center</a><a className="owner-plan-change-shortcut" href="/owner/automation-health" style={{ bottom: "15.75rem" }}>Automation health</a><a className="owner-plan-change-shortcut" href="/owner/providers" style={{ bottom: "19.25rem" }}>Provider health</a><a className="owner-plan-change-shortcut" href="/owner/launch-readiness" style={{ bottom: "22.75rem" }}>Launch readiness</a><a className="owner-plan-change-shortcut" href="/owner/sales" style={{ bottom: "26.25rem" }}>Sales pipeline</a></></OwnerProtectedRoute>;
+  if (path === "/owner") return <OwnerProtectedRoute><OwnerPortal /></OwnerProtectedRoute>;
   if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
