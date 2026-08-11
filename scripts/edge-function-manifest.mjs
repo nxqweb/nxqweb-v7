@@ -26,6 +26,7 @@ export const edgeFunctionManifest = Object.freeze([
   entry("prepare-production-deployment-execution", true, "owner-jwt"),
   entry("process-data-subject-request", false, "worker-token"),
   entry("promote-business-production", false, "trusted-worker-or-owner"),
+  entry("provider-health-adapter", false, "provider-health-adapter-token"),
   entry("provision-project-infrastructure", false, "trusted-worker-or-owner"),
   entry("provision-storefront", true, "owner-jwt"),
   entry("publish-production-netlify-deploy", true, "owner-jwt"),
