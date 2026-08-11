@@ -117,6 +117,11 @@ const workflowProof = [
   'APPLY-NXQ-SUPABASE-STAGING',
 ];
 for (const proof of workflowProof) if (!workflow.includes(proof)) fail(`Manual staging workflow is missing: ${proof}`);
+const nonAiDeployGate = 'elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then';
+if (!workflow.includes(nonAiDeployGate)) fail("deploy_functions must use the 20-secret non-AI staging profile");
+if (!workflow.includes("else\n            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa")) {
+  fail("The strict external-QA profile must remain the fallback for apply_all");
+}
 if (!workflow.includes("--no-verify-jwt")) fail("Manual staging workflow does not preserve custom-auth gateway exceptions");
 if (workflow.includes("environment: nxq-production")) fail("Manual staging workflow still targets the production GitHub environment");
 if (!process.exitCode) pass("Manual workflow is staging-only, dry-runs first, and deploys from the exact manifest");
