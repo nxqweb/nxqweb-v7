@@ -54,7 +54,7 @@ export function PortalLogin() {
     }
 
     if (ownerResult.data) {
-      setStatusMessage("Owner account verified. Opening Owner APS...");
+      setStatusMessage("Owner account verified. Opening the Owner Portal...");
       window.location.href = "/owner";
       return;
     }
@@ -99,8 +99,8 @@ export function PortalLogin() {
           </div>
 
           <p className="subtle">
-            Use your NXQ Web email and password. Owner accounts open Owner APS;
-            client accounts open the Client Portal.
+            Everyone uses this same portal login. Owner accounts open the Owner
+            Portal, and client accounts open their own Client Portal.
           </p>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
