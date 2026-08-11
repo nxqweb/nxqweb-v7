@@ -46,6 +46,8 @@ verify_jwt = true
 verify_jwt = false
 [functions.promote-business-production]
 verify_jwt = false
+[functions.provider-health-adapter]
+verify_jwt = false
 [functions.provision-project-infrastructure]
 verify_jwt = false
 [functions.provision-storefront]
