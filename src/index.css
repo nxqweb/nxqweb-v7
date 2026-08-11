@@ -21,3 +21,9 @@ body {
   margin: 0;
   background: #030712;
 }
+
+/* Keep QA deploy previews visually identical to the NXQ site. Netlify injects
+   this collaboration drawer after the app renders. */
+body > [data-netlify-deploy-id][data-netlify-site-id] {
+  display: none !important;
+}
