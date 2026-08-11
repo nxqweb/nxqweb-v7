@@ -5,9 +5,15 @@ const read = (file) => fs.readFileSync(file, "utf8");
 const initial = read("supabase/migrations/001_nxqweb_v7_initial_schema.sql");
 const migration = read("supabase/migrations/182_project_status_replay_and_targeted_info_rpc.sql");
 const ownerPortal = read("src/pages/OwnerPortal.tsx");
-const ownerLogin = read("src/pages/OwnerLogin.tsx");
 const portalLogin = read("src/pages/PortalLogin.tsx");
 const ownerRoute = read("src/components/OwnerProtectedRoute.tsx");
+const app = read("src/App.tsx");
+const baseStyles = read("src/index.css");
+const nxqStyles = read("src/styles/nxq.css");
+const publicCardBorder = nxqStyles.slice(
+  nxqStyles.indexOf(".lux-card::before"),
+  nxqStyles.indexOf(".lux-card > *")
+);
 const ci = read(".github/workflows/ci-mega-extended.yml");
 const infoFunction = migration.slice(migration.indexOf("create or replace function public.request_targeted_more_info"));
 
@@ -45,8 +51,12 @@ const checks = [
   ["Fresh base schema declares owner identity before migration 007", initial.includes("create table if not exists public.owner_users") && initial.includes("auth_user_id uuid not null unique references auth.users")],
   ["Fresh base schema links client logins before migration 007", initial.includes("auth_user_id uuid unique references auth.users(id) on delete set null")],
   ["Owner identity is self-readable but not client-writable", initial.includes('create policy "Owner can read own owner record"') && initial.includes("grant select on public.owner_users to authenticated") && !initial.includes("grant insert on public.owner_users to authenticated")],
-  ["Owner access checks request only captured owner columns", [ownerLogin, portalLogin, ownerRoute].every((source) => source.includes('.from("owner_users")') && source.includes('.select("id")'))],
-  ["Owner access checks never depend on an uncaptured role column", [ownerLogin, portalLogin, ownerRoute].every((source) => !source.includes('.select("id, role")'))],
+  ["Shared portal and protected owner route request only captured owner columns", [portalLogin, ownerRoute].every((source) => source.includes('.from("owner_users")') && source.includes('.select("id")'))],
+  ["Owner access checks never depend on an uncaptured role column", [portalLogin, ownerRoute].every((source) => !source.includes('.select("id, role")'))],
+  ["Legacy owner login always redirects into the one shared portal login", app.includes('path === "/owner/login"') && app.includes('window.location.replace("/portal/login")') && !app.includes('import("./pages/OwnerLogin")')],
+  ["Shared login routes owners and clients to their protected portals", portalLogin.includes('window.location.href = "/owner"') && portalLogin.includes('window.location.href = "/client"')],
+  ["Public root has no legacy fixed-width light template shell", baseStyles.includes("#030712") && !baseStyles.includes("width: 1126px") && !baseStyles.includes("--bg: #fff")],
+  ["Homepage premium cards avoid mask compositing artifacts", !publicCardBorder.includes("-webkit-mask") && !publicCardBorder.includes("mask-composite")],
   ["Forward migration repairs owner and client identity schema", migration.includes("create table if not exists public.owner_users") && migration.includes("add column if not exists auth_user_id uuid") && migration.includes("clients_auth_user_id_uidx")],
   ["Fresh base schema declares website_status before migration 010", initial.includes("website_status text not null default 'intake'")],
   ["Forward migration repairs existing project tables", migration.includes("add column if not exists website_status text not null default 'intake'")],
