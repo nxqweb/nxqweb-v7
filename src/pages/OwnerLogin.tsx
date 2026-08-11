@@ -42,7 +42,7 @@ export function OwnerLogin() {
 
     const ownerResult = await supabase
       .from("owner_users")
-      .select("id, role")
+      .select("id")
       .eq("auth_user_id", data.user.id)
       .maybeSingle();
 
