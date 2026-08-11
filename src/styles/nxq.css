@@ -1197,20 +1197,12 @@ body[data-nxq-theme="light"] .domain-exact-instructions pre {
 .lux-card::before {
   content: "";
   position: absolute;
-  inset: -1px;
+  inset: 0;
   border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 239, 184, 0.92), rgba(251, 191, 36, 0.68), rgba(146, 64, 14, 0.45));
+  border: 1px solid rgba(253, 230, 138, 0.62);
+  background: transparent;
   opacity: 0.9;
   pointer-events: none;
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
 }
 
 .lux-card > * {
