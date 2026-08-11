@@ -56,6 +56,7 @@ const checks = [
   ["Legacy owner login always redirects into the one shared portal login", app.includes('path === "/owner/login"') && app.includes('window.location.replace("/portal/login")') && !app.includes('import("./pages/OwnerLogin")')],
   ["Shared login routes owners and clients to their protected portals", portalLogin.includes('window.location.href = "/owner"') && portalLogin.includes('window.location.href = "/client"')],
   ["Public root has no legacy fixed-width light template shell", baseStyles.includes("#030712") && !baseStyles.includes("width: 1126px") && !baseStyles.includes("--bg: #fff")],
+  ["Netlify preview drawer cannot cover the NXQ staging interface", baseStyles.includes("[data-netlify-deploy-id][data-netlify-site-id]") && baseStyles.includes("display: none !important")],
   ["Homepage premium cards avoid mask compositing artifacts", !publicCardBorder.includes("-webkit-mask") && !publicCardBorder.includes("mask-composite")],
   ["Forward migration repairs owner and client identity schema", migration.includes("create table if not exists public.owner_users") && migration.includes("add column if not exists auth_user_id uuid") && migration.includes("clients_auth_user_id_uidx")],
   ["Fresh base schema declares website_status before migration 010", initial.includes("website_status text not null default 'intake'")],
