@@ -69,7 +69,7 @@ jobs:
           npx --no-install supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-secrets.json"
           if [ "${{ inputs.action }}" = "validate_foundation" ]; then
             node scripts/check-runtime-stage-readiness.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
-          elif [ "${{ inputs.action }}" = "validate_non_ai" ]; then
+          elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then
             node scripts/check-runtime-stage-readiness.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           else
             node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
