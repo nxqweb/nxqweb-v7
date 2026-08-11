@@ -2,6 +2,7 @@ import fs from "node:fs";
 
 const migration = fs.readFileSync("supabase/migrations/142_provider_health_dispatcher.sql", "utf8");
 const worker = fs.readFileSync("supabase/functions/check-provider-health/index.ts", "utf8");
+const adapter = fs.readFileSync("supabase/functions/provider-health-adapter/index.ts", "utf8");
 const providerFoundation = fs.readFileSync("supabase/migrations/134_provider_observability_and_recovery_foundation.sql", "utf8");
 
 const checks = [
@@ -13,6 +14,11 @@ const checks = [
   ["Missing worker configuration is explicit", migration.includes("provider_health_worker_vault_config_missing")],
   ["Health worker requires protected automation token", worker.includes("x-nxq-worker-token") && worker.includes("NXQ_AUTOMATION_WORKER_TOKEN")],
   ["Health worker requires adapter credentials before checking", worker.includes("NXQ_PROVIDER_HEALTH_ADAPTER_URL") && worker.includes("NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN")],
+  ["Adapter uses constant-time bearer authentication", adapter.includes("NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN") && adapter.includes("constantTimeEqual") && adapter.includes("Authorization")],
+  ["Adapter provider calls are read-only and target fixed APIs", adapter.includes('method: "GET"') && adapter.includes("https://api.github.com/repos/") && adapter.includes("https://api.netlify.com/api/v1/user") && !adapter.includes('method: "DELETE"') && !adapter.includes('method: "PATCH"') && !adapter.includes('method: "PUT"')],
+  ["Adapter uses separate verification credentials", adapter.includes("NXQ_GITHUB_VERIFY_TOKEN") && adapter.includes("NXQ_NETLIFY_VERIFY_TOKEN")],
+  ["Adapter provider timeouts are bounded", adapter.includes("AbortController") && adapter.includes("8_000")],
+  ["Adapter never returns provider bodies or secret values", adapter.includes("Provider response bodies are intentionally not read") && adapter.includes("secret_values_returned: false")],
   ["Missing provider adapter never fabricates health", worker.includes("provider_health_adapter_missing") && worker.includes("provider_statuses_changed: 0")],
   ["Health results persist evidence events", worker.includes("nxq_provider_health_events")],
   ["Unauthorized/rate-limited provider responses are distinguished", worker.includes("unauthorized") && worker.includes("rate_limited")],
