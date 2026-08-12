@@ -14,6 +14,7 @@ on:
           - validate
           - apply_migrations
           - deploy_functions
+          - dispatch_workers
           - apply_all
       confirmation:
         description: "For mutation actions type APPLY-NXQ-SUPABASE-STAGING exactly"
@@ -31,6 +32,7 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      NXQ_AUTOMATION_WORKER_TOKEN: ${{ secrets.NXQ_AUTOMATION_WORKER_TOKEN }}
       SUPABASE_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +56,9 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
+          if [ "${{ inputs.action }}" = "dispatch_workers" ]; then
+            test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
+          fi
 
       - name: Link project
         run: npx --no-install supabase link --project-ref "$SUPABASE_PROJECT_REF"
@@ -117,6 +122,29 @@ jobs:
           set -euo pipefail
           npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
           node scripts/check-runtime-stage-readiness.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+
+      - name: Dispatch queued staging workers externally
+        if: inputs.action == 'dispatch_workers'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          for fn in provision-project-infrastructure prepare-build-plan; do
+            echo "Dispatching $fn..."
+            response_file="$RUNNER_TEMP/${fn}.json"
+            http_code=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
+              --request POST \
+              --header "Content-Type: application/json" \
+              --header "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+              --data '{"source":"github-actions-staging-dispatch"}' \
+              "${base_url}/${fn}")
+            cat "$response_file"
+            echo
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "$fn returned HTTP $http_code"
+              exit 1
+            fi
+          done
 
       - name: Final safety note
         run: |
