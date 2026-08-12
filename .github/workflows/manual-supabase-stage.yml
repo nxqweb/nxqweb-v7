@@ -129,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           base_url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
-          for fn in provision-project-infrastructure prepare-build-plan; do
+          for fn in provision-project-infrastructure prepare-build-plan build-business-website; do
             echo "Dispatching $fn..."
             response_file="$RUNNER_TEMP/${fn}.json"
             http_code=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \
