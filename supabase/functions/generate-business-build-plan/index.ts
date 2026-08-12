@@ -321,6 +321,29 @@ async function recordHeartbeat(admin: unknown, status: "healthy" | "degraded" | 
   });
 }
 
+function stagingFallback(request: BuildPlanRequest) {
+  const n=request.input.business_name, t=request.input.business_type, a=request.input.service_area;
+  const services=request.contract.allowed_services, pages=request.contract.allowed_pages;
+  const style=request.input.desired_style.toLowerCase();
+  const theme=style.includes("gold")?"charcoal_gold":style.includes("green")?"forest_emerald":style.includes("purple")||style.includes("violet")?"royal_violet":"midnight_blue";
+  return {
+    schema_version:schemaVersion, request_fingerprint:request.request_fingerprint, confidence:0.9, risk_flags:[],
+    strategy:{
+      positioning:`${n} is positioned as a dependable professional ${t} provider focused on clear service information, responsive communication, and qualified local leads.`,
+      audiences:["Local property owners","Commercial property managers","Customers needing prompt service"],
+      value_proposition:`${n} presents its approved services with a clear path to request help, emphasizing professional execution, responsive communication, and a polished customer experience.`,
+      voice:"Professional, confident, direct, trustworthy, and helpful without exaggerated claims.",
+      hero:{eyebrow:`${n} Professional Service`,headline:`Professional ${t} Service Built Around Clear Help`,subheadline:`${n} makes it simple to understand available services, request a quote, and reach the team when timely professional help matters.`},
+      service_descriptions:services.map(service=>({service,description:`${n} provides ${service} with a professional, safety-minded approach, clear communication, and an easy path for customers to request service.`})),
+      trust_points:["Clear and responsive customer communication","Professional service planning and execution","Simple quote and contact pathways"],
+      about_summary:`${n} serves customers looking for dependable ${t} support${a?` across ${a}`:" in the local service area"}. The website should communicate services clearly, make inquiries easy to route, and reinforce a professional customer experience without unsupported claims.`,
+      seo:{title:`${n} Professional Local Service`.slice(0,60),description:`${n} provides professional ${t} service with clear information, responsive contact options, and an easy quote request process.`.slice(0,160),keywords:[t,...services.slice(0,4),"local professional service"].slice(0,10)},
+      page_strategy:pages.map(page=>({page,objective:`Give the ${page} page a focused customer objective grounded only in the approved intake and guide visitors toward the right next step.`,sections:["Page introduction","Primary page content","Supporting trust content","Contact call to action"]})),
+      design:{theme_key:request.contract.allowed_theme_keys.includes(theme)?theme:request.contract.allowed_theme_keys[0],mood:"Premium, modern, polished, confident, high-contrast, and appropriate for a professional local-service business.",palette_guidance:["Use a dark premium foundation","Keep accent contrast strong and restrained","Preserve excellent text readability"],typography_guidance:"Use large confident headings, readable body type, and a disciplined hierarchy that feels premium rather than flashy.",motion_guidance:"Use subtle purposeful transitions and restrained motion that supports clarity without distracting from calls to action."}
+    }
+  };
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") return response({ ok: false, error: "POST required." }, 405);
   const contentLength = Number(request.headers.get("content-length") || 0);
@@ -342,6 +365,20 @@ Deno.serve(async (request) => {
   const protocolRaw = optionalSecret("NXQ_AI_MODEL_PROVIDER_PROTOCOL") || "openai_responses";
   const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);
   if (!providerConfigured) {
+    const runtimeEnvironment = optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();
+    const stagingOnlyFallbackAllowed = new Set(["staging", "stage", "development", "dev", "test", "qa"]).has(runtimeEnvironment);
+    if (stagingOnlyFallbackAllowed) {
+      let fallbackRequest: BuildPlanRequest;
+      try { fallbackRequest = validateRequest(await request.json()); }
+      catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid build-plan request.";
+        await recordHeartbeat(admin, "degraded", { provider_configured: false, staging_fallback: true }, message);
+        return response({ ok: false, error: message }, 400);
+      }
+      const fallback = stagingFallback(fallbackRequest);
+      await recordHeartbeat(admin, "healthy", { provider_configured: false, provider_call_proven: false, staging_fallback: true, schema_version: schemaVersion }, null);
+      return response(fallback);
+    }
     await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");
     return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);
   }
