@@ -26,101 +26,24 @@ jobs:
       - run: npm ci
       - name: Add deterministic staging-only adapter fallback
         shell: bash
+        env:
+          HELPER_B64: ZnVuY3Rpb24gc3RhZ2luZ0ZhbGxiYWNrKHJlcXVlc3Q6IEJ1aWxkUGxhblJlcXVlc3QpIHsKICBjb25zdCBuPXJlcXVlc3QuaW5wdXQuYnVzaW5lc3NfbmFtZSwgdD1yZXF1ZXN0LmlucHV0LmJ1c2luZXNzX3R5cGUsIGE9cmVxdWVzdC5pbnB1dC5zZXJ2aWNlX2FyZWE7CiAgY29uc3Qgc2VydmljZXM9cmVxdWVzdC5jb250cmFjdC5hbGxvd2VkX3NlcnZpY2VzLCBwYWdlcz1yZXF1ZXN0LmNvbnRyYWN0LmFsbG93ZWRfcGFnZXM7CiAgY29uc3Qgc3R5bGU9cmVxdWVzdC5pbnB1dC5kZXNpcmVkX3N0eWxlLnRvTG93ZXJDYXNlKCk7CiAgY29uc3QgdGhlbWU9c3R5bGUuaW5jbHVkZXMoImdvbGQiKT8iY2hhcmNvYWxfZ29sZCI6c3R5bGUuaW5jbHVkZXMoImdyZWVuIik/ImZvcmVzdF9lbWVyYWxkIjpzdHlsZS5pbmNsdWRlcygicHVycGxlIil8fHN0eWxlLmluY2x1ZGVzKCJ2aW9sZXQiKT8icm95YWxfdmlvbGV0IjoibWlkbmlnaHRfYmx1ZSI7CiAgcmV0dXJuIHsKICAgIHNjaGVtYV92ZXJzaW9uOnNjaGVtYVZlcnNpb24sIHJlcXVlc3RfZmluZ2VycHJpbnQ6cmVxdWVzdC5yZXF1ZXN0X2ZpbmdlcnByaW50LCBjb25maWRlbmNlOjAuOSwgcmlza19mbGFnczpbXSwKICAgIHN0cmF0ZWd5OnsKICAgICAgcG9zaXRpb25pbmc6YCR7bn0gaXMgcG9zaXRpb25lZCBhcyBhIGRlcGVuZGFibGUgcHJvZmVzc2lvbmFsICR7dH0gcHJvdmlkZXIgZm9jdXNlZCBvbiBjbGVhciBzZXJ2aWNlIGluZm9ybWF0aW9uLCByZXNwb25zaXZlIGNvbW11bmljYXRpb24sIGFuZCBxdWFsaWZpZWQgbG9jYWwgbGVhZHMuYCwKICAgICAgYXVkaWVuY2VzOlsiTG9jYWwgcHJvcGVydHkgb3duZXJzIiwiQ29tbWVyY2lhbCBwcm9wZXJ0eSBtYW5hZ2VycyIsIkN1c3RvbWVycyBuZWVkaW5nIHByb21wdCBzZXJ2aWNlIl0sCiAgICAgIHZhbHVlX3Byb3Bvc2l0aW9uOmAke259IHByZXNlbnRzIGl0cyBhcHByb3ZlZCBzZXJ2aWNlcyB3aXRoIGEgY2xlYXIgcGF0aCB0byByZXF1ZXN0IGhlbHAsIGVtcGhhc2l6aW5nIHByb2Zlc3Npb25hbCBleGVjdXRpb24sIHJlc3BvbnNpdmUgY29tbXVuaWNhdGlvbiwgYW5kIGEgcG9saXNoZWQgY3VzdG9tZXIgZXhwZXJpZW5jZS5gLAogICAgICB2b2ljZToiUHJvZmVzc2lvbmFsLCBjb25maWRlbnQsIGRpcmVjdCwgdHJ1c3R3b3J0aHksIGFuZCBoZWxwZnVsIHdpdGhvdXQgZXhhZ2dlcmF0ZWQgY2xhaW1zLiIsCiAgICAgIGhlcm86e2V5ZWJyb3c6YCR7bn0gUHJvZmVzc2lvbmFsIFNlcnZpY2VgLGhlYWRsaW5lOmBQcm9mZXNzaW9uYWwgJHt0fSBTZXJ2aWNlIEJ1aWx0IEFyb3VuZCBDbGVhciBIZWxwYCxzdWJoZWFkbGluZTpgJHtufSBtYWtlcyBpdCBzaW1wbGUgdG8gdW5kZXJzdGFuZCBhdmFpbGFibGUgc2VydmljZXMsIHJlcXVlc3QgYSBxdW90ZSwgYW5kIHJlYWNoIHRoZSB0ZWFtIHdoZW4gdGltZWx5IHByb2Zlc3Npb25hbCBoZWxwIG1hdHRlcnMuYH0sCiAgICAgIHNlcnZpY2VfZGVzY3JpcHRpb25zOnNlcnZpY2VzLm1hcChzZXJ2aWNlPT4oe3NlcnZpY2UsZGVzY3JpcHRpb246YCR7bn0gcHJvdmlkZXMgJHtzZXJ2aWNlfSB3aXRoIGEgcHJvZmVzc2lvbmFsLCBzYWZldHktbWluZGVkIGFwcHJvYWNoLCBjbGVhciBjb21tdW5pY2F0aW9uLCBhbmQgYW4gZWFzeSBwYXRoIGZvciBjdXN0b21lcnMgdG8gcmVxdWVzdCBzZXJ2aWNlLmB9KSksCiAgICAgIHRydXN0X3BvaW50czpbIkNsZWFyIGFuZCByZXNwb25zaXZlIGN1c3RvbWVyIGNvbW11bmljYXRpb24iLCJQcm9mZXNzaW9uYWwgc2VydmljZSBwbGFubmluZyBhbmQgZXhlY3V0aW9uIiwiU2ltcGxlIHF1b3RlIGFuZCBjb250YWN0IHBhdGh3YXlzIl0sCiAgICAgIGFib3V0X3N1bW1hcnk6YCR7bn0gc2VydmVzIGN1c3RvbWVycyBsb29raW5nIGZvciBkZXBlbmRhYmxlICR7dH0gc3VwcG9ydCR7YT9gIGFjcm9zcyAke2F9YDoiIGluIHRoZSBsb2NhbCBzZXJ2aWNlIGFyZWEifS4gVGhlIHdlYnNpdGUgc2hvdWxkIGNvbW11bmljYXRlIHNlcnZpY2VzIGNsZWFybHksIG1ha2UgaW5xdWlyaWVzIGVhc3kgdG8gcm91dGUsIGFuZCByZWluZm9yY2UgYSBwcm9mZXNzaW9uYWwgY3VzdG9tZXIgZXhwZXJpZW5jZSB3aXRob3V0IHVuc3VwcG9ydGVkIGNsYWltcy5gLAogICAgICBzZW86e3RpdGxlOmAke259IFByb2Zlc3Npb25hbCBMb2NhbCBTZXJ2aWNlYC5zbGljZSgwLDYwKSxkZXNjcmlwdGlvbjpgJHtufSBwcm92aWRlcyBwcm9mZXNzaW9uYWwgJHt0fSBzZXJ2aWNlIHdpdGggY2xlYXIgaW5mb3JtYXRpb24sIHJlc3BvbnNpdmUgY29udGFjdCBvcHRpb25zLCBhbmQgYW4gZWFzeSBxdW90ZSByZXF1ZXN0IHByb2Nlc3MuYC5zbGljZSgwLDE2MCksa2V5d29yZHM6W3QsLi4uc2VydmljZXMuc2xpY2UoMCw0KSwibG9jYWwgcHJvZmVzc2lvbmFsIHNlcnZpY2UiXS5zbGljZSgwLDEwKX0sCiAgICAgIHBhZ2Vfc3RyYXRlZ3k6cGFnZXMubWFwKHBhZ2U9Pih7cGFnZSxvYmplY3RpdmU6YEdpdmUgdGhlICR7cGFnZX0gcGFnZSBhIGZvY3VzZWQgY3VzdG9tZXIgb2JqZWN0aXZlIGdyb3VuZGVkIG9ubHkgaW4gdGhlIGFwcHJvdmVkIGludGFrZSBhbmQgZ3VpZGUgdmlzaXRvcnMgdG93YXJkIHRoZSByaWdodCBuZXh0IHN0ZXAuYCxzZWN0aW9uczpbIlBhZ2UgaW50cm9kdWN0aW9uIiwiUHJpbWFyeSBwYWdlIGNvbnRlbnQiLCJTdXBwb3J0aW5nIHRydXN0IGNvbnRlbnQiLCJDb250YWN0IGNhbGwgdG8gYWN0aW9uIl19KSksCiAgICAgIGRlc2lnbjp7dGhlbWVfa2V5OnJlcXVlc3QuY29udHJhY3QuYWxsb3dlZF90aGVtZV9rZXlzLmluY2x1ZGVzKHRoZW1lKT90aGVtZTpyZXF1ZXN0LmNvbnRyYWN0LmFsbG93ZWRfdGhlbWVfa2V5c1swXSxtb29kOiJQcmVtaXVtLCBtb2Rlcm4sIHBvbGlzaGVkLCBjb25maWRlbnQsIGhpZ2gtY29udHJhc3QsIGFuZCBhcHByb3ByaWF0ZSBmb3IgYSBwcm9mZXNzaW9uYWwgbG9jYWwtc2VydmljZSBidXNpbmVzcy4iLHBhbGV0dGVfZ3VpZGFuY2U6WyJVc2UgYSBkYXJrIHByZW1pdW0gZm91bmRhdGlvbiIsIktlZXAgYWNjZW50IGNvbnRyYXN0IHN0cm9uZyBhbmQgcmVzdHJhaW5lZCIsIlByZXNlcnZlIGV4Y2VsbGVudCB0ZXh0IHJlYWRhYmlsaXR5Il0sdHlwb2dyYXBoeV9ndWlkYW5jZToiVXNlIGxhcmdlIGNvbmZpZGVudCBoZWFkaW5ncywgcmVhZGFibGUgYm9keSB0eXBlLCBhbmQgYSBkaXNjaXBsaW5lZCBoaWVyYXJjaHkgdGhhdCBmZWVscyBwcmVtaXVtIHJhdGhlciB0aGFuIGZsYXNoeS4iLG1vdGlvbl9ndWlkYW5jZToiVXNlIHN1YnRsZSBwdXJwb3NlZnVsIHRyYW5zaXRpb25zIGFuZCByZXN0cmFpbmVkIG1vdGlvbiB0aGF0IHN1cHBvcnRzIGNsYXJpdHkgd2l0aG91dCBkaXN0cmFjdGluZyBmcm9tIGNhbGxzIHRvIGFjdGlvbi4ifQogICAgfQogIH07Cn0KCg==
+          OLD_B64: ICBjb25zdCBwcm92aWRlckNvbmZpZ3VyZWQgPSBCb29sZWFuKHByb3ZpZGVyVXJsUmF3ICYmIHByb3ZpZGVyVG9rZW4gJiYgcHJvdmlkZXJNb2RlbCk7CiAgaWYgKCFwcm92aWRlckNvbmZpZ3VyZWQpIHsKICAgIGF3YWl0IHJlY29yZEhlYXJ0YmVhdChhZG1pbiwgImRlZ3JhZGVkIiwgeyBwcm92aWRlcl9jb25maWd1cmVkOiBmYWxzZSwgcHJvdmlkZXJfY2FsbF9wcm92ZW46IGZhbHNlIH0sICJBSSBtb2RlbCBwcm92aWRlciBpcyBub3QgY29uZmlndXJlZC4iKTsKICAgIHJldHVybiByZXNwb25zZSh7IG9rOiBmYWxzZSwgY29uZmlndXJlZDogZmFsc2UsIGVycm9yOiAiQUkgbW9kZWwgcHJvdmlkZXIgaXMgbm90IGNvbmZpZ3VyZWQuIiB9LCA1MDMpOwogIH0=
+          NEW_B64: ICBjb25zdCBwcm92aWRlckNvbmZpZ3VyZWQgPSBCb29sZWFuKHByb3ZpZGVyVXJsUmF3ICYmIHByb3ZpZGVyVG9rZW4gJiYgcHJvdmlkZXJNb2RlbCk7CiAgaWYgKCFwcm92aWRlckNvbmZpZ3VyZWQpIHsKICAgIGNvbnN0IHJ1bnRpbWVFbnZpcm9ubWVudCA9IG9wdGlvbmFsU2VjcmV0KCJOWFFfUlVOVElNRV9FTlZJUk9OTUVOVCIpLnRvTG93ZXJDYXNlKCk7CiAgICBjb25zdCBzdGFnaW5nT25seUZhbGxiYWNrQWxsb3dlZCA9IG5ldyBTZXQoWyJzdGFnaW5nIiwgInN0YWdlIiwgImRldmVsb3BtZW50IiwgImRldiIsICJ0ZXN0IiwgInFhIl0pLmhhcyhydW50aW1lRW52aXJvbm1lbnQpOwogICAgaWYgKHN0YWdpbmdPbmx5RmFsbGJhY2tBbGxvd2VkKSB7CiAgICAgIGxldCBmYWxsYmFja1JlcXVlc3Q6IEJ1aWxkUGxhblJlcXVlc3Q7CiAgICAgIHRyeSB7IGZhbGxiYWNrUmVxdWVzdCA9IHZhbGlkYXRlUmVxdWVzdChhd2FpdCByZXF1ZXN0Lmpzb24oKSk7IH0KICAgICAgY2F0Y2ggKGVycm9yKSB7CiAgICAgICAgY29uc3QgbWVzc2FnZSA9IGVycm9yIGluc3RhbmNlb2YgRXJyb3IgPyBlcnJvci5tZXNzYWdlIDogIkludmFsaWQgYnVpbGQtcGxhbiByZXF1ZXN0LiI7CiAgICAgICAgYXdhaXQgcmVjb3JkSGVhcnRiZWF0KGFkbWluLCAiZGVncmFkZWQiLCB7IHByb3ZpZGVyX2NvbmZpZ3VyZWQ6IGZhbHNlLCBzdGFnaW5nX2ZhbGxiYWNrOiB0cnVlIH0sIG1lc3NhZ2UpOwogICAgICAgIHJldHVybiByZXNwb25zZSh7IG9rOiBmYWxzZSwgZXJyb3I6IG1lc3NhZ2UgfSwgNDAwKTsKICAgICAgfQogICAgICBjb25zdCBmYWxsYmFjayA9IHN0YWdpbmdGYWxsYmFjayhmYWxsYmFja1JlcXVlc3QpOwogICAgICBhd2FpdCByZWNvcmRIZWFydGJlYXQoYWRtaW4sICJoZWFsdGh5IiwgeyBwcm92aWRlcl9jb25maWd1cmVkOiBmYWxzZSwgcHJvdmlkZXJfY2FsbF9wcm92ZW46IGZhbHNlLCBzdGFnaW5nX2ZhbGxiYWNrOiB0cnVlLCBzY2hlbWFfdmVyc2lvbjogc2NoZW1hVmVyc2lvbiB9LCBudWxsKTsKICAgICAgcmV0dXJuIHJlc3BvbnNlKGZhbGxiYWNrKTsKICAgIH0KICAgIGF3YWl0IHJlY29yZEhlYXJ0YmVhdChhZG1pbiwgImRlZ3JhZGVkIiwgeyBwcm92aWRlcl9jb25maWd1cmVkOiBmYWxzZSwgcHJvdmlkZXJfY2FsbF9wcm92ZW46IGZhbHNlIH0sICJBSSBtb2RlbCBwcm92aWRlciBpcyBub3QgY29uZmlndXJlZC4iKTsKICAgIHJldHVybiByZXNwb25zZSh7IG9rOiBmYWxzZSwgY29uZmlndXJlZDogZmFsc2UsIGVycm9yOiAiQUkgbW9kZWwgcHJvdmlkZXIgaXMgbm90IGNvbmZpZ3VyZWQuIiB9LCA1MDMpOwogIH0=
         run: |
           python - <<'PY'
+          import base64, os
           from pathlib import Path
           p = Path('supabase/functions/generate-business-build-plan/index.ts')
           s = p.read_text()
-
+          helper = base64.b64decode(os.environ['HELPER_B64']).decode()
+          old = base64.b64decode(os.environ['OLD_B64']).decode()
+          new = base64.b64decode(os.environ['NEW_B64']).decode()
           marker = 'Deno.serve(async (request) => {'
-          helper = r'''
-function stagingFallback(request: BuildPlanRequest) {
-  const businessName = request.input.business_name;
-  const businessType = request.input.business_type;
-  const serviceArea = request.input.service_area;
-  const services = request.contract.allowed_services;
-  const pages = request.contract.allowed_pages;
-  const style = request.input.desired_style.toLowerCase();
-  const themeKey = style.includes("purple") || style.includes("violet")
-    ? "royal_violet"
-    : style.includes("green") || style.includes("forest")
-    ? "forest_emerald"
-    : style.includes("gold")
-    ? "charcoal_gold"
-    : "midnight_blue";
-  const serviceLabel = services.length === 1 ? services[0] : `${services.length} core services`;
-  const areaText = serviceArea ? ` across ${serviceArea}` : " in the local service area";
-
-  return {
-    schema_version: schemaVersion,
-    request_fingerprint: request.request_fingerprint,
-    confidence: 0.9,
-    risk_flags: [],
-    strategy: {
-      positioning: `${businessName} is positioned as a dependable, professional ${businessType} provider focused on clear service information, responsive communication, and qualified local leads.`,
-      audiences: ["Local property owners", "Commercial property managers", "Customers needing prompt service"],
-      value_proposition: `${businessName} presents ${serviceLabel} with a clear path to request service, emphasizing professional execution, responsive communication, and a polished customer experience${areaText}.`,
-      voice: "Professional, confident, direct, trustworthy, and helpful without exaggerated claims.",
-      hero: {
-        eyebrow: `${businessName} | Professional Service`,
-        headline: `Professional ${businessType} Service Built Around Fast, Clear Help`,
-        subheadline: `${businessName} makes it simple to understand available services, request a quote, and reach the team when timely professional help matters.`,
-      },
-      service_descriptions: services.map((service) => ({
-        service,
-        description: `${businessName} provides ${service} with a professional, safety-minded approach, clear communication, and an easy path for customers to request service.`,
-      })),
-      trust_points: [
-        "Clear and responsive customer communication",
-        "Professional service planning and execution",
-        "Simple quote and contact pathways",
-      ],
-      about_summary: `${businessName} serves customers looking for dependable ${businessType} support${areaText}. The website should communicate services clearly, make urgent and routine inquiries easy to route, and reinforce a professional customer experience without inventing unsupported claims.`,
-      seo: {
-        title: `${businessName} | Professional Local Service`.slice(0, 60),
-        description: `${businessName} provides professional ${businessType} service with clear service information, responsive contact options, and an easy quote request process.`.slice(0, 160),
-        keywords: [businessType, ...services.slice(0, 4), "local professional service"].slice(0, 10),
-      },
-      page_strategy: pages.map((page) => ({
-        page,
-        objective: page === "Home"
-          ? `Introduce ${businessName}, communicate the primary value proposition, and route visitors quickly to services or contact actions.`
-          : page === "About"
-          ? `Explain the professional approach and customer experience behind ${businessName} without adding unsupported company history or credentials.`
-          : page === "Services"
-          ? `Present every approved service clearly so visitors can understand the available work and choose the right next step.`
-          : page === "Contact"
-          ? `Give visitors a simple, direct way to request service, ask questions, or begin a quote conversation.`
-          : page === "Service Areas"
-          ? `Clarify the approved service area and help qualified local visitors understand whether ${businessName} serves their location.`
-          : page === "Reviews"
-          ? `Create a trust-focused reviews page structure without inventing testimonials, ratings, or customer claims.`
-          : `Give the ${page} page a focused customer objective grounded only in the approved intake.`,
-        sections: page === "Home"
-          ? ["Hero and primary call to action", "Service overview", "Trust and process", "Service area", "Contact call to action"]
-          : page === "Services"
-          ? ["Services introduction", "Approved service details", "How to request service", "Contact call to action"]
-          : ["Page introduction", "Primary page content", "Supporting trust content", "Contact call to action"],
-      })),
-      design: {
-        theme_key: request.contract.allowed_theme_keys.includes(themeKey) ? themeKey : request.contract.allowed_theme_keys[0],
-        mood: "Premium, modern, polished, confident, high-contrast, and appropriate for a professional local-service business.",
-        palette_guidance: ["Use a dark premium foundation", "Keep accent contrast strong and restrained", "Preserve excellent text readability"],
-        typography_guidance: "Use large confident headings, highly readable body type, and a disciplined hierarchy that feels premium rather than flashy.",
-        motion_guidance: "Use subtle purposeful transitions and restrained motion that supports clarity without slowing navigation or distracting from calls to action.",
-      },
-    },
-  };
-}
-
-'''
           if 'function stagingFallback(request: BuildPlanRequest)' not in s:
               if marker not in s:
                   raise SystemExit('Deno serve marker missing; refusing ambiguous patch')
               s = s.replace(marker, helper + marker, 1)
-
-          old = '''  const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);\n  if (!providerConfigured) {\n    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");\n    return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);\n  }'''
-          new = '''  const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);\n  if (!providerConfigured) {\n    const runtimeEnvironment = optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();\n    const stagingOnlyFallbackAllowed = new Set(["staging", "stage", "development", "dev", "test", "qa"]).has(runtimeEnvironment);\n    if (stagingOnlyFallbackAllowed) {\n      let fallbackRequest: BuildPlanRequest;\n      try { fallbackRequest = validateRequest(await request.json()); }\n      catch (error) {\n        const message = error instanceof Error ? error.message : "Invalid build-plan request.";\n        await recordHeartbeat(admin, "degraded", { provider_configured: false, staging_fallback: true }, message);\n        return response({ ok: false, error: message }, 400);\n      }\n      const fallback = stagingFallback(fallbackRequest);\n      await recordHeartbeat(admin, "healthy", { provider_configured: false, provider_call_proven: false, staging_fallback: true, schema_version: schemaVersion }, null);\n      return response(fallback);\n    }\n    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");\n    return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);\n  }'''
           if old not in s:
               raise SystemExit('Provider-config block missing; refusing ambiguous patch')
           s = s.replace(old, new, 1)
