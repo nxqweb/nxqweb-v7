@@ -1,0 +1,62 @@
+name: NXQ Staging Worker Dispatcher
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nxq-staging-worker-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    environment: nxq-staging
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      NXQ_AUTOMATION_WORKER_TOKEN: ${{ secrets.NXQ_AUTOMATION_WORKER_TOKEN }}
+    steps:
+      - name: Require protected staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
+
+      - name: Wake infrastructure and build-plan workers
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+
+          wake() {
+            local fn="$1"
+            echo "Waking ${fn}..."
+            curl --silent --show-error --fail-with-body \
+              --connect-timeout 15 \
+              --max-time 60 \
+              -X POST "${base}/${fn}" \
+              -H "Content-Type: application/json" \
+              -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+              --data '{"source":"github_actions_staging_dispatch"}'
+            echo
+          }
+
+          # Each worker claims at most one due job per invocation. Wake a small bounded
+          # batch so multiple approved clients can progress without creating duplicates.
+          for _ in 1 2 3 4 5; do
+            wake provision-project-infrastructure
+          done
+
+          for _ in 1 2 3 4 5; do
+            wake prepare-build-plan
+          done
+
+      - name: Safety note
+        run: |
+          echo "Staging worker dispatch completed."
+          echo "This workflow only wakes existing idempotent staging workers; Supabase remains source of truth for job claiming and status."
