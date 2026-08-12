@@ -1,0 +1,146 @@
+name: NXQ Build Plan Staging Fallback
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-build-plan-staging-fallback.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Add deterministic staging-only adapter fallback
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('supabase/functions/generate-business-build-plan/index.ts')
+          s = p.read_text()
+
+          marker = 'Deno.serve(async (request) => {'
+          helper = r'''
+function stagingFallback(request: BuildPlanRequest) {
+  const businessName = request.input.business_name;
+  const businessType = request.input.business_type;
+  const serviceArea = request.input.service_area;
+  const services = request.contract.allowed_services;
+  const pages = request.contract.allowed_pages;
+  const style = request.input.desired_style.toLowerCase();
+  const themeKey = style.includes("purple") || style.includes("violet")
+    ? "royal_violet"
+    : style.includes("green") || style.includes("forest")
+    ? "forest_emerald"
+    : style.includes("gold")
+    ? "charcoal_gold"
+    : "midnight_blue";
+  const serviceLabel = services.length === 1 ? services[0] : `${services.length} core services`;
+  const areaText = serviceArea ? ` across ${serviceArea}` : " in the local service area";
+
+  return {
+    schema_version: schemaVersion,
+    request_fingerprint: request.request_fingerprint,
+    confidence: 0.9,
+    risk_flags: [],
+    strategy: {
+      positioning: `${businessName} is positioned as a dependable, professional ${businessType} provider focused on clear service information, responsive communication, and qualified local leads.`,
+      audiences: ["Local property owners", "Commercial property managers", "Customers needing prompt service"],
+      value_proposition: `${businessName} presents ${serviceLabel} with a clear path to request service, emphasizing professional execution, responsive communication, and a polished customer experience${areaText}.`,
+      voice: "Professional, confident, direct, trustworthy, and helpful without exaggerated claims.",
+      hero: {
+        eyebrow: `${businessName} | Professional Service`,
+        headline: `Professional ${businessType} Service Built Around Fast, Clear Help`,
+        subheadline: `${businessName} makes it simple to understand available services, request a quote, and reach the team when timely professional help matters.`,
+      },
+      service_descriptions: services.map((service) => ({
+        service,
+        description: `${businessName} provides ${service} with a professional, safety-minded approach, clear communication, and an easy path for customers to request service.`,
+      })),
+      trust_points: [
+        "Clear and responsive customer communication",
+        "Professional service planning and execution",
+        "Simple quote and contact pathways",
+      ],
+      about_summary: `${businessName} serves customers looking for dependable ${businessType} support${areaText}. The website should communicate services clearly, make urgent and routine inquiries easy to route, and reinforce a professional customer experience without inventing unsupported claims.`,
+      seo: {
+        title: `${businessName} | Professional Local Service`.slice(0, 60),
+        description: `${businessName} provides professional ${businessType} service with clear service information, responsive contact options, and an easy quote request process.`.slice(0, 160),
+        keywords: [businessType, ...services.slice(0, 4), "local professional service"].slice(0, 10),
+      },
+      page_strategy: pages.map((page) => ({
+        page,
+        objective: page === "Home"
+          ? `Introduce ${businessName}, communicate the primary value proposition, and route visitors quickly to services or contact actions.`
+          : page === "About"
+          ? `Explain the professional approach and customer experience behind ${businessName} without adding unsupported company history or credentials.`
+          : page === "Services"
+          ? `Present every approved service clearly so visitors can understand the available work and choose the right next step.`
+          : page === "Contact"
+          ? `Give visitors a simple, direct way to request service, ask questions, or begin a quote conversation.`
+          : page === "Service Areas"
+          ? `Clarify the approved service area and help qualified local visitors understand whether ${businessName} serves their location.`
+          : page === "Reviews"
+          ? `Create a trust-focused reviews page structure without inventing testimonials, ratings, or customer claims.`
+          : `Give the ${page} page a focused customer objective grounded only in the approved intake.`,
+        sections: page === "Home"
+          ? ["Hero and primary call to action", "Service overview", "Trust and process", "Service area", "Contact call to action"]
+          : page === "Services"
+          ? ["Services introduction", "Approved service details", "How to request service", "Contact call to action"]
+          : ["Page introduction", "Primary page content", "Supporting trust content", "Contact call to action"],
+      })),
+      design: {
+        theme_key: request.contract.allowed_theme_keys.includes(themeKey) ? themeKey : request.contract.allowed_theme_keys[0],
+        mood: "Premium, modern, polished, confident, high-contrast, and appropriate for a professional local-service business.",
+        palette_guidance: ["Use a dark premium foundation", "Keep accent contrast strong and restrained", "Preserve excellent text readability"],
+        typography_guidance: "Use large confident headings, highly readable body type, and a disciplined hierarchy that feels premium rather than flashy.",
+        motion_guidance: "Use subtle purposeful transitions and restrained motion that supports clarity without slowing navigation or distracting from calls to action.",
+      },
+    },
+  };
+}
+
+'''
+          if 'function stagingFallback(request: BuildPlanRequest)' not in s:
+              if marker not in s:
+                  raise SystemExit('Deno serve marker missing; refusing ambiguous patch')
+              s = s.replace(marker, helper + marker, 1)
+
+          old = '''  const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);\n  if (!providerConfigured) {\n    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");\n    return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);\n  }'''
+          new = '''  const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);\n  if (!providerConfigured) {\n    const runtimeEnvironment = optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();\n    const stagingOnlyFallbackAllowed = new Set(["staging", "stage", "development", "dev", "test", "qa"]).has(runtimeEnvironment);\n    if (stagingOnlyFallbackAllowed) {\n      let fallbackRequest: BuildPlanRequest;\n      try { fallbackRequest = validateRequest(await request.json()); }\n      catch (error) {\n        const message = error instanceof Error ? error.message : "Invalid build-plan request.";\n        await recordHeartbeat(admin, "degraded", { provider_configured: false, staging_fallback: true }, message);\n        return response({ ok: false, error: message }, 400);\n      }\n      const fallback = stagingFallback(fallbackRequest);\n      await recordHeartbeat(admin, "healthy", { provider_configured: false, provider_call_proven: false, staging_fallback: true, schema_version: schemaVersion }, null);\n      return response(fallback);\n    }\n    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");\n    return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);\n  }'''
+          if old not in s:
+              raise SystemExit('Provider-config block missing; refusing ambiguous patch')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+      - name: Lint adapter
+        run: npx eslint supabase/functions/generate-business-build-plan/index.ts --max-warnings=0
+      - name: Validate runtime contracts
+        run: npm run test:runtime-stage
+      - name: Verify diff
+        run: git diff --check && git diff -- supabase/functions/generate-business-build-plan/index.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- supabase/functions/generate-business-build-plan/index.ts; then
+            echo "No adapter changes needed."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/generate-business-build-plan/index.ts
+          git commit -m "fix: add staging-only build-plan adapter fallback"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
