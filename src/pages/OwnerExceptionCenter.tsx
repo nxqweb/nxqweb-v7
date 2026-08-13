@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCcw, RotateCcw, ShieldAl
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ExceptionItem = {
-  source: "maintenance" | "automation" | "runtime" | string;
+  source: "maintenance" | "automation" | string;
   id: string;
   client_id: string;
   project_id?: string | null;
