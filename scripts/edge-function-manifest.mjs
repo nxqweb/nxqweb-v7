@@ -46,6 +46,8 @@ export const managedEdgeSecrets = Object.freeze([
   "SUPABASE_SERVICE_ROLE_KEY",
 ]);
 
+const sourceRef = "NXQ_AUTOMATION_SOURCE_REF";
+
 export const runtimeSecretProfiles = Object.freeze({
   "business-configured-foundation": Object.freeze([
     "GITHUB_APP_ID",
@@ -56,6 +58,7 @@ export const runtimeSecretProfiles = Object.freeze({
     "NETLIFY_GITHUB_INSTALLATION_ID",
     "NXQ_AUTOMATION_SOURCE_OWNER",
     "NXQ_AUTOMATION_SOURCE_REPO",
+    sourceRef,
     "NXQ_AUTOMATION_WORKER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
@@ -74,6 +77,7 @@ export const runtimeSecretProfiles = Object.freeze({
     "NETLIFY_GITHUB_INSTALLATION_ID",
     "NXQ_AUTOMATION_SOURCE_OWNER",
     "NXQ_AUTOMATION_SOURCE_REPO",
+    sourceRef,
     "NXQ_AUTOMATION_WORKER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
@@ -102,6 +106,7 @@ export const runtimeSecretProfiles = Object.freeze({
     "NXQ_AI_MODEL_PROVIDER_URL",
     "NXQ_AUTOMATION_SOURCE_OWNER",
     "NXQ_AUTOMATION_SOURCE_REPO",
+    sourceRef,
     "NXQ_AUTOMATION_WORKER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
@@ -130,6 +135,7 @@ export const runtimeSecretProfiles = Object.freeze({
     "NXQ_AI_MODEL_PROVIDER_URL",
     "NXQ_AUTOMATION_SOURCE_OWNER",
     "NXQ_AUTOMATION_SOURCE_REPO",
+    sourceRef,
     "NXQ_AUTOMATION_WORKER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
     "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
