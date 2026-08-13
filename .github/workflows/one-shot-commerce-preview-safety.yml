@@ -6,6 +6,7 @@ on:
       - safe/checkpoint-autonomy-wave35-sales
     paths:
       - .github/workflows/one-shot-commerce-preview-safety.yml
+      - scripts/patch-commerce-preview-safety.py
 
 permissions:
   contents: write
