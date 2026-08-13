@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070b12" />
+    <title>NXQ Business Site</title>
+    <meta name="description" content="Premium local business website managed by NXQ Web." />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Home">
+        <span class="brand-mark">N</span>
+        <span id="brand-name">Your Business</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#services">Services</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <a class="header-cta" id="header-cta" href="#contact">Request a Quote</a>
+    </header>
+
+    <main id="top">
+      <section class="hero section-shell">
+        <div class="hero-copy">
+          <p class="eyebrow" id="hero-eyebrow">Trusted local service</p>
+          <h1 id="hero-headline">Professional service. <em>Clear results.</em></h1>
+          <p class="hero-subheadline" id="hero-subheadline">A premium local business website managed by NXQ Web.</p>
+          <div class="hero-actions">
+            <a class="primary-button" id="primary-cta" href="#contact">Request a Quote</a>
+            <a class="secondary-button" id="secondary-cta" href="#services">View Services</a>
+          </div>
+          <div class="hero-meta">
+            <span id="business-type">Local service business</span>
+            <span id="service-area">Serving the local area</span>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="visual-grid"></div>
+          <div class="visual-card visual-card-main"><span>01</span><strong>Premium service</strong><small>Clear, modern, conversion-focused presentation.</small></div>
+          <div class="visual-card visual-card-alt"><span>02</span><strong>Built for trust</strong><small>Simple paths from interest to contact.</small></div>
+        </div>
+      </section>
+
+      <section class="trust-strip" id="trust-points" aria-label="Business strengths"></section>
+
+      <section class="section-shell services-section" id="services">
+        <div class="section-heading">
+          <p class="eyebrow">Services</p>
+          <h2>What we help customers with</h2>
+          <p>Clear service explanations built from the approved NXQ intake.</p>
+        </div>
+        <div class="service-grid" id="service-grid"></div>
+      </section>
+
+      <section class="section-shell about-section" id="about">
+        <div class="about-number">NXQ</div>
+        <div class="about-copy">
+          <p class="eyebrow">About</p>
+          <h2 id="about-heading">A local team focused on doing the job right</h2>
+          <p id="about-body"></p>
+        </div>
+      </section>
+
+      <section class="section-shell contact-section" id="contact">
+        <div>
+          <p class="eyebrow">Ready to get started?</p>
+          <h2>Talk with <span id="contact-business-name">the team</span>.</h2>
+          <p>Use the contact options below and the business will follow up with the next step.</p>
+        </div>
+        <div class="contact-actions">
+          <a class="primary-button" id="phone-link" href="#">Call now</a>
+          <a class="secondary-button" id="email-link" href="#">Send an email</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <strong id="footer-name">Your Business</strong>
+      <span>Website managed by NXQ Web</span>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+    <script type="module" src="./analytics.js"></script>
+  </body>
+</html>

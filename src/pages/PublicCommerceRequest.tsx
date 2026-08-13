@@ -51,7 +51,7 @@ export function PublicCommerceRequest() {
 
   useEffect(() => {
     void loadForm();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial request-form bootstrap only
 
   async function loadForm() {
     setLoading(true);

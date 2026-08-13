@@ -216,7 +216,7 @@ Deno.serve(async (request) => {
   );
 
   const publishText = await publishResponse.text();
-  let publishData: Record<string, unknown> = {};
+  let publishData: Record<string, unknown>;
   try {
     publishData = publishText ? JSON.parse(publishText) : {};
   } catch {
