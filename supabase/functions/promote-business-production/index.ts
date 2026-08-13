@@ -347,7 +347,16 @@ async function processProductionCheck(admin: AdminClient, job: AutomationJob) {
   if (!runId || !expectedCommit || !siteId || !configId || !deploymentId) throw new Error("Production verification job is incomplete.");
 
   const deploy = await findExactProductionDeploy(siteId, expectedCommit);
-  if (!deploy) throw new Error("Exact Netlify production commit is still building.");
+  if (!deploy) {
+    const deferred = await admin.rpc("defer_external_automation_job", {
+      target_job_id: job.id,
+      worker_name: workerName,
+      target_reason: "Exact Netlify production commit is still building.",
+      retry_after: "30 seconds",
+    });
+    if (deferred.error) throw new Error(`Production wait deferral failed: ${deferred.error.message}`);
+    return { run_id: runId, status: "production_building", deferred: true };
+  }
 
   const configUpdate = await admin.from("project_deployment_configs").update({
     production_url: deploy.url,
@@ -444,6 +453,10 @@ Deno.serve(async (request) => {
     const result = job.job_type === "website_promote_production"
       ? await processPromotion(admin, job)
       : await processProductionCheck(admin, job);
+
+    if ("deferred" in result && result.deferred === true) {
+      return response({ ok: true, job_id: job.id, ...result });
+    }
 
     const completed = await admin.rpc("complete_external_automation_job", {
       target_job_id: job.id,
