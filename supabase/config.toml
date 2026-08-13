@@ -51,7 +51,7 @@ verify_jwt = false
 [functions.provision-project-infrastructure]
 verify_jwt = false
 [functions.provision-storefront]
-verify_jwt = true
+verify_jwt = false
 [functions.publish-production-netlify-deploy]
 verify_jwt = true
 [functions.reconcile-domain]
