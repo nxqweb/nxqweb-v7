@@ -105,7 +105,6 @@ s = s.replace('`https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=mai
 if 'async function triggerNetlifyBuild(siteId: string, token: string, previewBranch: string)' not in s:
     raise SystemExit('Could not harden Netlify trigger signature.')
 
-# Add a hard runtime guard inside trigger function.
 trigger_marker = 'async function triggerNetlifyBuild(siteId: string, token: string, previewBranch: string) {\n'
 if 'Refusing to trigger a Commerce preview build for main.' not in s:
     if trigger_marker not in s:
@@ -116,7 +115,11 @@ if 'Refusing to trigger a Commerce preview build for main.' not in s:
 s = s.replace('async function checkPreview(siteId: string) {', 'async function checkPreview(siteId: string, previewBranch: string) {', 1)
 old_latest = '  const latest = Array.isArray(deploys) ? deploys[0] : null;'
 new_latest = '''  const latest = Array.isArray(deploys)
-    ? deploys.find((deploy: any) => deploy?.branch === previewBranch && deploy?.context === "branch-deploy") || null
+    ? deploys.find((deploy: unknown) => {
+        if (!deploy || typeof deploy !== "object") return false;
+        const candidate = deploy as Record<string, unknown>;
+        return candidate.branch === previewBranch && candidate.context === "branch-deploy";
+      }) || null
     : null;'''
 if old_latest in s:
     s = s.replace(old_latest, new_latest, 1)
@@ -172,7 +175,6 @@ if old in s:
 elif new not in s:
     raise SystemExit('Netlify trigger call marker missing; refusing ambiguous patch.')
 
-# Preserve build evidence if the provider returned an id.
 needle = '          netlify_build_triggered_at: new Date().toISOString(),\n          checkpoint: "preview_building",'
 replacement = '          netlify_build_triggered_at: new Date().toISOString(),\n          netlify_build_id: build?.id || null,\n          commerce_preview_branch: previewBranch,\n          checkpoint: "preview_building",'
 if needle in s:
@@ -193,8 +195,8 @@ required = [
     'activateNetlifyBuilds(',
     'previewBranch === "main"',
     'branch=${encodeURIComponent(previewBranch)}',
-    'deploy?.branch === previewBranch',
-    'deploy?.context === "branch-deploy"',
+    'candidate.branch === previewBranch',
+    'candidate.context === "branch-deploy"',
     'commerce_preview_branch',
 ]
 missing = [x for x in required if x not in s]
