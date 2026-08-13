@@ -27,7 +27,7 @@ jobs:
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
 
-      - name: Wake infrastructure and build-plan workers
+      - name: Wake complete Business automation pipeline
         shell: bash
         run: |
           set -euo pipefail
@@ -46,14 +46,13 @@ jobs:
             echo
           }
 
-          # Each worker claims at most one due job per invocation. Wake a small bounded
-          # batch so multiple approved clients can progress without creating duplicates.
-          for _ in 1 2 3 4 5; do
-            wake provision-project-infrastructure
-          done
-
-          for _ in 1 2 3 4 5; do
-            wake prepare-build-plan
+          # Each worker claims at most one due job per invocation. Wake a bounded batch
+          # for every launch-critical Business lane so approved clients can progress
+          # from infrastructure through preview and production without owner clicks.
+          for fn in provision-project-infrastructure prepare-build-plan build-business-website promote-business-production; do
+            for _ in 1 2 3 4 5; do
+              wake "$fn"
+            done
           done
 
       - name: Safety note
