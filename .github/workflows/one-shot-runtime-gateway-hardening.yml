@@ -37,17 +37,26 @@ jobs:
         run: npm run test:edge
       - name: Zero-warning lint
         run: npm run lint -- --max-warnings=0
-      - name: Commit hardened gateway configuration
+      - name: Commit hardened runtime files
         shell: bash
         run: |
           set -euo pipefail
+          targets=(
+            scripts/edge-function-manifest.mjs
+            supabase/config.toml
+            supabase/functions/build-business-location-pages/index.ts
+            supabase/functions/build-business-seo-artifacts/index.ts
+            supabase/functions/run-website-maintenance/index.ts
+            supabase/functions/provision-project-infrastructure/index.ts
+            supabase/functions/build-business-website/index.ts
+          )
           git diff --check
-          if git diff --quiet -- scripts/edge-function-manifest.mjs supabase/config.toml; then
-            echo "No gateway configuration changes required."
+          if git diff --quiet -- "${targets[@]}"; then
+            echo "No runtime hardening changes required."
             exit 0
           fi
           git config user.name "NXQ Safe CI"
           git config user.email "actions@users.noreply.github.com"
-          git add scripts/edge-function-manifest.mjs supabase/config.toml
-          git commit -m "fix: align Commerce worker gateway authentication"
+          git add -- "${targets[@]}"
+          git commit -m "fix: harden runtime provider error paths"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
