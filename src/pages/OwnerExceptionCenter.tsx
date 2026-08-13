@@ -3,7 +3,7 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCcw, RotateCcw, ShieldAl
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ExceptionItem = {
-  source: "maintenance" | "automation" | string;
+  source: "maintenance" | "automation" | "runtime" | string;
   id: string;
   client_id: string;
   project_id?: string | null;
@@ -25,6 +25,24 @@ type ExceptionCenterData = {
   needs_owner_attention: number;
   open_maintenance_alerts: number;
   exceptions: ExceptionItem[];
+  generated_at: string;
+};
+
+type RuntimeDispatchIncident = {
+  id: string;
+  client_id: string;
+  project_id?: string | null;
+  business_name?: string | null;
+  severity: string;
+  status: string;
+  title: string;
+  summary: string;
+  created_at?: string;
+};
+
+type RuntimeDispatchData = {
+  open_count: number;
+  incidents: RuntimeDispatchIncident[];
   generated_at: string;
 };
 
@@ -50,12 +68,46 @@ export function OwnerExceptionCenter() {
       return;
     }
 
-    const result = await supabase.rpc("owner_exception_center");
-    if (result.error) {
-      setError(`Exception center failed to load: ${result.error.message}`);
-    } else {
-      setData(result.data as ExceptionCenterData);
+    const [exceptionResult, runtimeResult] = await Promise.all([
+      supabase.rpc("owner_exception_center"),
+      supabase.rpc("owner_runtime_dispatch_incidents"),
+    ]);
+
+    if (exceptionResult.error) {
+      setError(`Exception center failed to load: ${exceptionResult.error.message}`);
+      setLoading(false);
+      return;
     }
+
+    const base = exceptionResult.data as ExceptionCenterData;
+    if (runtimeResult.error) {
+      setData(base);
+      setError(`Runtime dispatch health failed to load: ${runtimeResult.error.message}`);
+      setLoading(false);
+      return;
+    }
+
+    const runtime = runtimeResult.data as RuntimeDispatchData;
+    const runtimeItems: ExceptionItem[] = (runtime.incidents || []).map((incident) => ({
+      source: "runtime",
+      id: incident.id,
+      client_id: incident.client_id,
+      project_id: incident.project_id,
+      business_name: incident.business_name,
+      severity: incident.severity,
+      status: incident.status,
+      title: incident.title,
+      summary: incident.summary,
+      type: "internal_edge_dispatch_network_unreachable",
+      created_at: incident.created_at,
+    }));
+
+    setData({
+      ...base,
+      needs_owner_attention: base.needs_owner_attention + (runtime.open_count || 0),
+      exceptions: [...(base.exceptions || []), ...runtimeItems],
+      generated_at: runtime.generated_at || base.generated_at,
+    });
     setLoading(false);
   }
 
@@ -154,6 +206,7 @@ export function OwnerExceptionCenter() {
                       <p className="subtle">
                         {item.source === "automation" ? "Next step: retry through the normal worker lane; every approval, tenant, provider, and publication check runs again." : null}
                         {item.source === "maintenance" ? "Next step: requeue the original check. The alert stays acknowledged until a worker completes the task successfully." : null}
+                        {item.source === "runtime" ? "NXQ detected an internal dispatch transport outage. Client jobs stay queued without burning retry attempts; use the external staging dispatcher until database networking recovers." : null}
                         {item.source === "seo_publish" ? "Next step: check Automation Health for its matching SEO worker job. Production remains unchanged while this run is blocked." : null}
                         {item.source === "change_request" ? "Next step: review the requested risk and missing information. Unsafe or ambiguous changes are never force-published." : null}
                       </p>
