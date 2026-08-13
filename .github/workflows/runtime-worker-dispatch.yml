@@ -74,6 +74,11 @@ jobs:
           wake build-business-website 5
           wake promote-business-production 5
 
+          # Commerce provisioning uses the same protected worker token and independent
+          # owner-approval/client-state checks. Keep it in the fallback so Commerce does
+          # not silently freeze when Postgres outbound DNS/pg_net is unavailable.
+          wake provision-storefront 3
+
           # Ongoing autonomous lanes. These are also pg_net-backed in Postgres, so the
           # external fallback must cover them when database outbound DNS/networking is
           # unavailable. Workers remain source-of-truth/idempotency guarded and safely
@@ -95,4 +100,4 @@ jobs:
         run: |
           echo "Staging runtime dispatch completed."
           echo "This workflow only wakes existing idempotent workers; Supabase remains source of truth for eligibility, claims, retries, approvals, and lifecycle state."
-          echo "The fallback covers every Vault-routed internal Edge lane so a database pg_net DNS outage cannot silently freeze unrelated subsystems."
+          echo "The fallback covers Business, Commerce, and every Vault-routed internal Edge lane so a database pg_net DNS outage cannot silently freeze unrelated subsystems."
