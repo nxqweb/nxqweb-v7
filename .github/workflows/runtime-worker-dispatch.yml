@@ -1,0 +1,90 @@
+name: NXQ Staging Worker Dispatcher
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nxq-staging-worker-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    environment: nxq-staging
+    env:
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      NXQ_AUTOMATION_WORKER_TOKEN: ${{ secrets.NXQ_AUTOMATION_WORKER_TOKEN }}
+    steps:
+      - name: Require protected staging configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
+
+      - name: Verify staging Edge gateway is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          code="$(curl --silent --show-error --output /tmp/nxq-edge-probe.txt --write-out '%{http_code}' \
+            --connect-timeout 15 --max-time 30 \
+            -X POST "${base}/check-provider-health" \
+            -H "Content-Type: application/json" \
+            -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+            --data '{"source":"github_actions_edge_probe"}' || true)"
+          echo "Edge gateway probe HTTP status: ${code:-curl_failed}"
+          if [[ -z "$code" || "$code" == "000" ]]; then
+            cat /tmp/nxq-edge-probe.txt 2>/dev/null || true
+            echo "The external fallback cannot reach the Supabase Edge gateway."
+            exit 1
+          fi
+
+      - name: Wake every internal runtime lane
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+
+          wake() {
+            local fn="$1"
+            local count="${2:-1}"
+            for ((i=1; i<=count; i++)); do
+              echo "Waking ${fn} (${i}/${count})..."
+              curl --silent --show-error --fail-with-body \
+                --connect-timeout 15 \
+                --max-time 60 \
+                -X POST "${base}/${fn}" \
+                -H "Content-Type: application/json" \
+                -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+                --data '{"source":"github_actions_staging_dispatch"}'
+              echo
+            done
+          }
+
+          wake provision-project-infrastructure 5
+          wake prepare-build-plan 5
+          wake build-business-website 5
+          wake promote-business-production 5
+
+          wake build-business-seo-artifacts 2
+          wake classify-business-change-request 2
+          wake reconcile-domain 2
+          wake scan-client-file 2
+          wake run-website-maintenance 2
+          wake dispatch-notifications 2
+          wake process-data-subject-request 2
+          wake check-provider-health 2
+
+          wake run-backup-restore-drill 1
+
+      - name: Safety note
+        run: |
+          echo "Staging runtime dispatch completed."
+          echo "This workflow only wakes existing idempotent workers; Supabase remains source of truth for eligibility, claims, retries, approvals, and lifecycle state."
+          echo "The fallback covers every Vault-routed internal Edge lane so a database pg_net DNS outage cannot silently freeze unrelated subsystems."
