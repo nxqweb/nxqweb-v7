@@ -306,7 +306,54 @@ async function ensureRepository(job: ProvisioningJob, businessName: string) {
   return createBody;
 }
 
-async function createNetlifySite(repositoryFullName: string) {
+function commercePreviewBranch(storefrontId: string) {
+  const suffix = storefrontId.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "storefront";
+  return `nxq/commerce-preview-${suffix}`;
+}
+
+async function ensureCommercePreviewBranch(repositoryFullName: string, branch: string) {
+  if (!branch || branch === "main") throw new Error("Commerce preview branch must be a non-main branch.");
+  const token = await githubInstallationToken();
+  const encodedBranch = branch.split("/").map(encodeURIComponent).join("/");
+  const existing = await timedFetch(
+    `https://api.github.com/repos/${repositoryFullName}/git/ref/heads/${encodedBranch}`,
+    { headers: githubHeaders(token) },
+  );
+  if (existing.ok) {
+    const body = await readJson(existing);
+    return { branch, sha: body?.object?.sha || null };
+  }
+  if (existing.status !== 404) {
+    const body = await readJson(existing);
+    throw new Error(`GitHub preview branch lookup failed (${existing.status}): ${body?.message || "Unknown GitHub error"}`);
+  }
+
+  const mainRefResponse = await timedFetch(
+    `https://api.github.com/repos/${repositoryFullName}/git/ref/heads/main`,
+    { headers: githubHeaders(token) },
+  );
+  const mainRef = await readJson(mainRefResponse);
+  const mainSha = mainRef?.object?.sha;
+  if (!mainRefResponse.ok || typeof mainSha !== "string" || !mainSha) {
+    throw new Error(`GitHub main ref lookup failed (${mainRefResponse.status}): ${mainRef?.message || "Missing main SHA"}`);
+  }
+
+  const create = await timedFetch(
+    `https://api.github.com/repos/${repositoryFullName}/git/refs`,
+    {
+      method: "POST",
+      headers: githubHeaders(token),
+      body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: mainSha }),
+    },
+  );
+  const created = await readJson(create);
+  if (!create.ok) {
+    throw new Error(`GitHub preview branch creation failed (${create.status}): ${created?.message || "Unknown GitHub error"}`);
+  }
+  return { branch, sha: created?.object?.sha || mainSha };
+}
+
+async function createNetlifySite(repositoryFullName: string, previewBranch: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const installationIdText = requiredSecret("NETLIFY_GITHUB_INSTALLATION_ID");
   const installationId = Number(installationIdText);
@@ -331,6 +378,8 @@ async function createNetlifySite(repositoryFullName: string) {
         dir: "dist",
         public_repo: false,
         installation_id: installationId,
+        allowed_branches: [previewBranch],
+        stop_builds: true,
       },
     }),
   });
@@ -341,6 +390,29 @@ async function createNetlifySite(repositoryFullName: string) {
     );
   }
   return site;
+}
+
+async function activateNetlifyBuilds(siteId: string, previewBranch: string) {
+  if (!previewBranch || previewBranch === "main") throw new Error("Refusing to activate Commerce preview builds for main.");
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const current = await getNetlifySite(siteId);
+  const existing = current?.build_settings && typeof current.build_settings === "object" ? current.build_settings : {};
+  const patchResponse = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+    method: "PATCH",
+    headers: netlifyHeaders(token),
+    body: JSON.stringify({
+      build_settings: {
+        ...existing,
+        allowed_branches: [previewBranch],
+        stop_builds: false,
+      },
+    }),
+  });
+  const patched = await readJson(patchResponse);
+  if (!patchResponse.ok) {
+    throw new Error(`Netlify build activation failed (${patchResponse.status}): ${patched?.message || patched?.error || "Unknown Netlify error"}`);
+  }
+  return patched;
 }
 
 async function getNetlifySite(siteId: string) {
@@ -410,9 +482,10 @@ async function upsertNetlifyEnvVars(
   }
 }
 
-async function triggerNetlifyBuild(siteId: string, token: string) {
+async function triggerNetlifyBuild(siteId: string, token: string, previewBranch: string) {
+  if (!previewBranch || previewBranch === "main") throw new Error("Refusing to trigger a Commerce preview build for main.");
   const buildResponse = await timedFetch(
-    `https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=main&clear_cache=true`,
+    `https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=${encodeURIComponent(previewBranch)}&clear_cache=true`,
     {
       method: "POST",
       headers: netlifyHeaders(token),
@@ -428,7 +501,7 @@ async function triggerNetlifyBuild(siteId: string, token: string) {
   return buildBody;
 }
 
-async function checkPreview(siteId: string) {
+async function checkPreview(siteId: string, previewBranch: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const deploysResponse = await timedFetch(
     `https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=5`,
@@ -440,7 +513,13 @@ async function checkPreview(siteId: string) {
       `Netlify deploy check failed (${deploysResponse.status}): ${deploys?.message || "Unknown Netlify error"}`,
     );
   }
-  const latest = Array.isArray(deploys) ? deploys[0] : null;
+  const latest = Array.isArray(deploys)
+    ? deploys.find((deploy: unknown) => {
+        if (!deploy || typeof deploy !== "object") return false;
+        const candidate = deploy as Record<string, unknown>;
+        return candidate.branch === previewBranch && candidate.context === "branch-deploy";
+      }) || null
+    : null;
   if (latest?.state === "error") {
     throw new Error(`Netlify build failed: ${latest.error_message || "Unknown build error"}`);
   }
@@ -593,6 +672,32 @@ Deno.serve(async (request) => {
     }
 
     const repositoryFullName = metadata.github_full_name || `${job.repository_owner}/${job.repository_name}`;
+    const previewBranch = typeof metadata.commerce_preview_branch === "string" && metadata.commerce_preview_branch
+      ? metadata.commerce_preview_branch
+      : commercePreviewBranch(job.storefront_id);
+
+    if (!metadata.commerce_preview_branch) {
+      step = "github_preview_branch";
+      await saveCheckpoint(admin, job, workerToken, step, "Creating the protected Commerce preview branch.");
+      const previewRef = await ensureCommercePreviewBranch(repositoryFullName, previewBranch);
+      await admin.from("commerce_storefront_provisioning").update({
+        status: "queued",
+        provider_metadata: {
+          ...metadata,
+          github_full_name: repositoryFullName,
+          commerce_preview_branch: previewBranch,
+          commerce_preview_source_sha: previewRef.sha,
+          checkpoint: "preview_branch_ready",
+        },
+        next_attempt_at: new Date().toISOString(),
+        locked_at: null,
+        lock_token: null,
+        last_error: null,
+        error_step: null,
+        updated_at: new Date().toISOString(),
+      }).eq("id", job.id).eq("lock_token", workerToken);
+      return response({ ok: true, job_id: job.id, status: "preview_branch_ready" });
+    }
 
     if (!job.netlify_site_id) {
       step = "netlify_site";
@@ -603,7 +708,7 @@ Deno.serve(async (request) => {
         "netlify_site",
         "Starting Netlify site creation.",
       );
-      const site = await createNetlifySite(repositoryFullName);
+      const site = await createNetlifySite(repositoryFullName, previewBranch);
       await admin.from("commerce_storefront_provisioning").update({
         status: "queued",
         netlify_site_id: String(site.id),
@@ -643,13 +748,16 @@ Deno.serve(async (request) => {
         VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
         VITE_NXQ_STOREFRONT_SLUG: storefront.store_slug,
       });
-      await triggerNetlifyBuild(String(job.netlify_site_id), token);
+      await activateNetlifyBuilds(String(job.netlify_site_id), previewBranch);
+      const build = await triggerNetlifyBuild(String(job.netlify_site_id), token, previewBranch);
       await admin.from("commerce_storefront_provisioning").update({
         status: "queued",
         provider_metadata: {
           ...metadata,
           github_full_name: repositoryFullName,
           netlify_build_triggered_at: new Date().toISOString(),
+          netlify_build_id: build?.id || null,
+          commerce_preview_branch: previewBranch,
           checkpoint: "preview_building",
         },
         next_attempt_at: new Date(Date.now() + 20_000).toISOString(),
@@ -670,7 +778,7 @@ Deno.serve(async (request) => {
       "preview_check",
       "Checking whether the Netlify preview build is ready.",
     );
-    const previewUrl = await checkPreview(String(job.netlify_site_id));
+    const previewUrl = await checkPreview(String(job.netlify_site_id), previewBranch);
     if (!previewUrl) {
       await admin.from("commerce_storefront_provisioning").update({
         status: "queued",
