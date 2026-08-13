@@ -32,7 +32,8 @@ const credentialPatterns = [
   /sk_live_[A-Za-z0-9]{16,}/,
   /gh[pousr]_[A-Za-z0-9]{20,}/,
   /AKIA[0-9A-Z]{16}/,
-  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\s+(?:[A-Za-z0-9+/=]{16,}\s+){3,}-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\\n(?:[A-Za-z0-9+/=]{16,}\\n){3,}-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,
   /eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/,
 ];
 const credentialHits = [];
