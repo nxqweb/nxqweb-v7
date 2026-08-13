@@ -483,7 +483,16 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
   if (!runId || !branch || !siteId) throw new Error("Preview check job is missing run, branch, or site id.");
 
   const deploy = await findReadyBranchDeploy(siteId, branch);
-  if (!deploy) throw new Error("Netlify preview is still building.");
+  if (!deploy) {
+    const deferred = await admin.rpc("defer_external_automation_job", {
+      target_job_id: job.id,
+      worker_name: workerName,
+      target_reason: "Netlify preview is still building.",
+      retry_after: "30 seconds",
+    });
+    if (deferred.error) throw new Error(`Preview wait deferral failed: ${deferred.error.message}`);
+    return { run_id: runId, status: "preview_building", deferred: true };
+  }
 
   await admin.from("website_automation_runs").update({
     status: "preview_ready",
@@ -532,6 +541,10 @@ Deno.serve(async (request) => {
     const result = job.job_type === "website_prepare_safe_branch"
       ? await processBuild(admin, job)
       : await processPreviewCheck(admin, job);
+
+    if ("deferred" in result && result.deferred === true) {
+      return response({ ok: true, job_id: job.id, ...result });
+    }
 
     const completed = await admin.rpc("complete_external_automation_job", {
       target_job_id: job.id,
