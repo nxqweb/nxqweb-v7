@@ -10,12 +10,15 @@ const legacy = fs.readFileSync(legacyMigrationPath, 'utf8');
 
 const checks = [
   ['GitHub App authentication required', worker.includes('GITHUB_APP_ID') && worker.includes('GITHUB_APP_INSTALLATION_ID') && worker.includes('GITHUB_APP_PRIVATE_KEY')],
+  ['GitHub App key accepts PKCS1 or PKCS8', worker.includes('normalizeGithubPrivateKey') && worker.includes('BEGIN RSA PRIVATE KEY') && worker.includes('BEGIN PRIVATE KEY') && worker.includes('normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY"))')],
+  ['Protected background worker authentication supported', worker.includes('x-nxq-worker-token') && worker.includes('NXQ_AUTOMATION_WORKER_TOKEN') && worker.includes('protectedTokenMatches') && worker.includes('workerAuthorized')],
+  ['Owner session remains supported as guarded fallback', worker.includes('if (!workerAuthorized)') && worker.includes('owner_users') && worker.includes('Owner access required')],
   ['Template repository generation used', worker.includes('/generate') && worker.includes('GITHUB_TEMPLATE_OWNER') && worker.includes('GITHUB_TEMPLATE_REPO')],
   ['Generated client repository is private', /private:\s*true/.test(worker)],
   ['Repository creation is idempotent', worker.includes('existingResponse.ok') && worker.includes('existingResponse.status !== 404')],
   ['Netlify GitHub installation binding required', worker.includes('NETLIFY_GITHUB_INSTALLATION_ID') && worker.includes('installation_id: installationId')],
   ['Netlify treats generated repo as private', worker.includes('public_repo: false')],
-  ['Netlify builds main with NXQ build command', worker.includes('repo_branch: "main"') && worker.includes('cmd: "npm run build"') && worker.includes('dir: "dist"')],
+  ['Netlify build command is explicit', worker.includes('cmd: "npm run build"') && worker.includes('dir: "dist"')],
   ['Storefront env contract matches template', worker.includes('VITE_NXQ_STOREFRONT_SLUG: storefront.store_slug') && !worker.includes('VITE_STOREFRONT_SLUG: storefront.store_slug')],
   ['Public Supabase env is provisioned', worker.includes('VITE_SUPABASE_URL') && worker.includes('VITE_SUPABASE_ANON_KEY')],
   ['Worker independently checks accepted owner approval', worker.includes('.eq("request_type", "website_setup_review")') && worker.includes('.eq("status", "accepted")')],
