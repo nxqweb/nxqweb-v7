@@ -67,11 +67,22 @@ jobs:
             done
           }
 
+          # Launch-critical Business lanes. Each invocation may claim at most one due
+          # job, so wake a bounded batch to drain normal onboarding queues quickly.
           wake provision-project-infrastructure 5
           wake prepare-build-plan 5
           wake build-business-website 5
           wake promote-business-production 5
 
+          # Commerce provisioning uses the same protected worker token and independent
+          # owner-approval/client-state checks. Keep it in the fallback so Commerce does
+          # not silently freeze when Postgres outbound DNS/pg_net is unavailable.
+          wake provision-storefront 3
+
+          # Ongoing autonomous lanes. These are also pg_net-backed in Postgres, so the
+          # external fallback must cover them when database outbound DNS/networking is
+          # unavailable. Workers remain source-of-truth/idempotency guarded and safely
+          # no-op when no eligible work is due.
           wake build-business-seo-artifacts 2
           wake classify-business-change-request 2
           wake reconcile-domain 2
@@ -81,10 +92,12 @@ jobs:
           wake process-data-subject-request 2
           wake check-provider-health 2
 
+          # Backup drill is normally weekly and should not be multiplied. One wake is
+          # sufficient; its own server-side eligibility rules decide whether work is due.
           wake run-backup-restore-drill 1
 
       - name: Safety note
         run: |
           echo "Staging runtime dispatch completed."
           echo "This workflow only wakes existing idempotent workers; Supabase remains source of truth for eligibility, claims, retries, approvals, and lifecycle state."
-          echo "The fallback covers every Vault-routed internal Edge lane so a database pg_net DNS outage cannot silently freeze unrelated subsystems."
+          echo "The fallback covers Business, Commerce, and every Vault-routed internal Edge lane so a database pg_net DNS outage cannot silently freeze unrelated subsystems."
