@@ -40,6 +40,7 @@ for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
   const file = path.join(functionsDir, dirent.name, "index.ts");
   if (!fs.existsSync(file)) continue;
   const source = fs.readFileSync(file, "utf8");
+
   if (source.includes("GITHUB_APP_PRIVATE_KEY") && source.includes("importPKCS8")) {
     check(
       source.includes("normalizeGithubPrivateKey") && source.includes("importPKCS8(normalizeGithubPrivateKey("),
@@ -47,6 +48,19 @@ for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
     );
   }
   if (/force\s*:\s*true/.test(source)) check(false, `${dirent.name} contains a force:true provider write`);
+
+  // Every awaited raw fetch must be isolated inside one bounded network helper. A file
+  // with a helper plus another raw await fetch is exactly the maintenance bug this audit
+  // is designed to prevent.
+  const rawAwaitFetches = [...source.matchAll(/await\s+fetch\s*\(/g)].length;
+  if (rawAwaitFetches > 0) {
+    const hasBoundedHelper =
+      source.includes("async function timedFetch(") ||
+      source.includes("async function boundedProviderFetch(") ||
+      source.includes("async function fetchWithTimeout(");
+    check(hasBoundedHelper, `${dirent.name} defines a bounded network helper for raw fetch`);
+    check(rawAwaitFetches === 1, `${dirent.name} has no raw awaited fetch outside its bounded helper`);
+  }
 }
 
 const storefront = read("supabase", "functions", "provision-storefront", "index.ts");
@@ -71,6 +85,32 @@ const businessBuilder = read("supabase", "functions", "build-business-website", 
 check(businessBuilder.includes("activateNetlifyBuilds("), "Business preview worker explicitly activates builds only when preview generation is ready");
 check(businessBuilder.includes("triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch)"), "Business preview worker explicitly targets its safe source branch");
 check(!businessBuilder.includes("builds?branch=main"), "Business preview worker cannot explicitly build production main");
+check(businessBuilder.includes('defer_external_automation_job'), "Business preview waiting uses transient deferral");
+check(businessBuilder.includes('"deferred" in result && result.deferred === true'), "Business preview defer path cannot be completed as a finished job");
+check(!businessBuilder.includes('if (!deploy) throw new Error("Netlify preview is still building.")'), "Business preview waiting does not consume failure retries");
+
+const productionWorker = read("supabase", "functions", "promote-business-production", "index.ts");
+check(productionWorker.includes('Production wait deferral failed:'), "Business production waiting uses transient deferral");
+check(productionWorker.includes('"deferred" in result && result.deferred === true'), "Business production defer path cannot be completed as a finished job");
+check(!productionWorker.includes('if (!deploy) throw new Error("Exact Netlify production commit is still building.")'), "Business production waiting does not consume failure retries");
+
+const transientMigration = read("supabase", "migrations", "201_transient_external_job_deferral.sql");
+check(transientMigration.includes("attempts = greatest(attempts - 1, 0)"), "transient provider deferral restores the attempt consumed by claim");
+check(transientMigration.includes("auth.role() <> 'service_role'"), "transient provider deferral is service-role restricted");
+check(transientMigration.includes("status = 'running'") && transientMigration.includes("locked_by = worker_name"), "transient provider deferral requires current worker ownership");
+
+const boundedDeploymentFunctions = [
+  "execute-preview-netlify-build",
+  "execute-production-netlify-build",
+  "check-preview-netlify-status",
+  "check-production-netlify-status",
+  "publish-production-netlify-deploy",
+];
+for (const name of boundedDeploymentFunctions) {
+  const source = read("supabase", "functions", name, "index.ts");
+  check(source.includes("async function boundedProviderFetch("), `${name} uses bounded provider networking`);
+  check(source.includes("status: 599"), `${name} converts timeout/network failure into a controlled provider response`);
+}
 
 const maintenance = read("supabase", "functions", "run-website-maintenance", "index.ts");
 check(!maintenance.includes("const tokenRes = await fetch(`https://api.github.com/app/installations/"), "maintenance GitHub App token exchange uses the bounded HTTP wrapper");
@@ -114,4 +154,4 @@ if (failures.length) {
   console.error(`\nRuntime error-surface audit failed (${failures.length} issue(s)).`);
   process.exit(1);
 }
-console.log(`\nRuntime error-surface audit passed across ${uniqueWakeNames.length} scheduled lanes, all Edge workers, provider timeout/key handling, preview safety, guarded production writes, and one-shot workflows.`);
+console.log(`\nRuntime error-surface audit passed across ${uniqueWakeNames.length} scheduled lanes, all Edge workers, bounded provider networking, retry-safe waits, key handling, preview safety, guarded production writes, and one-shot workflows.`);
