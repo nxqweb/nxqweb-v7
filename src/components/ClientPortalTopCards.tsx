@@ -10,6 +10,7 @@ type BillingSummary = {
   billing_status: string;
   status: string;
   pipeline_stop_reason: string | null;
+  notes?: string | null;
 };
 
 type HealthSummary = {
@@ -55,7 +56,7 @@ export function ClientPortalTopCards() {
       const [billingResult, healthResult, journeyResult] = await Promise.all([
         supabase
           .from("clients")
-          .select("billing_status,status,pipeline_stop_reason")
+          .select("billing_status,status,pipeline_stop_reason,notes")
           .eq("auth_user_id", session.user.id)
           .maybeSingle(),
         supabase.rpc("current_client_operational_health"),
@@ -71,6 +72,48 @@ export function ClientPortalTopCards() {
     void loadPortalSummaries();
     return () => { active = false; };
   }, []);
+
+  const effectiveJourney = useMemo(() => {
+    if (!journey) return null;
+
+    const signedSetupReceived = billing?.notes?.startsWith("NXQ WEB WEBSITE SETUP REPORT") === true;
+    const lifecycleHasSetup = ["intake_received", "needs_owner_review", "approved", "active", "overdue", "frozen", "denied"].includes(billing?.status || "");
+    const staleSetupCard = journey.stage_key === "setup" && journey.stage_title === "Complete website setup";
+
+    if (!signedSetupReceived || !lifecycleHasSetup || !staleSetupCard) return journey;
+
+    const accepted = ["approved", "active", "overdue", "frozen"].includes(billing?.status || "");
+    const denied = billing?.status === "denied";
+
+    return {
+      ...journey,
+      stage_key: denied ? "stopped" : accepted ? "plan" : "review",
+      stage_title: denied ? "Website setup was not approved" : accepted ? "Website plan in progress" : "Setup is under review",
+      stage_detail: denied
+        ? (billing?.pipeline_stop_reason || "The project is stopped and no new infrastructure will be created.")
+        : accepted
+          ? "NXQ is turning your approved setup into a protected build plan."
+          : "NXQ has your signed setup and the owner decision is the next step.",
+      progress_percent: denied ? 0 : Math.max(journey.progress_percent, 17),
+      attention_required: false,
+      next_action: denied
+        ? journey.next_action
+        : {
+            owner: "nxq" as const,
+            title: accepted ? "NXQ is preparing your website plan" : "Waiting for NXQ review",
+            detail: accepted
+              ? "No action is required unless NXQ asks for a specific detail."
+              : "Your information was received. You do not need to resubmit it.",
+            href: accepted ? "/client/health" : "/client",
+          },
+      milestones: journey.milestones.map((milestone, index) => index === 0
+        ? { ...milestone, status: "complete" as const, detail: "Your signed website setup was received by NXQ." }
+        : milestone),
+      requirements: journey.requirements.map((requirement, index) => index === 0
+        ? { ...requirement, status: "complete" as const, detail: "Received by NXQ." }
+        : requirement),
+    } satisfies ClientLaunchJourney;
+  }, [billing, journey]);
 
   const billingState = useMemo(() => {
     const status = billing?.billing_status || "not_configured";
@@ -141,7 +184,7 @@ export function ClientPortalTopCards() {
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
-      {journey ? <ClientJourneySummaryCard journey={journey} /> : null}
+      {effectiveJourney ? <ClientJourneySummaryCard journey={effectiveJourney} /> : null}
       {denied ? (
         <section className="notice-card portal-decision-notice danger">
           <div className="panel-title">
