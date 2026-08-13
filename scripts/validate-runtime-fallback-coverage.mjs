@@ -15,9 +15,10 @@ if (functions.length !== 13) {
   throw new Error(`Expected 13 Vault-routed internal Edge functions, found ${functions.length}: ${functions.join(", ")}`);
 }
 
-const missing = functions.filter((fn) => !new RegExp(`\\bwake\\s+${fn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(workflow));
+const requiredFallbackFunctions = [...functions, "provision-storefront"];
+const missing = requiredFallbackFunctions.filter((fn) => !new RegExp(`\\bwake\\s+${fn.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(workflow));
 if (missing.length) {
-  throw new Error(`Runtime fallback is missing Vault-routed workers: ${missing.join(", ")}`);
+  throw new Error(`Runtime fallback is missing required workers: ${missing.join(", ")}`);
 }
 
 const requiredSafetyMarkers = [
@@ -37,4 +38,4 @@ if (missingSafety.length) {
   throw new Error(`Runtime fallback lost required safety markers: ${missingSafety.join(", ")}`);
 }
 
-console.log(`Runtime fallback covers all ${functions.length} Vault-routed internal Edge functions.`);
+console.log(`Runtime fallback covers all ${functions.length} Vault-routed internal Edge functions plus Commerce provisioning.`);
