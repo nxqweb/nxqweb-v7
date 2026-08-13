@@ -6,6 +6,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -194,7 +207,7 @@ Deno.serve(async (request) => {
     );
   }
 
-  const githubBranchResponse = await fetch(
+  const githubBranchResponse = await boundedProviderFetch(
     `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(configuredProductionBranch)}`,
     {
       headers: {
@@ -219,7 +232,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "GitHub production branch did not return a commit SHA. No build was triggered." }, 409);
   }
 
-  const netlifySiteResponse = await fetch(
+  const netlifySiteResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
     { headers: { Authorization: `Bearer ${netlifyToken}` } }
   );
@@ -291,7 +304,7 @@ Deno.serve(async (request) => {
 
   let buildResponse: Response;
   try {
-    buildResponse = await fetch(buildUrl.toString(), {
+    buildResponse = await boundedProviderFetch(buildUrl.toString(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${netlifyToken}`,

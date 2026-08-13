@@ -6,6 +6,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -19,7 +32,7 @@ function stringValue(value: unknown) {
 
 async function reachable(url: string) {
   try {
-    const response = await fetch(url, { method: "GET", redirect: "follow" });
+    const response = await boundedProviderFetch(url, { method: "GET", redirect: "follow" });
     await response.body?.cancel();
     return { ok: response.ok, status: response.status, finalUrl: response.url };
   } catch {
@@ -168,7 +181,7 @@ Deno.serve(async (request) => {
 
   const headers = { Authorization: `Bearer ${netlifyToken}` };
   const deployStatusUrl = `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}/deploys/${encodeURIComponent(launch.netlify_deploy_id)}`;
-  const deployResponse = await fetch(deployStatusUrl, { headers });
+  const deployResponse = await boundedProviderFetch(deployStatusUrl, { headers });
 
   if (!deployResponse.ok) {
     return jsonResponse({ error: `Unable to validate Netlify deploy (HTTP ${deployResponse.status}).` }, 502);
@@ -210,7 +223,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Production request changed before publication. No publish call was made." }, 409);
   }
 
-  const publishResponse = await fetch(
+  const publishResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}/deploys/${encodeURIComponent(launch.netlify_deploy_id)}/restore`,
     { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: "{}" }
   );
@@ -228,7 +241,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: `Netlify publish request failed: ${message}` }, 502);
   }
 
-  const verifiedResponse = await fetch(deployStatusUrl, { headers });
+  const verifiedResponse = await boundedProviderFetch(deployStatusUrl, { headers });
   if (!verifiedResponse.ok) {
     return jsonResponse({ error: `Publish call succeeded, but verification failed with HTTP ${verifiedResponse.status}. Run the status checker.` }, 502);
   }

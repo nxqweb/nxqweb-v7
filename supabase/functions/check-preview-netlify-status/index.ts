@@ -6,6 +6,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -99,7 +112,7 @@ Deno.serve(async (request) => {
   }
 
   const headers = { Authorization: `Bearer ${netlifyToken}` };
-  const buildResponse = await fetch(
+  const buildResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/builds/${encodeURIComponent(previewRequest.netlify_build_id)}`,
     { headers }
   );
@@ -142,7 +155,7 @@ Deno.serve(async (request) => {
     });
   }
 
-  const deployResponse = await fetch(
+  const deployResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(configResult.data.netlify_site_id)}/deploys/${encodeURIComponent(deployId)}`,
     { headers }
   );
