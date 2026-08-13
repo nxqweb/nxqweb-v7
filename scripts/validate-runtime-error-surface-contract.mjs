@@ -46,6 +46,7 @@ for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
       `${dirent.name} normalizes PKCS#1/PKCS#8 GitHub App private keys`,
     );
   }
+  if (/force\s*:\s*true/.test(source)) check(false, `${dirent.name} contains a force:true provider write`);
 }
 
 const storefront = read("supabase", "functions", "provision-storefront", "index.ts");
@@ -61,10 +62,35 @@ const storefrontSafety = [
 ];
 for (const [ok, message] of storefrontSafety) check(ok, message);
 
+const infrastructure = read("supabase", "functions", "provision-project-infrastructure", "index.ts");
+check(infrastructure.includes("stop_builds: true"), "new Business Netlify sites start with builds stopped");
+check(!infrastructure.includes("builds?branch=main"), "infrastructure provisioning cannot spend a production-main deploy before preview");
+check(!infrastructure.includes("triggerBaselineBuild("), "infrastructure provisioning has no baseline production build path");
+
+const businessBuilder = read("supabase", "functions", "build-business-website", "index.ts");
+check(businessBuilder.includes("activateNetlifyBuilds("), "Business preview worker explicitly activates builds only when preview generation is ready");
+check(businessBuilder.includes("triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch)"), "Business preview worker explicitly targets its safe source branch");
+check(!businessBuilder.includes("builds?branch=main"), "Business preview worker cannot explicitly build production main");
+
+const maintenance = read("supabase", "functions", "run-website-maintenance", "index.ts");
+check(!maintenance.includes("const tokenRes = await fetch(`https://api.github.com/app/installations/"), "maintenance GitHub App token exchange uses the bounded HTTP wrapper");
+check(maintenance.includes("const { res: tokenRes } = await timedFetch(`https://api.github.com/app/installations/"), "maintenance GitHub token exchange has timeout protection");
+
+const seoWorker = read("supabase", "functions", "build-business-seo-artifacts", "index.ts");
+const seoProductionGuards = [
+  [seoWorker.includes('if(String(run.status)!=="preview_ready")'), "SEO production promotion requires verified preview-ready state"],
+  [seoWorker.includes('currentMain!==String(run.base_main_sha)'), "SEO production promotion detects main changing after preview"],
+  [seoWorker.includes('["ahead","identical"].includes(compare)'), "SEO production promotion requires clean fast-forward compare status"],
+  [seoWorker.includes("force:false"), "SEO production promotion explicitly forbids force push"],
+  [seoWorker.includes('triggerNetlifyBuild(ctx.config.netlify_site_id,"main")'), "SEO main build occurs only inside the guarded production promotion lane"],
+];
+for (const [ok, message] of seoProductionGuards) check(ok, message);
+
 const productionAllowlist = new Set([
   "promote-business-production",
   "execute-production-netlify-build",
   "publish-production-netlify-deploy",
+  "build-business-seo-artifacts",
 ]);
 for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
   if (!dirent.isDirectory()) continue;
@@ -73,11 +99,8 @@ for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
   const source = fs.readFileSync(file, "utf8");
   if (!productionAllowlist.has(dirent.name)) {
     check(!/builds\?branch=main/.test(source), `${dirent.name} does not explicitly trigger a production-main Netlify build`);
+    if (/git\/refs\/heads\/main/.test(source)) check(false, `${dirent.name} must not write the production main Git ref`);
   }
-  if (/git\/refs\/heads\/main/.test(source) && !productionAllowlist.has(dirent.name)) {
-    check(false, `${dirent.name} must not write the production main Git ref`);
-  }
-  if (/force\s*:\s*true/.test(source)) check(false, `${dirent.name} contains a force:true provider write`);
 }
 
 const oneShotDir = path.join(root, ".github", "workflows");
@@ -91,4 +114,4 @@ if (failures.length) {
   console.error(`\nRuntime error-surface audit failed (${failures.length} issue(s)).`);
   process.exit(1);
 }
-console.log(`\nRuntime error-surface audit passed across ${uniqueWakeNames.length} scheduled lanes, all Edge workers, Commerce preview safety, production-write guards, and one-shot workflows.`);
+console.log(`\nRuntime error-surface audit passed across ${uniqueWakeNames.length} scheduled lanes, all Edge workers, provider timeout/key handling, preview safety, guarded production writes, and one-shot workflows.`);
