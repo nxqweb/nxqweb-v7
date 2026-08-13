@@ -25,15 +25,12 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Patch GitHub App private key compatibility
+      - name: Patch GitHub App private key compatibility and Commerce worker auth
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-          p = Path('supabase/functions/provision-project-infrastructure/index.ts')
-          s = p.read_text()
 
-          marker = 'async function githubInstallationToken() {\n'
           helper = r'''function concatBytes(...parts: Uint8Array[]) {
             const length = parts.reduce((sum, part) => sum + part.length, 0);
             const out = new Uint8Array(length);
@@ -101,41 +98,149 @@ jobs:
             return bytesToPem("PRIVATE KEY", pkcs8);
           }
 
+          function protectedTokenMatches(actual: string, expected: string) {
+            if (!actual || !expected) return false;
+            const encoder = new TextEncoder();
+            const left = encoder.encode(actual);
+            const right = encoder.encode(expected);
+            if (left.length !== right.length) return false;
+            let diff = 0;
+            for (let index = 0; index < left.length; index += 1) diff |= left[index] ^ right[index];
+            return diff === 0;
+          }
+
           '''
 
+          # Business infrastructure worker: keep the already-proven PKCS#1/PKCS#8 normalization.
+          p = Path('supabase/functions/provision-project-infrastructure/index.ts')
+          s = p.read_text()
+          marker = 'async function githubInstallationToken() {\n'
           if 'function normalizeGithubPrivateKey(' not in s:
               if marker not in s:
-                  raise SystemExit('GitHub token function marker missing; refusing ambiguous patch.')
-              s = s.replace(marker, helper + marker, 1)
-
+                  raise SystemExit('Business GitHub token function marker missing; refusing ambiguous patch.')
+              s = s.replace(marker, helper.split('function protectedTokenMatches', 1)[0] + marker, 1)
           old = '  const privateKey = await importPKCS8(requiredSecret("GITHUB_APP_PRIVATE_KEY").replace(/\\\\n/g, "\\n"), "RS256");'
           new = '  const privateKey = await importPKCS8(normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY")), "RS256");'
           if old in s:
               s = s.replace(old, new, 1)
           elif new not in s:
-              raise SystemExit('Expected private-key import line missing; refusing ambiguous patch.')
+              raise SystemExit('Business private-key import line missing; refusing ambiguous patch.')
+          p.write_text(s)
 
+          # Commerce storefront worker: normalize the same GitHub App key format.
+          p = Path('supabase/functions/provision-storefront/index.ts')
+          s = p.read_text()
+          marker = 'async function githubInstallationToken() {\n'
+          if 'function normalizeGithubPrivateKey(' not in s:
+              if marker not in s:
+                  raise SystemExit('Commerce GitHub token function marker missing; refusing ambiguous patch.')
+              s = s.replace(marker, helper + marker, 1)
+
+          old_lines = [
+              '  const privateKeyText = requiredSecret("GITHUB_APP_PRIVATE_KEY").replace(/\\\\n/g, "\\n");\n  const privateKey = await importPKCS8(privateKeyText, "RS256");',
+              '  const privateKeyText = requiredSecret("GITHUB_APP_PRIVATE_KEY").replace(/\\n/g, "\n");\n  const privateKey = await importPKCS8(privateKeyText, "RS256");',
+          ]
+          new_lines = '  const privateKey = await importPKCS8(normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY")), "RS256");'
+          replaced = False
+          for old_lines_value in old_lines:
+              if old_lines_value in s:
+                  s = s.replace(old_lines_value, new_lines, 1)
+                  replaced = True
+                  break
+          if not replaced and new_lines not in s:
+              raise SystemExit('Commerce private-key import lines missing; refusing ambiguous patch.')
+
+          old_auth = '''  const authorization = request.headers.get("Authorization") || "";
+
+  const caller = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authorization } },
+  });
+  const { data: userData, error: userError } = await caller.auth.getUser();
+  if (userError || !userData.user) {
+    return response({ error: "Owner access required." }, 403);
+  }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
+  const ownerAccess = await admin
+    .from("owner_users")
+    .select("id,role")
+    .eq("auth_user_id", userData.user.id)
+    .maybeSingle();
+  if (ownerAccess.error || !ownerAccess.data) {
+    return response({ error: "Owner access required." }, 403);
+  }
+'''
+          new_auth = '''  const authorization = request.headers.get("Authorization") || "";
+  const suppliedWorkerToken = request.headers.get("x-nxq-worker-token")?.trim() || "";
+  const expectedWorkerToken = Deno.env.get("NXQ_AUTOMATION_WORKER_TOKEN")?.trim() || "";
+  const workerAuthorized = protectedTokenMatches(suppliedWorkerToken, expectedWorkerToken);
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
+  if (!workerAuthorized) {
+    const caller = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authorization } },
+    });
+    const { data: userData, error: userError } = await caller.auth.getUser();
+    if (userError || !userData.user) {
+      return response({ error: "Owner access or protected worker token required." }, 403);
+    }
+
+    const ownerAccess = await admin
+      .from("owner_users")
+      .select("id,role")
+      .eq("auth_user_id", userData.user.id)
+      .maybeSingle();
+    if (ownerAccess.error || !ownerAccess.data) {
+      return response({ error: "Owner access required." }, 403);
+    }
+  }
+'''
+          if old_auth in s:
+              s = s.replace(old_auth, new_auth, 1)
+          elif 'const workerAuthorized = protectedTokenMatches' not in s:
+              raise SystemExit('Commerce owner-auth block missing; refusing ambiguous patch.')
+
+          s = s.replace(
+              '"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",',
+              '"Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nxq-worker-token",',
+              1,
+          )
           p.write_text(s)
           PY
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint provisioning worker
-        run: npx eslint supabase/functions/provision-project-infrastructure/index.ts --max-warnings=0
+      - name: Lint hardened provisioning workers
+        run: |
+          npx eslint supabase/functions/provision-project-infrastructure/index.ts --max-warnings=0
+          npx eslint supabase/functions/provision-storefront/index.ts --max-warnings=0
 
-      - name: Verify diff
-        run: git diff --check && git diff -- supabase/functions/provision-project-infrastructure/index.ts
+      - name: Verify Commerce worker hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY"))' supabase/functions/provision-storefront/index.ts
+          grep -q 'x-nxq-worker-token' supabase/functions/provision-storefront/index.ts
+          grep -q 'workerAuthorized = protectedTokenMatches' supabase/functions/provision-storefront/index.ts
+          git diff --check
+          git diff -- supabase/functions/provision-project-infrastructure/index.ts supabase/functions/provision-storefront/index.ts
 
       - name: Commit patch
         shell: bash
         run: |
-          if git diff --quiet -- supabase/functions/provision-project-infrastructure/index.ts; then
+          if git diff --quiet -- supabase/functions/provision-project-infrastructure/index.ts supabase/functions/provision-storefront/index.ts; then
             echo "No worker changes required."
             exit 0
           fi
           git config user.name "NXQ Safe CI"
           git config user.email "actions@users.noreply.github.com"
-          git add supabase/functions/provision-project-infrastructure/index.ts
-          git commit -m "fix: accept GitHub App PKCS1 private keys"
+          git add supabase/functions/provision-project-infrastructure/index.ts supabase/functions/provision-storefront/index.ts
+          git commit -m "fix: harden Commerce provisioning worker auth and GitHub key"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
