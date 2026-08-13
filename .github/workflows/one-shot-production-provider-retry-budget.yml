@@ -1,0 +1,48 @@
+name: NXQ Production Provider Retry Budget
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-production-provider-retry-budget.yml
+      - scripts/patch-production-provider-retry-budget.mjs
+      - supabase/migrations/196_runtime_observability_and_provider_retry_hardening.sql
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Wire provider billing retry-budget preservation
+        run: node scripts/patch-production-provider-retry-budget.mjs
+      - name: Lint production worker
+        run: npx eslint supabase/functions/promote-business-production/index.ts --max-warnings=0
+      - name: Validate runtime contracts
+        run: npm run test:runtime-stage
+      - name: Verify diff
+        run: git diff --check && git diff -- supabase/functions/promote-business-production/index.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- supabase/functions/promote-business-production/index.ts; then
+            echo "No production worker changes needed."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/promote-business-production/index.ts
+          git commit -m "fix: preserve retry budget on provider billing blockers"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
