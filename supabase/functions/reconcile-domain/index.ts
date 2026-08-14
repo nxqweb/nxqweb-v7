@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 type JsonRecord = Record<string, unknown>;
 type AutomationJob = {
   id: string;
+  lock_token: string;
   client_id: string;
   project_id: string;
   payload?: JsonRecord | null;
@@ -28,7 +29,7 @@ function normalizeJob(value: unknown): AutomationJob | null {
   if (Array.isArray(normalized)) normalized = normalized[0] ?? null;
   if (!normalized || typeof normalized !== "object") throw new Error("Domain job claim returned an invalid shape.");
   const job = normalized as AutomationJob;
-  if (!job.id || !job.client_id || !job.project_id) throw new Error("Domain job claim is missing job, client, or project id.");
+  if (!job.id || !job.lock_token || !job.client_id || !job.project_id) throw new Error("Domain job claim is missing job, lease, client, or project id.");
   return job;
 }
 
@@ -41,6 +42,16 @@ function normalizeDomain(value: unknown) {
     throw new Error("Domain name format is invalid.");
   }
   return withoutProtocol;
+}
+
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function readJson(res: Response): Promise<JsonRecord | null> {
@@ -77,7 +88,7 @@ Deno.serve(async (request) => {
   }
   if (!authorized) return response({ error: "Trusted automation or owner access required." }, 403);
 
-  const claim = await admin.rpc("claim_next_external_automation_job", {
+  const claim = await admin.rpc("claim_next_external_automation_job_v2", {
     target_execution_target: "edge",
     worker_name: workerName,
     target_job_types: ["domain_reconcile"],
@@ -114,14 +125,14 @@ Deno.serve(async (request) => {
     const siteId = deploymentRes.data.netlify_site_id;
     const netlifyToken = requiredSecret("NETLIFY_ACCESS_TOKEN");
 
-    const siteLookup = await fetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}`, {
+    const siteLookup = await timedFetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}`, {
       headers: netlifyHeaders(netlifyToken),
     });
     const site = await readJson(siteLookup);
     if (!siteLookup.ok) throw new Error(`Netlify site lookup failed (${siteLookup.status}): ${String(site?.message || "Unknown error")}`);
 
     if (site?.custom_domain !== domain) {
-      const updateSite = await fetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}`, {
+      const updateSite = await timedFetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}`, {
         method: "PATCH",
         headers: netlifyHeaders(netlifyToken),
         body: JSON.stringify({ custom_domain: domain, force_ssl: true }),
@@ -130,7 +141,7 @@ Deno.serve(async (request) => {
       if (!updateSite.ok) throw new Error(`Netlify custom-domain assignment failed (${updateSite.status}): ${String(updateBody?.message || "Unknown error")}`);
     }
 
-    await admin.from("client_domains").update({
+    const provisioningState = await admin.from("client_domains").update({
       automation_state: "ssl_provisioning",
       dns_status: "checking",
       ssl_status: "provisioning",
@@ -138,8 +149,9 @@ Deno.serve(async (request) => {
       automation_error: null,
       action_required_message: null,
     }).eq("id", domainId).eq("client_id", job.client_id);
+    if (provisioningState.error) throw new Error(`Domain provisioning state persistence failed: ${provisioningState.error.message}`);
 
-    const sslRes = await fetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}/ssl`, {
+    const sslRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${encodeURIComponent(siteId)}/ssl`, {
       method: "POST",
       headers: netlifyHeaders(netlifyToken),
       body: "{}",
@@ -148,7 +160,7 @@ Deno.serve(async (request) => {
 
     if (sslRes.ok) {
       const liveUrl = `https://${domain}`;
-      await admin.from("client_domains").update({
+      const connectedState = await admin.from("client_domains").update({
         automation_state: "connected",
         dns_status: "verified",
         ssl_status: "active",
@@ -157,15 +169,19 @@ Deno.serve(async (request) => {
         automation_error: null,
         action_required_message: null,
       }).eq("id", domainId).eq("client_id", job.client_id);
+      if (connectedState.error) throw new Error(`Connected domain state persistence failed: ${connectedState.error.message}`);
 
-      await admin.from("project_deployment_configs").update({ production_url: liveUrl })
+      const deploymentState = await admin.from("project_deployment_configs").update({ production_url: liveUrl })
         .eq("project_id", job.project_id).eq("client_id", job.client_id);
+      if (deploymentState.error) throw new Error(`Deployment URL persistence failed: ${deploymentState.error.message}`);
 
-      await admin.from("website_maintenance_plans").update({ monitored_url: liveUrl, status: "active" })
+      const maintenanceState = await admin.from("website_maintenance_plans").update({ monitored_url: liveUrl, status: "active" })
         .eq("project_id", job.project_id).eq("client_id", job.client_id);
+      if (maintenanceState.error) throw new Error(`Maintenance URL persistence failed: ${maintenanceState.error.message}`);
 
-      const completed = await admin.rpc("complete_external_automation_job", {
+      const completed = await admin.rpc("complete_external_automation_job_v2", {
         target_job_id: job.id,
+        target_lock_token: job.lock_token,
         worker_name: workerName,
         target_result: {
           domain_id: domainId,
@@ -187,7 +203,7 @@ Deno.serve(async (request) => {
         ? "The registrar adapter is connected, but DNS is not pointing to Netlify yet. NXQ will keep reconciling automatically."
         : `Point ${domain} to the NXQ/Netlify site using your registrar's DNS settings. NXQ will recheck automatically; no second owner approval is needed.`;
 
-      await admin.from("client_domains").update({
+      const pendingState = await admin.from("client_domains").update({
         automation_state: providerConnected ? "dns_pending" : "action_required",
         dns_status: "pending",
         ssl_status: "waiting_for_dns",
@@ -196,9 +212,11 @@ Deno.serve(async (request) => {
         automation_error: String(sslBody?.message || "Netlify is waiting for DNS."),
         action_required_message: actionMessage,
       }).eq("id", domainId).eq("client_id", job.client_id);
+      if (pendingState.error) throw new Error(`Pending DNS state persistence failed: ${pendingState.error.message}`);
 
-      const completed = await admin.rpc("complete_external_automation_job", {
+      const completed = await admin.rpc("complete_external_automation_job_v2", {
         target_job_id: job.id,
+        target_lock_token: job.lock_token,
         worker_name: workerName,
         target_result: {
           domain_id: domainId,
@@ -217,8 +235,9 @@ Deno.serve(async (request) => {
     throw new Error(`Netlify SSL provisioning failed (${sslRes.status}): ${String(sslBody?.message || "Unknown SSL error")}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown domain reconciliation failure.";
-    const failed = await admin.rpc("fail_external_automation_job", {
+    const failed = await admin.rpc("fail_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_error: message,
     });
