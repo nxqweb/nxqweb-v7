@@ -27,6 +27,21 @@ function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+type MutationGuardRpcClient = {
+  rpc: (fn: never, args?: never) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job: AutomationJob) {
+  for (const [scopeType, scopeReference] of [["client", job.client_id], ["project", job.project_id]] as const) {
+    const allowed = await admin.rpc("nxq_automation_scope_allowed" as never, {
+      target_scope_type: scopeType,
+      target_scope_reference: scopeReference,
+    } as never);
+    if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+  }
+}
+
 function normalizeJob(value: unknown): AutomationJob | null {
   if (value == null) return null;
   let normalized = value;
@@ -288,7 +303,10 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
   });
   await admin.from("website_automation_runs").update({ status: "production_audit", current_step: "production_promotion" }).eq("id", runId);
 
-  if (sourceSha !== mainSha) await fastForwardMain(configRes.data.github_owner, configRes.data.github_repo, sourceSha, token);
+  if (sourceSha !== mainSha) {
+    await assertProviderMutationAllowed(admin, job);
+    await fastForwardMain(configRes.data.github_owner, configRes.data.github_repo, sourceSha, token);
+  }
 
   let deploymentId: string;
   const existingDeployment = await admin.from("project_deployments").select("id").eq("project_id", job.project_id)
@@ -311,6 +329,7 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
     deploymentId = inserted.data.id;
   }
 
+  await assertProviderMutationAllowed(admin, job);
   const build = await triggerProductionBuild(configRes.data.netlify_site_id);
   await admin.from("project_deployment_configs").update({ last_deployment_status: "building" }).eq("id", configRes.data.id);
 

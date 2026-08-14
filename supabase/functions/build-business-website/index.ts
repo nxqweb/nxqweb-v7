@@ -30,6 +30,21 @@ function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+type MutationGuardRpcClient = {
+  rpc: (fn: never, args?: never) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job: AutomationJob) {
+  for (const [scopeType, scopeReference] of [["client", job.client_id], ["project", job.project_id]] as const) {
+    const allowed = await admin.rpc("nxq_automation_scope_allowed" as never, {
+      target_scope_type: scopeType,
+      target_scope_reference: scopeReference,
+    } as never);
+    if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+  }
+}
+
 function normalizeJob(value: unknown): AutomationJob | null {
   if (value == null) return null;
   let normalized = value;
@@ -461,15 +476,18 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
 
   const token = await githubInstallationToken();
   await updateStep(admin, runId, "prepare_safe_branch", "running");
+  await assertProviderMutationAllowed(admin, job);
   await ensureSafeBranch(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
   await updateStep(admin, runId, "prepare_safe_branch", "completed", { branch: sourceBranch });
 
   await updateStep(admin, runId, "generate_website_draft", "running");
   for (const file of blueprintFiles) {
     const content = await fetchBlueprintFile(file, token);
+    await assertProviderMutationAllowed(admin, job);
     await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQ Business v1: sync ${file}`);
   }
   const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig), null, 2)};\n`;
+  await assertProviderMutationAllowed(admin, job);
   await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");
   const expectedPreviewCommitSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
   if (!expectedPreviewCommitSha) throw new Error("Generated preview branch commit could not be resolved.");
@@ -491,7 +509,9 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   await updateStep(admin, runId, "run_quality_checks", "completed", { ...quality, expected_preview_commit_sha: expectedPreviewCommitSha });
 
   await updateStep(admin, runId, "prepare_preview_request", "running");
+  await assertProviderMutationAllowed(admin, job);
   await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);
+  await assertProviderMutationAllowed(admin, job);
   const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
   await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha });
   await admin.from("website_automation_runs").update({ status: "testing", current_step: "preview_building" }).eq("id", runId);

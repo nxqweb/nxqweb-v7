@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
         }
         const exhausted = current.attempts >= current.max_attempts;
         const failedWrite=await admin.from("notification_deliveries").update({ status: exhausted ? "blocked" : "failed", last_error: message.slice(0, 2000), run_after: exhausted ? current.metadata?.run_after : new Date(Date.now() + Math.min(3600000, Math.max(120000, 2 ** Math.min(current.attempts, 5) * 60000))).toISOString(), updated_at: new Date().toISOString() }).eq("id", current.id).eq("status","sending");
-        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`);
+        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`, { cause: error });
         if (exhausted && current.client_id) await admin.from("automation_escalations").insert({ client_id: current.client_id, project_id: current.project_id, escalation_type: "notification_delivery_exhausted", severity: "warning", title: "Notification delivery needs attention", summary: `A ${current.channel} notification exhausted automatic retries.`, details: { notification_delivery_id: current.id, channel: current.channel, error: message } });
         failed++;
       }

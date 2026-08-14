@@ -25,6 +25,21 @@ function response(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
 
+type MutationGuardRpcClient = {
+  rpc: (fn: never, args?: never) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job: AutomationJob) {
+  for (const [scopeType, scopeReference] of [["client", job.client_id], ["project", job.project_id]] as const) {
+    const allowed = await admin.rpc("nxq_automation_scope_allowed" as never, {
+      target_scope_type: scopeType,
+      target_scope_reference: scopeReference,
+    } as never);
+    if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+  }
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -411,6 +426,7 @@ Deno.serve(async (request) => {
       repositoryFullName = `${config.github_owner}/${config.github_repo}`;
     }
     if (!repositoryFullName) {
+      await assertProviderMutationAllowed(admin, job);
       const repository = await ensureRepository(clientRes.data.business_name, job.project_id, familySlug, checkpoint);
       if (typeof repository.full_name !== "string" || typeof repository.name !== "string") throw new Error("GitHub repository response was incomplete.");
       repositoryFullName = repository.full_name;
@@ -434,6 +450,7 @@ Deno.serve(async (request) => {
     if (!netlifySiteId && typeof config.netlify_site_id === "string") netlifySiteId = config.netlify_site_id;
     let netlifySite: JsonRecord | null = null;
     if (!netlifySiteId) {
+      await assertProviderMutationAllowed(admin, job);
       netlifySite = await createNetlifySite(repositoryFullName, familySlug);
       if (typeof netlifySite.id !== "string") throw new Error("Netlify site creation returned no site id.");
       netlifySiteId = netlifySite.id;
@@ -446,6 +463,7 @@ Deno.serve(async (request) => {
       config = saved.data as JsonRecord;
     }
 
+    await assertProviderMutationAllowed(admin, job);
     await upsertNetlifyEnv(netlifySiteId, {
       VITE_SUPABASE_URL: requiredSecret("PUBLIC_SUPABASE_URL"),
       VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
