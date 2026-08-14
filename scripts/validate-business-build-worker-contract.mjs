@@ -13,6 +13,7 @@ const checks = [
   ['Client config is generated from build plan', worker.includes('buildSiteConfig') && worker.includes('site.config.js')],
   ['Quality gate checks contact path and SEO', worker.includes('contact_path') && worker.includes('seo_title')],
   ['Preview is a Netlify branch build', worker.includes('/builds?branch=') && worker.includes('website_check_preview')],
+  ['Preview retry reconciles exact commit before another Netlify build', worker.includes('findExistingBranchDeploy') && worker.includes('expectedPreviewCommitSha') && worker.includes('reconciled_existing_deploy')],
   ['Ready branch deploy moves run to preview_ready', worker.includes('status: "preview_ready"')],
   ['Production is not written automatically', !worker.includes('refs/heads/main') || worker.includes('sourceBranch')],
   ['Dispatcher wakes only Business build/preview jobs', dispatcher.includes("j.job_type in ('website_prepare_safe_branch','website_check_preview')")],

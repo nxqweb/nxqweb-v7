@@ -215,6 +215,25 @@ async function triggerProductionBuild(siteId: string) {
   return body;
 }
 
+async function findExistingProductionDeploy(siteId: string, expectedCommit: string) {
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
+    headers: netlifyHeaders(token),
+  });
+  const body = await readJson(res);
+  if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify production reconciliation lookup failed (${res.status}).`);
+  const deploy = body.find((item: JsonRecord) => item.branch === "main" && item.commit_ref === expectedCommit);
+  if (!deploy) return null;
+  if (deploy.state === "error") throw new Error(`Netlify production deploy failed: ${String(deploy.error_message || "Unknown build error")}`);
+  return {
+    id: String(deploy.id || ""),
+    state: String(deploy.state || "unknown"),
+    url: String(deploy.ssl_url || deploy.url || deploy.deploy_ssl_url || deploy.deploy_url || ""),
+    commitSha: String(deploy.commit_ref || ""),
+    reconciled_existing_deploy: true,
+  };
+}
+
 async function findExactProductionDeploy(siteId: string, expectedCommit: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
@@ -329,8 +348,12 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
     deploymentId = inserted.data.id;
   }
 
-  await assertProviderMutationAllowed(admin, job);
-  const build = await triggerProductionBuild(configRes.data.netlify_site_id);
+  let build = await findExistingProductionDeploy(configRes.data.netlify_site_id, sourceSha);
+  if (!build) {
+    await assertProviderMutationAllowed(admin, job);
+    const started = await triggerProductionBuild(configRes.data.netlify_site_id);
+    build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };
+  }
   await admin.from("project_deployment_configs").update({ last_deployment_status: "building" }).eq("id", configRes.data.id);
 
   const queued = await admin.rpc("enqueue_automation_job", {

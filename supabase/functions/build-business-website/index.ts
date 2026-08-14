@@ -407,6 +407,29 @@ async function triggerBranchBuild(siteId: string, branch: string) {
   return body;
 }
 
+async function findExistingBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
+    headers: netlifyHeaders(token),
+  });
+  const body = await readJson(res);
+  if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify preview reconciliation lookup failed (${res.status}).`);
+  const deploy = body.find((item: JsonRecord) =>
+    item.branch === branch
+    && item.commit_ref === expectedCommitSha
+    && (item.context === "branch-deploy" || item.branch === branch)
+  );
+  if (!deploy) return null;
+  if (deploy.state === "error") throw new Error(`Netlify branch preview failed: ${String(deploy.error_message || "Unknown build error")}`);
+  return {
+    id: String(deploy.id || ""),
+    state: String(deploy.state || "unknown"),
+    url: String(deploy.deploy_ssl_url || deploy.ssl_url || deploy.deploy_url || deploy.url || ""),
+    commitSha: String(deploy.commit_ref || ""),
+    reconciled_existing_deploy: true,
+  };
+}
+
 async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
@@ -511,8 +534,12 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   await updateStep(admin, runId, "prepare_preview_request", "running");
   await assertProviderMutationAllowed(admin, job);
   await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);
-  await assertProviderMutationAllowed(admin, job);
-  const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
+  let build = await findExistingBranchDeploy(configRes.data.netlify_site_id, sourceBranch, expectedPreviewCommitSha);
+  if (!build) {
+    await assertProviderMutationAllowed(admin, job);
+    const started = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
+    build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };
+  }
   await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha });
   await admin.from("website_automation_runs").update({ status: "testing", current_step: "preview_building" }).eq("id", runId);
 

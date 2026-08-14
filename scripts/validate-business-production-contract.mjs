@@ -15,6 +15,7 @@ const checks = [
   ['No force push is permitted', worker.includes('production_force_push: false') && worker.includes('force_push_allowed: false')],
   ['Verified HTTPS preview is required', worker.includes('previewUrl.startsWith("https://")')],
   ['Netlify production verification requires the exact commit', worker.includes('item.branch === "main" && item.commit_ref === expectedCommit')],
+  ['Production retry reconciles exact commit before another Netlify build', worker.includes('findExistingProductionDeploy') && worker.includes('sourceSha') && worker.includes('reconciled_existing_deploy')],
   ['Published config records exact commit and URL', worker.includes('last_deployed_commit: expectedCommit') && worker.includes('last_deployment_status: "published"')],
   ['Project advances to live only after verified production deploy', worker.includes('stage: "live"') && worker.includes('findExactProductionDeploy')],
   ['Maintenance bootstraps after verified publication', worker.includes('bootstrap_live_website_maintenance')],
