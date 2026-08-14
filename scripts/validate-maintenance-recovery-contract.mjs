@@ -1,12 +1,14 @@
 import fs from 'node:fs';
 
 const migration = fs.readFileSync('supabase/migrations/126_internal_website_maintenance_execution.sql', 'utf8');
+const lockFix = fs.readFileSync('supabase/migrations/213_fix_maintenance_outer_join_lock.sql', 'utf8');
 const worker = fs.readFileSync('supabase/functions/run-website-maintenance/index.ts', 'utf8');
 
 const checks = [
   ['Internal safe maintenance types are auto-queued', migration.includes('activate_internal_maintenance_task') && migration.includes("'uptime_check','ssl_check','form_test','broken_link_scan'")],
-  ['Maintenance claims use row locking', migration.includes('for update skip locked')],
-  ['Automation pause is respected', migration.includes('automation_paused') && migration.includes('automation_enabled')],
+  ['Maintenance claims lock only the task row across nullable joins', lockFix.includes('left join public.client_automation_controls') && lockFix.includes('for update of t skip locked') && !lockFix.includes('\n  for update skip locked\n')],
+  ['Maintenance lock repair preserves service-role-only execution', lockFix.includes('revoke all on function public.claim_next_website_maintenance_task(text) from public, anon, authenticated') && lockFix.includes('grant execute on function public.claim_next_website_maintenance_task(text) to service_role')],
+  ['Automation pause is respected', lockFix.includes('automation_paused') && lockFix.includes('automation_enabled')],
   ['Maintenance worker ownership is verified', migration.includes("coalesce(task_row.result->>'worker_name', '') <> worker_name")],
   ['Failures use bounded exponential retry delay', migration.includes('power(2') && migration.includes('least(60')],
   ['Retry exhaustion creates owner exception alert', migration.includes('website_maintenance_alerts') && migration.includes('maintenance_retry_exhausted')],
