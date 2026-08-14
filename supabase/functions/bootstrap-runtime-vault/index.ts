@@ -74,18 +74,34 @@ Deno.serve(async (request) => {
     else configuredProviderKeys.push(providerKey);
   }
 
+  const functionBaseUrl = `${supabaseUrl.replace(/\/+$/, "")}/functions/v1`;
   const bootstrapped = await admin.rpc("bootstrap_nxq_runtime_vault", {
-    target_function_base_url: `${supabaseUrl.replace(/\/+$/, "")}/functions/v1`,
+    target_function_base_url: functionBaseUrl,
     target_worker_token: workerToken,
     target_configured_provider_keys: configuredProviderKeys,
   });
   if (bootstrapped.error) return response({ ok: false, error: bootstrapped.error.message }, 500);
+
+  const authoritativeIdentity = await admin.rpc("set_nxq_authoritative_function_base_url", {
+    target_function_base_url: functionBaseUrl,
+  });
+  if (authoritativeIdentity.error) {
+    return response({ ok: false, error: `Runtime route identity failed: ${authoritativeIdentity.error.message}` }, 500);
+  }
+
+  const routeStatus = await admin.rpc("nxq_runtime_route_identity_status");
+  if (routeStatus.error) return response({ ok: false, error: `Runtime route verification failed: ${routeStatus.error.message}` }, 500);
+  if (asRecord(routeStatus.data).ok !== true) {
+    return response({ ok: false, error: "Runtime route verification did not converge to the current project identity." }, 500);
+  }
 
   return response({
     ok: true,
     configured_secret_names: asRecord(bootstrapped.data).configured_secret_names || [],
     configured_provider_keys: configuredProviderKeys,
     missing_provider_secret_names: missingProviderSecrets,
+    route_identity_verified: true,
+    route_identity: routeStatus.data,
     secret_values_returned: false,
     runtime_environment: runtimeEnvironment,
     production_changed: false,
