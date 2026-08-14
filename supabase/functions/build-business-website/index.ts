@@ -372,20 +372,11 @@ async function updateStep(admin: AdminClient, runId: string, stepKey: string, st
 async function activatePreviewBuilds(siteId: string, branch: string) {
   if (!branch || branch === "main") throw new Error("Refusing to activate preview builds for main.");
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
-  const currentRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
-    headers: netlifyHeaders(token),
-  });
-  const current = await readJson(currentRes);
-  if (!currentRes.ok || !current || Array.isArray(current)) throw new Error(`Netlify site lookup failed (${currentRes.status}).`);
-  const buildSettings = current.build_settings && typeof current.build_settings === "object"
-    ? current.build_settings as JsonRecord
-    : {};
   const patchRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
     method: "PATCH",
     headers: netlifyHeaders(token),
     body: JSON.stringify({
       build_settings: {
-        ...buildSettings,
         allowed_branches: [branch],
         stop_builds: false,
       },
