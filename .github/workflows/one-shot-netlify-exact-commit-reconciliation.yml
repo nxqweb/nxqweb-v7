@@ -1,0 +1,139 @@
+name: NXQ One-Shot Netlify Exact-Commit Reconciliation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-netlify-exact-commit-reconciliation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.ref == 'refs/heads/safe/checkpoint-autonomy-wave35-sales'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch exact-commit Netlify reconciliation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one anchor, found {count}")
+              return text.replace(old, new, 1)
+
+          def patch(path, replacements):
+              p = Path(path)
+              text = p.read_text()
+              for old, new, label in replacements:
+                  text = replace_once(text, old, new, f"{path}: {label}")
+              p.write_text(text)
+
+          build = "supabase/functions/build-business-website/index.ts"
+          preview_reconcile = '''async function findExistingBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
+            const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+            const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
+              headers: netlifyHeaders(token),
+            });
+            const body = await readJson(res);
+            if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify preview reconciliation lookup failed (${res.status}).`);
+            const deploy = body.find((item: JsonRecord) =>
+              item.branch === branch
+              && item.commit_ref === expectedCommitSha
+              && (item.context === "branch-deploy" || item.branch === branch)
+            );
+            if (!deploy) return null;
+            if (deploy.state === "error") throw new Error(`Netlify branch preview failed: ${String(deploy.error_message || "Unknown build error")}`);
+            return {
+              id: String(deploy.id || ""),
+              state: String(deploy.state || "unknown"),
+              url: String(deploy.deploy_ssl_url || deploy.ssl_url || deploy.deploy_url || deploy.url || ""),
+              commitSha: String(deploy.commit_ref || ""),
+              reconciled_existing_deploy: true,
+            };
+          }
+
+          '''
+          patch(build, [
+            ('async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {',
+             preview_reconcile + 'async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {',
+             'insert preview reconciliation'),
+            ('  await assertProviderMutationAllowed(admin, job);\n  await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);\n  await assertProviderMutationAllowed(admin, job);\n  const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);',
+             '  await assertProviderMutationAllowed(admin, job);\n  await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);\n  let build = await findExistingBranchDeploy(configRes.data.netlify_site_id, sourceBranch, expectedPreviewCommitSha);\n  if (!build) {\n    await assertProviderMutationAllowed(admin, job);\n    const started = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);\n    build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };\n  }',
+             'reconcile preview before trigger'),
+          ])
+
+          production = "supabase/functions/promote-business-production/index.ts"
+          production_reconcile = '''async function findExistingProductionDeploy(siteId: string, expectedCommit: string) {
+            const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+            const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
+              headers: netlifyHeaders(token),
+            });
+            const body = await readJson(res);
+            if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify production reconciliation lookup failed (${res.status}).`);
+            const deploy = body.find((item: JsonRecord) => item.branch === "main" && item.commit_ref === expectedCommit);
+            if (!deploy) return null;
+            if (deploy.state === "error") throw new Error(`Netlify production deploy failed: ${String(deploy.error_message || "Unknown build error")}`);
+            return {
+              id: String(deploy.id || ""),
+              state: String(deploy.state || "unknown"),
+              url: String(deploy.ssl_url || deploy.url || deploy.deploy_ssl_url || deploy.deploy_url || ""),
+              commitSha: String(deploy.commit_ref || ""),
+              reconciled_existing_deploy: true,
+            };
+          }
+
+          '''
+          patch(production, [
+            ('async function findExactProductionDeploy(siteId: string, expectedCommit: string) {',
+             production_reconcile + 'async function findExactProductionDeploy(siteId: string, expectedCommit: string) {',
+             'insert production reconciliation'),
+            ('  await assertProviderMutationAllowed(admin, job);\n  const build = await triggerProductionBuild(configRes.data.netlify_site_id);',
+             '  let build = await findExistingProductionDeploy(configRes.data.netlify_site_id, sourceSha);\n  if (!build) {\n    await assertProviderMutationAllowed(admin, job);\n    const started = await triggerProductionBuild(configRes.data.netlify_site_id);\n    build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };\n  }',
+             'reconcile production before trigger'),
+          ])
+
+          build_contract = "scripts/validate-business-build-worker-contract.mjs"
+          patch(build_contract, [
+            ("  ['Preview is a Netlify branch build', worker.includes('/builds?branch=') && worker.includes('website_check_preview')],", 
+             "  ['Preview is a Netlify branch build', worker.includes('/builds?branch=') && worker.includes('website_check_preview')],\n  ['Preview retry reconciles exact commit before another Netlify build', worker.includes('findExistingBranchDeploy') && worker.includes('expectedPreviewCommitSha') && worker.includes('reconciled_existing_deploy')],",
+             'protect preview reconciliation'),
+          ])
+
+          production_contract = "scripts/validate-business-production-contract.mjs"
+          patch(production_contract, [
+            ("  ['Netlify production verification requires the exact commit', worker.includes('item.branch === \"main\" && item.commit_ref === expectedCommit')],",
+             "  ['Netlify production verification requires the exact commit', worker.includes('item.branch === \"main\" && item.commit_ref === expectedCommit')],\n  ['Production retry reconciles exact commit before another Netlify build', worker.includes('findExistingProductionDeploy') && worker.includes('sourceSha') && worker.includes('reconciled_existing_deploy')],",
+             'protect production reconciliation'),
+          ])
+      - name: Typecheck Business Netlify workers
+        run: |
+          npx deno check supabase/functions/build-business-website/index.ts
+          npx deno check supabase/functions/promote-business-production/index.ts
+      - name: Run Business contracts
+        run: |
+          node scripts/validate-business-build-worker-contract.mjs
+          node scripts/validate-business-production-contract.mjs
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit guarded hardening
+        run: |
+          git config user.name "nxqweb"
+          git config user.email "NXQweb@protonmail.com"
+          git add supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts scripts/validate-business-build-worker-contract.mjs scripts/validate-business-production-contract.mjs
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit -m "fix: reconcile exact Netlify commit before retrigger"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
