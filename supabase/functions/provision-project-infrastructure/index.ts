@@ -3,6 +3,7 @@ import { SignJWT, importPKCS8 } from "npm:jose@6";
 
 type AutomationJob = {
   id: string;
+  lock_token: string;
   client_id: string;
   project_id: string;
   job_type: string;
@@ -39,7 +40,7 @@ function normalizeJob(value: unknown): AutomationJob | null {
   if (Array.isArray(normalized)) normalized = normalized[0] ?? null;
   if (!normalized || typeof normalized !== "object") throw new Error("Automation claim returned an invalid job shape.");
   const job = normalized as AutomationJob;
-  if (!job.id || !job.client_id || !job.project_id) throw new Error("Automation claim is missing job, client, or project id.");
+  if (!job.id || !job.client_id || !job.project_id || !job.lock_token) throw new Error("Automation claim is missing job, client, or project id.");
   return job;
 }
 
@@ -340,7 +341,7 @@ Deno.serve(async (request) => {
   }
   if (!authorized) return response({ error: "Trusted automation or owner access required." }, 403);
 
-  const claim = await admin.rpc("claim_next_external_automation_job", {
+  const claim = await admin.rpc("claim_next_external_automation_job_v2", {
     target_execution_target: "edge",
     worker_name: workerName,
     target_job_types: ["provision_project_infrastructure"],
@@ -453,8 +454,9 @@ Deno.serve(async (request) => {
       });
     }
 
-    const completed = await admin.rpc("complete_external_automation_job", {
+    const completed = await admin.rpc("complete_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_result: {
         ...checkpoint,
@@ -480,8 +482,9 @@ Deno.serve(async (request) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown project infrastructure failure.";
-    const failed = await admin.rpc("fail_external_automation_job", {
+    const failed = await admin.rpc("fail_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_error: message,
     });

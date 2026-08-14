@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 type AutomationJob = {
   id: string;
+  lock_token: string;
   client_id: string;
   project_id?: string | null;
 };
@@ -64,7 +65,7 @@ function normalizeJob(value: unknown): AutomationJob | null {
   if (Array.isArray(normalized)) normalized = normalized[0] ?? null;
   if (!normalized || typeof normalized !== "object") throw new Error("Build-plan claim returned an invalid job shape.");
   const job = normalized as AutomationJob;
-  if (!job.id || !job.client_id) throw new Error("Build-plan claim is missing job or client id.");
+  if (!job.id || !job.client_id || !job.lock_token) throw new Error("Build-plan claim is missing job or client id.");
   return job;
 }
 
@@ -313,7 +314,7 @@ Deno.serve(async (request) => {
   }
   if (!authorized) return response({ error: "Trusted automation or owner access required." }, 403);
 
-  const claim = await admin.rpc("claim_next_external_automation_job", {
+  const claim = await admin.rpc("claim_next_external_automation_job_v2", {
     target_execution_target: "ai",
     worker_name: workerName,
     target_job_types: ["prepare_build_plan"],
@@ -507,8 +508,9 @@ Deno.serve(async (request) => {
     const bootstrap = await admin.rpc("bootstrap_ready_website_automation");
     if (bootstrap.error) throw new Error(`Website automation bootstrap failed: ${bootstrap.error.message}`);
 
-    const completed = await admin.rpc("complete_external_automation_job", {
+    const completed = await admin.rpc("complete_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_result: {
         build_plan_version: buildPlan.version,
@@ -564,8 +566,9 @@ Deno.serve(async (request) => {
       },
       target_last_error: message,
     });
-    const failed = await admin.rpc("fail_external_automation_job", {
+    const failed = await admin.rpc("fail_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_error: message,
     });

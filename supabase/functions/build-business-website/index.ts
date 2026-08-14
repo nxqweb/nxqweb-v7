@@ -5,6 +5,7 @@ import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shar
 
 type AutomationJob = {
   id: string;
+  lock_token: string;
   client_id: string;
   project_id: string;
   job_type: string;
@@ -36,7 +37,7 @@ function normalizeJob(value: unknown): AutomationJob | null {
   if (Array.isArray(normalized)) normalized = normalized[0] ?? null;
   if (!normalized || typeof normalized !== "object") throw new Error("Website build claim returned an invalid job shape.");
   const job = normalized as AutomationJob;
-  if (!job.id || !job.client_id || !job.project_id || !job.job_type) throw new Error("Website build claim is missing required ids.");
+  if (!job.id || !job.client_id || !job.project_id || !job.job_type || !job.lock_token) throw new Error("Website build claim is missing required ids.");
   return job;
 }
 
@@ -492,8 +493,9 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
 
   const deploy = await findReadyBranchDeploy(siteId, branch, expectedPreviewCommitSha);
   if (!deploy) {
-    const deferred = await admin.rpc("defer_external_automation_job", {
+    const deferred = await admin.rpc("defer_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_reason: "Netlify preview is still building.",
       retry_after: "30 seconds",
@@ -539,7 +541,7 @@ Deno.serve(async (request) => {
   }
   if (!authorized) return response({ error: "Trusted automation or owner access required." }, 403);
 
-  const claim = await admin.rpc("claim_next_external_automation_job", {
+  const claim = await admin.rpc("claim_next_external_automation_job_v2", {
     target_execution_target: "edge",
     worker_name: workerName,
     target_job_types: ["website_prepare_safe_branch", "website_check_preview"],
@@ -560,8 +562,9 @@ Deno.serve(async (request) => {
       return response({ ok: true, job_id: job.id, ...result });
     }
 
-    const completed = await admin.rpc("complete_external_automation_job", {
+    const completed = await admin.rpc("complete_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_result: result,
     });
@@ -569,8 +572,9 @@ Deno.serve(async (request) => {
     return response({ ok: true, job_id: job.id, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Business website build failure.";
-    const failed = await admin.rpc("fail_external_automation_job", {
+    const failed = await admin.rpc("fail_external_automation_job_v2", {
       target_job_id: job.id,
+      target_lock_token: job.lock_token,
       worker_name: workerName,
       target_error: message,
     });
