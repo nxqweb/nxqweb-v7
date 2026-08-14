@@ -21,7 +21,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Patch launch-critical provider mutation fences
+      - name: Patch launch-critical reliability hardening
         shell: python
         run: |
           from pathlib import Path
@@ -55,6 +55,13 @@ jobs:
           }
 
           '''
+
+          notifications = "supabase/functions/dispatch-notifications/index.ts"
+          patch(notifications, [
+            ('        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`);',
+             '        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`, { cause: error });',
+             'preserve notification failure cause'),
+          ])
 
           provision = "supabase/functions/provision-project-infrastructure/index.ts"
           patch(provision, [
@@ -103,8 +110,9 @@ jobs:
              '  await assertProviderMutationAllowed(admin, job);\n  const build = await triggerProductionBuild(configRes.data.netlify_site_id);',
              'guard production build'),
           ])
-      - name: Typecheck launch-critical Edge workers
+      - name: Typecheck hardened Edge workers
         run: |
+          npx deno check supabase/functions/dispatch-notifications/index.ts
           npx deno check supabase/functions/provision-project-infrastructure/index.ts
           npx deno check supabase/functions/build-business-website/index.ts
           npx deno check supabase/functions/promote-business-production/index.ts
@@ -114,10 +122,10 @@ jobs:
         run: |
           git config user.name "nxqweb"
           git config user.email "NXQweb@protonmail.com"
-          git add supabase/functions/provision-project-infrastructure/index.ts supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts
+          git add supabase/functions/dispatch-notifications/index.ts supabase/functions/provision-project-infrastructure/index.ts supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts
           if git diff --cached --quiet; then
             echo "No source changes to commit."
             exit 0
           fi
-          git commit -m "fix: fence provider mutations with kill switches"
+          git commit -m "fix: fence provider mutations and notification retries"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
