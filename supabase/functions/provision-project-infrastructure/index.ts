@@ -251,6 +251,26 @@ async function createNetlifySite(repositoryFullName: string, familySlug: string)
   const siteName = slugify(repositoryFullName.split("/")[1]);
   const buildCommand = familySlug === "business" ? "" : "npm run build";
   const publishDirectory = familySlug === "business" ? "." : "dist";
+
+  const lookup = await timedFetch(`https://api.netlify.com/api/v1/sites?name=${encodeURIComponent(siteName)}`, {
+    headers: netlifyHeaders(token),
+  });
+  const lookupBody = await readJson(lookup);
+  if (!lookup.ok) {
+    throw new Error(`Netlify site reconciliation failed (${lookup.status}).`);
+  }
+  if (Array.isArray(lookupBody)) {
+    const existing = lookupBody.find((item) => {
+      if (!item || typeof item !== "object") return false;
+      const row = item as JsonRecord;
+      const repo = row.build_settings && typeof row.build_settings === "object"
+        ? (row.build_settings as JsonRecord).repo_path || (row.build_settings as JsonRecord).repo_url
+        : null;
+      return row.name === siteName && (repo === repositoryFullName || repo === `https://github.com/${repositoryFullName}`);
+    });
+    if (existing && typeof existing === "object") return existing as JsonRecord;
+  }
+
   const created = await timedFetch("https://api.netlify.com/api/v1/sites", {
     method: "POST",
     headers: netlifyHeaders(token),
@@ -267,6 +287,7 @@ async function createNetlifySite(repositoryFullName: string, familySlug: string)
         dir: publishDirectory,
         public_repo: false,
         installation_id: installationId,
+        stop_builds: true,
       },
     }),
   });
@@ -304,18 +325,6 @@ async function upsertNetlifyEnv(siteId: string, values: Record<string, string>) 
     });
     if (!res.ok) throw new Error(`Netlify environment update failed for ${key} (${res.status}).`);
   }
-}
-
-async function triggerBaselineBuild(siteId: string) {
-  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
-  const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=main&clear_cache=true`, {
-    method: "POST",
-    headers: netlifyHeaders(token),
-    body: "{}",
-  });
-  const body = await readJson(res) as JsonRecord | null;
-  if (!res.ok) throw new Error(`Netlify baseline build failed to start (${res.status}): ${String(body?.message || body?.error || "Unknown Netlify error")}`);
-  return body || {};
 }
 
 Deno.serve(async (request) => {
@@ -444,15 +453,11 @@ Deno.serve(async (request) => {
       VITE_NXQ_PROJECT_ID: job.project_id,
       VITE_NXQ_PRODUCT_FAMILY: familySlug,
     });
-    await saveCheckpoint({ checkpoint: "netlify_environment_ready" });
-
-    if (!checkpoint.baseline_build_id) {
-      const build = await triggerBaselineBuild(netlifySiteId);
-      await saveCheckpoint({
-        checkpoint: "baseline_build_started",
-        baseline_build_id: typeof build.id === "string" ? build.id : null,
-      });
-    }
+    await saveCheckpoint({
+      checkpoint: "netlify_environment_ready",
+      netlify_builds_stopped: true,
+      production_build_started: false,
+    });
 
     const completed = await admin.rpc("complete_external_automation_job_v2", {
       target_job_id: job.id,

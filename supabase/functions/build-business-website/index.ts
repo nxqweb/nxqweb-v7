@@ -354,6 +354,32 @@ async function updateStep(admin: AdminClient, runId: string, stepKey: string, st
   if (res.error) throw new Error(`Website step ${stepKey} update failed: ${res.error.message}`);
 }
 
+async function activatePreviewBuilds(siteId: string, branch: string) {
+  if (!branch || branch === "main") throw new Error("Refusing to activate preview builds for main.");
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const currentRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+    headers: netlifyHeaders(token),
+  });
+  const current = await readJson(currentRes);
+  if (!currentRes.ok || !current || Array.isArray(current)) throw new Error(`Netlify site lookup failed (${currentRes.status}).`);
+  const buildSettings = current.build_settings && typeof current.build_settings === "object"
+    ? current.build_settings as JsonRecord
+    : {};
+  const patchRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+    method: "PATCH",
+    headers: netlifyHeaders(token),
+    body: JSON.stringify({
+      build_settings: {
+        ...buildSettings,
+        allowed_branches: [branch],
+        stop_builds: false,
+      },
+    }),
+  });
+  const patched = await readJson(patchRes);
+  if (!patchRes.ok) throw new Error(`Netlify preview build activation failed (${patchRes.status}): ${String((patched as JsonRecord | null)?.message || "Unknown Netlify error")}`);
+}
+
 async function triggerBranchBuild(siteId: string, branch: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/builds?branch=${encodeURIComponent(branch)}&clear_cache=true`, {
@@ -465,6 +491,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   await updateStep(admin, runId, "run_quality_checks", "completed", { ...quality, expected_preview_commit_sha: expectedPreviewCommitSha });
 
   await updateStep(admin, runId, "prepare_preview_request", "running");
+  await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);
   const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
   await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha });
   await admin.from("website_automation_runs").update({ status: "testing", current_step: "preview_building" }).eq("id", runId);
