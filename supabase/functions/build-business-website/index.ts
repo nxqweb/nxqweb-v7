@@ -365,20 +365,25 @@ async function triggerBranchBuild(siteId: string, branch: string) {
   return body;
 }
 
-async function findReadyBranchDeploy(siteId: string, branch: string) {
+async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
     headers: netlifyHeaders(token),
   });
   const body = await readJson(res);
   if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify preview lookup failed (${res.status}).`);
-  const deploy = body.find((item: JsonRecord) => item.branch === branch || item.context === `branch-deploy` && item.branch === branch);
+  const deploy = body.find((item: JsonRecord) =>
+    item.branch === branch
+    && item.commit_ref === expectedCommitSha
+    && (item.context === "branch-deploy" || item.branch === branch)
+  );
   if (!deploy) return null;
   if (deploy.state === "error") throw new Error(`Netlify branch preview failed: ${String(deploy.error_message || "Unknown build error")}`);
   if (deploy.state !== "ready") return null;
   return {
     id: String(deploy.id || ""),
     url: String(deploy.deploy_ssl_url || deploy.ssl_url || deploy.deploy_url || deploy.url || ""),
+    commitSha: String(deploy.commit_ref || ""),
   };
 }
 
@@ -439,7 +444,9 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   }
   const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig), null, 2)};\n`;
   await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");
-  await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1" });
+  const expectedPreviewCommitSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
+  if (!expectedPreviewCommitSha) throw new Error("Generated preview branch commit could not be resolved.");
+  await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1", expected_preview_commit_sha: expectedPreviewCommitSha });
 
   await updateStep(admin, runId, "run_quality_checks", "running");
   const generated = buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig);
@@ -454,11 +461,11 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   if (!quality.business_name || !quality.services || !quality.contact_path || !quality.seo_title || !quality.safe_branch) {
     throw new Error(`Website quality gate failed: ${JSON.stringify(quality)}`);
   }
-  await updateStep(admin, runId, "run_quality_checks", "completed", quality);
+  await updateStep(admin, runId, "run_quality_checks", "completed", { ...quality, expected_preview_commit_sha: expectedPreviewCommitSha });
 
   await updateStep(admin, runId, "prepare_preview_request", "running");
   const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
-  await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null });
+  await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha });
   await admin.from("website_automation_runs").update({ status: "testing", current_step: "preview_building" }).eq("id", runId);
 
   const queued = await admin.rpc("enqueue_automation_job", {
@@ -466,7 +473,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     target_project_id: job.project_id,
     target_job_type: "website_check_preview",
     target_idempotency_key: `website-run:${runId}:check-preview:v1`,
-    target_payload: { execution_target: "edge", website_automation_run_id: runId, source_branch: sourceBranch, netlify_site_id: configRes.data.netlify_site_id },
+    target_payload: { execution_target: "edge", website_automation_run_id: runId, source_branch: sourceBranch, netlify_site_id: configRes.data.netlify_site_id, expected_preview_commit_sha: expectedPreviewCommitSha },
     target_run_after: new Date(Date.now() + 30_000).toISOString(),
     target_priority: 45,
   });
@@ -480,9 +487,10 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
   const runId = String(payload.website_automation_run_id || "");
   const branch = String(payload.source_branch || "");
   const siteId = String(payload.netlify_site_id || "");
-  if (!runId || !branch || !siteId) throw new Error("Preview check job is missing run, branch, or site id.");
+  const expectedPreviewCommitSha = String(payload.expected_preview_commit_sha || "");
+  if (!runId || !branch || !siteId || !expectedPreviewCommitSha) throw new Error("Preview check job is missing run, branch, site id, or expected commit.");
 
-  const deploy = await findReadyBranchDeploy(siteId, branch);
+  const deploy = await findReadyBranchDeploy(siteId, branch, expectedPreviewCommitSha);
   if (!deploy) {
     const deferred = await admin.rpc("defer_external_automation_job", {
       target_job_id: job.id,
@@ -498,9 +506,15 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
     status: "preview_ready",
     current_step: "client_review",
   }).eq("id", runId).eq("client_id", job.client_id).eq("project_id", job.project_id);
-  await updateStep(admin, runId, "client_review", "completed", { automatic_preview_validation: true, preview_url: deploy.url });
+  if (deploy.commitSha !== expectedPreviewCommitSha) throw new Error("Netlify preview commit does not match the generated source commit.");
+  await updateStep(admin, runId, "client_review", "completed", {
+    automatic_preview_validation: true,
+    preview_url: deploy.url,
+    netlify_deploy_id: deploy.id,
+    verified_preview_commit_sha: expectedPreviewCommitSha,
+  });
 
-  return { run_id: runId, preview_url: deploy.url, netlify_deploy_id: deploy.id, status: "preview_ready" };
+  return { run_id: runId, preview_url: deploy.url, netlify_deploy_id: deploy.id, verified_preview_commit_sha: expectedPreviewCommitSha, status: "preview_ready" };
 }
 
 Deno.serve(async (request) => {

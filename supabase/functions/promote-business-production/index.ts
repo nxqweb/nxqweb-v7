@@ -249,13 +249,18 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
   if (runRes.data?.status !== "preview_ready") throw new Error("Website run is not preview-ready.");
   if (!runRes.data.source_branch || runRes.data.source_branch === "main") throw new Error("Production source branch must be a non-main safe branch.");
   if (qualityRes.data?.status !== "completed") throw new Error("Saved website quality checks must pass before production.");
-  const previewUrl = String((previewRes.data?.output as JsonRecord | null)?.preview_url || "");
-  if (previewRes.data?.status !== "completed" || !previewUrl.startsWith("https://")) throw new Error("A verified HTTPS preview is required before production.");
+  const previewOutput = (previewRes.data?.output as JsonRecord | null) || {};
+  const previewUrl = String(previewOutput.preview_url || "");
+  const verifiedPreviewCommitSha = String(previewOutput.verified_preview_commit_sha || "");
+  if (previewRes.data?.status !== "completed" || !previewUrl.startsWith("https://") || !verifiedPreviewCommitSha) throw new Error("A verified HTTPS preview bound to an exact commit is required before production.");
   if (!configRes.data?.github_owner || !configRes.data?.github_repo || !configRes.data?.netlify_site_id) throw new Error("Deployment infrastructure is incomplete.");
   if (!configRes.data.auto_publish_locked) throw new Error("Uncontrolled Netlify auto-publish must remain locked in NXQ metadata.");
 
   const token = await githubInstallationToken();
   const sourceSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, runRes.data.source_branch, token);
+  if (!sourceSha || sourceSha !== verifiedPreviewCommitSha) {
+    throw new Error("Production source branch moved after preview verification. A fresh preview is required before launch.");
+  }
   const mainSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, "main", token);
   const compareStatus = await verifyFastForward(configRes.data.github_owner, configRes.data.github_repo, runRes.data.source_branch, token);
 
@@ -266,6 +271,8 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
     preview_url: previewUrl,
     source_branch: runRes.data.source_branch,
     source_commit: sourceSha,
+    verified_preview_commit: verifiedPreviewCommitSha,
+    exact_preview_commit_bound: sourceSha === verifiedPreviewCommitSha,
     previous_main_commit: mainSha,
     github_compare_status: compareStatus,
     quality_gate_status: qualityRes.data.status,
