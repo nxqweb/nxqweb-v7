@@ -8,6 +8,7 @@ const config = read("supabase/config.toml");
 const migration = read("supabase/migrations/189_runtime_stage_bootstrap_and_provider_truth.sql");
 const bootstrap = read("supabase/functions/bootstrap-runtime-vault/index.ts");
 const notifications = read("supabase/functions/dispatch-notifications/index.ts");
+const storefront = read("supabase/functions/provision-storefront/index.ts");
 const ownerUi = read("src/pages/OwnerLaunchReadiness.tsx");
 const pkg = read("package.json");
 const ci = read(".github/workflows/ci-mega-extended.yml");
@@ -16,7 +17,7 @@ const checks = [
   ["Supabase project config is captured", config.includes('project_id = "nxqweb-v7"')],
   ["Every deployment comes from one machine-readable function manifest", workflow.includes("edge-function-manifest.mjs --group=no-verify-jwt") && workflow.includes("edge-function-manifest.mjs --group=verify-jwt")],
   ["All owner deployment endpoints are declared", ["check-preview-deployment-safety","check-preview-netlify-status","check-production-launch-audit","check-production-netlify-status","execute-preview-netlify-build","execute-production-netlify-build","prepare-preview-deployment-execution","prepare-production-deployment-execution","publish-production-netlify-deploy","refresh-production-deployment-preparation","verify-deployment-connection"].every((name) => manifest.includes(`entry("${name}", true`))],
-  ["Storefront provisioning keeps Supabase JWT verification", manifest.includes('entry("provision-storefront", true, "owner-jwt")') && config.includes("[functions.provision-storefront]\nverify_jwt = true")],
+  ["Storefront provisioning uses explicit source-level owner-or-worker auth", manifest.includes('entry("provision-storefront", false, "trusted-worker-or-owner")') && config.includes("[functions.provision-storefront]\nverify_jwt = false") && storefront.includes("NXQ_AUTOMATION_WORKER_TOKEN") && storefront.includes("protectedTokenMatches") && storefront.includes("x-nxq-worker-token")],
   ["Custom-auth workers retain explicit gateway exceptions", manifest.includes('entry("prepare-build-plan", false') && manifest.includes('entry("ingest-business-lead", false') && workflow.includes("--no-verify-jwt")],
   ["Manual workflow is staging-only", workflow.includes("environment: nxq-staging") && !workflow.includes("environment: nxq-production")],
   ["Staging mutations retain dry-run and exact confirmation", workflow.includes("db push --dry-run --linked") && workflow.includes("APPLY-NXQ-SUPABASE-STAGING")],
