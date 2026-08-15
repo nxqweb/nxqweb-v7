@@ -277,6 +277,8 @@ export function ClientPortal() {
   const [client, setClient] = useState<ClientRow | null>(null);
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
+  const [messageHasMore, setMessageHasMore] = useState(false);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
   const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -451,19 +453,19 @@ export function ClientPortal() {
         setProject((projectResult.data as ProjectRow) || null);
       }
 
-      const messageResult = await supabase
-        .from("client_messages")
-        .select(
-          "id, client_id, sender_type, message, needs_owner_review, ai_handled, created_at"
-        )
-        .eq("client_id", loadedClient.id)
-        .order("created_at", { ascending: false });
+      const messageResult = await supabase.rpc("current_client_message_page", {
+        target_limit: 50,
+        target_cursor_created_at: null,
+        target_cursor_id: null,
+      });
 
       if (messageResult.error) {
         setErrorMessage(`Message load failed: ${messageResult.error.message}`);
         setMessages([]);
       } else {
-        setMessages((messageResult.data || []) as ClientMessageRow[]);
+        const messagePage = (messageResult.data || []) as ClientMessageRow[];
+        setMessages(messagePage);
+        setMessageHasMore(messagePage.length === 50);
       }
 
       const fileListResult = await supabase
@@ -877,6 +879,33 @@ export function ClientPortal() {
       setIsSubmittingSetup(false);
     }
   }
+  async function loadOlderMessages() {
+    if (!supabase || messages.length === 0 || isLoadingOlderMessages) return;
+
+    const cursor = messages[messages.length - 1];
+    setIsLoadingOlderMessages(true);
+    setErrorMessage("");
+
+    try {
+      const result = await supabase.rpc("current_client_message_page", {
+        target_limit: 50,
+        target_cursor_created_at: cursor.created_at,
+        target_cursor_id: cursor.id,
+      });
+
+      if (result.error) throw result.error;
+
+      const page = (result.data || []) as ClientMessageRow[];
+      setMessages((current) => [...current, ...page]);
+      setMessageHasMore(page.length === 50);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown message history error";
+      setErrorMessage(`Older messages failed to load: ${message}`);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  }
+
   async function sendMessage() {
     setNotice("");
     setErrorMessage("");
@@ -1822,6 +1851,17 @@ export function ClientPortal() {
                 <div className="empty-state">
                   No messages yet. Send one above to test the client portal.
                 </div>
+              ) : null}
+
+              {messageHasMore && messages.length > 0 ? (
+                <button
+                  className="wide-btn"
+                  type="button"
+                  onClick={() => void loadOlderMessages()}
+                  disabled={isLoadingOlderMessages}
+                >
+                  {isLoadingOlderMessages ? "Loading…" : "Load older messages"}
+                </button>
               ) : null}
 
               {messages.map((message) => {
