@@ -30,8 +30,8 @@ patch("src/pages/OwnerPortal.tsx", [
     "owner projects bound",
   ],
   [
-    '.order("created_at", { ascending: false });\n\n      if (messageResult.error)',
-    '.order("created_at", { ascending: false })\n        .limit(250);\n\n      if (messageResult.error)',
+    '.order("created_at", { ascending: false })\n\n      if (messageResult.error)',
+    '.order("created_at", { ascending: false })\n  .limit(250)\n\n      if (messageResult.error)',
     "owner messages bound",
   ],
 ]);
