@@ -29,6 +29,8 @@ jobs:
         run: npm run test:security
       - name: Database privilege security audit
         run: node scripts/audit-database-security.mjs
+      - name: Runtime outbound and provider security contract
+        run: node scripts/validate-runtime-security-hardening.mjs
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Tenant isolation contract
