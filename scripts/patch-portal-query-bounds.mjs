@@ -7,13 +7,22 @@ function replaceOnce(source, before, after, label) {
   return source.slice(0, first) + after + source.slice(first + before.length);
 }
 
+function replaceAfterAnchor(source, anchor, before, after, label) {
+  const anchorIndex = source.indexOf(anchor);
+  if (anchorIndex < 0) throw new Error(`Missing expected anchor: ${label}`);
+  const first = source.indexOf(before, anchorIndex);
+  if (first < 0) throw new Error(`Missing expected source shape after anchor: ${label}`);
+  return source.slice(0, first) + after + source.slice(first + before.length);
+}
+
 function patch(path, transforms) {
   let source = fs.readFileSync(path, "utf8");
   for (const [before, after, label] of transforms) source = replaceOnce(source, before, after, label);
   fs.writeFileSync(path, source);
 }
 
-patch("src/pages/OwnerPortal.tsx", [
+let owner = fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8");
+for (const [before, after, label] of [
   [
     '.order("created_at", { ascending: false });\n\n      if (approvalResult.error)',
     '.order("created_at", { ascending: false })\n        .limit(100);\n\n      if (approvalResult.error)',
@@ -29,12 +38,15 @@ patch("src/pages/OwnerPortal.tsx", [
     '.select("id, client_id, website_status, build_plan")\n        .order("created_at", { ascending: false })\n        .limit(100);',
     "owner projects bound",
   ],
-  [
-    '.order("created_at", { ascending: false })\n\n      if (messageResult.error)',
-    '.order("created_at", { ascending: false })\n  .limit(250)\n\n      if (messageResult.error)',
-    "owner messages bound",
-  ],
-]);
+]) owner = replaceOnce(owner, before, after, label);
+owner = replaceAfterAnchor(
+  owner,
+  "const messageResult = await supabase",
+  '.order("created_at", { ascending: false });',
+  '.order("created_at", { ascending: false })\n  .limit(250);',
+  "owner messages bound",
+);
+fs.writeFileSync("src/pages/OwnerPortal.tsx", owner);
 
 patch("src/pages/ClientPortal.tsx", [
   [
