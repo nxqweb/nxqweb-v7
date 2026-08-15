@@ -30,6 +30,8 @@ jobs:
         run: node scripts/patch-owner-portal-pagination.mjs
       - name: Fix compile-only fallback
         run: node scripts/fix-owner-pagination-compile.mjs
+      - name: Stabilize initial loader hook
+        run: node scripts/fix-owner-pagination-hook.mjs
       - name: Verify scalable read-model usage
         run: |
           grep -q 'owner_portal_summary' src/pages/OwnerPortal.tsx
@@ -54,4 +56,4 @@ jobs:
           git commit -m "feat: paginate owner portal for unbounded client growth"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
 
-# rerun: compile fallback corrected
+# rerun: stabilized initial loader hook
