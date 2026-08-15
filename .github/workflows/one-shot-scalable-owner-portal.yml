@@ -51,3 +51,5 @@ jobs:
           git diff --cached --quiet && { echo "No Owner Portal changes to commit."; exit 1; }
           git commit -m "feat: paginate owner portal for unbounded client growth"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
+
+# rerun: first anchored client-list match
