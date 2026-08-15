@@ -318,7 +318,10 @@ export function ClientPortal() {
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const setupComplete = client ? completedSetupStatuses.includes(client.status) : false;
+  const signedSetupSubmitted = client ? parseClientSetupReport(client.notes).size > 0 : false;
+  const setupComplete = client
+    ? completedSetupStatuses.includes(client.status) || signedSetupSubmitted
+    : false;
   const projectStage = project?.website_status || client?.status || "loading";
 
   function formatStatus(status: string) {
