@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const migration = fs.readFileSync('supabase/migrations/126_internal_website_maintenance_execution.sql', 'utf8');
 const lockFix = fs.readFileSync('supabase/migrations/213_fix_maintenance_outer_join_lock.sql', 'utf8');
 const worker = fs.readFileSync('supabase/functions/run-website-maintenance/index.ts', 'utf8');
+const outboundGuard = fs.readFileSync('supabase/functions/_shared/outbound-security.ts', 'utf8');
 
 const checks = [
   ['Internal safe maintenance types are auto-queued', migration.includes('activate_internal_maintenance_task') && migration.includes("'uptime_check','ssl_check','form_test','broken_link_scan'")],
@@ -16,7 +17,8 @@ const checks = [
   ['Dispatcher uses cron, pg_net, and Vault', migration.includes('pg_cron') && migration.includes('pg_net') && migration.includes('vault.decrypted_secrets')],
   ['Maintenance worker URL and token are protected in Vault', migration.includes('nxq_maintenance_edge_url') && migration.includes('nxq_automation_worker_token')],
   ['Worker accepts only protected automation token', worker.includes('x-nxq-worker-token') && worker.includes('Trusted automation access required')],
-  ['Monitored URLs must use HTTPS', worker.includes('requireHttpsUrl') && worker.includes('Maintenance requires an HTTPS monitored URL')],
+  ['Monitored URLs require hardened public HTTPS validation', worker.includes('requirePublicHttpsUrl(value, "Maintenance URL")') && outboundGuard.includes('url.protocol !== "https:"') && outboundGuard.includes('isUnsafeHostname(url.hostname)')],
+  ['Maintenance validates every redirect target', worker.includes('validatedRedirectTarget(location, currentUrl') && worker.includes('redirect: "manual"')],
   ['Uptime check records status and latency', worker.includes('status_code') && worker.includes('response_ms')],
   ['SSL check admits certificate-expiry limitation', worker.includes('certificate_expiry_checked: false') && worker.includes('requires a connected certificate/provider API')],
   ['Form check does not submit real forms', worker.includes('real_form_submission_performed: false')],
