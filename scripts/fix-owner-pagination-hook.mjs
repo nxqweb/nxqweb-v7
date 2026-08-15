@@ -27,6 +27,10 @@ block = block.replace(/\n  \}$/, '\n  }, []);');
 source = source.slice(0, start) + block + source.slice(end);
 
 source = source.replaceAll('await loadOwnerData();', 'await loadOwnerData(clientSearch);');
+source = source.replaceAll(
+  'onClick={loadOwnerData}',
+  'onClick={() => void loadOwnerData(clientSearch)}',
+);
 source = source.replace(
   '  useEffect(() => {\n    loadOwnerData();\n  }, []);',
   '  useEffect(() => {\n    void loadOwnerData("");\n  }, [loadOwnerData]);',
@@ -34,6 +38,7 @@ source = source.replace(
 
 if (!source.includes('useCallback(async (searchValue = "")')) throw new Error("useCallback conversion missing");
 if (!source.includes('}, [loadOwnerData]);')) throw new Error("useEffect dependency conversion missing");
+if (source.includes('onClick={loadOwnerData}')) throw new Error("Direct refresh handler still passes a mouse event to loadOwnerData");
 
 fs.writeFileSync(path, source);
-console.log("Stabilized scalable Owner Portal initial loader with useCallback.");
+console.log("Stabilized scalable Owner Portal loader and refresh handlers with useCallback.");
