@@ -15,6 +15,7 @@ const pass = (label, ok, detail = "") => {
 
 const functionBlockPattern = /create\s+(?:or\s+replace\s+)?function\s+[\s\S]*?\$\$[\s\S]*?\$\$\s*;/gi;
 const functionHeaderPattern = /create\s+(?:or\s+replace\s+)?function\s+([^\s(]+)\s*\(([^)]*)\)/i;
+const pinnedSearchPathPattern = /\bset\s+search_path\s*(?:=|to)\s*/i;
 
 const countTopLevelArgs = (args) => {
   const trimmed = args.trim();
@@ -78,7 +79,7 @@ for (const file of files) {
 
 const securityDefinerWithoutPinnedSearchPath = [];
 for (const { file, block, display } of effectiveFunctions.values()) {
-  if (/\bsecurity\s+definer\b/i.test(block) && !/\bset\s+search_path\s*=\s*/i.test(block)) {
+  if (/\bsecurity\s+definer\b/i.test(block) && !pinnedSearchPathPattern.test(block)) {
     securityDefinerWithoutPinnedSearchPath.push(`${file}: ${display}`);
   }
 }
