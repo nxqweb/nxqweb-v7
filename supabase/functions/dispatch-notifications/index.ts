@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type Delivery = {
   id: string;
@@ -32,11 +33,13 @@ async function postAdapter(delivery: Delivery) {
   const endpoint = Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim();
   const token = Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim();
   if (!endpoint || !token) throw new Error("Notification provider adapter is not configured.");
+  const safeEndpoint = requirePublicHttpsUrl(endpoint, "Notification adapter URL");
   const idempotencyKey = delivery.id;
   const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(safeEndpoint.toString(), {
       method: "POST",
+      redirect: "error",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

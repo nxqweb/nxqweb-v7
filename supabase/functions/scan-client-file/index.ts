@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type ScanRow = {
   id: string;
@@ -61,6 +62,7 @@ async function scanWithAdapter(file: ClientFile, bytes: ArrayBuffer, checksum: s
   const endpoint = Deno.env.get("NXQ_MALWARE_SCAN_ADAPTER_URL")?.trim();
   const token = Deno.env.get("NXQ_MALWARE_SCAN_ADAPTER_TOKEN")?.trim();
   if (!endpoint || !token) throw new Error("Malware scanner adapter is not configured.");
+  const safeEndpoint = requirePublicHttpsUrl(endpoint, "Malware scanner adapter URL");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
@@ -70,8 +72,9 @@ async function scanWithAdapter(file: ClientFile, bytes: ArrayBuffer, checksum: s
     form.set("sha256", checksum);
     form.set("client_file_id", file.id);
 
-    const res = await fetch(endpoint, {
+    const res = await fetch(safeEndpoint.toString(), {
       method: "POST",
+      redirect: "error",
       headers: { Authorization: `Bearer ${token}` },
       body: form,
       signal: controller.signal,
@@ -130,6 +133,9 @@ Deno.serve(async (req) => {
     if (file.status === "deleted") throw new Error("Deleted client files are not scannable.");
 
     const maxBytes = Number(Deno.env.get("NXQ_FILE_SCAN_MAX_BYTES") || 25 * 1024 * 1024);
+    if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 100 * 1024 * 1024) {
+      throw new Error("NXQ_FILE_SCAN_MAX_BYTES must be a positive integer no larger than 100 MiB.");
+    }
     if (file.file_size != null && file.file_size > maxBytes) {
       throw new Error(`File exceeds the configured scan limit of ${maxBytes} bytes.`);
     }

@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+import { normalizeGithubPrivateKey } from "../_shared/github-private-key.ts";
+import { requirePublicHttpsUrl, validatedRedirectTarget } from "../_shared/outbound-security.ts";
 
 type JsonRecord = Record<string, unknown>;
 type MaintenanceTask = {
@@ -46,9 +48,23 @@ async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 120
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   const started = performance.now();
+  let currentUrl = requirePublicHttpsUrl(input, "Maintenance URL");
+  let requestInit: RequestInit = { ...init };
   try {
-    const res = await fetch(input, { ...init, redirect: "follow", signal: controller.signal });
-    return { res, durationMs: Math.round(performance.now() - started) };
+    for (let redirects = 0; redirects <= 5; redirects += 1) {
+      const res = await fetch(currentUrl.toString(), { ...requestInit, redirect: "manual", signal: controller.signal });
+      if (![301, 302, 303, 307, 308].includes(res.status)) {
+        return { res, durationMs: Math.round(performance.now() - started) };
+      }
+      const location = res.headers.get("location");
+      if (!location) throw new Error("Maintenance redirect did not include a Location header.");
+      if (redirects === 5) throw new Error("Maintenance request exceeded the redirect limit.");
+      currentUrl = validatedRedirectTarget(location, currentUrl, "Maintenance redirect target");
+      if (res.status === 303 || ((res.status === 301 || res.status === 302) && String(requestInit.method || "GET").toUpperCase() === "POST")) {
+        requestInit = { ...requestInit, method: "GET", body: undefined };
+      }
+    }
+    throw new Error("Maintenance request exceeded the redirect limit.");
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`Maintenance HTTP request timed out after ${Math.round(timeoutMs / 1000)} seconds.`, { cause: error });
@@ -60,10 +76,7 @@ async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 120
 }
 
 function requireHttpsUrl(value: string) {
-  let url: URL;
-  try { url = new URL(value); } catch { throw new Error("Maintenance URL is invalid."); }
-  if (url.protocol !== "https:") throw new Error("Maintenance requires an HTTPS monitored URL.");
-  return url;
+  return requirePublicHttpsUrl(value, "Maintenance URL");
 }
 
 function firstMatch(html: string, pattern: RegExp) {
@@ -92,7 +105,7 @@ function extractSameOriginLinks(html: string, base: URL) {
 async function githubInstallationToken() {
   const appId = requiredSecret("GITHUB_APP_ID");
   const installationId = requiredSecret("GITHUB_APP_INSTALLATION_ID");
-  const privateKey = await importPKCS8(requiredSecret("GITHUB_APP_PRIVATE_KEY").replace(/\\n/g, "\n"), "RS256");
+  const privateKey = await importPKCS8(normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY")), "RS256");
   const now = Math.floor(Date.now() / 1000);
   const jwt = await new SignJWT({})
     .setProtectedHeader({ alg: "RS256" })
