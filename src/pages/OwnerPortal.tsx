@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -34,6 +34,11 @@ type ClientRow = {
   billing_frozen_at: string | null;
   notes: string | null;
   qa_only: boolean;
+  created_at: string;
+  project_id: string | null;
+  website_status: string | null;
+  build_plan: Record<string, unknown> | null;
+  unread_message_count: number;
 };
 
 type ApprovalRow = {
@@ -58,6 +63,7 @@ type ApprovalRow = {
 type ClientMessageRow = {
   id: string;
   client_id: string | null;
+  business_name?: string;
   sender_type: "owner" | "client" | "ai" | "system";
   message: string;
   needs_owner_review: boolean;
@@ -72,6 +78,19 @@ type ProjectRow = {
   website_status: string;
   build_plan: Record<string, unknown> | null;
 };
+
+type OwnerPortalSummary = {
+  total_clients: number;
+  active_clients: number;
+  active_monthly_revenue: number;
+  pipeline_clients: number;
+  pipeline_monthly_value: number;
+  unread_client_messages: number;
+  pending_approvals: number;
+};
+
+const OWNER_PAGE_SIZE = 50;
+const OWNER_UNREAD_PAGE_SIZE = 25;
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -271,8 +290,21 @@ function groupSetupReportFields(fields: { label: string; value: string }[]) {
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
+  const [ownerUnreadMessages, setOwnerUnreadMessages] = useState<ClientMessageRow[]>([]);
+  const [ownerSummary, setOwnerSummary] = useState<OwnerPortalSummary>({
+    total_clients: 0,
+    active_clients: 0,
+    active_monthly_revenue: 0,
+    pipeline_clients: 0,
+    pipeline_monthly_value: 0,
+    unread_client_messages: 0,
+    pending_approvals: 0,
+  });
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientHasMore, setClientHasMore] = useState(false);
+  const [messageHasMore, setMessageHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
   const [ownerView, setOwnerView] = useState<"aps" | "chat">("aps");
@@ -293,47 +325,18 @@ export function OwnerPortal() {
     setNxqTheme(nextTheme);
   }
 
-  const activeMonthlyIncome = useMemo(() => {
-    return clients
-      .filter((client) => client.billing_status === "active")
-      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
-  }, [clients]);
+  const activeMonthlyIncome = Number(ownerSummary.active_monthly_revenue || 0);
+  const pipelineMonthlyValue = Number(ownerSummary.pipeline_monthly_value || 0);
+  const unreadClientMessageCount = Number(ownerSummary.unread_client_messages || 0);
 
-  const pipelineMonthlyValue = useMemo(() => {
-    const excludedStatuses = new Set(["archived", "denied", "dormant"]);
-
-    return clients
-      .filter((client) => !excludedStatuses.has(client.status))
-      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
-  }, [clients]);
-
-  const filteredClientMessages = useMemo(() => {
-    if (!selectedMessageClientId) {
-      return [];
-    }
-
-    return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
-  }, [clientMessages, selectedMessageClientId]);
-
-  const ownerReviewMessages = useMemo(() => {
-    return clientMessages.filter(
-      (message) => message.sender_type === "client" && !message.owner_seen_at
-    );
-  }, [clientMessages]);
+  const filteredClientMessages = clientMessages;
+  const ownerReviewMessages = ownerUnreadMessages;
 
   const unreadMessageCountByClient = useMemo(() => {
     const counts: Record<string, number> = {};
-
-    for (const message of ownerReviewMessages) {
-      if (!message.client_id) {
-        continue;
-      }
-
-      counts[message.client_id] = (counts[message.client_id] || 0) + 1;
-    }
-
+    for (const client of clients) counts[client.id] = Number(client.unread_message_count || 0);
     return counts;
-  }, [ownerReviewMessages]);
+  }, [clients]);
 
   async function openClientMessageThread(clientId: string | null) {
     if (!clientId) {
@@ -358,19 +361,8 @@ export function OwnerPortal() {
       return;
     }
 
-    const seenAt = new Date().toISOString();
-
-    setClientMessages((currentMessages) =>
-      currentMessages.map((message) =>
-        message.client_id === clientId &&
-        message.sender_type === "client" &&
-        !message.owner_seen_at
-          ? { ...message, owner_seen_at: seenAt }
-          : message
-      )
-    );
-
-    await loadOwnerData();
+    await loadClientMessagePage(clientId, false);
+    await loadOwnerData(clientSearch);
   }
 const selectedReplyClientId = useMemo(() => {
     return selectedMessageClientId || "";
@@ -380,11 +372,18 @@ const selectedReplyClientId = useMemo(() => {
   }
 
   function getProjectForClient(clientId: string) {
-    return projects.find((project) => project.client_id === clientId) || null;
+    const client = clients.find((item) => item.id === clientId);
+    if (!client?.project_id) return null;
+    return {
+      id: client.project_id,
+      client_id: client.id,
+      website_status: client.website_status || "planning",
+      build_plan: client.build_plan,
+    } satisfies ProjectRow;
   }
   function getClientForMessage(message: ClientMessageRow) {
-  return clients.find((client) => client.id === message.client_id) || null;
-}
+    return clients.find((client) => client.id === message.client_id) || null;
+  }
 
 function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
   return Object.entries(buildPlan).map(([key, value]) => ({
@@ -436,9 +435,82 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
 
     setOwnerReplyText("");
     setActionMessage(resultData?.message || "Owner reply sent to client portal.");
-    await loadOwnerData();
+    await loadOwnerData(clientSearch);
   }
-  async function loadOwnerData() {
+  async function loadClientMessagePage(clientId: string, append: boolean) {
+    if (!supabase) return;
+    const existing = append ? clientMessages : [];
+    const cursor = append && existing.length > 0 ? existing[existing.length - 1] : null;
+    const result = await supabase.rpc("owner_client_message_page", {
+      target_client_id: clientId,
+      target_limit: OWNER_PAGE_SIZE,
+      target_cursor_created_at: cursor?.created_at || null,
+      target_cursor_id: cursor?.id || null,
+    });
+    if (result.error) throw result.error;
+    const page = (result.data || []) as ClientMessageRow[];
+    setClientMessages(append ? [...existing, ...page] : page);
+    setMessageHasMore(page.length === OWNER_PAGE_SIZE);
+  }
+
+  async function loadMoreClients() {
+    if (!supabase || clients.length === 0 || isLoadingMore) return;
+    const cursor = clients[clients.length - 1];
+    setIsLoadingMore(true);
+    try {
+      const result = await supabase.rpc("owner_client_directory_page", {
+        target_limit: OWNER_PAGE_SIZE,
+        target_cursor_created_at: cursor.created_at,
+        target_cursor_id: cursor.id,
+        target_search: clientSearch.trim() || null,
+        target_status: null,
+      });
+      if (result.error) throw result.error;
+      const page = (result.data || []) as ClientRow[];
+      setClients((current) => [...current, ...page]);
+      setClientHasMore(page.length === OWNER_PAGE_SIZE);
+    } catch (error) {
+      setErrorMessage(`Client page load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  async function reloadClientSearch() {
+    if (!supabase) return;
+    setIsLoadingMore(true);
+    try {
+      const result = await supabase.rpc("owner_client_directory_page", {
+        target_limit: OWNER_PAGE_SIZE,
+        target_cursor_created_at: null,
+        target_cursor_id: null,
+        target_search: clientSearch.trim() || null,
+        target_status: null,
+      });
+      if (result.error) throw result.error;
+      const page = (result.data || []) as ClientRow[];
+      setClients(page);
+      setClientHasMore(page.length === OWNER_PAGE_SIZE);
+    } catch (error) {
+      setErrorMessage(`Client search failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedMessageClientId || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      await loadClientMessagePage(selectedMessageClientId, true);
+    } catch (error) {
+      setErrorMessage(`Message page load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  const loadOwnerData = useCallback(async (searchValue = "") => {
     setIsLoading(true);
     setErrorMessage("");
     setActionMessage("");
@@ -450,64 +522,48 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
     }
 
     try {
-      const approvalResult = await supabase
-        .from("owner_approval_requests")
-        .select(
-          "id, client_id, project_id, request_type, title, summary, recommended_action, risk_level, status, owner_response, options, created_at"
-        )
-        .order("created_at", { ascending: false });
+      const [summaryResult, clientResult, approvalResult, unreadResult] = await Promise.all([
+        supabase.rpc("owner_portal_summary"),
+        supabase.rpc("owner_client_directory_page", {
+          target_limit: OWNER_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+          target_search: searchValue.trim() || null,
+          target_status: null,
+        }),
+        supabase.rpc("owner_approval_page", {
+          target_limit: OWNER_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+          target_status: null,
+        }),
+        supabase.rpc("owner_unread_message_page", {
+          target_limit: OWNER_UNREAD_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+        }),
+      ]);
 
-      if (approvalResult.error) {
-        setErrorMessage(`Approval load failed: ${approvalResult.error.message}`);
-      } else {
-        setApprovals((approvalResult.data || []) as ApprovalRow[]);
-      }
+      if (summaryResult.error) throw summaryResult.error;
+      if (clientResult.error) throw clientResult.error;
+      if (approvalResult.error) throw approvalResult.error;
+      if (unreadResult.error) throw unreadResult.error;
 
-      const clientResult = await supabase
-        .from("clients")
-        .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes, qa_only"
-        )
-        .order("created_at", { ascending: false });
+      const summary = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
+      if (summary) setOwnerSummary(summary as OwnerPortalSummary);
 
-      if (clientResult.error) {
-        setErrorMessage(`Client load failed: ${clientResult.error.message}`);
-      } else {
-        setClients((clientResult.data || []) as ClientRow[]);
-      }
-
-      const projectResult = await supabase
-        .from("projects")
-        .select("id, client_id, website_status, build_plan")
-        .order("created_at", { ascending: false });
-
-      if (projectResult.error) {
-        setErrorMessage(`Project load failed: ${projectResult.error.message}`);
-      } else {
-        setProjects((projectResult.data || []) as ProjectRow[]);
-      }
-
-
-      const messageResult = await supabase
-  .from("client_messages")
-  .select(
-    "id, client_id, sender_type, message, needs_owner_review, ai_handled, owner_seen_at, created_at"
-  )
-  .order("created_at", { ascending: false })
-  .limit(100);
-
-if (messageResult.error) {
-  setErrorMessage(`Client messages load failed: ${messageResult.error.message}`);
-} else {
-  setClientMessages((messageResult.data || []) as ClientMessageRow[]);
-}
+      const clientPage = (clientResult.data || []) as ClientRow[];
+      setClients(clientPage);
+      setClientHasMore(clientPage.length === OWNER_PAGE_SIZE);
+      setApprovals((approvalResult.data || []) as ApprovalRow[]);
+      setOwnerUnreadMessages((unreadResult.data || []) as ClientMessageRow[]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown Supabase fetch error";
-      setErrorMessage(`Supabase connection failed: ${message}`);
+      const message = error instanceof Error ? error.message : "Unknown load error";
+      setErrorMessage(`Owner portal load failed: ${message}`);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   async function updateApprovalStatus(
     approval: ApprovalRow,
@@ -555,7 +611,7 @@ if (messageResult.error) {
       const resultData = decisionResult.data as { message?: string } | null;
       setActionMessage(resultData?.message || `Saved: ${ownerResponse}`);
 
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown update error";
       setErrorMessage(`Action failed: ${message}`);
@@ -615,7 +671,7 @@ if (messageResult.error) {
           `${clientName}: approved, moved into planning, and build plan created.`
       );
 
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown pipeline error";
       setErrorMessage(`Pipeline start failed: ${message}`);
@@ -787,15 +843,15 @@ if (messageResult.error) {
           `${client.business_name}: targeted more info requested for ${selectedField.label}.`
       );
 
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown more info error";
       setErrorMessage(`Targeted more info request failed: ${message}`);
     }
   }
   useEffect(() => {
-    loadOwnerData();
-  }, []);
+    void loadOwnerData("");
+  }, [loadOwnerData]);
 
   const normalApprovalTypes = new Set(["website_setup_review", "commerce_intake_review"]);
   const pendingApprovals = approvals.filter(
@@ -809,9 +865,14 @@ if (messageResult.error) {
 
   const recentCompletedApprovals = completedApprovals.slice(0, 4);
 
-  const latestProjectBuildPlans = projects.filter(
-    (project) => project.build_plan && Object.keys(project.build_plan).length > 0
-  );
+  const latestProjectBuildPlans = clients
+    .filter((client) => client.build_plan && Object.keys(client.build_plan).length > 0)
+    .map((client) => ({
+      id: client.project_id || client.id,
+      client_id: client.id,
+      website_status: client.website_status || "planning",
+      build_plan: client.build_plan,
+    } satisfies ProjectRow));
 
   return (
     <main className="nxq-page">
@@ -839,7 +900,7 @@ if (messageResult.error) {
               type="button"
               onClick={() => setOwnerView("chat")}
             >
-              Client chat {ownerReviewMessages.length > 0 ? `(${ownerReviewMessages.length})` : ""}
+              Client chat {unreadClientMessageCount > 0 ? `(${unreadClientMessageCount})` : ""}
             </button>
             <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
@@ -862,7 +923,7 @@ if (messageResult.error) {
                 <h2>Client approvals</h2>
               </div>
 
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
+              <button className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
                 <RefreshCcw size={16} />
                 Refresh
               </button>
@@ -877,7 +938,7 @@ if (messageResult.error) {
                 <strong>Client message pings</strong>
 
 
-                <span>{ownerReviewMessages.length} new</span>
+                <span>{unreadClientMessageCount} new</span>
 
 
               </div>
@@ -1244,7 +1305,7 @@ if (messageResult.error) {
                 <h2>Project build plans</h2>
               </div>
 
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
+              <button className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
                 <RefreshCcw size={16} />
                 Refresh
               </button>
@@ -1306,9 +1367,30 @@ if (messageResult.error) {
               <h2>Clients</h2>
             </div>
 
+            <div className="owner-client-search-row">
+              <input
+                className="message-filter-select"
+                value={clientSearch}
+                onChange={(event) => setClientSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void reloadClientSearch(); }}
+                placeholder="Search clients by business, contact, or email"
+                aria-label="Search clients"
+              />
+              <button className="wide-btn" type="button" onClick={() => void reloadClientSearch()} disabled={isLoadingMore}>
+                Search
+              </button>
+              <small>{Number(ownerSummary.total_clients || 0).toLocaleString()} total clients</small>
+            </div>
+
             <div className="client-list">
               {clients.length === 0 && !isLoading ? (
                 <p className="subtle">No clients found yet.</p>
+              ) : null}
+
+              {clientHasMore && clients.length > 0 ? (
+                <button className="wide-btn" type="button" onClick={() => void loadMoreClients()} disabled={isLoadingMore}>
+                  {isLoadingMore ? "Loading…" : "Load more clients"}
+                </button>
               ) : null}
 
               {clients.map((client) => (
@@ -1349,7 +1431,7 @@ if (messageResult.error) {
       <h2>Client chat</h2>
     </div>
 
-    <button aria-label="Refresh client chat" className="icon-btn" onClick={loadOwnerData} type="button">
+    <button aria-label="Refresh client chat" className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
       <RefreshCcw size={16} />
     </button>
   </div>
@@ -1374,6 +1456,12 @@ if (messageResult.error) {
   <div className="owner-message-list">
     {filteredClientMessages.length === 0 && !isLoading ? (
       <div className="empty-state">Pick a client to open their private message thread.</div>
+    ) : null}
+
+    {messageHasMore && selectedMessageClientId ? (
+      <button className="wide-btn" type="button" onClick={() => void loadOlderMessages()} disabled={isLoadingMore}>
+        {isLoadingMore ? "Loading…" : "Load older messages"}
+      </button>
     ) : null}
 
     {filteredClientMessages.map((message) => {
