@@ -56,4 +56,4 @@ jobs:
           git commit -m "feat: paginate owner portal for unbounded client growth"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
 
-# rerun: stabilized initial loader hook
+# rerun: refresh handlers call scalable loader explicitly
