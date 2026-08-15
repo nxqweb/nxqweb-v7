@@ -7,12 +7,17 @@ function replaceOnce(source, before, after, label) {
   return source.slice(0, first) + after + source.slice(first + before.length);
 }
 
-function replaceAfterAnchor(source, anchor, before, after, label) {
+function insertAfterOrder(source, anchor, limit, label) {
   const anchorIndex = source.indexOf(anchor);
   if (anchorIndex < 0) throw new Error(`Missing expected anchor: ${label}`);
-  const first = source.indexOf(before, anchorIndex);
-  if (first < 0) throw new Error(`Missing expected source shape after anchor: ${label}`);
-  return source.slice(0, first) + after + source.slice(first + before.length);
+  const tail = source.slice(anchorIndex);
+  const match = tail.match(/\.order\("created_at",\s*\{\s*ascending:\s*false\s*\}\)/);
+  if (!match || match.index == null) throw new Error(`Missing created_at order after anchor: ${label}`);
+  const start = anchorIndex + match.index;
+  const end = start + match[0].length;
+  const afterOrder = source.slice(end);
+  if (/^\s*\.limit\(/.test(afterOrder)) throw new Error(`Query is already bounded: ${label}`);
+  return source.slice(0, end) + `\n  .limit(${limit})` + source.slice(end);
 }
 
 function patch(path, transforms) {
@@ -39,13 +44,7 @@ for (const [before, after, label] of [
     "owner projects bound",
   ],
 ]) owner = replaceOnce(owner, before, after, label);
-owner = replaceAfterAnchor(
-  owner,
-  "const messageResult = await supabase",
-  '.order("created_at", { ascending: false });',
-  '.order("created_at", { ascending: false })\n  .limit(250);',
-  "owner messages bound",
-);
+owner = insertAfterOrder(owner, "const messageResult = await supabase", 250, "owner messages bound");
 fs.writeFileSync("src/pages/OwnerPortal.tsx", owner);
 
 patch("src/pages/ClientPortal.tsx", [
