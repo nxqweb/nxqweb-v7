@@ -14,7 +14,39 @@ const pass = (label, ok, detail = "") => {
 };
 
 const functionBlockPattern = /create\s+(?:or\s+replace\s+)?function\s+[\s\S]*?\$\$[\s\S]*?\$\$\s*;/gi;
-const securityDefinerWithoutPinnedSearchPath = [];
+const functionHeaderPattern = /create\s+(?:or\s+replace\s+)?function\s+([^\s(]+)\s*\(([^)]*)\)/i;
+
+const countTopLevelArgs = (args) => {
+  const trimmed = args.trim();
+  if (!trimmed) return 0;
+
+  let depth = 0;
+  let inSingleQuote = false;
+  let count = 1;
+  for (let i = 0; i < trimmed.length; i += 1) {
+    const char = trimmed[i];
+    const next = trimmed[i + 1];
+    if (char === "'" && inSingleQuote && next === "'") {
+      i += 1;
+      continue;
+    }
+    if (char === "'") {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (inSingleQuote) continue;
+    if (char === "(") depth += 1;
+    else if (char === ")") depth = Math.max(0, depth - 1);
+    else if (char === "," && depth === 0) count += 1;
+  }
+  return count;
+};
+
+// Migration history is append-only. Security must be judged from the final effective
+// CREATE/REPLACE definition, not from obsolete definitions that later migrations hardened.
+// Name + arity is deliberate here: it distinguishes the overloads used by this schema while
+// remaining stable when migrations rename argument variables without changing the SQL signature.
+const effectiveFunctions = new Map();
 const roleEscalationHits = [];
 const dangerousTableGrantHits = [];
 
@@ -23,10 +55,11 @@ for (const file of files) {
 
   for (const match of sql.matchAll(functionBlockPattern)) {
     const block = match[0];
-    if (/\bsecurity\s+definer\b/i.test(block) && !/\bset\s+search_path\s*=\s*/i.test(block)) {
-      const signature = block.match(/create\s+(?:or\s+replace\s+)?function\s+([^\s(]+\s*\([^)]*\))/i)?.[1] ?? "unknown function";
-      securityDefinerWithoutPinnedSearchPath.push(`${file}: ${signature}`);
-    }
+    const header = block.match(functionHeaderPattern);
+    if (!header) continue;
+    const name = header[1].toLowerCase();
+    const arity = countTopLevelArgs(header[2]);
+    effectiveFunctions.set(`${name}/${arity}`, { file, block, display: `${header[1]}(${header[2].replace(/\s+/g, " ").trim()})` });
   }
 
   const dangerousRolePatterns = [
@@ -43,8 +76,15 @@ for (const file of files) {
   }
 }
 
+const securityDefinerWithoutPinnedSearchPath = [];
+for (const { file, block, display } of effectiveFunctions.values()) {
+  if (/\bsecurity\s+definer\b/i.test(block) && !/\bset\s+search_path\s*=\s*/i.test(block)) {
+    securityDefinerWithoutPinnedSearchPath.push(`${file}: ${display}`);
+  }
+}
+
 pass(
-  "Every SECURITY DEFINER function pins search_path",
+  "Every effective SECURITY DEFINER function pins search_path",
   securityDefinerWithoutPinnedSearchPath.length === 0,
   securityDefinerWithoutPinnedSearchPath.join(" | "),
 );
@@ -59,5 +99,6 @@ pass(
   dangerousTableGrantHits.join(" | "),
 );
 
-console.log(`\n${failures.length === 0 ? "Database security audit passed" : `${failures.length} database security audit check(s) failed`}.`);
+console.log(`\nAudited ${effectiveFunctions.size} effective function definition(s) across ${files.length} migration(s).`);
+console.log(`${failures.length === 0 ? "Database security audit passed" : `${failures.length} database security audit check(s) failed`}.`);
 if (failures.length) process.exit(1);
