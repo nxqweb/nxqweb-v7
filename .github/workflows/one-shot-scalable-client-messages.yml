@@ -1,0 +1,45 @@
+name: One-shot Scalable Client Messages
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-scalable-client-messages.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply client message pagination
+        run: node scripts/patch-client-portal-message-pagination.mjs
+      - name: Verify tenant-derived pagination
+        run: |
+          grep -q 'current_client_message_page' src/pages/ClientPortal.tsx
+          grep -q 'Load older messages' src/pages/ClientPortal.tsx
+          ! grep -q '.from("client_messages")' src/pages/ClientPortal.tsx
+      - name: Production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit scalable Client Portal messages
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add src/pages/ClientPortal.tsx
+          git diff --cached --quiet && { echo "No Client Portal changes to commit."; exit 1; }
+          git commit -m "feat: paginate client message history without a total cap"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
