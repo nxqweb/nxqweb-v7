@@ -24,6 +24,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Anchor ambiguous client-list patch
+        run: node scripts/fix-owner-pagination-patcher-anchor.mjs
       - name: Apply scalable Owner Portal patch
         run: node scripts/patch-owner-portal-pagination.mjs
       - name: Verify scalable read-model usage
