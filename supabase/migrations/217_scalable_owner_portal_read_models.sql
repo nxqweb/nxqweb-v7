@@ -12,6 +12,10 @@ create index if not exists client_messages_owner_unread_client_created_idx
   on public.client_messages(client_id, created_at desc, id desc)
   where sender_type = 'client' and owner_seen_at is null;
 
+create index if not exists client_messages_owner_unread_created_id_desc_idx
+  on public.client_messages(created_at desc, id desc)
+  where sender_type = 'client' and owner_seen_at is null;
+
 create index if not exists projects_client_created_desc_idx
   on public.projects(client_id, created_at desc, id desc);
 
@@ -41,17 +45,9 @@ begin
   select
     (select count(*) from public.clients)::bigint,
     (select count(*) from public.clients c where c.billing_status::text = 'active')::bigint,
-    coalesce((
-      select sum(c.monthly_price)
-      from public.clients c
-      where c.billing_status::text = 'active'
-    ), 0)::numeric,
+    coalesce((select sum(c.monthly_price) from public.clients c where c.billing_status::text = 'active'), 0)::numeric,
     (select count(*) from public.clients c where c.status::text not in ('archived', 'denied', 'dormant'))::bigint,
-    coalesce((
-      select sum(c.monthly_price)
-      from public.clients c
-      where c.status::text not in ('archived', 'denied', 'dormant')
-    ), 0)::numeric,
+    coalesce((select sum(c.monthly_price) from public.clients c where c.status::text not in ('archived', 'denied', 'dormant')), 0)::numeric,
     (select count(*) from public.client_messages m where m.sender_type::text = 'client' and m.owner_seen_at is null)::bigint,
     (select count(*) from public.owner_approval_requests a where a.status::text = 'pending')::bigint;
 end;
@@ -100,9 +96,7 @@ declare
   search_value text := nullif(trim(coalesce(target_search, '')), '');
   status_value text := nullif(trim(coalesce(target_status, '')), '');
 begin
-  if not exists (
-    select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()
-  ) then
+  if not exists (select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()) then
     raise exception 'Owner access required.';
   end if;
 
@@ -203,9 +197,7 @@ declare
   page_limit integer := least(greatest(coalesce(target_limit, 50), 1), 100);
   status_value text := nullif(trim(coalesce(target_status, '')), '');
 begin
-  if not exists (
-    select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()
-  ) then
+  if not exists (select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()) then
     raise exception 'Owner access required.';
   end if;
 
@@ -271,36 +263,20 @@ as $$
 declare
   page_limit integer := least(greatest(coalesce(target_limit, 50), 1), 100);
 begin
-  if not exists (
-    select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()
-  ) then
+  if not exists (select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()) then
     raise exception 'Owner access required.';
   end if;
-
-  if target_client_id is null then
-    raise exception 'Client id is required.';
-  end if;
-
+  if target_client_id is null then raise exception 'Client id is required.'; end if;
   if (target_cursor_created_at is null) <> (target_cursor_id is null) then
     raise exception 'Pagination cursor is incomplete.';
   end if;
 
   return query
-  select
-    m.id,
-    m.client_id,
-    m.sender_type::text,
-    m.message,
-    m.needs_owner_review,
-    m.ai_handled,
-    m.owner_seen_at,
-    m.created_at
+  select m.id, m.client_id, m.sender_type::text, m.message, m.needs_owner_review,
+         m.ai_handled, m.owner_seen_at, m.created_at
   from public.client_messages m
   where m.client_id = target_client_id
-    and (
-      target_cursor_created_at is null
-      or (m.created_at, m.id) < (target_cursor_created_at, target_cursor_id)
-    )
+    and (target_cursor_created_at is null or (m.created_at, m.id) < (target_cursor_created_at, target_cursor_id))
   order by m.created_at desc, m.id desc
   limit page_limit;
 end;
@@ -313,3 +289,55 @@ grant execute on function public.owner_client_message_page(uuid, integer, timest
 
 comment on function public.owner_client_message_page(uuid, integer, timestamptz, uuid) is
   'Owner-only per-client keyset-paginated message thread. Never loads all tenants messages into one browser request.';
+
+create or replace function public.owner_unread_message_page(
+  target_limit integer default 25,
+  target_cursor_created_at timestamptz default null,
+  target_cursor_id uuid default null
+)
+returns table (
+  id uuid,
+  client_id uuid,
+  business_name text,
+  sender_type text,
+  message text,
+  needs_owner_review boolean,
+  ai_handled boolean,
+  owner_seen_at timestamptz,
+  created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  page_limit integer := least(greatest(coalesce(target_limit, 25), 1), 100);
+begin
+  if not exists (select 1 from public.owner_users ou where ou.auth_user_id = auth.uid()) then
+    raise exception 'Owner access required.';
+  end if;
+  if (target_cursor_created_at is null) <> (target_cursor_id is null) then
+    raise exception 'Pagination cursor is incomplete.';
+  end if;
+
+  return query
+  select m.id, m.client_id, c.business_name, m.sender_type::text, m.message,
+         m.needs_owner_review, m.ai_handled, m.owner_seen_at, m.created_at
+  from public.client_messages m
+  join public.clients c on c.id = m.client_id
+  where m.sender_type::text = 'client'
+    and m.owner_seen_at is null
+    and (target_cursor_created_at is null or (m.created_at, m.id) < (target_cursor_created_at, target_cursor_id))
+  order by m.created_at desc, m.id desc
+  limit page_limit;
+end;
+$$;
+
+revoke all on function public.owner_unread_message_page(integer, timestamptz, uuid)
+  from public, anon;
+grant execute on function public.owner_unread_message_page(integer, timestamptz, uuid)
+  to authenticated, service_role;
+
+comment on function public.owner_unread_message_page(integer, timestamptz, uuid) is
+  'Owner-only keyset-paginated unread client-message feed. Keeps the exception/ping surface bounded while total unread history remains uncapped.';
