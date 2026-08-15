@@ -1,0 +1,46 @@
+name: One-shot Portal Query Bounds
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-portal-query-bounds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded portal query bounds
+        run: node scripts/patch-portal-query-bounds.mjs
+      - name: Verify query bounds
+        run: |
+          grep -q '.limit(250)' src/pages/OwnerPortal.tsx
+          test "$(grep -c '.limit(100)' src/pages/OwnerPortal.tsx)" -ge 3
+          grep -q '.limit(100)' src/pages/ClientPortal.tsx
+          grep -q '.limit(25)' src/pages/ClientPortal.tsx
+      - name: Frontend production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit bounded portal queries
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add src/pages/OwnerPortal.tsx src/pages/ClientPortal.tsx
+          git diff --cached --quiet && { echo "No portal query changes to commit."; exit 1; }
+          git commit -m "fix: bound portal launch queries"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
