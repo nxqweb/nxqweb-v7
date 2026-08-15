@@ -45,4 +45,4 @@ jobs:
           git commit -m "fix: bound portal launch queries"
           git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
 
-# Rerun marker: query-bound patcher formatting fix
+# Rerun marker: anchored owner message query
