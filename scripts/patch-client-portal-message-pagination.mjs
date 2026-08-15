@@ -48,9 +48,9 @@ replaceOnce(
   "initial client message result",
 );
 
-const sendAnchor = '  async function sendClientMessage() {';
+const sendAnchor = '  async function sendMessage() {';
 const sendIndex = source.indexOf(sendAnchor);
-if (sendIndex < 0) throw new Error("sendClientMessage anchor not found");
+if (sendIndex < 0) throw new Error("sendMessage anchor not found");
 source = source.slice(0, sendIndex) + `  async function loadOlderMessages() {
     if (!supabase || messages.length === 0 || isLoadingOlderMessages) return;
 
