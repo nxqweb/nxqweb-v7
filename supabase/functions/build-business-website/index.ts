@@ -421,6 +421,39 @@ async function findExistingBranchDeploy(siteId: string, branch: string, expected
   };
 }
 
+async function findBranchDeployState(siteId: string, branch: string, expectedCommitSha: string) {
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
+    headers: netlifyHeaders(token),
+  });
+  const body = await readJson(res);
+  if (!res.ok || !Array.isArray(body)) throw new Error(`Netlify preview state lookup failed (${res.status}).`);
+  const deploy = body.find((item: JsonRecord) =>
+    item.branch === branch
+    && item.commit_ref === expectedCommitSha
+    && (item.context === "branch-deploy" || item.branch === branch)
+  );
+  if (!deploy) return null;
+  return {
+    id: String(deploy.id || ""),
+    state: String(deploy.state || "unknown"),
+    url: String(deploy.deploy_ssl_url || deploy.ssl_url || deploy.deploy_url || deploy.url || ""),
+    commitSha: String(deploy.commit_ref || ""),
+    createdAt: String(deploy.created_at || ""),
+    updatedAt: String(deploy.updated_at || ""),
+    errorMessage: String(deploy.error_message || ""),
+  };
+}
+
+function providerCapacityBlockReason(deploy: { state: string; createdAt: string; updatedAt: string }) {
+  if (["ready", "error"].includes(deploy.state)) return "";
+  const started = Date.parse(deploy.createdAt || deploy.updatedAt);
+  if (!Number.isFinite(started)) return "";
+  const ageMs = Date.now() - started;
+  if (ageMs < 20 * 60 * 1000) return "";
+  return `EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained ${deploy.state || "pending"} for more than 20 minutes. NXQ will keep the exact commit queued and retry automatically when provider capacity resumes.`;
+}
+
 async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
@@ -556,16 +589,33 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
   const expectedPreviewCommitSha = String(payload.expected_preview_commit_sha || "");
   if (!runId || !branch || !siteId || !expectedPreviewCommitSha) throw new Error("Preview check job is missing run, branch, site id, or expected commit.");
 
+  const deployState = await findBranchDeployState(siteId, branch, expectedPreviewCommitSha);
+  if (deployState?.state === "error") {
+    throw new Error(`Netlify branch preview failed: ${deployState.errorMessage || "Unknown build error"}`);
+  }
+  if (!deployState || deployState.state !== "ready") {
+    const capacityReason = deployState ? providerCapacityBlockReason(deployState) : "";
+    const deferred = await admin.rpc("defer_external_automation_job_v2", {
+      target_job_id: job.id,
+      target_lock_token: job.lock_token,
+      worker_name: workerName,
+      target_reason: capacityReason || "Netlify preview is still building.",
+      retry_after: capacityReason ? "5 minutes" : "30 seconds",
+    });
+    if (deferred.error) throw new Error(`Preview wait deferral failed: ${deferred.error.message}`);
+    return { run_id: runId, status: "preview_building", deferred: true, provider_blocked: Boolean(capacityReason) };
+  }
+
   const deploy = await findReadyBranchDeploy(siteId, branch, expectedPreviewCommitSha);
   if (!deploy) {
     const deferred = await admin.rpc("defer_external_automation_job_v2", {
       target_job_id: job.id,
       target_lock_token: job.lock_token,
       worker_name: workerName,
-      target_reason: "Netlify preview is still building.",
+      target_reason: "Netlify preview readiness changed during verification; retrying exact commit.",
       retry_after: "30 seconds",
     });
-    if (deferred.error) throw new Error(`Preview wait deferral failed: ${deferred.error.message}`);
+    if (deferred.error) throw new Error(`Preview verification deferral failed: ${deferred.error.message}`);
     return { run_id: runId, status: "preview_building", deferred: true };
   }
 
