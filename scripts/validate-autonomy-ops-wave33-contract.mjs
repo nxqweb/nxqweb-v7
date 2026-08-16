@@ -5,9 +5,10 @@ const page = read("src/pages/ClientDomainStatus.tsx");
 const guides = read("src/lib/domainGuides.ts");
 const domainRpc = read("supabase/migrations/152_client_domain_recheck_controls.sql");
 const reconciliation = read("supabase/migrations/128_autonomous_domain_reconciliation.sql");
+const tenantReads = read("supabase/migrations/220_tenant_safe_file_domain_read_models.sql");
 
 const checks = [
-  ["Domain view remains tenant-derived", page.includes('.eq("auth_user_id", user.id)') && page.includes('.eq("client_id", client.data.id)')],
+  ["Domain view remains tenant-derived", page.includes('supabase.rpc("current_client_domain_page"') && !page.includes('.from("clients")') && !page.includes('.from("client_domains")') && tenantReads.includes("create or replace function public.current_client_domain_page") && tenantReads.includes("client_uuid := public.current_client_id()")],
   ["Client recheck remains a typed RPC", page.includes('supabase.rpc("current_client_request_domain_recheck"')],
   ["Recheck RPC cannot mark a domain connected", domainRpc.includes("client cannot mark its own domain connected") || !domainRpc.includes("automation_state = 'connected'"),],
   ["Connection success requires DNS and SSL evidence", page.includes('automation_state === "connected" && domain.ssl_status === "ready"')],
