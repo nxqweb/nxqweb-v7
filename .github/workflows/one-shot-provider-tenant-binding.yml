@@ -1,0 +1,107 @@
+name: One-shot Provider Tenant Binding
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-provider-tenant-binding.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Bind provider identifiers to exact tenant project
+        shell: python
+        run: |
+          from pathlib import Path
+
+          worker_path = Path('supabase/functions/provision-project-infrastructure/index.ts')
+          worker = worker_path.read_text()
+
+          old_config = 'let configRes = await admin.from("project_deployment_configs").select("*").eq("project_id", job.project_id).maybeSingle();'
+          new_config = 'let configRes = await admin.from("project_deployment_configs").select("*").eq("project_id", job.project_id).eq("client_id", job.client_id).maybeSingle();'
+          if old_config not in worker:
+              raise SystemExit('Expected deployment config lookup anchor not found')
+          worker = worker.replace(old_config, new_config, 1)
+
+          insert_anchor = 'async function upsertNetlifyEnv(siteId: string, values: Record<string, string>) {'
+          verify_fn = '''async function verifyNetlifySiteBinding(siteId: string, repositoryFullName: string) {
+            const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+            const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+              headers: netlifyHeaders(token),
+            });
+            const site = await readJson(res) as JsonRecord | null;
+            if (!res.ok || !site) throw new Error(`Netlify site binding verification failed (${res.status}).`);
+            const buildSettings = site.build_settings && typeof site.build_settings === "object"
+              ? site.build_settings as JsonRecord
+              : null;
+            const repo = buildSettings?.repo_path || buildSettings?.repo_url || null;
+            const matchesRepository = repo === repositoryFullName || repo === `https://github.com/${repositoryFullName}`;
+            if (site.id !== siteId || !matchesRepository) {
+              throw new Error("Netlify site id is not bound to this project's GitHub repository.");
+            }
+            return site;
+          }
+
+          '''
+          if 'async function verifyNetlifySiteBinding' not in worker:
+              if insert_anchor not in worker:
+                  raise SystemExit('Expected Netlify env anchor not found')
+              worker = worker.replace(insert_anchor, verify_fn + insert_anchor, 1)
+
+          repo_anchor = 'const repositoryPrivacy = await verifyPrivateRepository(repositoryFullName);'
+          repo_guard = '''if (!repositoryFullName.includes(`-${job.project_id.slice(0, 8)}-`)) {
+              throw new Error("GitHub repository identity is not bound to this project.");
+            }
+
+            const repositoryPrivacy = await verifyPrivateRepository(repositoryFullName);'''
+          if repo_anchor not in worker:
+              raise SystemExit('Expected repository verification anchor not found')
+          worker = worker.replace(repo_anchor, repo_guard, 1)
+
+          env_anchor = 'await assertProviderMutationAllowed(admin, job);\n    await upsertNetlifyEnv(netlifySiteId, {'
+          env_guard = 'await assertProviderMutationAllowed(admin, job);\n    await verifyNetlifySiteBinding(netlifySiteId, repositoryFullName);\n    await upsertNetlifyEnv(netlifySiteId, {'
+          if env_anchor not in worker:
+              raise SystemExit('Expected Netlify env mutation anchor not found')
+          worker = worker.replace(env_anchor, env_guard, 1)
+          worker_path.write_text(worker)
+
+          contract_path = Path('scripts/validate-project-infrastructure-contract.mjs')
+          contract = contract_path.read_text()
+          check_anchor = "  ['Shared project deployment config is reused', worker.includes('project_deployment_configs') && worker.includes('auto_publish_locked: true')],"
+          added = "  ['Deployment config lookup is bound to exact client and project', worker.includes('.eq(\"project_id\", job.project_id).eq(\"client_id\", job.client_id).maybeSingle()')],\n  ['Checkpoint repository identity must match project-derived naming', worker.includes('repositoryFullName.includes(`-${job.project_id.slice(0, 8)}-`)')],\n  ['Netlify site id is re-verified against the exact GitHub repository before env mutation', worker.includes('verifyNetlifySiteBinding(netlifySiteId, repositoryFullName)') && worker.includes('Netlify site id is not bound to this project')),"
+          if added not in contract:
+              if check_anchor not in contract:
+                  raise SystemExit('Expected infrastructure contract anchor not found')
+              contract = contract.replace(check_anchor, check_anchor + '\n' + added, 1)
+          contract_path.write_text(contract)
+      - name: Validate infrastructure tenant binding contract
+        run: node scripts/validate-project-infrastructure-contract.mjs
+      - name: Typecheck changed Edge function
+        run: ./node_modules/.bin/deno check --no-config --node-modules-dir=manual supabase/functions/provision-project-infrastructure/index.ts
+      - name: Migration integrity
+        run: npm run test:migrations
+      - name: Commit provider tenant binding hardening
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "nxqweb"
+          git config user.email "NXQweb@protonmail.com"
+          git add supabase/functions/provision-project-infrastructure/index.ts scripts/validate-project-infrastructure-contract.mjs
+          git commit -m "security: bind provider resources to tenant project"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
