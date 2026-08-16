@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, CircleAlert, Phone, RefreshCcw, Target } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -32,7 +32,7 @@ export function ClientBusinessLeads() {
   const [nextOffset, setNextOffset] = useState(0);
   const [busyId, setBusyId] = useState("");
 
-  async function load(view = filter, append = false) {
+  const load = useCallback(async (view: string, append = false, offset = 0) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
     setError("");
@@ -43,7 +43,6 @@ export function ClientBusinessLeads() {
       return;
     }
 
-    const offset = append ? nextOffset : 0;
     const result = await supabase.rpc("current_client_leads_page", {
       target_view: view,
       page_limit: PAGE_SIZE,
@@ -60,9 +59,9 @@ export function ClientBusinessLeads() {
     }
     setLoading(false);
     setLoadingMore(false);
-  }
+  }, []);
 
-  useEffect(() => { void load(filter, false); }, [filter]);
+  useEffect(() => { void load(filter, false, 0); }, [filter, load]);
 
   async function setStatus(lead: Lead, status: string) {
     if (!supabase || status === lead.status) return;
@@ -79,7 +78,7 @@ export function ClientBusinessLeads() {
       return;
     }
     setNotice(`${lead.lead_code} moved to ${status.replaceAll("_", " ")}.`);
-    await load(filter, false);
+    await load(filter, false, 0);
   }
 
   return (
@@ -87,13 +86,13 @@ export function ClientBusinessLeads() {
       <section className="portal-shell">
         <div className="panel-title panel-title-row">
           <div className="panel-title"><Target size={22}/><div><h1>Leads</h1><p className="subtle">Website inquiries, urgency, qualification, and conversion status.</p></div></div>
-          <div className="client-control-row"><a className="icon-btn" href="/client/business"><ArrowLeft size={16}/> Business</a><button className="icon-btn" onClick={() => void load(filter, false)} type="button"><RefreshCcw size={16}/> Refresh</button></div>
+          <div className="client-control-row"><a className="icon-btn" href="/client/business"><ArrowLeft size={16}/> Business</a><button className="icon-btn" onClick={() => void load(filter, false, 0)} type="button"><RefreshCcw size={16}/> Refresh</button></div>
         </div>
         {error ? <div className="auth-error">{error}</div> : null}
         {notice ? <div className="auth-success">{notice}</div> : null}
         <div className="panel panel-wide"><label>View <select className="auth-input" value={filter} onChange={(event) => setFilter(event.target.value)}><option value="open">Open leads</option><option value="all">All leads</option>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select></label></div>
         {loading ? <div className="empty-state">Loading your leads...</div> : null}
-        {!loading ? <div style={{ display: "grid", gap: "1rem" }}>{leads.length === 0 ? <div className="empty-state">No leads in this view yet.</div> : leads.map((lead) => <article className="panel" key={lead.id}><div className="panel-title panel-title-row"><div><strong>{lead.contact_name || "Website visitor"}</strong><p className="subtle">{lead.lead_code} · {new Date(lead.created_at).toLocaleString()} · Score {lead.lead_score}</p></div>{["urgent", "emergency"].includes(lead.urgency) ? <span className="status-summary"><CircleAlert size={15}/> {lead.urgency}</span> : null}</div>{lead.service_key ? <p><strong>Service:</strong> {lead.service_key}</p> : null}{lead.message ? <p>{lead.message}</p> : null}<p className="subtle">{lead.contact_email || ""}{lead.contact_email && lead.contact_phone ? " · " : ""}{lead.contact_phone || ""}</p><div className="client-control-row">{lead.contact_phone ? <a className="icon-btn" href={`tel:${lead.contact_phone}`}><Phone size={15}/> Call</a> : null}<select aria-label={`Status for ${lead.lead_code}`} className="auth-input" disabled={busyId === lead.id || lead.status === "archived"} value={lead.status} onChange={(event) => void setStatus(lead, event.target.value)}>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select></div>{busyId === lead.id ? <p className="subtle">Saving securely...</p> : null}</article>)}{hasMore ? <button className="wide-btn" disabled={loadingMore} onClick={() => void load(filter, true)} type="button">{loadingMore ? "Loading…" : "Load more leads"}</button> : null}</div> : null}
+        {!loading ? <div style={{ display: "grid", gap: "1rem" }}>{leads.length === 0 ? <div className="empty-state">No leads in this view yet.</div> : leads.map((lead) => <article className="panel" key={lead.id}><div className="panel-title panel-title-row"><div><strong>{lead.contact_name || "Website visitor"}</strong><p className="subtle">{lead.lead_code} · {new Date(lead.created_at).toLocaleString()} · Score {lead.lead_score}</p></div>{["urgent", "emergency"].includes(lead.urgency) ? <span className="status-summary"><CircleAlert size={15}/> {lead.urgency}</span> : null}</div>{lead.service_key ? <p><strong>Service:</strong> {lead.service_key}</p> : null}{lead.message ? <p>{lead.message}</p> : null}<p className="subtle">{lead.contact_email || ""}{lead.contact_email && lead.contact_phone ? " · " : ""}{lead.contact_phone || ""}</p><div className="client-control-row">{lead.contact_phone ? <a className="icon-btn" href={`tel:${lead.contact_phone}`}><Phone size={15}/> Call</a> : null}<select aria-label={`Status for ${lead.lead_code}`} className="auth-input" disabled={busyId === lead.id || lead.status === "archived"} value={lead.status} onChange={(event) => void setStatus(lead, event.target.value)}>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select></div>{busyId === lead.id ? <p className="subtle">Saving securely...</p> : null}</article>)}{hasMore ? <button className="wide-btn" disabled={loadingMore} onClick={() => void load(filter, true, nextOffset)} type="button">{loadingMore ? "Loading…" : "Load more leads"}</button> : null}</div> : null}
       </section>
     </main>
   );
