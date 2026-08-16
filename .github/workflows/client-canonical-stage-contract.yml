@@ -1,0 +1,38 @@
+name: Client Canonical Stage Contract
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - src/pages/ClientPortal.tsx
+      - src/components/ClientPortalTopCards.tsx
+      - src/pages/ClientLaunchJourney.tsx
+      - src/App.tsx
+      - supabase/migrations/**
+      - scripts/validate-client-canonical-stage-contract.mjs
+      - .github/workflows/client-canonical-stage-contract.yml
+  pull_request:
+    paths:
+      - src/pages/ClientPortal.tsx
+      - src/components/ClientPortalTopCards.tsx
+      - src/pages/ClientLaunchJourney.tsx
+      - src/App.tsx
+      - supabase/migrations/**
+      - scripts/validate-client-canonical-stage-contract.mjs
+      - .github/workflows/client-canonical-stage-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate canonical client-facing stage architecture
+        run: node scripts/validate-client-canonical-stage-contract.mjs
