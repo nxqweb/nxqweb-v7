@@ -82,7 +82,7 @@ jobs:
           contract_path = Path('scripts/validate-project-infrastructure-contract.mjs')
           contract = contract_path.read_text()
           check_anchor = "  ['Shared project deployment config is reused', worker.includes('project_deployment_configs') && worker.includes('auto_publish_locked: true')],"
-          added = "  ['Deployment config lookup is bound to exact client and project', worker.includes('.eq(\"project_id\", job.project_id).eq(\"client_id\", job.client_id).maybeSingle()')],\n  ['Checkpoint repository identity must match project-derived naming', worker.includes('repositoryFullName.includes(`-${job.project_id.slice(0, 8)}-`)')],\n  ['Netlify site id is re-verified against the exact GitHub repository before env mutation', worker.includes('verifyNetlifySiteBinding(netlifySiteId, repositoryFullName)') && worker.includes('Netlify site id is not bound to this project')),"
+          added = "  ['Deployment config lookup is bound to exact client and project', worker.includes('.eq(\"project_id\", job.project_id).eq(\"client_id\", job.client_id).maybeSingle()')],\n  ['Checkpoint repository identity must match project-derived naming', worker.includes('repositoryFullName.includes(`-${job.project_id.slice(0, 8)}-`)')],\n  ['Netlify site id is re-verified against the exact GitHub repository before env mutation', worker.includes('verifyNetlifySiteBinding(netlifySiteId, repositoryFullName)') && worker.includes('Netlify site id is not bound to this project')],"
           if added not in contract:
               if check_anchor not in contract:
                   raise SystemExit('Expected infrastructure contract anchor not found')
