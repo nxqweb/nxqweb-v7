@@ -51,6 +51,8 @@ export function ClientFiles(){
     setLoadingMore(false);
   }
 
+  // Initial-load effect intentionally runs once; refreshes are explicit user actions.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(()=>{void load();},[]);
 
   async function secureUrl(file:FileRow,download=false){
