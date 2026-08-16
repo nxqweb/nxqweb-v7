@@ -21,12 +21,11 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
-      - name: Capture dependency audit
+      - name: Capture dependency audit and dependency paths
         shell: bash
         run: |
           set +e
           npm audit --json > /tmp/npm-audit.json
-          status=$?
           set -e
           node <<'NODE'
           const fs = require('fs');
@@ -41,7 +40,28 @@ jobs:
           }));
           console.log('Dependency audit summary');
           console.log(JSON.stringify({ metadata: report.metadata?.vulnerabilities || {}, vulnerabilities: rows }, null, 2));
-          const prodDirect = rows.filter((r) => r.direct);
-          console.log(`Direct vulnerable packages: ${prodDirect.length}`);
+          console.log(`Direct vulnerable packages: ${rows.filter((r) => r.direct).length}`);
           NODE
-          exit 0
+          for pkg in brace-expansion nanoid postcss; do
+            echo "===== npm explain $pkg ====="
+            npm explain "$pkg" || true
+          done
+      - name: Simulate safe lockfile-only remediation
+        shell: bash
+        run: |
+          cp package.json /tmp/package.json.before
+          cp package-lock.json /tmp/package-lock.before
+          npm audit fix --package-lock-only --ignore-scripts || true
+          echo "===== package.json changed? ====="
+          cmp -s package.json /tmp/package.json.before && echo no || echo yes
+          echo "===== lockfile diff stat ====="
+          git diff --stat -- package-lock.json
+          echo "===== remaining audit after simulated lockfile fix ====="
+          npm audit --json > /tmp/npm-audit-after.json || true
+          node <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/npm-audit-after.json', 'utf8'));
+          console.log(JSON.stringify(report.metadata?.vulnerabilities || {}, null, 2));
+          NODE
+          cp /tmp/package-lock.before package-lock.json
+          git diff --exit-code -- package.json package-lock.json
