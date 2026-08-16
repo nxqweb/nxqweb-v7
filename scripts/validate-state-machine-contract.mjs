@@ -27,18 +27,17 @@ const migrations = fs.readdirSync(path.join(root, "supabase", "migrations")).fil
 const allMigrations = migrations.map((name) => read("supabase", "migrations", name)).join("\n");
 pass(/lease_token/i.test(allMigrations), "Claim-based runtime queues use unique lease identity rather than worker-name ownership alone");
 pass(/recover.*stale|stale.*recover/i.test(allMigrations), "Stale running/scanning/sending leases have deterministic automatic recovery");
-pass(/reserve.*lead.*quota|lead.*quota.*reserve/i.test(allMigrations), "Public lead rate limiting uses an atomic quota reservation contract");
-pass(/reserve.*analytics.*quota|analytics.*quota.*reserve/i.test(allMigrations), "Analytics rate limiting uses an atomic quota reservation contract");
+pass(/nxq_reserve_ingress_capacity/i.test(allMigrations), "Public ingress rate limiting has an atomic quota reservation contract");
 pass(/apply.*structured.*change.*atomic|atomic.*structured.*change/i.test(allMigrations), "Structured client website changes are serialized transactionally per project");
 pass(/runtime.*route.*request|dispatch.*request.*id/i.test(allMigrations), "Internal Edge dispatch transport evidence is correlated to NXQ request IDs");
 
 const lead = read("supabase", "functions", "ingest-business-lead", "index.ts");
 pass(/content-length|payloadSize|request.*bytes/i.test(lead), "Public lead ingestion rejects oversized raw request bodies");
-pass(/reserve.*lead.*quota|lead.*quota.*reserve/i.test(lead), "Lead ingestion uses atomic server-side quota reservation");
+pass(/reserveLeadQuota/.test(lead) && /nxq_reserve_ingress_capacity/.test(lead), "Lead ingestion uses atomic server-side quota reservation");
 
 const analytics = read("supabase", "functions", "ingest-business-analytics", "index.ts");
 pass(/content-length|payloadSize|request.*bytes/i.test(analytics), "Analytics ingestion rejects oversized raw request bodies");
-pass(/reserve.*analytics.*quota|analytics.*quota.*reserve/i.test(analytics), "Analytics ingestion uses atomic server-side quota reservation");
+pass(/reserveAnalyticsQuota/.test(analytics) && /nxq_reserve_ingress_capacity/.test(analytics), "Analytics ingestion uses atomic server-side quota reservation");
 
 const changeWorker = read("supabase", "functions", "apply-business-change-request", "index.ts");
 pass(/apply.*structured.*change.*atomic/i.test(changeWorker), "Low-risk change worker delegates read/patch/version persistence to an atomic database boundary");
@@ -52,10 +51,10 @@ const notifications = read("supabase", "functions", "dispatch-notifications", "i
 pass(/idempotency/i.test(notifications) && /delivery\.id|current\.id/.test(notifications), "External notification adapter receives a stable NXQ delivery idempotency key");
 pass(/delivered.*\.error|\.error.*delivered/i.test(notifications), "Notification worker verifies delivered-state persistence before counting success");
 
-const vaultRepair = read("supabase", "migrations", "197_complete_internal_runtime_vault_routes.sql");
-pass(!/select decrypted_secret into current_infra_url[\s\S]*name = 'nxq_automation_edge_url'/.test(vaultRepair), "Vault route repair does not derive authority from a route it is repairing");
+const vaultRepair = read("supabase", "migrations", "209_authoritative_runtime_route_identity.sql");
+pass(/nxq_runtime_function_base_url/.test(vaultRepair) && !/select decrypted_secret into current_infra_url/.test(vaultRepair), "Vault route repair does not derive authority from a route it is repairing");
 
-const watchdog = read("supabase", "migrations", "199_internal_edge_dispatch_watchdog.sql");
+const watchdog = read("supabase", "migrations", "210_correlate_internal_dispatch_network_evidence.sql");
 pass(/request_id/i.test(watchdog) && !/order by created desc\s*limit 1/i.test(watchdog), "Internal dispatch watchdog correlates responses to NXQ-owned pg_net request IDs");
 
 if (failures.length) {

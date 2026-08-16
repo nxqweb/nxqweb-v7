@@ -1,5 +1,7 @@
 ﻿import { createClient } from "npm:@supabase/supabase-js@2";
 
+import { requirePublicHttpsUrl, validatedRedirectTarget } from "../_shared/outbound-security.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -33,13 +35,39 @@ function validHttpsUrl(value: string | null) {
   }
 }
 
-async function fetchText(url: string) {
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      headers: { "User-Agent": "NXQ-Web-Production-Launch-Audit" },
-    });
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider verification request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchText(url: string) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  try {
+    let currentUrl = requirePublicHttpsUrl(url, "Production launch audit URL");
+    let response: Response | null = null;
+    for (let redirects = 0; redirects <= 5; redirects += 1) {
+      response = await fetch(currentUrl, {
+        method: "GET",
+        redirect: "manual",
+        headers: { "User-Agent": "NXQ-Web-Production-Launch-Audit" },
+        signal: controller.signal,
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get("location");
+      if (!location) throw new Error("Production audit redirect did not include a Location header.");
+      if (redirects === 5) throw new Error("Production audit exceeded the redirect limit.");
+      currentUrl = validatedRedirectTarget(location, currentUrl, "Production audit redirect target");
+    }
+    if (!response) throw new Error("Production audit did not receive a response.");
     return {
       ok: response.ok,
       status: response.status,
@@ -54,6 +82,8 @@ async function fetchText(url: string) {
       finalUrl: url,
       error: error instanceof Error ? error.message : "Unknown network error.",
     };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -222,7 +252,7 @@ Deno.serve(async (request) => {
     if (!githubToken) {
       addCheck("github_production_branch", false, "critical", "", "GitHub verification credentials are unavailable.");
     } else {
-      const branchResponse = await fetch(
+      const branchResponse = await timedFetch(
         `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(productionBranch)}`,
         {
           headers: {
@@ -247,7 +277,7 @@ Deno.serve(async (request) => {
     if (!netlifyToken) {
       addCheck("netlify_site_access", false, "critical", "", "Netlify verification credentials are unavailable.");
     } else {
-      const siteResponse = await fetch(
+      const siteResponse = await timedFetch(
         `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
         { headers: { Authorization: `Bearer ${netlifyToken}` } }
       );
@@ -388,5 +418,4 @@ Deno.serve(async (request) => {
     note: "This production launch audit was read-only. It did not trigger a build, deploy, branch change, or Netlify setting change.",
   });
 });
-
 

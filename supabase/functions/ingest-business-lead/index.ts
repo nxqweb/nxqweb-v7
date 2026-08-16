@@ -1,13 +1,25 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type Payload={form_key?:string;name?:string;email?:string;phone?:string;service?:string;message?:string;service_area?:string;utm?:Record<string,unknown>;company_website?:string;challenge_token?:string};
 type FormRow={id:string;client_id:string;project_id:string;status:string;allowed_origins:string[]|null;allowed_service_keys:string[]|null;max_message_length:number;hourly_limit:number;require_challenge:boolean;challenge_provider:string|null};
+type QuotaReservation={allowed?:boolean;retry_after_seconds?:number};
+const MAX_REQUEST_BYTES=32768;
 function requestOrigin(req:Request){const origin=(req.headers.get("origin")||req.headers.get("x-nxq-form-origin")||"").trim();return /^https:\/\/[^\s/$.?#].*$/i.test(origin)?origin:"";}
 function cors(origin:string){return {"Content-Type":"application/json","Access-Control-Allow-Origin":origin||"https://invalid.nxq.local","Access-Control-Allow-Headers":"content-type,x-nxq-form-origin","Access-Control-Allow-Methods":"POST,OPTIONS","Vary":"Origin"};}
 function secret(name:string){const v=Deno.env.get(name)?.trim();if(!v)throw new Error(`Missing protected secret: ${name}`);return v;}
 function response(body:unknown,status=200,origin=""){return new Response(JSON.stringify(body),{status,headers:cors(origin)});}
 function clean(value:unknown,max:number){return typeof value==="string"?value.trim().slice(0,max):"";}
 async function sha256(value:string){const bytes=new TextEncoder().encode(value);const digest=await crypto.subtle.digest("SHA-256",bytes);return Array.from(new Uint8Array(digest)).map((b)=>b.toString(16).padStart(2,"0")).join("");}
+async function reserveLeadQuota(admin:SupabaseClient,form:FormRow,fingerprint:string){
+  const totalIdentity=await sha256(`lead-form:${form.id}`);
+  const total=await admin.rpc("nxq_reserve_ingress_capacity",{target_scope_key:`lead-form:${form.id}`,target_operation_key:"lead_total_hourly",target_identity_hash:totalIdentity,target_units:1,target_limit_units:form.hourly_limit,target_window_seconds:3600});
+  if(total.error)throw new Error(`Lead quota reservation failed: ${total.error.message}`);
+  if(!(total.data as QuotaReservation|null)?.allowed)return total.data as QuotaReservation;
+  const perFingerprint=await admin.rpc("nxq_reserve_ingress_capacity",{target_scope_key:`lead-form:${form.id}`,target_operation_key:"lead_fingerprint_hourly",target_identity_hash:fingerprint,target_units:1,target_limit_units:Math.min(8,form.hourly_limit),target_window_seconds:3600});
+  if(perFingerprint.error)throw new Error(`Lead quota reservation failed: ${perFingerprint.error.message}`);
+  return perFingerprint.data as QuotaReservation;
+}
 function emailOkay(v:string){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
 function phoneOkay(v:string){return !v||/^[+()\-\s\d.]{7,32}$/.test(v);}
 function urgency(message:string){const m=message.toLowerCase();if(/(life safety|gas leak|fire|electrical fire|immediate danger)/.test(m))return "emergency";if(/(emergency|urgent|asap|right now|today|storm damage|no heat|no ac|leaking|flood)/.test(m))return "urgent";return "normal";}
@@ -16,8 +28,9 @@ async function verifyChallenge(form:FormRow,token:string){
   if(!form.require_challenge)return true;
   const endpoint=Deno.env.get("NXQ_LEAD_CHALLENGE_ENDPOINT")?.trim();const auth=Deno.env.get("NXQ_LEAD_CHALLENGE_TOKEN")?.trim();
   if(!endpoint||!auth||!token)return false;
+  const safeEndpoint=requirePublicHttpsUrl(endpoint,"Lead challenge endpoint");
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-  try{const res=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth}`},body:JSON.stringify({provider:form.challenge_provider,token}),signal:controller.signal});if(!res.ok)return false;const body=await res.json().catch(()=>null);return body?.success===true;}finally{clearTimeout(timer);}
+  try{const res=await fetch(safeEndpoint,{method:"POST",redirect:"error",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth}`},body:JSON.stringify({provider:form.challenge_provider,token}),signal:controller.signal});if(!res.ok)return false;const body=await res.json().catch(()=>null);return body?.success===true;}finally{clearTimeout(timer);}
 }
 
 Deno.serve(async(req)=>{
@@ -25,19 +38,21 @@ Deno.serve(async(req)=>{
   if(req.method==="OPTIONS")return new Response(null,{status:origin?204:403,headers:cors(origin)});
   if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405,origin);
   if(!origin)return response({ok:false,error:"A valid HTTPS origin is required."},403,origin);
+  const declaredSize=Number(req.headers.get("content-length")||"0");
+  if(Number.isFinite(declaredSize)&&declaredSize>MAX_REQUEST_BYTES)return response({ok:false,error:"Request body is too large."},413,origin);
+  const rawBody=await req.text();const payloadSize=new TextEncoder().encode(rawBody).byteLength;
+  if(payloadSize>MAX_REQUEST_BYTES)return response({ok:false,error:"Request body is too large."},413,origin);
+  let p:Payload;
+  try{p=JSON.parse(rawBody) as Payload;}catch{return response({ok:false,error:"Request body must be valid JSON."},400,origin);}
   const admin=createClient(secret("SUPABASE_URL"),secret("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false}});
   try{
-    const p=(await req.json()) as Payload;const formKey=clean(p.form_key,90);if(!formKey)return response({ok:false,error:"Form key is required."},400,origin);
+    const formKey=clean(p.form_key,90);if(!formKey)return response({ok:false,error:"Form key is required."},400,origin);
     const formRes=await admin.from("business_lead_forms").select("id,client_id,project_id,status,allowed_origins,allowed_service_keys,max_message_length,hourly_limit,require_challenge,challenge_provider").eq("form_key",formKey).single();
     if(formRes.error||!formRes.data)return response({ok:false,error:"Lead form is unavailable."},404,origin);const form=formRes.data as FormRow;if(form.status!=="active")return response({ok:false,error:"Lead form is paused."},409,origin);
     const allowed=form.allowed_origins||[];if(!allowed.includes(origin))return response({ok:false,error:"Origin is not allowed."},403,origin);
     const forwarded=(req.headers.get("x-forwarded-for")||"").split(",")[0].trim();const ua=req.headers.get("user-agent")||"unknown";const fingerprint=await sha256(`${secret("NXQ_LEAD_FINGERPRINT_SALT")}|${forwarded}|${ua}`);
-    const hourAgo=new Date(Date.now()-3600000).toISOString();
-    const [fingerCount,totalCount]=await Promise.all([
-      admin.from("business_lead_intake_attempts").select("id",{count:"exact",head:true}).eq("form_id",form.id).eq("request_fingerprint_hash",fingerprint).gte("created_at",hourAgo),
-      admin.from("business_lead_intake_attempts").select("id",{count:"exact",head:true}).eq("form_id",form.id).gte("created_at",hourAgo),
-    ]);
-    if((fingerCount.count||0)>=Math.min(8,form.hourly_limit)||(totalCount.count||0)>=form.hourly_limit){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"rate_limited",reason:"hourly_limit"});return response({ok:false,error:"Too many requests. Try again later."},429,origin);}
+    const quota=await reserveLeadQuota(admin,form,fingerprint);
+    if(!quota?.allowed){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"rate_limited",reason:"hourly_limit"});return response({ok:false,error:"Too many requests. Try again later.",retry_after_seconds:quota?.retry_after_seconds||3600},429,origin);}
     if(clean(p.company_website,500)){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"spam",reason:"honeypot"});return response({ok:true,accepted:true},200,origin);}
     if(!(await verifyChallenge(form,clean(p.challenge_token,4000)))){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"rejected",reason:"challenge_required_or_failed"});return response({ok:false,error:"Verification is required."},403,origin);}
     const name=clean(p.name,160),email=clean(p.email,200).toLowerCase(),phone=clean(p.phone,40),service=clean(p.service,120),message=clean(p.message,form.max_message_length),serviceArea=clean(p.service_area,300);

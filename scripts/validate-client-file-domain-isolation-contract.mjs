@@ -4,6 +4,8 @@ const read = (path) => fs.readFileSync(path, "utf8");
 const migration = read("supabase/migrations/220_tenant_safe_file_domain_read_models.sql");
 const filesPage = read("src/pages/ClientFiles.tsx");
 const domainsPage = read("src/pages/ClientDomainStatus.tsx");
+const portalPage = read("src/pages/ClientPortal.tsx");
+const settingsPage = read("src/pages/ClientSettings.tsx");
 const secureAccess = read("supabase/functions/secure-client-file-access/index.ts");
 
 const assertions = [
@@ -21,6 +23,10 @@ const assertions = [
   [domainsPage.includes('rpc("current_client_domain_page"'), "ClientDomainStatus uses auth-derived domain RPC"],
   [domainsPage.includes("Load older domains"), "ClientDomainStatus exposes cursor pagination"],
   [!domainsPage.includes('.from("clients")') && !domainsPage.includes('.from("client_domains")'), "ClientDomainStatus has no direct tenant-table reads"],
+  [portalPage.includes('rpc("current_client_file_page"') && portalPage.includes('rpc("current_client_domain_page"'), "main Client Portal uses auth-derived file and domain RPCs"],
+  [!portalPage.includes('.from("client_files")') && !portalPage.includes('.from("client_domains")'), "main Client Portal has no direct file/domain reads"],
+  [settingsPage.includes('rpc("current_client_domain_page"'), "ClientSettings uses auth-derived domain RPC"],
+  [!settingsPage.includes('.from("client_domains")'), "ClientSettings has no direct domain read"],
   [secureAccess.includes('.eq("client_id", client.data.id)'), "signed file access binds file and scan reads to authenticated client"],
   [secureAccess.includes('bucket !== "client-files"'), "signed file access only signs the client-files bucket"],
   [secureAccess.includes("clientPathPrefix") && secureAccess.includes("storagePath.startsWith(clientPathPrefix)"), "signed file access enforces authenticated client storage namespace"],

@@ -14,11 +14,17 @@ function response(body:unknown,status=200){ return new Response(JSON.stringify(b
 async function timedFetch(input:string,init:RequestInit={},timeoutMs=15000){ const c=new AbortController(); const t=setTimeout(()=>c.abort(),timeoutMs); try{return await fetch(input,{...init,signal:c.signal});} finally{clearTimeout(t);} }
 async function json(res:Response){ const text=await res.text(); if(!text) return null; try{return JSON.parse(text);}catch{return {message:text};} }
 function normalizeJob(value:unknown):Job|null{ if(value==null)return null; let v=value; if(typeof v==="string")v=JSON.parse(v); if(Array.isArray(v))v=v[0]??null; if(!v||typeof v!=="object")throw new Error("Invalid location job."); const j=v as Job; if(!j.id||!j.client_id||!j.project_id)throw new Error("Location job missing ids."); return j; }
+function concatBytes(...parts:Uint8Array[]){const length=parts.reduce((sum,part)=>sum+part.length,0);const out=new Uint8Array(length);let offset=0;for(const part of parts){out.set(part,offset);offset+=part.length;}return out;}
+function derLength(length:number){if(length<0x80)return Uint8Array.of(length);const bytes:number[]=[];let value=length;while(value>0){bytes.unshift(value&0xff);value=Math.floor(value/256);}return Uint8Array.of(0x80|bytes.length,...bytes);}
+function derWrap(tag:number,body:Uint8Array){return concatBytes(Uint8Array.of(tag),derLength(body.length),body);}
+function pemBodyBytes(pem:string){const body=pem.replace(/-----BEGIN [^-]+-----/g,"").replace(/-----END [^-]+-----/g,"").replace(/\s+/g,"");const binary=atob(body);return Uint8Array.from(binary,(char)=>char.charCodeAt(0));}
+function bytesToPem(label:string,bytes:Uint8Array){let binary="";for(const byte of bytes)binary+=String.fromCharCode(byte);const encoded=btoa(binary);const lines=encoded.match(/.{1,64}/g)?.join("\n")||encoded;return `-----BEGIN ${label}-----\n${lines}\n-----END ${label}-----`;}
+function normalizeGithubPrivateKey(raw:string){let pem=raw.trim();if((pem.startsWith('"')&&pem.endsWith('"'))||(pem.startsWith("'")&&pem.endsWith("'")))pem=pem.slice(1,-1);pem=pem.replace(/\\n/g,"\n").replace(/\r\n/g,"\n").trim();if(pem.includes("-----BEGIN PRIVATE KEY-----"))return pem;if(!pem.includes("-----BEGIN RSA PRIVATE KEY-----"))throw new Error("GITHUB_APP_PRIVATE_KEY must be a PKCS#8 or PKCS#1 RSA PEM private key.");const pkcs1=pemBodyBytes(pem);const version=Uint8Array.of(0x02,0x01,0x00);const rsaAlgorithm=Uint8Array.of(0x30,0x0d,0x06,0x09,0x2a,0x86,0x48,0x86,0xf7,0x0d,0x01,0x01,0x01,0x05,0x00);return bytesToPem("PRIVATE KEY",derWrap(0x30,concatBytes(version,rsaAlgorithm,derWrap(0x04,pkcs1))));}
 
 const ghHeaders=(token:string)=>({Accept:"application/vnd.github+json",Authorization:`Bearer ${token}`,"X-GitHub-Api-Version":"2022-11-28","Content-Type":"application/json"});
 async function githubToken(){
   const appId=secret("GITHUB_APP_ID"); const installationId=secret("GITHUB_APP_INSTALLATION_ID");
-  const key=await importPKCS8(secret("GITHUB_APP_PRIVATE_KEY").replace(/\\n/g,"\n"),"RS256"); const now=Math.floor(Date.now()/1000);
+  const key=await importPKCS8(normalizeGithubPrivateKey(secret("GITHUB_APP_PRIVATE_KEY")),"RS256"); const now=Math.floor(Date.now()/1000);
   const jwt=await new SignJWT({}).setProtectedHeader({alg:"RS256"}).setIssuer(appId).setIssuedAt(now-30).setExpirationTime(now+540).sign(key);
   const res=await timedFetch(`https://api.github.com/app/installations/${installationId}/access_tokens`,{method:"POST",headers:ghHeaders(jwt),body:JSON.stringify({permissions:{contents:"write",metadata:"read"}})});
   const body=await json(res); if(!res.ok||typeof body?.token!=="string")throw new Error(`GitHub installation token failed (${res.status}).`); return body.token as string;

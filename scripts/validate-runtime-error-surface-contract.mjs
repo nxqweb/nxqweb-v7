@@ -54,12 +54,14 @@ for (const dirent of fs.readdirSync(functionsDir, { withFileTypes: true })) {
   // is designed to prevent.
   const rawAwaitFetches = [...source.matchAll(/await\s+fetch\s*\(/g)].length;
   if (rawAwaitFetches > 0) {
+    const signalledFetches = [...source.matchAll(/signal\s*:/g)].length;
     const hasBoundedHelper =
       source.includes("async function timedFetch(") ||
       source.includes("async function boundedProviderFetch(") ||
-      source.includes("async function fetchWithTimeout(");
+      source.includes("async function fetchWithTimeout(") ||
+      (source.includes("AbortController") && source.includes(".abort()") && signalledFetches >= rawAwaitFetches);
     check(hasBoundedHelper, `${dirent.name} defines a bounded network helper for raw fetch`);
-    check(rawAwaitFetches === 1, `${dirent.name} has no raw awaited fetch outside its bounded helper`);
+    check(signalledFetches >= rawAwaitFetches, `${dirent.name} has no raw awaited fetch without an abort signal`);
   }
 }
 
@@ -82,7 +84,7 @@ check(!infrastructure.includes("builds?branch=main"), "infrastructure provisioni
 check(!infrastructure.includes("triggerBaselineBuild("), "infrastructure provisioning has no baseline production build path");
 
 const businessBuilder = read("supabase", "functions", "build-business-website", "index.ts");
-check(businessBuilder.includes("activateNetlifyBuilds("), "Business preview worker explicitly activates builds only when preview generation is ready");
+check(businessBuilder.includes("activatePreviewBuilds("), "Business preview worker explicitly activates builds only when preview generation is ready");
 check(businessBuilder.includes("triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch)"), "Business preview worker explicitly targets its safe source branch");
 check(!businessBuilder.includes("builds?branch=main"), "Business preview worker cannot explicitly build production main");
 check(businessBuilder.includes('defer_external_automation_job'), "Business preview waiting uses transient deferral");

@@ -256,7 +256,7 @@ async function verifyPrivateRepository(repositoryFullName: string) {
   return { fullName: repositoryFullName, private: true };
 }
 
-async function createNetlifySite(repositoryFullName: string, familySlug: string) {
+async function ensureNetlifySite(repositoryFullName: string, familySlug: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const installationId = Number(requiredSecret("NETLIFY_GITHUB_INSTALLATION_ID"));
   if (!Number.isSafeInteger(installationId) || installationId <= 0) {
@@ -473,7 +473,7 @@ Deno.serve(async (request) => {
     let netlifySite: JsonRecord | null = null;
     if (!netlifySiteId) {
       await assertProviderMutationAllowed(admin, job);
-      netlifySite = await createNetlifySite(repositoryFullName, familySlug);
+      netlifySite = await ensureNetlifySite(repositoryFullName, familySlug);
       if (typeof netlifySite.id !== "string") throw new Error("Netlify site creation returned no site id.");
       netlifySiteId = netlifySite.id;
       await saveCheckpoint({ checkpoint: "netlify_site_ready", netlify_site_id: netlifySiteId });

@@ -30,6 +30,19 @@ function staticCheck(ok: boolean, passMessage: string, failMessage: string): Saf
   };
 }
 
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider verification request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -195,7 +208,7 @@ Deno.serve(async (request) => {
         "User-Agent": "NXQ-Web-Preview-Safety-Guard",
       };
 
-      const branchResponse = await fetch(
+      const branchResponse = await timedFetch(
         `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(sourceBranch)}`,
         { headers: githubHeaders }
       );
@@ -213,7 +226,7 @@ Deno.serve(async (request) => {
           };
 
       if (previewRequest.requested_commit_sha) {
-        const commitResponse = await fetch(
+        const commitResponse = await timedFetch(
           `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/commits/${encodeURIComponent(previewRequest.requested_commit_sha)}`,
           { headers: githubHeaders }
         );
@@ -247,7 +260,7 @@ Deno.serve(async (request) => {
         message: "NXQ_NETLIFY_VERIFY_TOKEN is not configured.",
       };
     } else {
-      const siteResponse = await fetch(
+      const siteResponse = await timedFetch(
         `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
         {
           headers: {

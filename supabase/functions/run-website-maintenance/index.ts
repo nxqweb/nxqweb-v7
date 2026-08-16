@@ -113,7 +113,7 @@ async function githubInstallationToken() {
     .setIssuedAt(now - 30)
     .setExpirationTime(now + 540)
     .sign(privateKey);
-  const tokenRes = await fetch(`https://api.github.com/app/installations/${installationId}/access_tokens`, {
+  const { res: tokenRes } = await timedFetch(`https://api.github.com/app/installations/${encodeURIComponent(installationId)}/access_tokens`, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
@@ -122,7 +122,7 @@ async function githubInstallationToken() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ permissions: { contents: "read", metadata: "read" } }),
-  });
+  }, 15_000);
   const body = await tokenRes.json();
   if (!tokenRes.ok || !body?.token) throw new Error(`GitHub maintenance verification token failed (${tokenRes.status}).`);
   return body.token as string;
@@ -256,13 +256,13 @@ async function backupCheck(admin: ReturnType<typeof createClient<DynamicDatabase
   }
   const branch = clean(config.data.production_branch) || "main";
   const token = await githubInstallationToken();
-  const repoRes = await fetch(`https://api.github.com/repos/${config.data.github_owner}/${config.data.github_repo}/branches/${encodeURIComponent(branch)}`, {
+  const { res: repoRes } = await timedFetch(`https://api.github.com/repos/${encodeURIComponent(config.data.github_owner)}/${encodeURIComponent(config.data.github_repo)}/branches/${encodeURIComponent(branch)}`, {
     headers: {
       Accept: "application/vnd.github+json",
       Authorization: `Bearer ${token}`,
       "X-GitHub-Api-Version": "2022-11-28",
     },
-  });
+  }, 15_000);
   const body = await repoRes.json();
   if (!repoRes.ok || !body?.commit?.sha) throw new Error(`GitHub production branch verification failed (${repoRes.status}).`);
   const expected = clean(config.data.last_production_commit);

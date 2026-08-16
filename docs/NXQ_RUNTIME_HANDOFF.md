@@ -1,6 +1,12 @@
 # NXQ runtime handoff
 
-Wave 31 makes the repository staging-ready without applying anything to Supabase, Netlify, GitHub client infrastructure, DNS, billing, or production.
+## Current checkpoint — 2026-08-16
+
+The current safe audit branch is based on draft PR #11 at commit `61d407a`. PR #17 has already been merged into that branch. The later security/schema branches through migrations 218–220 are ancestors of the same PR head; they are not separate missing work.
+
+The 2026-08-16 audit adds migration 221 and closes tenant read-model, outbound request, quota-concurrency, structured-change routing, and GitHub App key compatibility gaps. Local verification is green across all contract validators, 188 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
+
+No change from this audit has been applied to Supabase, Netlify, GitHub client infrastructure, DNS, billing, or production. Local lifecycle simulations are not external QA evidence.
 
 ## What the repository now enforces
 
@@ -14,7 +20,7 @@ Wave 31 makes the repository staging-ready without applying anything to Supabase
 
 ## One-time staging setup
 
-1. Push the safe branch and open a draft PR. Do not merge it yet.
+1. Review and push the safe audit branch into draft PR #11. Do not merge it yet.
 2. Create a separate hosted Supabase staging project. Do not point `nxq-staging` at production.
 3. Create the GitHub Environment named `nxq-staging` with:
    - `SUPABASE_ACCESS_TOKEN`
@@ -33,11 +39,12 @@ Wave 31 makes the repository staging-ready without applying anything to Supabase
    ```
 
 5. Run **NXQ Manual Supabase Stage** with action `validate`. It links staging, dry-runs migrations, and checks secret names without changing the database.
-6. Run the same workflow with `apply_all` and confirmation `APPLY-NXQ-SUPABASE-STAGING`.
+6. Run the same workflow with `apply_all` and confirmation `APPLY-NXQ-SUPABASE-STAGING`. Confirm migrations 220 and 221 are included before deploying the client portal and changed Edge functions.
 7. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
 8. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
-9. Start one disposable DENY-path QA run and prove zero infrastructure.
-10. Start disposable APPROVE-path QA runs one at a time until ten strict external runs pass. Do not count local simulations as external evidence.
+9. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.
+10. Start one disposable DENY-path QA run and prove zero infrastructure.
+11. Start disposable APPROVE-path QA runs one at a time until ten strict external runs pass. Do not count local simulations as external evidence.
 
 ## Production remains blocked
 

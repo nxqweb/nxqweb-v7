@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type ProviderConnection = {
   id: string;
@@ -42,13 +43,15 @@ async function checkThroughAdapter(connection: ProviderConnection) {
   const endpoint = Deno.env.get("NXQ_PROVIDER_HEALTH_ADAPTER_URL")?.trim();
   const token = Deno.env.get("NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN")?.trim();
   if (!endpoint || !token) return { configured: false as const };
+  const safeEndpoint = requirePublicHttpsUrl(endpoint, "Provider-health adapter URL");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   const started = Date.now();
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(safeEndpoint, {
       method: "POST",
+      redirect: "error",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

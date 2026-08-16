@@ -19,12 +19,12 @@ export function ClientSettings() {
     const sessionResult = await supabase.auth.getSession(); const session = sessionResult.data.session;
     if (!session) { window.location.replace("/portal/login"); return; }
     const currentEmail = session.user.email || ""; setEmail(currentEmail); setNewEmail(currentEmail);
-    const clientResult = await supabase.from("clients").select("id").eq("auth_user_id", session.user.id).maybeSingle();
-    if (clientResult.error) { setError(`Client settings load failed: ${clientResult.error.message}`); setLoading(false); return; }
-    if (clientResult.data?.id) {
-      const domainResult = await supabase.from("client_domains").select("id, domain_name, status").eq("client_id", clientResult.data.id).order("requested_at", { ascending: false });
-      if (domainResult.error) setError(`Domain settings load failed: ${domainResult.error.message}`); else setDomains((domainResult.data || []) as ClientDomainRow[]);
-    }
+    const domainResult = await supabase.rpc("current_client_domain_page", {
+      target_limit: 50,
+      target_cursor_requested_at: null,
+      target_cursor_id: null,
+    });
+    if (domainResult.error) setError(`Domain settings load failed: ${domainResult.error.message}`); else setDomains((domainResult.data || []) as ClientDomainRow[]);
     setLoading(false);
   }
 

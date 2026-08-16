@@ -13,6 +13,11 @@ const maintenance = read("supabase/functions/run-website-maintenance/index.ts");
 const provision = read("supabase/functions/provision-project-infrastructure/index.ts");
 const build = read("supabase/functions/build-business-website/index.ts");
 const production = read("supabase/functions/promote-business-production/index.ts");
+const classifier = read("supabase/functions/classify-business-change-request/index.ts");
+const providerHealth = read("supabase/functions/check-provider-health/index.ts");
+const leadIngest = read("supabase/functions/ingest-business-lead/index.ts");
+const previewSafety = read("supabase/functions/check-preview-deployment-safety/index.ts");
+const productionAudit = read("supabase/functions/check-production-launch-audit/index.ts");
 
 check("Malware scanner adapter requires a public HTTPS endpoint", scanner.includes('requirePublicHttpsUrl(endpoint, "Malware scanner adapter URL")'));
 check("Malware scanner refuses adapter redirects", scanner.includes('redirect: "error"'));
@@ -21,6 +26,13 @@ check("Notification adapter requires a public HTTPS endpoint", notifications.inc
 check("Notification adapter refuses redirects", notifications.includes('redirect: "error"'));
 check("Maintenance validates every redirect target", maintenance.includes("validatedRedirectTarget(location, currentUrl"));
 check("Maintenance GitHub App key accepts PKCS#1 and PKCS#8", maintenance.includes('normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY"))'));
+check("Maintenance GitHub provider calls use bounded fetches", maintenance.includes("const { res: tokenRes } = await timedFetch") && maintenance.includes("const { res: repoRes } = await timedFetch"));
+check("Change classifier adapter requires a public HTTPS endpoint", classifier.includes('requirePublicHttpsUrl(adapterUrl,"AI change classifier adapter URL")') && classifier.includes('redirect:"error"'));
+check("Provider-health adapter requires a public HTTPS endpoint", providerHealth.includes('requirePublicHttpsUrl(endpoint, "Provider-health adapter URL")') && providerHealth.includes('redirect: "error"'));
+check("Lead challenge adapter requires a public HTTPS endpoint", leadIngest.includes('requirePublicHttpsUrl(endpoint,"Lead challenge endpoint")') && leadIngest.includes('redirect:"error"'));
+check("Preview provider verification calls use bounded fetches", (previewSafety.match(/await timedFetch\(/g) || []).length >= 3);
+check("Production provider verification calls use bounded fetches", (productionAudit.match(/await timedFetch\(/g) || []).length >= 2);
+check("Production page audit validates every redirect target", productionAudit.includes("validatedRedirectTarget(location, currentUrl"));
 
 const githubTokenSources = [provision, build, production, maintenance].join("\n");
 check("GitHub installation tokens have no hardcoded ghs_ prefix dependency", !githubTokenSources.includes("ghs_"));

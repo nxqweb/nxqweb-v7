@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type Job={id:string;client_id:string;project_id:string;job_type:string;payload?:Record<string,unknown>|null};
 type JsonRecord=Record<string,unknown>;
@@ -15,21 +16,29 @@ function record(value:unknown):JsonRecord{return value&&typeof value==="object"&
 function cleanText(value:unknown,max:number){return typeof value==="string"?value.trim().slice(0,max):"";}
 function validatePatch(value:unknown){const patch=record(value);const keys=Object.keys(patch);if(keys.length===0||keys.some((k)=>!supportedPatchKeys.has(k)))return null;const out:JsonRecord={};for(const key of keys){const raw=patch[key];if(key==="add_services"||key==="remove_services"){if(!Array.isArray(raw))return null;out[key]=raw.map(String).map((v)=>v.trim()).filter(Boolean).slice(0,12);}else out[key]=cleanText(raw,key==="goals"||key==="about"?2500:key==="desired_style"?1800:500);}return out;}
 function parseResult(value:unknown):ClassifierResult{const r=record(value);const route=String(r.route||"");if(!["safe_patch","needs_info","owner_review"].includes(route))throw new Error("Classifier returned unsupported route.");const confidence=Number(r.confidence);if(!Number.isFinite(confidence)||confidence<0||confidence>1)throw new Error("Classifier confidence must be between 0 and 1.");return{route:route as ClassifierResult["route"],confidence,patch:record(r.patch),question:cleanText(r.question,700),reason:cleanText(r.reason,1200)};}
-function deterministicResult(title:string,description:string):ClassifierResult|null{
-  const combined=`${title}\n${description}`;
-  const patch:JsonRecord={};
-  const email=combined.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];
-  const phone=combined.match(/(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}/)?.[0];
-  if(email)patch.contact_email=email.toLowerCase();
-  if(phone)patch.contact_phone=phone.trim();
-  if(Object.keys(patch).length===0)return null;
-  return{route:"safe_patch",confidence:0.99,patch,reason:"Deterministic parser found an explicit supported contact-field change."};
+function deterministicResult(requestedPayload:unknown):ClassifierResult|null{
+  const patch=record(record(requestedPayload).patch);
+  const keys=Object.keys(patch);
+  if(keys.length===0||keys.some((key)=>key!=="contact_email"&&key!=="contact_phone"))return null;
+  const normalized:JsonRecord={};
+  if("contact_email" in patch){
+    const email=cleanText(patch.contact_email,180).toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return null;
+    normalized.contact_email=email;
+  }
+  if("contact_phone" in patch){
+    const phone=cleanText(patch.contact_phone,80);
+    if(!/^[+()\-\s\d.]{7,32}$/.test(phone))return null;
+    normalized.contact_phone=phone;
+  }
+  return{route:"safe_patch",confidence:0.99,patch:normalized,reason:"A validated contact-only structured patch can use deterministic routing."};
 }
 async function classify(input:JsonRecord,adapterUrl:string,adapterToken:string){
   if(!adapterUrl||!adapterToken)throw new Error("AI change classifier adapter is not configured.");
+  const safeAdapterUrl=requirePublicHttpsUrl(adapterUrl,"AI change classifier adapter URL");
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),15000);
   try{
-    const res=await fetch(adapterUrl,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${adapterToken}`},body:JSON.stringify({task:"classify_business_change_request_v2",input,allowed_routes:["safe_patch","needs_info","owner_review"],allowed_patch_keys:[...supportedPatchKeys],rules:{safe_patch_min_confidence:0.9,no_legal_financial_medical_guarantee_or_domain_changes:true,never_publish_or_modify_provider_infrastructure:true,ambiguous_means_needs_info:true}}),signal:controller.signal});
+    const res=await fetch(safeAdapterUrl,{method:"POST",redirect:"error",headers:{"Content-Type":"application/json","Authorization":`Bearer ${adapterToken}`},body:JSON.stringify({task:"classify_business_change_request_v2",input,allowed_routes:["safe_patch","needs_info","owner_review"],allowed_patch_keys:[...supportedPatchKeys],rules:{safe_patch_min_confidence:0.9,no_legal_financial_medical_guarantee_or_domain_changes:true,never_publish_or_modify_provider_infrastructure:true,ambiguous_means_needs_info:true}}),signal:controller.signal});
     if(!res.ok)throw new Error(`AI classifier adapter failed with HTTP ${res.status}.`);
     return parseResult(await res.json());
   }finally{clearTimeout(timer);}
@@ -59,7 +68,7 @@ Deno.serve(async(req)=>{
     if(!changeRes.data)throw new Error("Change request not found.");
     if(["published","cancelled","failed"].includes(String(changeRes.data.status)))throw new Error("Change request is already terminal.");
 
-    const deterministic=deterministicResult(String(changeRes.data.title||""),String(changeRes.data.description||""));
+    const deterministic=deterministicResult(changeRes.data.requested_payload);
     const result=deterministic??await classify({request_type:changeRes.data.request_type,title:changeRes.data.title,description:changeRes.data.description,priority:changeRes.data.priority,risk_level:changeRes.data.risk_level,requested_payload:changeRes.data.requested_payload},adapterUrl,adapterToken);
     const evidence={classifier:deterministic?"deterministic-v1":"adapter-v2",confidence:result.confidence,reason:result.reason||null,classified_at:new Date().toISOString(),routing_authority:"database_trigger"};
 

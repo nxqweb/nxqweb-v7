@@ -47,19 +47,15 @@ type UploadedFileRow = {
   file_size: number | null;
   status: string;
   uploaded_at: string;
-  expires_at: string;
+  expires_at: string | null;
 };
 
 type ClientDomainRow = {
   id: string;
-  client_id: string;
   domain_name: string;
-  domain_type: string;
   status: string;
   dns_provider: string | null;
   registrar_name: string | null;
-  ownership_confirmed: boolean;
-  client_notes: string | null;
   dns_instructions: string | null;
   requested_at: string;
 };
@@ -482,13 +478,11 @@ export function ClientPortal() {
         setMessageHasMore(messagePage.length === 50);
       }
 
-      const fileListResult = await supabase
-        .from("client_files")
-        .select("id, storage_path, file_name, file_type, file_size, status, uploaded_at, expires_at")
-        .eq("client_id", loadedClient.id)
-        .is("deleted_at", null)
-        .order("uploaded_at", { ascending: false })
-        .limit(50);
+      const fileListResult = await supabase.rpc("current_client_file_page", {
+        target_limit: 50,
+        target_cursor_uploaded_at: null,
+        target_cursor_id: null,
+      });
 
       if (fileListResult.error) {
         setErrorMessage(`File list load failed: ${fileListResult.error.message}`);
@@ -497,13 +491,11 @@ export function ClientPortal() {
         setUploadedFiles((fileListResult.data || []) as UploadedFileRow[]);
       }
 
-      const domainResult = await supabase
-        .from("client_domains")
-        .select(
-          "id, client_id, domain_name, domain_type, status, dns_provider, registrar_name, ownership_confirmed, client_notes, dns_instructions, requested_at"
-        )
-        .eq("client_id", loadedClient.id)
-        .order("requested_at", { ascending: false });
+      const domainResult = await supabase.rpc("current_client_domain_page", {
+        target_limit: 50,
+        target_cursor_requested_at: null,
+        target_cursor_id: null,
+      });
 
       if (domainResult.error) {
         setErrorMessage(`Domain list load failed: ${domainResult.error.message}`);
@@ -1847,10 +1839,9 @@ export function ClientPortal() {
                   <p>Status: {formatStatus(file.status)}</p>
 
                   <small>
-                    Expires{" "}
-                    {new Date(file.expires_at).toLocaleDateString([], {
-                      dateStyle: "medium",
-                    })}
+                    {file.expires_at
+                      ? `Expires ${new Date(file.expires_at).toLocaleDateString([], { dateStyle: "medium" })}`
+                      : "No automatic expiration"}
                   </small>
                 </article>
               ))}
@@ -1922,7 +1913,6 @@ export function ClientPortal() {
     </main>
   );
 }
-
 
 
 
