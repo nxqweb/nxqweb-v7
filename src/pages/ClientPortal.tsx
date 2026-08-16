@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import type { ClientLaunchJourney } from "../lib/clientJourney";
 
 type ClientRow = {
   id: string;
@@ -276,6 +277,7 @@ export function ClientPortal() {
   }
   const [client, setClient] = useState<ClientRow | null>(null);
   const [project, setProject] = useState<ProjectRow | null>(null);
+  const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
   const [messageHasMore, setMessageHasMore] = useState(false);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
@@ -324,7 +326,9 @@ export function ClientPortal() {
   const setupComplete = client
     ? completedSetupStatuses.includes(client.status) || signedSetupSubmitted
     : false;
-  const projectStage = project?.website_status || client?.status || "loading";
+  const rawProjectStage = project?.website_status || client?.status || "loading";
+  const projectStage = journey?.stage_key || rawProjectStage;
+  const projectStageLabel = journey?.stage_title || formatStatus(rawProjectStage);
 
   function formatStatus(status: string) {
     return status.replaceAll("_", " ");
@@ -373,6 +377,7 @@ export function ClientPortal() {
         setErrorMessage(`Client load failed: ${clientResult.error.message}`);
         setClient(null);
         setProject(null);
+        setJourney(null);
         setMessages([]);
         setUploadedFiles([]);
         setUploadedFiles([]);
@@ -385,6 +390,7 @@ export function ClientPortal() {
         );
         setClient(null);
         setProject(null);
+        setJourney(null);
         setMessages([]);
         setUploadedFiles([]);
         setUploadedFiles([]);
@@ -451,6 +457,14 @@ export function ClientPortal() {
         setProject(null);
       } else {
         setProject((projectResult.data as ProjectRow) || null);
+      }
+
+      const journeyResult = await supabase.rpc("current_client_launch_journey");
+      if (journeyResult.error) {
+        setErrorMessage(`Project journey load failed: ${journeyResult.error.message}`);
+        setJourney(null);
+      } else {
+        setJourney((journeyResult.data as ClientLaunchJourney) || null);
       }
 
       const messageResult = await supabase.rpc("current_client_message_page", {
@@ -1181,7 +1195,7 @@ export function ClientPortal() {
   const targetedMoreInfoField = targetedMoreInfoRequest
     ? getTargetedFieldControl(targetedMoreInfoRequest)
     : null;
-  const projectDecisionStatus = (projectStage || "").toLowerCase();
+  const projectDecisionStatus = (rawProjectStage || "").toLowerCase();
   const portalDecisionNotice = (() => {
     if (clientDecisionStatus === "denied") {
       return {
@@ -1257,7 +1271,7 @@ export function ClientPortal() {
 
           <div className="stat-card">
             <span>Project stage</span>
-            <strong>{formatStatus(projectStage)}</strong>
+            <strong>{projectStageLabel}</strong>
 
             <a className="icon-btn" href="/client/settings">
               Settings
@@ -1894,17 +1908,13 @@ export function ClientPortal() {
 
           <section className="panel panel-wide">
             <h2>Project tracker</h2>
-            <div className="tracker">
-              <span className={client?.status === "lead" ? "active" : ""}>Lead</span>
-              <span className={client?.status === "intake_received" ? "active" : ""}>
-                Setup submitted
-              </span>
-              <span className={client?.status === "needs_review" ? "active" : ""}>
-                Owner Review
-              </span>
-              <span className={projectStage === "planning" ? "active" : ""}>Planning</span>
-              <span className={projectStage === "building" ? "active" : ""}>Building</span>
-              <span className={projectStage === "live" ? "active" : ""}>Live</span>
+            <div className="tracker" data-canonical-journey-stage={projectStage}>
+              <span className={projectStage === "setup" ? "active" : ""}>Setup</span>
+              <span className={projectStage === "review" ? "active" : ""}>Owner Review</span>
+              <span className={projectStage === "plan" ? "active" : ""}>Planning</span>
+              <span className={projectStage === "build" ? "active" : ""}>Building</span>
+              <span className={projectStage === "launch" || projectStage === "paused" ? "active" : ""}>Launch checks</span>
+              <span className={projectStage === "care" ? "active" : ""}>Live</span>
             </div>
           </section>
         </div>
