@@ -313,6 +313,24 @@ async function createNetlifySite(repositoryFullName: string, familySlug: string)
   return body || {};
 }
 
+async function verifyNetlifySiteBinding(siteId: string, repositoryFullName: string) {
+  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
+  const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, {
+    headers: netlifyHeaders(token),
+  });
+  const site = await readJson(res) as JsonRecord | null;
+  if (!res.ok || !site) throw new Error(`Netlify site binding verification failed (${res.status}).`);
+  const buildSettings = site.build_settings && typeof site.build_settings === "object"
+    ? site.build_settings as JsonRecord
+    : null;
+  const repo = buildSettings?.repo_path || buildSettings?.repo_url || null;
+  const matchesRepository = repo === repositoryFullName || repo === `https://github.com/${repositoryFullName}`;
+  if (site.id !== siteId || !matchesRepository) {
+    throw new Error("Netlify site id is not bound to this project's GitHub repository.");
+  }
+  return site;
+}
+
 async function upsertNetlifyEnv(siteId: string, values: Record<string, string>) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const siteRes = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}`, { headers: netlifyHeaders(token) });
@@ -406,7 +424,7 @@ Deno.serve(async (request) => {
     const familySlug = String(familyRes.data.slug);
     templateForFamily(familySlug); // fail early if the family has no approved template
 
-    let configRes = await admin.from("project_deployment_configs").select("*").eq("project_id", job.project_id).maybeSingle();
+    let configRes = await admin.from("project_deployment_configs").select("*").eq("project_id", job.project_id).eq("client_id", job.client_id).maybeSingle();
     if (configRes.error) throw new Error(configRes.error.message);
     if (!configRes.data) {
       const inserted = await admin.from("project_deployment_configs").insert({
@@ -438,7 +456,11 @@ Deno.serve(async (request) => {
       config = saved.data as JsonRecord;
     }
 
-    const repositoryPrivacy = await verifyPrivateRepository(repositoryFullName);
+    if (!repositoryFullName.includes(`-${job.project_id.slice(0, 8)}-`)) {
+    throw new Error("GitHub repository identity is not bound to this project.");
+  }
+
+  const repositoryPrivacy = await verifyPrivateRepository(repositoryFullName);
     await saveCheckpoint({
       checkpoint: "github_repository_privacy_verified",
       github_full_name: repositoryPrivacy.fullName,
@@ -464,6 +486,7 @@ Deno.serve(async (request) => {
     }
 
     await assertProviderMutationAllowed(admin, job);
+    await verifyNetlifySiteBinding(netlifySiteId, repositoryFullName);
     await upsertNetlifyEnv(netlifySiteId, {
       VITE_SUPABASE_URL: requiredSecret("PUBLIC_SUPABASE_URL"),
       VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
