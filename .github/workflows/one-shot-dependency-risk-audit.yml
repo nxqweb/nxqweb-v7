@@ -1,0 +1,47 @@
+name: One-shot Dependency Risk Audit
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-dependency-risk-audit.yml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Capture dependency audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --json > /tmp/npm-audit.json
+          status=$?
+          set -e
+          node <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('/tmp/npm-audit.json', 'utf8'));
+          const vulns = report.vulnerabilities || {};
+          const rows = Object.entries(vulns).map(([name, v]) => ({
+            name,
+            severity: v.severity,
+            direct: !!v.isDirect,
+            range: v.range,
+            fix: v.fixAvailable === true ? 'available' : v.fixAvailable ? JSON.stringify(v.fixAvailable) : 'none'
+          }));
+          console.log('Dependency audit summary');
+          console.log(JSON.stringify({ metadata: report.metadata?.vulnerabilities || {}, vulnerabilities: rows }, null, 2));
+          const prodDirect = rows.filter((r) => r.direct);
+          console.log(`Direct vulnerable packages: ${prodDirect.length}`);
+          NODE
+          exit 0
