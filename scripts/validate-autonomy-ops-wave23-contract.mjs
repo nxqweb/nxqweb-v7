@@ -67,7 +67,7 @@ const checks = [
   ["Owner Portal no longer reads obsolete AI output storage", !ownerPortal.includes('from("ai_task_outputs")') && !ownerPortal.includes("AiTaskOutputRow")],
   ["Legacy reset no longer depends on obsolete AI output storage", !legacyReset.includes("ai_task_outputs") && legacyReset.includes("from public,anon,authenticated,service_role")],
   ["Unused destructive workspace reset remains disabled", migration.includes("revoke all on function public.reset_client_workspace(uuid)")],
-  ["Owner Portal reads canonical project build plans", ownerPortal.includes('.select("id, client_id, website_status, build_plan")') && ownerPortal.includes("Canonical plan:")],
+  ["Owner Portal reads canonical project build plans", ownerPortal.includes('rpc("owner_client_directory_page"') && ownerPortal.includes("build_plan") && ownerPortal.includes("Canonical plan:") && !ownerPortal.includes('.from("projects")')],
   ["Owner Portal does not directly mutate approval rows", !directApprovalMutation.test(ownerPortal)],
   ["Owner Portal does not directly mutate client lifecycle rows", !directClientMutation.test(ownerPortal)],
   ["Owner Portal does not fabricate decision audit rows", !directAuditMutation.test(ownerPortal)],
