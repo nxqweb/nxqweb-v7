@@ -12,15 +12,16 @@ type Domain = {
   dns_status: string;
   ssl_status: string;
   last_checked_at: string | null;
-  next_check_at: string;
+  next_check_at: string | null;
   automation_error: string | null;
   action_required_message: string | null;
   dns_instructions: string | null;
   registrar_name: string | null;
   dns_provider: string | null;
+  requested_at: string;
 };
 
-const selectFields = "id,domain_name,status,automation_state,automation_enabled,dns_status,ssl_status,last_checked_at,next_check_at,automation_error,action_required_message,dns_instructions,registrar_name,dns_provider";
+const PAGE_SIZE = 50;
 
 function label(state: string) {
   return state.replaceAll("_", " ");
@@ -32,33 +33,55 @@ export function ClientDomainStatus() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+
+  async function fetchPage(cursor?: { requested_at: string; id: string }) {
+    if (!supabase) return { rows: [] as Domain[], error: "Supabase is not configured yet." };
+    const result = await supabase.rpc("current_client_domain_page", {
+      target_limit: PAGE_SIZE,
+      target_cursor_requested_at: cursor?.requested_at ?? null,
+      target_cursor_id: cursor?.id ?? null,
+    });
+    return { rows: (result.data || []) as Domain[], error: result.error?.message || "" };
+  }
 
   async function load() {
+    setLoading(true);
+    setError("");
     if (!isSupabaseConfigured || !supabase) {
       setError("Supabase is not configured yet.");
       setLoading(false);
       return;
     }
     const session = await supabase.auth.getSession();
-    const user = session.data.session?.user;
-    if (!user) {
+    if (!session.data.session?.user) {
       window.location.replace("/portal/login");
       return;
     }
-    const client = await supabase.from("clients").select("id").eq("auth_user_id", user.id).maybeSingle();
-    if (client.error || !client.data) {
-      setError(client.error?.message || "Client account not found.");
+    const page = await fetchPage();
+    if (page.error) {
+      setError(page.error);
       setLoading(false);
       return;
     }
-    const rows = await supabase.from("client_domains").select(selectFields).eq("client_id", client.data.id).order("requested_at", { ascending: false });
-    if (rows.error) {
-      setError(rows.error.message);
-      setLoading(false);
-      return;
-    }
-    setDomains((rows.data || []) as Domain[]);
+    setDomains(page.rows);
+    setHasMore(page.rows.length === PAGE_SIZE);
     setLoading(false);
+  }
+
+  async function loadOlderDomains() {
+    const last = domains.at(-1);
+    if (!last || loadingMore) return;
+    setLoadingMore(true);
+    setError("");
+    const page = await fetchPage({ requested_at: last.requested_at, id: last.id });
+    if (page.error) setError(page.error);
+    else {
+      setDomains((current) => [...current, ...page.rows]);
+      setHasMore(page.rows.length === PAGE_SIZE);
+    }
+    setLoadingMore(false);
   }
 
   useEffect(() => { void load(); }, []);
@@ -182,6 +205,7 @@ export function ClientDomainStatus() {
             );
           })}
         </div>
+        {hasMore ? <button className="wide-btn" type="button" disabled={loadingMore} onClick={() => void loadOlderDomains()}>{loadingMore ? "Loading older domains..." : "Load older domains"}</button> : null}
       </section>
     </main>
   );

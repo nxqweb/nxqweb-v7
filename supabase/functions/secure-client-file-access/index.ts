@@ -76,10 +76,17 @@ Deno.serve(async (req) => {
       return response({ ok: false, error: "File remains restricted by NXQ file security." }, 423);
     }
 
-    const bucket = String(file.data.bucket_id || "client-files").trim();
+    const bucket = String(file.data.bucket_id || "").trim();
     const storagePath = String(file.data.storage_path || "").trim();
-    if (!bucket || !storagePath || storagePath.includes("..") || storagePath.startsWith("/")) {
-      return response({ ok: false, error: "Stored file reference is invalid." }, 500);
+    const clientPathPrefix = `${String(client.data.id)}/`;
+    if (
+      bucket !== "client-files" ||
+      !storagePath ||
+      storagePath.includes("..") ||
+      storagePath.startsWith("/") ||
+      !storagePath.startsWith(clientPathPrefix)
+    ) {
+      return response({ ok: false, error: "Stored file reference is outside the authenticated client namespace." }, 500);
     }
 
     const options = payload.download === true ? { download: String(file.data.file_name || "download") } : undefined;
