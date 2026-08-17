@@ -102,6 +102,15 @@ for (const secrets of Object.values(runtimeSecretProfiles)) {
 for (const name of managedEdgeSecrets) if (!referencedSecretNames.has(name)) fail(`Managed Edge secret ${name} is not referenced`);
 if (!process.exitCode) pass("Runtime profiles contain names only and match actual Edge-function configuration reads");
 
+const launchSecrets = [...runtimeSecretProfiles["business-launch"]].sort();
+const expectedPrelaunchSecrets = launchSecrets.filter((name) => name !== "NXQ_AI_MODEL_PROVIDER_TOKEN");
+const actualPrelaunchSecrets = [...runtimeSecretProfiles["business-prelaunch"]].sort();
+if (equalSets(expectedPrelaunchSecrets, actualPrelaunchSecrets)) {
+  pass("Prelaunch requires every launch secret except the model-provider token");
+} else {
+  fail("Prelaunch secret profile does not exactly match launch-minus-model-token");
+}
+
 const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "manual-supabase-stage.yml"), "utf8");
 const workflowProof = [
   'environment: nxq-staging',
@@ -112,13 +121,15 @@ const workflowProof = [
   'edge-function-manifest.mjs --group=verify-jwt',
   'check-runtime-stage-readiness.mjs --profile=business-configured-foundation',
   'check-runtime-stage-readiness.mjs --profile=business-non-ai-staging',
+  'check-runtime-stage-readiness.mjs --profile=business-prelaunch',
   'check-runtime-stage-readiness.mjs --profile=business-external-qa',
   'check-runtime-stage-readiness.mjs --supabase-functions-json=',
   'APPLY-NXQ-SUPABASE-STAGING',
 ];
 for (const proof of workflowProof) if (!workflow.includes(proof)) fail(`Manual staging workflow is missing: ${proof}`);
 const nonAiDeployGate = 'elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then';
-if (!workflow.includes(nonAiDeployGate)) fail("deploy_functions must use the 20-secret non-AI staging profile");
+if (!workflow.includes(nonAiDeployGate)) fail("deploy_functions must use the non-AI staging profile");
+if (!workflow.includes('inputs.action != \'validate_prelaunch\'')) fail("Prelaunch validation must never require mutation confirmation");
 if (!workflow.includes("else\n            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa")) {
   fail("The strict external-QA profile must remain the fallback for apply_all");
 }
