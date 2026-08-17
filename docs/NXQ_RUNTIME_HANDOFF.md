@@ -2,9 +2,11 @@
 
 ## Current checkpoint — 2026-08-16
 
-The current safe audit branch is based on draft PR #11 at commit `61d407a`. PR #17 has already been merged into that branch. The later security/schema branches through migrations 218–220 are ancestors of the same PR head; they are not separate missing work.
+Draft PR #11 contains the audited V11 baseline. Commit `71c6f0d` is the last published audit checkpoint before the unified AI-provider follow-up described here; PR #17 and the later security/schema work are already ancestors of the same PR branch, not separate missing work.
 
-The 2026-08-16 audit adds migration 221 and closes tenant read-model, outbound request, quota-concurrency, structured-change routing, and GitHub App key compatibility gaps. Local verification is green across all contract validators, 188 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
+The 2026-08-16 audit adds migration 221 and closes tenant read-model, outbound request, quota-concurrency, structured-change routing, and GitHub App key compatibility gaps. The staging validation that followed stopped safely before mutations because the classifier required a second, nonexistent AI adapter. Migration 222 and classifier runtime v3 remove that duplicate contract: classification and build-plan generation now share one provider-neutral four-secret model configuration, strict structured output, bounded public-HTTPS networking, independent patch validation, and real provider-call readiness evidence.
+
+Local verification is green across all 66 contract validators, 189 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
 
 No change from this audit has been applied to Supabase, Netlify, GitHub client infrastructure, DNS, billing, or production. Local lifecycle simulations are not external QA evidence.
 
@@ -20,7 +22,7 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
 
 ## One-time staging setup
 
-1. Review and push the safe audit branch into draft PR #11. Do not merge it yet.
+1. Review the latest safe checkpoint on draft PR #11. Do not merge it yet.
 2. Create a separate hosted Supabase staging project. Do not point `nxq-staging` at production.
 3. Create the GitHub Environment named `nxq-staging` with:
    - `SUPABASE_ACCESS_TOKEN`
@@ -38,8 +40,17 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
    npm run test:runtime-stage
    ```
 
+   The shared AI model provider requires exactly these four protected Edge secret names:
+
+   - `NXQ_AI_MODEL_PROVIDER_URL`
+   - `NXQ_AI_MODEL_PROVIDER_TOKEN`
+   - `NXQ_AI_MODEL_PROVIDER_MODEL`
+   - `NXQ_AI_MODEL_PROVIDER_PROTOCOL`
+
+   For an OpenAI Responses configuration, set the URL to the provider's Responses endpoint and the protocol to `openai_responses`. Store the API key only in Supabase Edge secrets; never paste it into chat, source, logs, workflow inputs, or a committed environment file. The selected model must support strict structured outputs.
+
 5. Run **NXQ Manual Supabase Stage** with action `validate`. It links staging, dry-runs migrations, and checks secret names without changing the database.
-6. Run the same workflow with `apply_all` and confirmation `APPLY-NXQ-SUPABASE-STAGING`. Confirm migrations 220 and 221 are included before deploying the client portal and changed Edge functions.
+6. Only after `validate` passes, run the same workflow with `apply_all` and confirmation `APPLY-NXQ-SUPABASE-STAGING`. Confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
 7. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
 8. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
 9. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.

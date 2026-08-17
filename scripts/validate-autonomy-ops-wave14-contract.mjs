@@ -1,19 +1,20 @@
 import fs from "node:fs";
 const read=(p)=>fs.readFileSync(p,"utf8");
 const worker=read("supabase/functions/classify-business-change-request/index.ts");
+const compactWorker=worker.replace(/\s+/g,"");
 const dispatch=read("supabase/migrations/166_change_classifier_dispatch_readiness.sql");
 const exceptions=read("supabase/migrations/167_change_request_owner_exception_visibility.sql");
 const checks=[
-["Classifier worker consumes AI change jobs",worker.includes('target_execution_target:"ai"')&&worker.includes('target_job_types:["classify_website_change_request"]')],
+["Classifier worker consumes AI change jobs",compactWorker.includes('target_execution_target:"ai"')&&compactWorker.includes('target_job_types:["classify_website_change_request"]')],
 ["Classifier requires protected worker token",worker.includes('NXQ_AUTOMATION_WORKER_TOKEN')&&worker.includes('x-nxq-worker-token')],
-["Classifier adapter URL is protected environment configuration",worker.includes('NXQ_AI_CLASSIFIER_URL')&&!worker.includes('https://api.openai.com')],
-["Classifier adapter timeout is bounded",worker.includes('setTimeout(()=>controller.abort(),15000)')],
-["Classifier accepts only safe patch needs-info or owner-review",worker.includes('"safe_patch"|"needs_info"|"owner_review"')],
-["Safe AI patch needs high confidence",worker.includes('result.confidence<0.9')],
-["Safe AI patch keys are allowlisted",worker.includes('supportedPatchKeys')&&worker.includes('keys.some((k)=>!supportedPatchKeys.has(k))')],
-["Safe classifier result returns to database routing authority",worker.includes('status:"submitted"')&&worker.includes('routing_authority:"database_trigger"')&&!worker.includes('target_job_type:"website_apply_change_request"')],
-["Needs-info never becomes automatic edit",worker.includes('status:"needs_info"')],
-["Unsafe classifier output becomes owner review",worker.includes('status:"blocked"')&&worker.includes('route:"owner_review"')],
+["Classifier provider configuration is protected and provider-neutral",["NXQ_AI_MODEL_PROVIDER_URL","NXQ_AI_MODEL_PROVIDER_TOKEN","NXQ_AI_MODEL_PROVIDER_MODEL","NXQ_AI_MODEL_PROVIDER_PROTOCOL"].every((name)=>worker.includes(name))&&!worker.includes('https://api.openai.com')],
+["Classifier timeout is bounded",compactWorker.includes('setTimeout(()=>controller.abort(),15_000)')],
+["Classifier accepts only safe patch needs-info or owner-review",compactWorker.includes('"safe_patch"|"needs_info"|"owner_review"')],
+["Safe AI patch needs high confidence",compactWorker.includes('result.confidence<0.9')],
+["Safe AI patch keys are allowlisted",worker.includes('supportedPatchKeys')&&compactWorker.includes('keys.some((key)=>!supportedPatchKeys.has(key))')],
+["Safe classifier result returns to database routing authority",compactWorker.includes('status:"submitted"')&&compactWorker.includes('routing_authority:"database_trigger"')&&!compactWorker.includes('target_job_type:"website_apply_change_request"')],
+["Needs-info never becomes automatic edit",compactWorker.includes('status:"needs_info"')],
+["Unsafe classifier output becomes owner review",compactWorker.includes('status:"blocked"')&&compactWorker.includes('route:"owner_review"')],
 ["Classifier dispatcher is Vault backed",dispatch.includes('vault.decrypted_secrets')&&dispatch.includes('nxq_change_classifier_edge_url')&&dispatch.includes('nxq_automation_worker_token')],
 ["Classifier dispatcher runs automatically",dispatch.includes("nxq-change-classifier-every-minute")&&dispatch.includes("'* * * * *'")],
 ["Classifier readiness is required",dispatch.includes("'change_classifier_ready'")&&dispatch.includes(',true)')],

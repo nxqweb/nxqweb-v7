@@ -27,7 +27,7 @@ check("Notification adapter refuses redirects", notifications.includes('redirect
 check("Maintenance validates every redirect target", maintenance.includes("validatedRedirectTarget(location, currentUrl"));
 check("Maintenance GitHub App key accepts PKCS#1 and PKCS#8", maintenance.includes('normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY"))'));
 check("Maintenance GitHub provider calls use bounded fetches", maintenance.includes("const { res: tokenRes } = await timedFetch") && maintenance.includes("const { res: repoRes } = await timedFetch"));
-check("Change classifier adapter requires a public HTTPS endpoint", classifier.includes('requirePublicHttpsUrl(adapterUrl,"AI change classifier adapter URL")') && classifier.includes('redirect:"error"'));
+check("Change classifier model provider requires a public HTTPS endpoint", classifier.includes('requirePublicHttpsUrl(providerUrlRaw, "AI model provider URL")') && classifier.includes('redirect: "error"'));
 check("Provider-health adapter requires a public HTTPS endpoint", providerHealth.includes('requirePublicHttpsUrl(endpoint, "Provider-health adapter URL")') && providerHealth.includes('redirect: "error"'));
 check("Lead challenge adapter requires a public HTTPS endpoint", leadIngest.includes('requirePublicHttpsUrl(endpoint,"Lead challenge endpoint")') && leadIngest.includes('redirect:"error"'));
 check("Preview provider verification calls use bounded fetches", (previewSafety.match(/await timedFetch\(/g) || []).length >= 3);

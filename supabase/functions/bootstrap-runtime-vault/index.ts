@@ -23,7 +23,12 @@ const providerRequirements: Record<string, string[]> = {
   malware_scan: ["NXQ_MALWARE_SCAN_ADAPTER_URL", "NXQ_MALWARE_SCAN_ADAPTER_TOKEN"],
   notification_adapter: ["NXQ_NOTIFICATION_ADAPTER_URL", "NXQ_NOTIFICATION_ADAPTER_TOKEN"],
   provider_health_adapter: ["NXQ_PROVIDER_HEALTH_ADAPTER_URL", "NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN"],
-  change_classifier_ai: ["NXQ_AI_CLASSIFIER_URL", "NXQ_AI_CLASSIFIER_TOKEN"],
+  change_classifier_ai: [
+    "NXQ_AI_MODEL_PROVIDER_URL",
+    "NXQ_AI_MODEL_PROVIDER_TOKEN",
+    "NXQ_AI_MODEL_PROVIDER_MODEL",
+    "NXQ_AI_MODEL_PROVIDER_PROTOCOL",
+  ],
   business_build_plan_ai: [
     "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
     "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
