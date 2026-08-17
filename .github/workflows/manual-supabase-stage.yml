@@ -11,6 +11,7 @@ on:
         options:
           - validate_foundation
           - validate_non_ai
+          - validate_zero_key
           - validate_prelaunch
           - validate
           - apply_migrations
@@ -68,7 +69,7 @@ jobs:
         run: npx --no-install supabase db push --dry-run --linked
 
       - name: Verify staging Edge secret names
-        if: inputs.action == 'validate_foundation' || inputs.action == 'validate_non_ai' || inputs.action == 'validate_prelaunch' || inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        if: inputs.action == 'validate_foundation' || inputs.action == 'validate_non_ai' || inputs.action == 'validate_zero_key' || inputs.action == 'validate_prelaunch' || inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
         shell: bash
         run: |
           set -euo pipefail
@@ -77,6 +78,8 @@ jobs:
             node scripts/check-runtime-stage-readiness.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then
             node scripts/check-runtime-stage-readiness.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          elif [ "${{ inputs.action }}" = "validate_zero_key" ]; then
+            node scripts/check-runtime-stage-readiness.mjs --profile=business-zero-key-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           elif [ "${{ inputs.action }}" = "validate_prelaunch" ]; then
             node scripts/check-runtime-stage-readiness.mjs --profile=business-prelaunch --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           else
@@ -84,7 +87,7 @@ jobs:
           fi
 
       - name: Require explicit mutation confirmation
-        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate_prelaunch' && inputs.action != 'validate'
+        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate_zero_key' && inputs.action != 'validate_prelaunch' && inputs.action != 'validate'
         shell: bash
         run: |
           if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING" ]; then

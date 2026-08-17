@@ -6,9 +6,11 @@ Draft PR #11 contains the audited V11 baseline. Commit `71c6f0d` is the last pub
 
 The 2026-08-16 audit adds migration 221 and closes tenant read-model, outbound request, quota-concurrency, structured-change routing, and GitHub App key compatibility gaps. The staging validation that followed stopped safely before mutations because the classifier required a second, nonexistent AI adapter. Migration 222 and classifier runtime v3 remove that duplicate contract: classification and build-plan generation now share one provider-neutral four-secret model configuration, strict structured output, bounded public-HTTPS networking, independent patch validation, and real provider-call readiness evidence.
 
-Local verification is green across all 66 contract validators, 189 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
+Local verification is green across all 67 contract validators, 189 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
 
 The temporary no-key path is intentionally staging-only. Deterministic build planning can continue without the external model, contact-only structured changes remain automated, and ambiguous change requests route to owner review instead of failing. Production still requires a real successful provider call.
+
+The zero-key provider fallback is also explicit and staging-only. Public lead intake may operate without a challenge adapter only when the form does not require a challenge and the runtime environment is staging-like; origin allowlists, global/per-fingerprint quotas, fingerprint hashing, request limits, and the honeypot remain mandatory. External notifications are blocked while in-app notifications continue. Missing malware scanning never claims or downloads a file in staging, and every pending upload remains quarantined. Outside staging, missing lead-challenge and malware adapters fail closed.
 
 No change from this audit has been applied to Supabase, Netlify, GitHub client infrastructure, DNS, billing, or production. Local lifecycle simulations are not external QA evidence.
 
@@ -52,12 +54,13 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
    For an OpenAI Responses configuration, set the URL to the provider's Responses endpoint and the protocol to `openai_responses`. Store the API key only in Supabase Edge secrets; never paste it into chat, source, logs, workflow inputs, or a committed environment file. The selected model must support strict structured outputs.
 
 5. Before the real AI key is available, run **NXQ Manual Supabase Stage** with action `validate_prelaunch`. It links staging, dry-runs migrations, and proves every other launch secret name is present without changing the database.
-6. Run `validate_non_ai` while using the temporary staging fallback. Only after the real provider token is added should `validate` and `apply_all` be allowed to pass. `apply_all` requires confirmation `APPLY-NXQ-SUPABASE-STAGING`; confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
-7. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
-8. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
-9. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.
-10. Start one disposable DENY-path QA run and prove zero infrastructure.
-11. Start disposable APPROVE-path QA runs one at a time until ten strict external runs pass. Do not count local simulations as external evidence.
+6. Run `validate_zero_key` while the challenge, malware-scan, and external-notification providers are intentionally unavailable. This validates the existing public analytics/lead endpoints and fingerprint salt without accepting fake adapter values. `validate_prelaunch` must continue to fail on those six adapter names until real providers are connected.
+7. Run `validate_non_ai` while using the temporary staging fallback. Only after the real provider token is added should `validate` and `apply_all` be allowed to pass. `apply_all` requires confirmation `APPLY-NXQ-SUPABASE-STAGING`; confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
+8. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
+9. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
+10. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.
+11. Start one disposable DENY-path QA run and prove zero infrastructure.
+12. Start disposable APPROVE-path QA runs one at a time until ten strict external runs pass. Do not count local simulations as external evidence.
 
 ## Plug-in-and-launch sequence
 

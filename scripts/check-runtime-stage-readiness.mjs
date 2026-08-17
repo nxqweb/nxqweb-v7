@@ -111,6 +111,19 @@ if (equalSets(expectedPrelaunchSecrets, actualPrelaunchSecrets)) {
   fail("Prelaunch secret profile does not exactly match launch-minus-model-token");
 }
 
+const expectedZeroKeySecrets = [
+  ...runtimeSecretProfiles["business-non-ai-staging"],
+  "NXQ_LEAD_FINGERPRINT_SALT",
+  "NXQ_PUBLIC_ANALYTICS_ENDPOINT",
+  "NXQ_PUBLIC_LEAD_ENDPOINT",
+].sort();
+const actualZeroKeySecrets = [...runtimeSecretProfiles["business-zero-key-staging"]].sort();
+if (equalSets(expectedZeroKeySecrets, actualZeroKeySecrets)) {
+  pass("Zero-key staging requires public runtime wiring without external challenge, malware, or notification adapters");
+} else {
+  fail("Zero-key staging profile must equal non-AI staging plus public endpoints and fingerprint salt");
+}
+
 const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "manual-supabase-stage.yml"), "utf8");
 const workflowProof = [
   'environment: nxq-staging',
@@ -121,6 +134,7 @@ const workflowProof = [
   'edge-function-manifest.mjs --group=verify-jwt',
   'check-runtime-stage-readiness.mjs --profile=business-configured-foundation',
   'check-runtime-stage-readiness.mjs --profile=business-non-ai-staging',
+  'check-runtime-stage-readiness.mjs --profile=business-zero-key-staging',
   'check-runtime-stage-readiness.mjs --profile=business-prelaunch',
   'check-runtime-stage-readiness.mjs --profile=business-external-qa',
   'check-runtime-stage-readiness.mjs --supabase-functions-json=',
@@ -130,6 +144,7 @@ for (const proof of workflowProof) if (!workflow.includes(proof)) fail(`Manual s
 const nonAiDeployGate = 'elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then';
 if (!workflow.includes(nonAiDeployGate)) fail("deploy_functions must use the non-AI staging profile");
 if (!workflow.includes('inputs.action != \'validate_prelaunch\'')) fail("Prelaunch validation must never require mutation confirmation");
+if (!workflow.includes('inputs.action != \'validate_zero_key\'')) fail("Zero-key validation must never require mutation confirmation");
 if (!workflow.includes("else\n            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa")) {
   fail("The strict external-QA profile must remain the fallback for apply_all");
 }

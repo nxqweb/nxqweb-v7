@@ -74,12 +74,13 @@ Deno.serve(async (req) => {
   if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) return response({ ok: false, error: "Unauthorized." }, 401);
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
   const adapterConfigured = Boolean(Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim() && Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim());
+  const deliveryMode = adapterConfigured ? "external_and_in_app" : "in_app_only";
   try {
     const heartbeat = await admin.rpc("record_worker_heartbeat", {
       target_worker_key: workerName,
       target_execution_target: "provider",
       target_status: adapterConfigured ? "healthy" : "degraded",
-      target_metadata: { adapter_configured: adapterConfigured, checked_at: new Date().toISOString() },
+      target_metadata: { adapter_configured: adapterConfigured, delivery_mode: deliveryMode, external_delivery_enabled: adapterConfigured, checked_at: new Date().toISOString() },
       target_last_error: adapterConfigured ? null : "Notification adapter is not configured.",
     });
     if (heartbeat.error) throw new Error(`Notification heartbeat failed: ${heartbeat.error.message}`);
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
         }
         const endpointReady = Boolean(Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim() && Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim());
         if (!endpointReady) {
-          const blockedWrite=await admin.from("notification_deliveries").update({ status: "blocked", last_error: "Notification provider adapter is not configured.", updated_at: new Date().toISOString() }).eq("id", current.id).eq("status","sending");
+          const blockedWrite=await admin.from("notification_deliveries").update({ status: "blocked", last_error: "External notification delivery is disabled until a provider adapter is configured. In-app notifications remain available.", updated_at: new Date().toISOString(), metadata: { ...(current.metadata || {}), delivery_mode: "in_app_only", external_delivery_enabled: false } }).eq("id", current.id).eq("status","sending");
           if(blockedWrite.error)throw new Error(`Notification adapter-block persistence failed: ${blockedWrite.error.message}`);
           blocked++; continue;
         }
@@ -161,10 +162,10 @@ Deno.serve(async (req) => {
       target_worker_key: workerName,
       target_execution_target: "provider",
       target_status: adapterConfigured ? "healthy" : "degraded",
-      target_metadata: { adapter_configured: adapterConfigured, delivered, failed, blocked, deferred, digest_pending: digestPending },
+      target_metadata: { adapter_configured: adapterConfigured, delivery_mode: deliveryMode, external_delivery_enabled: adapterConfigured, delivered, failed, blocked, deferred, digest_pending: digestPending },
       target_last_error: adapterConfigured ? null : "Notification adapter is not configured.",
     });
-    return response({ ok: true, processed: (due.data || []).length, delivered, failed, blocked, deferred, digest_pending: digestPending });
+    return response({ ok: true, mode: deliveryMode, external_delivery_enabled: adapterConfigured, processed: (due.data || []).length, delivered, failed, blocked, deferred, digest_pending: digestPending });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Notification dispatcher failed.";
     await admin.rpc("record_worker_heartbeat", { target_worker_key: workerName, target_execution_target: "provider", target_status: "error", target_metadata: { adapter_configured: adapterConfigured }, target_last_error: message });

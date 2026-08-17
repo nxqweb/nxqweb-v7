@@ -26,6 +26,7 @@ type AdapterResult = {
 
 const headers = { "Content-Type": "application/json" };
 const workerName = "scan-client-file";
+const STAGING_ENVIRONMENTS = new Set(["staging", "stage", "development", "dev", "test", "qa"]);
 
 function secret(name: string) {
   const value = Deno.env.get(name)?.trim();
@@ -108,6 +109,29 @@ Deno.serve(async (req) => {
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false },
   });
+
+  const adapterConfigured = Boolean(
+    Deno.env.get("NXQ_MALWARE_SCAN_ADAPTER_URL")?.trim() &&
+    Deno.env.get("NXQ_MALWARE_SCAN_ADAPTER_TOKEN")?.trim(),
+  );
+  if (!adapterConfigured) {
+    const runtimeEnvironment = (Deno.env.get("NXQ_RUNTIME_ENVIRONMENT") || "").trim().toLowerCase();
+    if (STAGING_ENVIRONMENTS.has(runtimeEnvironment)) {
+      return response({
+        ok: true,
+        mode: "quarantine_only",
+        scanner_configured: false,
+        processed: 0,
+        message: "Malware scanning is unavailable in staging. Pending files remain restricted and are never released.",
+      });
+    }
+    return response({
+      ok: false,
+      mode: "blocked",
+      scanner_configured: false,
+      error: "Malware scanner adapter is required outside staging. No file was claimed or released.",
+    }, 503);
+  }
 
   const claim = await admin.rpc("claim_next_client_file_security_scan", { worker_name: workerName });
   if (claim.error) return response({ ok: false, error: claim.error.message }, 500);
