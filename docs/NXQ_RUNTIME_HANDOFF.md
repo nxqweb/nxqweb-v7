@@ -8,6 +8,8 @@ The 2026-08-16 audit adds migration 221 and closes tenant read-model, outbound r
 
 Local verification is green across all 66 contract validators, 189 migration files, 276 effective `SECURITY DEFINER` functions, 35 Edge functions, security/accessibility checks, 23 failure simulations, and 10 deterministic lifecycle replays.
 
+The temporary no-key path is intentionally staging-only. Deterministic build planning can continue without the external model, contact-only structured changes remain automated, and ambiguous change requests route to owner review instead of failing. Production still requires a real successful provider call.
+
 No change from this audit has been applied to Supabase, Netlify, GitHub client infrastructure, DNS, billing, or production. Local lifecycle simulations are not external QA evidence.
 
 ## What the repository now enforces
@@ -28,10 +30,10 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
    - `SUPABASE_ACCESS_TOKEN`
    - `SUPABASE_PROJECT_REF`
    - `SUPABASE_DB_PASSWORD`
-4. Add the Edge secret names required by `business-external-qa` to the staging Supabase project. `NXQ_RUNTIME_ENVIRONMENT` must have the value `staging`. Print the exact names without values with:
+4. Add the Edge secret names required by `business-prelaunch` to the staging Supabase project. This profile checks every Business launch secret except `NXQ_AI_MODEL_PROVIDER_TOKEN`. `NXQ_RUNTIME_ENVIRONMENT` must have the value `staging`. Print the exact names without values with:
 
    ```bash
-   node scripts/edge-function-manifest.mjs --profile=business-external-qa
+   node scripts/edge-function-manifest.mjs --profile=business-prelaunch
    ```
 
    The local machine check is authoritative for manifest/auth consistency:
@@ -49,13 +51,24 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
 
    For an OpenAI Responses configuration, set the URL to the provider's Responses endpoint and the protocol to `openai_responses`. Store the API key only in Supabase Edge secrets; never paste it into chat, source, logs, workflow inputs, or a committed environment file. The selected model must support strict structured outputs.
 
-5. Run **NXQ Manual Supabase Stage** with action `validate`. It links staging, dry-runs migrations, and checks secret names without changing the database.
-6. Only after `validate` passes, run the same workflow with `apply_all` and confirmation `APPLY-NXQ-SUPABASE-STAGING`. Confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
+5. Before the real AI key is available, run **NXQ Manual Supabase Stage** with action `validate_prelaunch`. It links staging, dry-runs migrations, and proves every other launch secret name is present without changing the database.
+6. Run `validate_non_ai` while using the temporary staging fallback. Only after the real provider token is added should `validate` and `apply_all` be allowed to pass. `apply_all` requires confirmation `APPLY-NXQ-SUPABASE-STAGING`; confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
 7. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
 8. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
 9. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.
 10. Start one disposable DENY-path QA run and prove zero infrastructure.
 11. Start disposable APPROVE-path QA runs one at a time until ten strict external runs pass. Do not count local simulations as external evidence.
+
+## Plug-in-and-launch sequence
+
+When Netlify production deployments resume and the model-provider token is available:
+
+1. Add or replace only `NXQ_AI_MODEL_PROVIDER_TOKEN` in protected Supabase Edge secrets. Never place it in GitHub, chat, source, logs, or workflow inputs.
+2. Run `validate`; it must pass the strict `business-external-qa` profile.
+3. Run `apply_all` with the exact staging confirmation, then configure staging runtime routes from Owner Launch Readiness.
+4. Prove a real provider call and healthy worker/provider evidence.
+5. Complete one DENY-path run and ten consecutive APPROVE-path external runs without duplicate infrastructure, crossed tenant data, or manual rescue.
+6. Review the production change, provide explicit owner signoff, and make a separate production launch decision. No earlier step merges or publishes production.
 
 ## Production remains blocked
 
