@@ -7,7 +7,7 @@ type ProviderProtocol = "openai_responses" | "openai_chat_completions";
 type ClassifierResult = { route: "safe_patch" | "needs_info" | "owner_review"; confidence: number; patch?: JsonRecord; question?: string; reason?: string };
 
 const workerName = "classify-business-change-request";
-const workerVersion = "v3-unified-model-provider";
+const workerVersion = "v4-staging-owner-review-fallback";
 const headers = { "Content-Type": "application/json" };
 const supportedPatchKeys = new Set(["contact_phone", "contact_email", "service_area", "goals", "desired_style", "about", "add_services", "remove_services"]);
 
@@ -223,6 +223,8 @@ Deno.serve(async (request) => {
   const providerModel = optionalSecret("NXQ_AI_MODEL_PROVIDER_MODEL");
   const protocolRaw = optionalSecret("NXQ_AI_MODEL_PROVIDER_PROTOCOL");
   const providerConfigured = Boolean(providerUrl && providerToken && providerModel && protocolRaw);
+  const runtimeEnvironment = optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();
+  const stagingOnlyFallbackAllowed = new Set(["staging", "stage", "development", "dev", "test", "qa"]).has(runtimeEnvironment);
   let providerCallAttempted = false;
   let providerCallSucceeded = false;
   let job: Job | null = null;
@@ -253,6 +255,13 @@ Deno.serve(async (request) => {
     const deterministic = deterministicResult(changeRes.data.requested_payload);
     let result: ClassifierResult;
     if (deterministic) result = deterministic;
+    else if (!providerConfigured && stagingOnlyFallbackAllowed) {
+      result = {
+        route: "owner_review",
+        confidence: 1,
+        reason: "External AI classification is unavailable in staging, so NXQ safely routed this request to owner review.",
+      };
+    }
     else {
       providerCallAttempted = true;
       result = await classify({ request_type: changeRes.data.request_type, title: changeRes.data.title, description: changeRes.data.description, priority: changeRes.data.priority, risk_level: changeRes.data.risk_level, requested_payload: changeRes.data.requested_payload }, providerUrl, providerToken, providerModel, protocolRaw);
@@ -267,8 +276,20 @@ Deno.serve(async (request) => {
         target_last_error: null,
       });
     }
-    const classifier = deterministic ? "deterministic-v1" : "model-provider-v3";
-    const evidence = { classifier, confidence: result.confidence, reason: result.reason || null, classified_at: new Date().toISOString(), routing_authority: "database_trigger" };
+    const classifier = deterministic
+      ? "deterministic-v1"
+      : !providerConfigured && stagingOnlyFallbackAllowed
+        ? "staging-owner-review-v1"
+        : "model-provider-v3";
+    const evidence = {
+      classifier,
+      confidence: result.confidence,
+      reason: result.reason || null,
+      provider_configured: providerConfigured,
+      staging_fallback: classifier === "staging-owner-review-v1",
+      classified_at: new Date().toISOString(),
+      routing_authority: "database_trigger",
+    };
 
     if (result.route === "safe_patch") {
       const patch = validatePatch(result.patch);
