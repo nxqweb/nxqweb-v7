@@ -6,6 +6,7 @@ const preflight = read("scripts/check-runtime-stage-readiness.mjs");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
 const config = read("supabase/config.toml");
 const migration = read("supabase/migrations/189_runtime_stage_bootstrap_and_provider_truth.sql");
+const ownerRuntimeReadRepair = read("supabase/migrations/223_owner_runtime_dashboard_read_grants.sql");
 const bootstrap = read("supabase/functions/bootstrap-runtime-vault/index.ts");
 const notifications = read("supabase/functions/dispatch-notifications/index.ts");
 const storefront = read("supabase/functions/provision-storefront/index.ts");
@@ -34,6 +35,7 @@ const checks = [
   ["Notification worker records truthful adapter health and in-app-only fallback", notifications.includes("adapter_configured: adapterConfigured") && notifications.includes("external_delivery_enabled: adapterConfigured") && notifications.includes('deliveryMode = adapterConfigured ? "external_and_in_app" : "in_app_only"') && notifications.includes('target_worker_key: workerName') && notifications.includes('target_status: adapterConfigured ? "healthy" : "degraded"')],
   ["Owner runtime bootstrap requires explicit confirmation and staging lock", ownerUi.includes("CONFIGURE-NXQ-STAGING-RUNTIME") && bootstrap.includes("requiredConfirmation") && bootstrap.includes("owner_users") && bootstrap.includes('runtimeEnvironment !== "staging"')],
   ["Owner bootstrap cannot silently claim production work", bootstrap.includes("production_changed: false") && ownerUi.includes("does not create a client")],
+  ["Owner runtime dashboards have read-only table grants behind owner RLS", ["launch_readiness_checks", "nxq_provider_connections"].every((table) => ownerRuntimeReadRepair.includes(`grant select on table public.${table} to authenticated`)) && ownerRuntimeReadRepair.includes("create policy owner_read_launch_readiness") && ownerRuntimeReadRepair.includes("create policy owner_read_provider_connections") && ownerRuntimeReadRepair.includes("ou.auth_user_id = auth.uid()") && !ownerRuntimeReadRepair.includes("grant insert") && !ownerRuntimeReadRepair.includes("grant update") && !ownerRuntimeReadRepair.includes("grant delete")],
   ["One-command release and runtime checks are wired", pkg.includes('"test:runtime-stage"') && pkg.includes('"test:migrations"') && pkg.includes('"test:release"') && ci.includes("Wave 31 runtime staging contract")],
 ];
 
