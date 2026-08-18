@@ -8,6 +8,7 @@ const infrastructureWorker = read("supabase/functions/provision-project-infrastr
 const approval = read("supabase/migrations/180_single_owner_website_setup_decision.sql");
 const denial = read("supabase/migrations/129_hard_stop_denied_client_pipeline.sql");
 const billingQaRepair = read("supabase/migrations/224_skip_qa_clients_in_billing_subscription_sync.sql");
+const denyReadiness = read("supabase/migrations/225_publish_deny_qa_readiness_evidence.sql");
 const ci = read(".github/workflows/ci-mega-extended.yml");
 
 const startFunction = migration.slice(
@@ -24,6 +25,7 @@ const checks = [
   ["Previously known QA storefront is promoted to client-level QA isolation", migration.includes("from public.commerce_storefront_provisioning p") && migration.includes("p.qa_only=true")],
   ["QA clients are database-enforced as non-billable", migration.includes("enforce_qa_client_nonbillable") && migration.includes("QA-only clients are permanently non-billable")],
   ["Automatic billing subscription sync skips permanent QA clients", billingQaRepair.includes("create or replace function public.sync_client_billing_subscription") && billingQaRepair.includes("if coalesce(new.qa_only, false) then") && billingQaRepair.includes("return new;")],
+  ["Strict DENY QA evidence reaches launch readiness", denyReadiness.includes("refresh_deny_flow_readiness_after_run") && denyReadiness.includes("derived_database_evidence_v2") && denyReadiness.includes("billing_artifacts_zero") && denyReadiness.includes("external_notifications_zero") && denyReadiness.includes("deny_flow_passed")],
   ["All billing artifact tables reject QA clients", ["payment_records", "billing_subscriptions", "billing_payment_attempts", "billing_notification_events", "billing_provider_events"].every((name) => migration.includes(`block_qa_${name}`))],
   ["External QA customer notifications are blocked", migration.includes("block_qa_external_notification") && migration.includes("new.channel <> 'in_app'")],
   ["Owner QA table access is read-only", migration.includes("create policy owner_read_qa_lifecycle_runs") && migration.includes("grant select on table public.qa_lifecycle_runs to authenticated") && !migration.includes("grant select,insert,update,delete on table public.qa_lifecycle_runs to authenticated")],
