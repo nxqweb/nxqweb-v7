@@ -1,6 +1,11 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const jsonHeaders = { "Content-Type": "application/json" };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 const requiredConfirmation = "CONFIGURE-NXQ-STAGING-RUNTIME";
 
 function response(body: unknown, status = 200) {
@@ -40,6 +45,7 @@ const providerRequirements: Record<string, string[]> = {
 };
 
 Deno.serve(async (request) => {
+  if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return response({ ok: false, error: "POST required." }, 405);
 
   const supabaseUrl = requiredSecret("SUPABASE_URL");
