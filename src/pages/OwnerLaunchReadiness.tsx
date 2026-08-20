@@ -28,6 +28,32 @@ type QaRun = {
   completed_at: string | null;
 };
 
+const blockerGuidance: Record<string, string> = {
+  notification_pipeline_ready: "Add the notification adapter URL/token later, then run a verified staging dispatch heartbeat.",
+  change_classifier_ready: "Add the model-provider token later and complete one successful staging classification.",
+  business_build_plan_ai_ready: "Add the model-provider token later and complete one validated AI-enriched build plan.",
+  business_template_ready: "Verify the private template repository and record a successful GitHub App access check.",
+  provider_health_pipeline_ready: "Add the remaining provider adapter secrets and record a fresh provider-health heartbeat.",
+  domain_flow_passed: "Run the non-production domain/SSL reconciliation simulation and preserve its evidence.",
+  maintenance_passed: "Run staging maintenance plus restore verification without changing production.",
+  ten_clean_runs: "Complete ten consecutive monitored disposable lifecycle runs with no safety or isolation failures.",
+  backup_restore_passed: "Complete a staging backup/restore drill against disposable evidence.",
+  workers_deployed: "Deploy the exact staging Edge Function manifest, then verify complete remote coverage.",
+  migrations_applied: "Apply the pending staging migrations and verify the latest migration sentinel.",
+  vault_configured: "Configure the protected staging runtime routes and verify every required Vault route name.",
+  file_security_pipeline_ready: "Add the malware-scanner adapter URL/token later and complete a clean staging scan heartbeat.",
+  storage_isolation_passed: "Run the storage cross-tenant denial suite and save the signed test result.",
+  rls_isolation_passed: "Run the database cross-tenant RLS denial suite and save the signed test result.",
+  business_seo_publish_lane_ready: "Complete a staging SEO publish-lane heartbeat without touching production.",
+  owner_launch_signoff: "This unlocks only after every other required check is ready; then record the explicit owner signoff.",
+};
+
+function nextAction(check: Check) {
+  if (check.status === "ready") return "Verified by current evidence.";
+  if (check.status === "not_applicable") return "Not required in the current launch mode.";
+  return blockerGuidance[check.check_key] || "Open the evidence details, complete the named staging proof, and refresh readiness.";
+}
+
 export function OwnerLaunchReadiness() {
   const [checks, setChecks] = useState<Check[]>([]);
   const [qaRuns, setQaRuns] = useState<QaRun[]>([]);
@@ -35,6 +61,7 @@ export function OwnerLaunchReadiness() {
   const [actionMessage, setActionMessage] = useState("");
   const [startingQa, setStartingQa] = useState<"approve" | "deny" | null>(null);
   const [bootstrappingRuntime, setBootstrappingRuntime] = useState(false);
+  const [approvingLaunch, setApprovingLaunch] = useState(false);
 
   async function load() {
     if (!isSupabaseConfigured || !supabase) return;
@@ -115,6 +142,32 @@ export function OwnerLaunchReadiness() {
     await load();
   }
 
+  async function approveLaunchReadiness() {
+    if (!supabase) return;
+    const requiredConfirmation = "APPROVE-NXQ-AUTONOMOUS-LAUNCH";
+    const confirmation = window.prompt(
+      `Record your final NXQ autonomous-launch readiness approval?\n\nThis records the human governance signoff only. It does not merge code, deploy production, change domains, create billing, or contact customers. If any required readiness check later regresses, this approval is automatically invalidated.\n\nType ${requiredConfirmation} exactly to continue.`
+    );
+    if (confirmation === null) return;
+    if (confirmation !== requiredConfirmation) {
+      setError(`Launch approval refused. Type ${requiredConfirmation} exactly.`);
+      return;
+    }
+    setApprovingLaunch(true);
+    setError("");
+    setActionMessage("");
+    const result = await supabase.rpc("owner_approve_nxq_launch_readiness", {
+      target_confirmation: confirmation,
+    });
+    setApprovingLaunch(false);
+    if (result.error) {
+      setError(result.error.message);
+      return;
+    }
+    setActionMessage("Final owner launch-readiness approval recorded. No production deployment was performed.");
+    await load();
+  }
+
   useEffect(() => {
     void load();
   }, []);
@@ -123,6 +176,10 @@ export function OwnerLaunchReadiness() {
   const ready = required.filter((check) => check.status === "ready").length;
   const blocked = required.filter((check) => check.status === "blocked" || check.status === "unknown").length;
   const pct = required.length ? Math.round((ready / required.length) * 100) : 0;
+  const ownerSignoff = required.find((check) => check.check_key === "owner_launch_signoff");
+  const allPrerequisitesReady = required
+    .filter((check) => check.check_key !== "owner_launch_signoff")
+    .every((check) => check.status === "ready");
 
   return (
     <main className="nxq-page">
@@ -167,6 +224,33 @@ export function OwnerLaunchReadiness() {
         </section>
 
         <section className="panel panel-wide">
+          <div className="panel-title panel-title-row">
+            <div className="panel-title">
+              <Rocket size={20} />
+              <div>
+                <h2>Final owner launch signoff</h2>
+                <p className="subtle">
+                  {ownerSignoff?.status === "ready"
+                    ? "Your final governance approval is recorded and remains valid while every prerequisite stays ready."
+                    : allPrerequisitesReady
+                      ? "Every other required check is ready. Your explicit final approval is now available."
+                      : "This unlocks only after every other required readiness check is ready."}
+                </p>
+              </div>
+            </div>
+            <button
+              className="icon-btn"
+              type="button"
+              disabled={!allPrerequisitesReady || ownerSignoff?.status === "ready" || approvingLaunch}
+              onClick={() => void approveLaunchReadiness()}
+            >
+              <Rocket size={16} /> {approvingLaunch ? "Recording…" : ownerSignoff?.status === "ready" ? "Launch readiness approved" : "Approve autonomous launch readiness"}
+            </button>
+          </div>
+          <p className="subtle">This records governance evidence only. It never merges code or deploys production.</p>
+        </section>
+
+        <section className="panel panel-wide">
           {checks.map((check) => (
             <article className="owner-message-card" key={check.id}>
               <div className="panel-title panel-title-row">
@@ -175,6 +259,7 @@ export function OwnerLaunchReadiness() {
                   <div>
                     <strong>{check.title}</strong>
                     <p className="subtle">{check.category} · {check.check_key} · {check.required ? "required" : "optional"}</p>
+                    <p className="subtle"><strong>Next:</strong> {nextAction(check)}</p>
                   </div>
                 </div>
                 <span className="status-summary">{check.status.replaceAll("_", " ")}</span>

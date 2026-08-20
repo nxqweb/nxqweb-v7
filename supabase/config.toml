@@ -32,6 +32,8 @@ verify_jwt = true
 verify_jwt = false
 [functions.ingest-billing-provider-event]
 verify_jwt = false
+[functions.ingest-stripe-webhook]
+verify_jwt = false
 [functions.ingest-business-analytics]
 verify_jwt = false
 [functions.ingest-business-lead]

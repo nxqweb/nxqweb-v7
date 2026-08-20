@@ -4,9 +4,9 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type Variant = { id: string; title: string; price: number; available_quantity: number; inventory_policy: string };
 type Product = { id: string; name: string; slug: string; short_description?: string | null; description?: string | null; base_price: number; compare_at_price?: number | null; image_url?: string | null; variants: Variant[] };
-type StoreData = { store: { name: string; slug: string; currency: string; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: Product[] };
+type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: Product[] };
 type CartItem = { product: Product; variant: Variant; quantity: number };
-type OrderResult = { order_number: string; total: number; currency: string; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
+type OrderResult = { order_number: string; total: number; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
 
 function money(value: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(value || 0));
@@ -30,7 +30,7 @@ export function PublicCommerceStorefront() {
 
   async function load() {
     if (!isSupabaseConfigured || !supabase) { setError("Storefront is unavailable."); setLoading(false); return; }
-    const result = await supabase.rpc("get_public_commerce_storefront", { store_slug_value: slug });
+    const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);
@@ -54,7 +54,7 @@ export function PublicCommerceStorefront() {
   async function placeOrder() {
     if (!supabase || cart.length === 0) return;
     setBusy(true); setError("");
-    const result = await supabase.rpc("create_public_direct_payment_order", {
+    const result = await supabase.rpc("create_public_stripe_ready_direct_payment_order", {
       store_slug_value: slug,
       items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
       customer_payload: {
@@ -83,6 +83,7 @@ export function PublicCommerceStorefront() {
         <p>Your total is <strong>{money(order.total, order.currency)}</strong>.</p>
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
         <div className="settings-grid">
+          {order.stripe_payment_link ? <a className="wide-btn" href={order.stripe_payment_link} target="_blank" rel="noreferrer">Continue to Stripe</a> : null}
           {order.paypal_url ? <a className="wide-btn" href={order.paypal_url} target="_blank" rel="noreferrer">Pay with PayPal</a> : null}
           {order.venmo_url ? <a className="wide-btn" href={order.venmo_url} target="_blank" rel="noreferrer">Pay with Venmo</a> : null}
         </div>

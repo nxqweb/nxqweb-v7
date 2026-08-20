@@ -15,6 +15,7 @@ type LiveSettings = {
   store_name: string;
   store_slug: string;
   status: string;
+  stripe_payment_link?: string | null;
   paypal_url?: string | null;
   venmo_url?: string | null;
   payment_note?: string | null;
@@ -25,6 +26,7 @@ type LiveSettings = {
 export function ClientCommerceLiveStore() {
   const [data, setData] = useState<LiveSettings | null>(null);
   const [storeName, setStoreName] = useState("");
+  const [stripePaymentLink, setStripePaymentLink] = useState("");
   const [paypalUrl, setPaypalUrl] = useState("");
   const [venmoUrl, setVenmoUrl] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
@@ -46,12 +48,13 @@ export function ClientCommerceLiveStore() {
     }
     const session = await supabase.auth.getSession();
     if (!session.data.session) { window.location.replace("/portal/login"); return; }
-    const result = await supabase.rpc("get_my_live_storefront_settings");
+    const result = await supabase.rpc("get_my_stripe_ready_storefront_settings");
     if (result.error) setError(`Live store failed to load: ${result.error.message}`);
     else {
       const next = result.data as LiveSettings;
       setData(next);
       setStoreName(next.store_name || "");
+      setStripePaymentLink(next.stripe_payment_link || "");
       setPaypalUrl(next.paypal_url || "");
       setVenmoUrl(next.venmo_url || "");
       setPaymentNote(next.payment_note || "");
@@ -63,10 +66,11 @@ export function ClientCommerceLiveStore() {
   async function save(makeLive: boolean) {
     if (!supabase) return;
     setBusy("settings"); setError(""); setMessage("");
-    const result = await supabase.rpc("save_my_live_storefront_settings", {
+    const result = await supabase.rpc("save_my_stripe_ready_storefront_settings", {
       store_name_value: storeName,
-      paypal_url_value: paypalUrl || null,
-      venmo_url_value: venmoUrl || null,
+      stripe_payment_link_value: stripePaymentLink || null,
+      legacy_paypal_url_value: paypalUrl || null,
+      legacy_venmo_url_value: venmoUrl || null,
       payment_note_value: paymentNote || null,
       make_live: makeLive,
     });
@@ -107,18 +111,19 @@ export function ClientCommerceLiveStore() {
 
       {!loading && data ? <>
         <section className="panel panel-wide">
-          <div className="panel-title"><Save size={20} /><div><h2>Store and direct payments</h2><p className="subtle">Customers place an order here, then pay directly to your public PayPal or Venmo business link.</p></div></div>
+          <div className="panel-title"><Save size={20} /><div><h2>Store and payment handoff</h2><p className="subtle">Stripe is the preferred future provider. Public payment links stay disabled until the business has its own verified account and explicitly enables them.</p></div></div>
           <div className="setup-form-grid">
             <label><span>Store name</span><input className="auth-input" value={storeName} onChange={(e) => setStoreName(e.target.value)} /></label>
-            <label><span>PayPal or PayPal.Me link</span><input className="auth-input" placeholder="https://paypal.me/yourbusiness" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
-            <label><span>Venmo business profile link</span><input className="auth-input" placeholder="https://venmo.com/u/yourbusiness" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
+            <label><span>Stripe Payment Link (preferred)</span><input className="auth-input" placeholder="https://buy.stripe.com/..." value={stripePaymentLink} onChange={(e) => setStripePaymentLink(e.target.value)} /></label>
+            <label><span>Legacy PayPal link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
+            <label><span>Legacy Venmo link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
             <label><span>Payment instructions</span><input className="auth-input" placeholder="Include the order number in your payment note." value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} /></label>
           </div>
           <div className="settings-grid">
             <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(false)} type="button">Save private draft</button>
             <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(true)} type="button">Open storefront</button>
           </div>
-          <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a PayPal/Venmo password, bank account, API secret, or login code here. Only public payment links belong in these fields.</p>
+          <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a Stripe secret key, webhook secret, password, bank account, or login code here. Only a public Stripe Payment Link belongs in this form.</p>
           {data.status === "active" ? <a className="wide-btn" href={liveUrl} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open live storefront</a> : null}
         </section>
 
