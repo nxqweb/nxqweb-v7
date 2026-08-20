@@ -332,10 +332,19 @@ function stagingFallback(request: BuildPlanRequest) {
     : style.includes("green") ? "forest_emerald"
     : style.includes("purple") || style.includes("violet") ? "royal_violet"
     : "midnight_blue";
-  const clip = (value: string, max: number) => value.replace(/\s+/g, " ").trim().slice(0, max).trim();
+  const clip = (value: string, max: number) => {
+    const normalized = value.replace(/\s+/g, " ").trim();
+    if (normalized.length <= max) return normalized;
+    const candidate = normalized.slice(0, max + 1);
+    const boundary = candidate.lastIndexOf(" ");
+    const clipped = boundary >= Math.floor(max * 0.7)
+      ? candidate.slice(0, boundary)
+      : normalized.slice(0, max);
+    return clipped.replace(/[-,:;/]+$/g, "").trim();
+  };
   const shortType = clip(t, 48) || "local service";
   const shortName = clip(n, 52) || "Local Business";
-  const areaText = a ? clip(` across ${a}`, 110) : " in the local service area";
+  const areaText = a ? ` across ${clip(a, 102)}` : " in the local service area";
 
   return {
     schema_version: schemaVersion,

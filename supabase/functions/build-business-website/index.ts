@@ -219,6 +219,10 @@ async function upsertRepoFile(owner: string, repo: string, branch: string, path:
   if (lookup.ok) {
     const existing = await readJson(lookup);
     if (typeof existing?.sha === "string") sha = existing.sha;
+    const existingContent = typeof existing?.content === "string" ? existing.content.replace(/\s/g, "") : "";
+    if (existingContent && existingContent === base64Content.replace(/\s/g, "")) {
+      return { unchanged: true, content: { sha } };
+    }
   } else if (lookup.status !== 404) {
     throw new Error(`GitHub file lookup failed for ${path} (${lookup.status}).`);
   }
@@ -239,6 +243,17 @@ function encodeBase64(value: string) {
 
 function clean(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function clipText(value: string, max: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= max) return normalized;
+  const candidate = normalized.slice(0, max + 1);
+  const boundary = candidate.lastIndexOf(" ");
+  const clipped = boundary >= Math.floor(max * 0.7)
+    ? candidate.slice(0, boundary)
+    : normalized.slice(0, max);
+  return clipped.replace(/[-,:;/]+$/g, "").trim();
 }
 
 function record(value: unknown): JsonRecord {
@@ -326,7 +341,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
     },
     seo: {
       title: clean(strategySeo.title) || `${businessName} | ${businessType}`,
-      description: clean(strategySeo.description) || `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),
+      description: clipText(clean(strategySeo.description) || `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`, 160),
       keywords: textList(strategySeo.keywords, 10).length ? textList(strategySeo.keywords, 10) : (industryPreset?.seoKeywords || []),
     },
     design: {
@@ -445,13 +460,21 @@ async function findBranchDeployState(siteId: string, branch: string, expectedCom
   };
 }
 
-function providerCapacityBlockReason(deploy: { state: string; createdAt: string; updatedAt: string }) {
-  if (["ready", "error"].includes(deploy.state)) return "";
-  const started = Date.parse(deploy.createdAt || deploy.updatedAt);
+function providerBillingBlockReason(message: string) {
+  return /credit usage exceeded|operational credits|production deploys .* paused|account.*credit/i.test(message)
+    ? "EXTERNAL_PROVIDER_BILLING_BLOCKER: Netlify deployment capacity is paused by account credits. NXQ preserved the existing repository, safe branch, generated files, and exact commit and will retry after the provider account resumes."
+    : "";
+}
+
+function providerCapacityBlockReason(deploy: { state: string; createdAt: string; updatedAt: string } | null, waitStartedAt: string) {
+  if (deploy && ["ready", "error"].includes(deploy.state)) return "";
+  const started = Date.parse(deploy?.createdAt || deploy?.updatedAt || waitStartedAt);
   if (!Number.isFinite(started)) return "";
   const ageMs = Date.now() - started;
   if (ageMs < 20 * 60 * 1000) return "";
-  return `EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained ${deploy.state || "pending"} for more than 20 minutes. NXQ will keep the exact commit queued and retry automatically when provider capacity resumes.`;
+  return deploy
+    ? `EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained ${deploy.state || "pending"} for more than 20 minutes. NXQ will keep the exact commit queued and retry automatically when provider capacity resumes.`
+    : "EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify has not created a preview deploy for the exact commit after 20 minutes. Provider builds may be paused by account credits or capacity. NXQ preserved the repository, safe branch, generated files, and exact commit and will retry automatically.";
 }
 
 async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
@@ -556,6 +579,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   await updateStep(admin, runId, "run_quality_checks", "completed", { ...quality, expected_preview_commit_sha: expectedPreviewCommitSha });
 
   await updateStep(admin, runId, "prepare_preview_request", "running");
+  const previewRequestedAt = new Date().toISOString();
   await assertProviderMutationAllowed(admin, job);
   await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);
   let build = await findExistingBranchDeploy(configRes.data.netlify_site_id, sourceBranch, expectedPreviewCommitSha);
@@ -564,7 +588,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     const started = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
     build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };
   }
-  await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha });
+  await updateStep(admin, runId, "prepare_preview_request", "completed", { branch: sourceBranch, netlify_build_id: build?.id || null, expected_preview_commit_sha: expectedPreviewCommitSha, preview_requested_at: previewRequestedAt });
   await admin.from("website_automation_runs").update({ status: "testing", current_step: "preview_building" }).eq("id", runId);
 
   const queued = await admin.rpc("enqueue_automation_job", {
@@ -572,7 +596,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     target_project_id: job.project_id,
     target_job_type: "website_check_preview",
     target_idempotency_key: `website-run:${runId}:check-preview:v1`,
-    target_payload: { execution_target: "edge", website_automation_run_id: runId, source_branch: sourceBranch, netlify_site_id: configRes.data.netlify_site_id, expected_preview_commit_sha: expectedPreviewCommitSha },
+    target_payload: { execution_target: "edge", website_automation_run_id: runId, source_branch: sourceBranch, netlify_site_id: configRes.data.netlify_site_id, expected_preview_commit_sha: expectedPreviewCommitSha, preview_requested_at: previewRequestedAt },
     target_run_after: new Date(Date.now() + 30_000).toISOString(),
     target_priority: 45,
   });
@@ -589,12 +613,22 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
   const expectedPreviewCommitSha = String(payload.expected_preview_commit_sha || "");
   if (!runId || !branch || !siteId || !expectedPreviewCommitSha) throw new Error("Preview check job is missing run, branch, site id, or expected commit.");
 
+  let previewRequestedAt = String(payload.preview_requested_at || "");
+  if (!previewRequestedAt) {
+    const previewStep = await admin.from("website_automation_steps")
+      .select("completed_at,started_at,created_at")
+      .eq("run_id", runId)
+      .eq("step_key", "prepare_preview_request")
+      .maybeSingle();
+    previewRequestedAt = String(previewStep.data?.completed_at || previewStep.data?.started_at || previewStep.data?.created_at || "");
+  }
+
   const deployState = await findBranchDeployState(siteId, branch, expectedPreviewCommitSha);
   if (deployState?.state === "error") {
     throw new Error(`Netlify branch preview failed: ${deployState.errorMessage || "Unknown build error"}`);
   }
   if (!deployState || deployState.state !== "ready") {
-    const capacityReason = deployState ? providerCapacityBlockReason(deployState) : "";
+    const capacityReason = providerCapacityBlockReason(deployState, previewRequestedAt);
     const deferred = await admin.rpc("defer_external_automation_job_v2", {
       target_job_id: job.id,
       target_lock_token: job.lock_token,
@@ -687,6 +721,20 @@ Deno.serve(async (request) => {
     return response({ ok: true, job_id: job.id, ...result });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Business website build failure.";
+    const billingBlocker = providerBillingBlockReason(message);
+    if (billingBlocker) {
+      const deferred = await admin.rpc("defer_external_automation_job_v2", {
+        target_job_id: job.id,
+        target_lock_token: job.lock_token,
+        worker_name: workerName,
+        target_reason: billingBlocker,
+        retry_after: "24 hours",
+      });
+      if (!deferred.error) {
+        return response({ ok: true, job_id: job.id, deferred: true, provider_blocked: true, blocker: billingBlocker });
+      }
+      console.error("Failed to defer Netlify billing blocker", deferred.error.message);
+    }
     const failed = await admin.rpc("fail_external_automation_job_v2", {
       target_job_id: job.id,
       target_lock_token: job.lock_token,
