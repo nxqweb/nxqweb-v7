@@ -4,6 +4,7 @@ const entry = (name, verifyJwt, authBoundary) => Object.freeze({ name, verifyJwt
 
 export const edgeFunctionManifest = Object.freeze([
   entry("apply-business-change-request", false, "worker-token"),
+  entry("audit-prospect-website", true, "owner-jwt"),
   entry("bootstrap-runtime-vault", true, "owner-jwt"),
   entry("build-business-location-pages", false, "worker-token"),
   entry("build-business-seo-artifacts", false, "worker-token"),
@@ -15,12 +16,15 @@ export const edgeFunctionManifest = Object.freeze([
   entry("check-provider-health", false, "worker-token"),
   entry("classify-business-change-request", false, "worker-token"),
   entry("dispatch-notifications", false, "worker-token"),
+  entry("discover-sales-prospects", true, "owner-jwt"),
+  entry("draft-sales-outreach-ai", true, "owner-jwt"),
   entry("execute-preview-netlify-build", true, "owner-jwt"),
   entry("execute-production-netlify-build", true, "owner-jwt"),
   entry("generate-business-build-plan", false, "adapter-token"),
   entry("ingest-billing-provider-event", false, "billing-adapter-token"),
   entry("ingest-business-analytics", false, "public-ingest-key"),
   entry("ingest-business-lead", false, "public-form-key"),
+  entry("ingest-stripe-webhook", false, "stripe-signature"),
   entry("prepare-build-plan", false, "trusted-worker-or-owner"),
   entry("prepare-preview-deployment-execution", true, "owner-jwt"),
   entry("prepare-production-deployment-execution", true, "owner-jwt"),

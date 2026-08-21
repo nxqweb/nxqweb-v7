@@ -16,6 +16,7 @@
     "test:families": "node scripts/validate-autonomy-ops-wave30-contract.mjs",
     "test:runtime-stage": "node scripts/check-runtime-stage-readiness.mjs",
     "test:migrations": "node scripts/check-migration-integrity.mjs",
+    "test:growth": "node scripts/validate-growth-and-outreach-contract.mjs",
     "test:release": "node scripts/run-release-gate.mjs"
   },
   "dependencies": {

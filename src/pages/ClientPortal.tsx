@@ -1269,6 +1269,10 @@ export function ClientPortal() {
               Settings
             </a>
 
+            <a className="icon-btn" href="/client/rewards">
+              Rewards
+            </a>
+
             <button className="icon-btn" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
             </button>
@@ -1913,7 +1917,6 @@ export function ClientPortal() {
     </main>
   );
 }
-
 
 
 

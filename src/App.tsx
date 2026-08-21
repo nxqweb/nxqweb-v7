@@ -39,6 +39,7 @@ const ClientLaunchJourneyPage = named(() => import("./pages/ClientLaunchJourney"
 const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
 const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
 const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
+const ClientRewards = named(() => import("./pages/ClientRewards"), "ClientRewards");
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
 const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
@@ -52,6 +53,7 @@ const OwnerCommerceUsage = named(() => import("./pages/OwnerCommerceUsage"), "Ow
 const OwnerDeployments = named(() => import("./pages/OwnerDeployments"), "OwnerDeployments");
 const OwnerExceptionCenter = named(() => import("./pages/OwnerExceptionCenter"), "OwnerExceptionCenter");
 const OwnerFiles = named(() => import("./pages/OwnerFiles"), "OwnerFiles");
+const OwnerGrowthCenter = named(() => import("./pages/OwnerGrowthCenter"), "OwnerGrowthCenter");
 const OwnerLaunchReadiness = named(() => import("./pages/OwnerLaunchReadiness"), "OwnerLaunchReadiness");
 const OwnerPlanChanges = named(() => import("./pages/OwnerPlanChanges"), "OwnerPlanChanges");
 const OwnerPortal = named(() => import("./pages/OwnerPortal"), "OwnerPortal");
@@ -90,6 +92,7 @@ function AppRoutes() {
   if (path === "/owner/providers") return <OwnerProtectedRoute><OwnerProviderHealth /></OwnerProtectedRoute>;
   if (path === "/owner/automation-health") return <OwnerProtectedRoute><OwnerAutomationHealth /></OwnerProtectedRoute>;
   if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;
+  if (path === "/owner/growth") return <OwnerProtectedRoute><OwnerGrowthCenter /></OwnerProtectedRoute>;
   if (path === "/owner/sales") return <OwnerProtectedRoute><OwnerSalesPipeline /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
@@ -104,6 +107,7 @@ function AppRoutes() {
   if (path === "/client/files") return <ClientFiles />;
   if (path === "/client/notifications") return <ClientNotificationPreferences />;
   if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
+  if (path === "/client/rewards") return <ClientRewards />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
   if (path === "/client/business/locations") return <ClientBusinessLocations />;

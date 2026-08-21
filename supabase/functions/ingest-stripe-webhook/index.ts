@@ -21,6 +21,8 @@ type StripeEvent={id?:string;type?:string;created?:number;livemode?:boolean;data
 function normalizedType(eventType:string,object:Record<string,unknown>){
   if(eventType==="invoice.paid")return "payment_succeeded";
   if(eventType==="invoice.payment_failed"||eventType==="invoice.payment_action_required")return "payment_failed";
+  if(eventType==="charge.refunded")return "payment_refunded";
+  if(eventType==="charge.dispute.created")return "payment_disputed";
   if(eventType==="customer.subscription.deleted")return "subscription_cancelled";
   if((eventType==="customer.subscription.created"||eventType==="customer.subscription.updated")&&["active","trialing"].includes(String(object.status||"")))return "subscription_active";
   return null;
@@ -56,7 +58,7 @@ Deno.serve(async(req)=>{
     const existing=await admin.from("billing_provider_events").select("id").eq("provider_key","stripe").eq("provider_event_id",eventId).maybeSingle();
     let recordId=existing.data?.id as string|undefined;
     if(!recordId){
-      const amountRaw=object.amount_paid??object.amount_due;
+      const amountRaw=object.amount_paid??object.amount_due??object.amount_refunded??object.amount;
       const amount=typeof amountRaw==="number"?amountRaw/100:null;
       const inserted=await admin.from("billing_provider_events").insert({
         provider_key:"stripe",provider_event_id:eventId,provider_customer_id:providerCustomerId,
@@ -69,6 +71,19 @@ Deno.serve(async(req)=>{
     }
     const applied=await admin.rpc("apply_verified_billing_provider_event",{target_event_id:recordId});
     if(applied.error)throw new Error(`Stripe event apply failed: ${applied.error.message}`);
+    if(mappedType==="payment_succeeded"){
+      const amountRaw=object.amount_paid??object.amount_due;
+      const referral=await admin.rpc("nxq_record_referral_first_payment",{
+        target_client_id:client.data.id,target_provider:"stripe",target_event_id:eventId,
+        target_amount:typeof amountRaw==="number"?amountRaw/100:0,target_paid_at:new Date(createdSeconds*1000).toISOString()
+      });
+      if(referral.error)throw new Error(`Referral payment evidence failed: ${referral.error.message}`);
+    }else if(mappedType==="payment_refunded"||mappedType==="payment_disputed"){
+      const referral=await admin.rpc("nxq_flag_referral_payment_reversal",{
+        target_client_id:client.data.id,target_event_id:eventId,target_reason:mappedType==="payment_disputed"?"dispute":"refund"
+      });
+      if(referral.error)throw new Error(`Referral reversal evidence failed: ${referral.error.message}`);
+    }
     await admin.rpc("record_worker_heartbeat",{target_worker_key:"ingest-stripe-webhook",target_execution_target:"stripe",target_status:"healthy",target_metadata:{signature_verified:true,server_mapped_customer:true,ordered_event_apply:true,livemode:Boolean(event.livemode)},target_last_error:null});
     return response({ok:true,event_id:recordId,idempotent:Boolean(existing.data)});
   }catch(error){return response({ok:false,error:error instanceof Error?error.message:"Unknown Stripe webhook failure."},400);}

@@ -38,6 +38,12 @@ verify_jwt = false
 verify_jwt = false
 [functions.ingest-business-lead]
 verify_jwt = false
+[functions.discover-sales-prospects]
+verify_jwt = true
+[functions.audit-prospect-website]
+verify_jwt = true
+[functions.draft-sales-outreach-ai]
+verify_jwt = true
 [functions.prepare-build-plan]
 verify_jwt = false
 [functions.prepare-preview-deployment-execution]
