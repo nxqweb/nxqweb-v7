@@ -5,6 +5,7 @@ type Payload={form_key?:string;name?:string;email?:string;phone?:string;service?
 type FormRow={id:string;client_id:string;project_id:string;status:string;allowed_origins:string[]|null;allowed_service_keys:string[]|null;max_message_length:number;hourly_limit:number;require_challenge:boolean;challenge_provider:string|null};
 type QuotaReservation={allowed?:boolean;retry_after_seconds?:number};
 type ChallengeDecision={allowed:boolean;mode:"provider_verified"|"not_required"|"staging_rate_limit_honeypot"|"blocked"};
+type TurnstileResponse={success?:boolean;hostname?:string;"error-codes"?:string[]};
 const MAX_REQUEST_BYTES=32768;
 const STAGING_ENVIRONMENTS=new Set(["staging","stage","development","dev","test","qa"]);
 function requestOrigin(req:Request){const origin=(req.headers.get("origin")||req.headers.get("x-nxq-form-origin")||"").trim();return /^https:\/\/[^\s/$.?#].*$/i.test(origin)?origin:"";}
@@ -27,7 +28,8 @@ function phoneOkay(v:string){return !v||/^[+()\-\s\d.]{7,32}$/.test(v);}
 function urgency(message:string){const m=message.toLowerCase();if(/(life safety|gas leak|fire|electrical fire|immediate danger)/.test(m))return "emergency";if(/(emergency|urgent|asap|right now|today|storm damage|no heat|no ac|leaking|flood)/.test(m))return "urgent";return "normal";}
 function score(p:Payload){let n=25;if(clean(p.email,200))n+=15;if(clean(p.phone,40))n+=15;if(clean(p.service,120))n+=15;if(clean(p.message,4000).length>40)n+=15;if(clean(p.service_area,300))n+=10;return Math.min(100,n);}
 function stagingFallbackAllowed(){return STAGING_ENVIRONMENTS.has((Deno.env.get("NXQ_RUNTIME_ENVIRONMENT")||"").trim().toLowerCase());}
-async function verifyChallenge(form:FormRow,token:string):Promise<ChallengeDecision>{
+function turnstileProvider(value:string|null){return ["cloudflare_turnstile","turnstile"].includes((value||"").trim().toLowerCase());}
+async function verifyChallenge(form:FormRow,token:string,origin:string,remoteIp:string):Promise<ChallengeDecision>{
   const endpoint=Deno.env.get("NXQ_LEAD_CHALLENGE_ENDPOINT")?.trim();const auth=Deno.env.get("NXQ_LEAD_CHALLENGE_TOKEN")?.trim();
   if(!endpoint||!auth){
     if(!form.require_challenge&&stagingFallbackAllowed())return {allowed:true,mode:"staging_rate_limit_honeypot"};
@@ -37,7 +39,23 @@ async function verifyChallenge(form:FormRow,token:string):Promise<ChallengeDecis
   if(!token)return {allowed:false,mode:"blocked"};
   const safeEndpoint=requirePublicHttpsUrl(endpoint,"Lead challenge endpoint");
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-  try{const res=await fetch(safeEndpoint,{method:"POST",redirect:"error",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth}`},body:JSON.stringify({provider:form.challenge_provider,token}),signal:controller.signal});if(!res.ok)return {allowed:false,mode:"blocked"};const body=await res.json().catch(()=>null);return body?.success===true?{allowed:true,mode:"provider_verified"}:{allowed:false,mode:"blocked"};}finally{clearTimeout(timer);}
+  try{
+    if(turnstileProvider(form.challenge_provider)){
+      const requestBody:Record<string,string>={secret:auth,response:token};
+      if(remoteIp)requestBody.remoteip=remoteIp;
+      const res=await fetch(safeEndpoint,{method:"POST",redirect:"error",headers:{"Content-Type":"application/json"},body:JSON.stringify(requestBody),signal:controller.signal});
+      if(!res.ok)return {allowed:false,mode:"blocked"};
+      const body=await res.json().catch(()=>null) as TurnstileResponse|null;
+      const requestHostname=new URL(origin).hostname.toLowerCase();
+      const verifiedHostname=clean(body?.hostname,253).toLowerCase();
+      const hostnameMatches=!verifiedHostname||verifiedHostname===requestHostname;
+      return body?.success===true&&hostnameMatches?{allowed:true,mode:"provider_verified"}:{allowed:false,mode:"blocked"};
+    }
+    const res=await fetch(safeEndpoint,{method:"POST",redirect:"error",headers:{"Content-Type":"application/json",Authorization:`Bearer ${auth}`},body:JSON.stringify({provider:form.challenge_provider,token}),signal:controller.signal});
+    if(!res.ok)return {allowed:false,mode:"blocked"};
+    const body=await res.json().catch(()=>null);
+    return body?.success===true?{allowed:true,mode:"provider_verified"}:{allowed:false,mode:"blocked"};
+  }finally{clearTimeout(timer);}
 }
 
 Deno.serve(async(req)=>{
@@ -61,7 +79,7 @@ Deno.serve(async(req)=>{
     const quota=await reserveLeadQuota(admin,form,fingerprint);
     if(!quota?.allowed){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"rate_limited",reason:"hourly_limit"});return response({ok:false,error:"Too many requests. Try again later.",retry_after_seconds:quota?.retry_after_seconds||3600},429,origin);}
     if(clean(p.company_website,500)){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"spam",reason:"honeypot"});return response({ok:true,accepted:true},200,origin);}
-    const challenge=await verifyChallenge(form,clean(p.challenge_token,4000));
+    const challenge=await verifyChallenge(form,clean(p.challenge_token,4000),origin,forwarded);
     if(!challenge.allowed){await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"rejected",reason:"challenge_required_or_unavailable"});return response({ok:false,error:"Verification is required."},403,origin);}
     const name=clean(p.name,160),email=clean(p.email,200).toLowerCase(),phone=clean(p.phone,40),service=clean(p.service,120),message=clean(p.message,form.max_message_length),serviceArea=clean(p.service_area,300);
     if(!name||(!email&&!phone)||message.length<3)return response({ok:false,error:"Name, contact method, and message are required."},400,origin);if(!emailOkay(email)||!phoneOkay(phone))return response({ok:false,error:"Contact information is invalid."},400,origin);

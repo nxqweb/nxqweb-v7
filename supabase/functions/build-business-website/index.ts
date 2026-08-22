@@ -300,6 +300,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
   const analyticsProfileEnabled = runtime.analytics_profile_enabled === true;
   const leadEndpoint = clean(runtime.lead_endpoint);
   const leadFormKey = clean(runtime.lead_form_key);
+  const challengeSiteKey = clean(runtime.challenge_site_key);
   const advancedAnalytics = ["growth", "intelligence", "enterprise"].includes(tierKey);
   const mouseTracking = ["intelligence", "enterprise"].includes(tierKey);
 
@@ -362,6 +363,9 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       enabled: Boolean(leadEndpoint && leadFormKey),
       endpoint: leadEndpoint,
       formKey: leadFormKey,
+      challengeRequired: Boolean(challengeSiteKey),
+      challengeProvider: challengeSiteKey ? "cloudflare_turnstile" : "",
+      challengeSiteKey,
     },
     analytics: {
       enabled: advancedAnalytics && analyticsProfileEnabled && Boolean(analyticsEndpoint && analyticsIngestKey),
@@ -526,6 +530,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
 
   const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";
   const leadEndpoint = Deno.env.get("NXQ_PUBLIC_LEAD_ENDPOINT")?.trim() || "";
+  const challengeSiteKey = Deno.env.get("NXQ_PUBLIC_TURNSTILE_SITE_KEY")?.trim() || "";
   const analyticsSetup = await admin.rpc("configure_website_analytics_for_project", { target_client_id: job.client_id, target_project_id: job.project_id });
   if (analyticsSetup.error) throw new Error(`Analytics profile setup failed: ${analyticsSetup.error.message}`);
   const analyticsProfile = await admin.from("website_analytics_profiles").select("public_ingest_key,status").eq("project_id", job.project_id).single();
@@ -536,12 +541,17 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   }
   const leadForm = await admin.rpc("create_default_business_lead_form", { target_client_id: job.client_id, target_project_id: job.project_id });
   if (leadForm.error) throw new Error(`Lead form setup failed: ${leadForm.error.message}`);
+  if (challengeSiteKey && leadForm.data) {
+    const challengeConfig = await admin.from("business_lead_forms").update({ require_challenge: true, challenge_provider: "cloudflare_turnstile", updated_at: new Date().toISOString() }).eq("form_key", String(leadForm.data));
+    if (challengeConfig.error) throw new Error(`Lead challenge setup failed: ${challengeConfig.error.message}`);
+  }
   const runtimeConfig: JsonRecord = {
     analytics_endpoint: analyticsEndpoint,
     analytics_ingest_key: String(analyticsProfile.data?.public_ingest_key || ""),
     analytics_profile_enabled: analyticsProfile.data?.status === "enabled",
     lead_endpoint: leadEndpoint,
     lead_form_key: String(leadForm.data || ""),
+    challenge_site_key: challengeSiteKey,
   };
 
   const token = await githubInstallationToken();

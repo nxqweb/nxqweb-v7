@@ -11,6 +11,7 @@ const checks = [
   ['Generation stays on safe source branch', worker.includes('source_branch') && worker.includes('sourceBranch !== "main"')],
   ['Versioned Business blueprint is loaded from NXQ source', worker.includes('templates/business-v1') && worker.includes('NXQ_AUTOMATION_SOURCE_REPO')],
   ['Client config is generated from build plan', worker.includes('buildSiteConfig') && worker.includes('site.config.js')],
+  ['Generated lead forms receive public Turnstile configuration', worker.includes('NXQ_PUBLIC_TURNSTILE_SITE_KEY') && worker.includes('challengeSiteKey') && worker.includes('cloudflare_turnstile')],
   ['Quality gate checks contact path and SEO', worker.includes('contact_path') && worker.includes('seo_title')],
   ['Preview is a Netlify branch build', worker.includes('/builds?branch=') && worker.includes('website_check_preview')],
   ['Preview retry reconciles exact commit before another Netlify build', worker.includes('findExistingBranchDeploy') && worker.includes('expectedPreviewCommitSha') && worker.includes('reconciled_existing_deploy')],
