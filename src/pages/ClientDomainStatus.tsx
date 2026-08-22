@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, CheckCircle2, CircleAlert, Clock3, Globe2, RefreshCcw, ShieldAlert } from "lucide-react";
 import { domainSafetyRules, getDomainGuide } from "../lib/domainGuides";
+import { clientDomainPolicy } from "../lib/appConfig";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type Domain = {
@@ -112,6 +113,7 @@ export function ClientDomainStatus() {
               <p className="eyebrow">Guided domain connection</p>
               <h1>Domain status</h1>
               <p className="subtle">NXQ checks DNS and SSL automatically. If your registrar needs you, the exact next action stays here.</p>
+              <p className="subtle">{clientDomainPolicy.summary}</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/settings"><ArrowLeft size={16} /> Settings</a>
@@ -124,7 +126,7 @@ export function ClientDomainStatus() {
           <div className="empty-state">
             <Globe2 size={22} />
             <strong>No domain submitted yet</strong>
-            <p>You can submit the domain you own from Settings. NXQ will review it before any DNS connection begins.</p>
+            <p>You can submit the domain you already own from Settings. If you do not have one, purchase it from a registrar in your own name first; NXQ does not sell, register, own, renew, or take registrar credentials for client domains.</p>
             <a className="wide-btn" href="/client/settings" style={{ width: "auto" }}>Open domain settings</a>
           </div>
         ) : null}

@@ -50,6 +50,7 @@ const viteNames = [...new Set([...source.matchAll(/import\.meta\.env\.(VITE_[A-Z
 const allowedViteNames = new Set([
   "VITE_APP_NAME", "VITE_APP_ENV", "VITE_PUBLIC_SITE_URL", "VITE_OWNER_PORTAL_URL",
   "VITE_CLIENT_PORTAL_URL", "VITE_SUPABASE_URL", "VITE_SUPABASE_ANON_KEY",
+  "VITE_COMPANY_NAME", "VITE_PRODUCT_NAME", "VITE_SUPPORT_EMAIL",
 ]);
 const unexpectedViteNames = viteNames.filter((name) => !allowedViteNames.has(name) || /SECRET|PRIVATE|SERVICE|TOKEN|PASSWORD/.test(name));
 pass("Browser environment variables are restricted to the public allowlist", unexpectedViteNames.length === 0, unexpectedViteNames.join(", "));

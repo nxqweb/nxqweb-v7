@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { appConfig } from "../lib/appConfig";
 
 export function PortalLogin() {
   const [email, setEmail] = useState("");
@@ -81,7 +82,7 @@ export function PortalLogin() {
 
     await supabase.auth.signOut();
     setErrorMessage(
-      "This login exists, but it is not linked to an NXQ owner or client profile yet."
+      `This login exists, but it is not linked to a ${appConfig.companyName} owner or client profile yet.`
     );
   }
 
@@ -89,7 +90,7 @@ export function PortalLogin() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal">
-          NXQ Web Portal
+          {appConfig.productName} Portal
         </a>
 
         <form className="auth-card" onSubmit={handleLogin}>

@@ -17,6 +17,7 @@
     "test:runtime-stage": "node scripts/check-runtime-stage-readiness.mjs",
     "test:migrations": "node scripts/check-migration-integrity.mjs",
     "test:growth": "node scripts/validate-growth-and-outreach-contract.mjs",
+    "test:hardening": "node scripts/validate-launch-hardening-pack.mjs",
     "test:release": "node scripts/run-release-gate.mjs"
   },
   "dependencies": {
