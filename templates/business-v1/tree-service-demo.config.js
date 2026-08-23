@@ -1,4 +1,4 @@
-// Fictional, nationwide-safe flagship demo configuration for NXQ Web sales.
+// Fictional, nationwide-safe flagship demo configuration for NXQ-Web sales.
 // It contains no real business identity, reviews, certifications, prices, or guarantees.
 export const siteConfig = {
   schemaVersion: "nxq-business-v1",
@@ -30,11 +30,11 @@ export const siteConfig = {
   },
   about: {
     heading: "Built for the way tree-service customers actually search",
-    body: "This fictional demo shows how NXQ Web can organize tree services, service areas, urgent requests, trust information, and contact paths without inventing credentials, reviews, guarantees, or business history.",
+    body: "This fictional demo shows how NXQ-Web can organize tree services, service areas, urgent requests, trust information, and contact paths without inventing credentials, reviews, guarantees, or business history.",
   },
   seo: {
     title: "Canopy Ridge Tree Care | Tree Service Demo",
-    description: "Fictional NXQ Web tree-service demo for removal, trimming, stump grinding, storm cleanup, and estimate requests.",
+    description: "Fictional NXQ-Web tree-service demo for removal, trimming, stump grinding, storm cleanup, and estimate requests.",
     keywords: ["tree service", "tree removal", "tree trimming", "stump grinding", "storm cleanup"],
   },
   leads: { enabled: false, endpoint: "", formKey: "" },

@@ -14,7 +14,7 @@ const checks = [
   ['SEO title and description are data-driven', app.includes('document.title = seo?.title') && app.includes('meta[name="description"]')],
   ['Template has mobile responsive rules', css.includes('@media (max-width: 620px)') && css.includes('@media (max-width: 900px)')],
   ['Template contains no real client identity', !/Light of the World|candlelightoftheworld|530\) 912-9067/i.test(`${index}\n${app}\n${config}\n${css}`)],
-  ['Template contains NXQ management attribution', index.includes('Website managed by NXQ Web')],
+  ['Template contains NXQ-Web management attribution', index.includes('Website managed by NXQ-Web')],
   ['Template has primary service conversion path', index.includes('id="primary-cta"') && index.includes('id="contact"')],
   ['Template remains dependency-light static source', !index.includes('/node_modules/') && index.includes('./app.js') && index.includes('./styles.css')],
 ];

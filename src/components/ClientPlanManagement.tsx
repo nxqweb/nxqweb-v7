@@ -149,7 +149,7 @@ export function ClientPlanManagement() {
     const loadedPlan: CurrentPlan = {
       clientId: clientResult.data.id,
       familySlug,
-      familyName: familyResult.data?.name || "NXQ Business",
+      familyName: familyResult.data?.name || "NXQ-Business",
       tierKey,
       tierName: tierResult.data?.name || "Starter",
       monthlyPrice,
@@ -212,7 +212,7 @@ export function ClientPlanManagement() {
       rows.map((row) => ({
         ...row,
         currentPlanLabel: `${
-          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQ Business"
+          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQ-Business"
         } · ${
           (row.current_product_tier_id && tierMap.get(row.current_product_tier_id)) || "Starter"
         }`,

@@ -78,7 +78,7 @@ export function ResetPassword() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal/login">
-          NXQ Web Portal
+          NXQ-Web Portal
         </a>
 
         <form className="auth-card" onSubmit={handlePasswordUpdate}>
@@ -88,7 +88,7 @@ export function ResetPassword() {
           </div>
 
           <p className="subtle">
-            Choose a new password for your NXQ Web portal account.
+            Choose a new password for your NXQ-Web portal account.
           </p>
 
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}

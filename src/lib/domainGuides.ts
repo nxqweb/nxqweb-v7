@@ -22,8 +22,8 @@ export function getDomainGuide(registrar: string | null, dnsProvider: string | n
 }
 
 export const domainSafetyRules = [
-  "Add or edit only the records NXQ lists for this domain.",
+  "Add or edit only the records NXQ-Web lists for this domain.",
   "Do not delete MX records—those usually control business email.",
-  "Do not change nameservers unless NXQ explicitly says the connection requires it.",
-  "Leave TTL on Auto or the provider default unless the NXQ instructions specify another value.",
+  "Do not change nameservers unless NXQ-Web explicitly says the connection requires it.",
+  "Leave TTL on Auto or the provider default unless the NXQ-Web instructions specify another value.",
 ];

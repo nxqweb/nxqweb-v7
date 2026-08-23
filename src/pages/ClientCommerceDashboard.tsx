@@ -34,7 +34,7 @@ export function ClientCommerceDashboard() {
     const ensureResult = await supabase.rpc("ensure_my_commerce_onboarding");
     if (ensureResult.error) { setError(`Commerce onboarding could not be prepared: ${ensureResult.error.message}`); setLoading(false); return; }
     const ensureData = ensureResult.data as { provisioned?: boolean; reason?: string } | null;
-    if (ensureData?.provisioned === false && ensureData.reason === "not_commerce") { setError("This client account is not currently approved for NXQ Commerce."); setLoading(false); return; }
+    if (ensureData?.provisioned === false && ensureData.reason === "not_commerce") { setError("This client account is not currently approved for NXQ-Commerce."); setLoading(false); return; }
     const [catalogResult, intakeResult] = await Promise.all([supabase.rpc("get_my_commerce_catalog"), supabase.rpc("get_my_commerce_intake")]);
     if (catalogResult.error) setError(`Commerce dashboard failed to load: ${catalogResult.error.message}`);
     else if (intakeResult.error) setError(`Commerce setup status failed to load: ${intakeResult.error.message}`);
@@ -49,7 +49,7 @@ export function ClientCommerceDashboard() {
   return (
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
-      <div className="panel-title panel-title-row"><div className="panel-title"><ShoppingBag size={22} /><div><h1>NXQ Commerce</h1><p className="subtle">Manage products, categories, inventory, storefront setup, and future orders from one protected workspace.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Back to portal</a></div>
+      <div className="panel-title panel-title-row"><div className="panel-title"><ShoppingBag size={22} /><div><h1>NXQ-Commerce</h1><p className="subtle">Manage products, categories, inventory, storefront setup, and future orders from one protected workspace.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Back to portal</a></div>
       {error ? <div className="auth-error">{error}</div> : null}
       {loading ? <div className="empty-state">Loading Commerce...</div> : null}
       {!loading && !error ? <>

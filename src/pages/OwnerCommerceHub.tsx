@@ -40,7 +40,7 @@ export function OwnerCommerceHub() {
           <div className="panel-title">
             <ShoppingBag size={22} />
             <div>
-              <h1>NXQ Commerce</h1>
+              <h1>NXQ-Commerce</h1>
               <p className="subtle">Owner controls for plans, limits, major storefront requests, and protected launches.</p>
             </div>
           </div>

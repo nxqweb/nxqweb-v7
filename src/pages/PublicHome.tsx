@@ -17,8 +17,8 @@ export function PublicHome() {
           <a className="lux-brand" href="/">
             <div className="lux-logo">N</div>
             <div>
-              <strong>NXQ</strong>
-              <span>web systems</span>
+              <strong>NXQX</strong>
+              <span>NXQ-Web</span>
             </div>
           </a>
 
@@ -45,7 +45,7 @@ export function PublicHome() {
             </h1>
 
             <p>
-              NXQ Web builds premium monthly websites with client portals,
+              NXQ-Web builds premium monthly websites with client portals,
               guided project controls, managed workflows, and clean systems that
               help businesses look sharper, move faster, and stay organized.
             </p>
@@ -62,7 +62,7 @@ export function PublicHome() {
             </div>
           </div>
 
-          <aside className="lux-card lux-preview" aria-label="NXQ preview">
+          <aside className="lux-card lux-preview" aria-label="NXQ-Web preview">
             <div className="lux-browser">
               <div className="lux-dots">
                 <span />
@@ -90,7 +90,7 @@ export function PublicHome() {
 
         <section className="lux-section" id="services">
           <div className="lux-section-head">
-            <span>What NXQ Web delivers</span>
+            <span>What NXQ-Web delivers</span>
             <h2>Premium websites backed by a cleaner project system.</h2>
           </div>
 
@@ -128,7 +128,7 @@ export function PublicHome() {
             <span>Pricing</span>
             <h2>Premium websites. Smarter monthly plans.</h2>
             <p>
-              Choose the NXQ website system your business needs, then select the monthly tier that fits your goals.
+              Choose the NXQ-Web system your business needs, then select the monthly tier that fits your goals.
             </p>
           </div>
 
@@ -242,7 +242,7 @@ export function PublicHome() {
             <Sparkles size={26} />
             <h2>Ready to access your website project?</h2>
             <p>
-              Clients can enter the NXQ Web portal to message NXQ, review project
+              Clients can enter the NXQ-Web portal to message NXQ-Web, review project
               updates, and manage website content.
             </p>
           </div>

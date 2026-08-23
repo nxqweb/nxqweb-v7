@@ -291,7 +291,7 @@ async function ensureRepository(job: ProvisioningJob, businessName: string) {
       body: JSON.stringify({
         owner,
         name: repositoryName,
-        description: `${businessName} storefront managed by NXQ Commerce`,
+        description: `${businessName} storefront managed by NXQ-Commerce`,
         include_all_branches: false,
         private: true,
       }),

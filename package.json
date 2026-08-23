@@ -18,6 +18,7 @@
     "test:migrations": "node scripts/check-migration-integrity.mjs",
     "test:growth": "node scripts/validate-growth-and-outreach-contract.mjs",
     "test:hardening": "node scripts/validate-launch-hardening-pack.mjs",
+    "test:brand": "node scripts/validate-nxqx-brand-contract.mjs",
     "test:release": "node scripts/run-release-gate.mjs"
   },
   "dependencies": {

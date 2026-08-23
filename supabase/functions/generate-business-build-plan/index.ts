@@ -219,7 +219,7 @@ function buildOutputSchema(request: BuildPlanRequest) {
 
 function instructions(request: BuildPlanRequest) {
   return [
-    "You are NXQ Web's Business website strategy engine.",
+    "You are NXQ-Web's Business website strategy engine.",
     "Return only the requested structured result. Never include markdown, HTML, links, code, contact data, or instructions to call tools.",
     "Do not invent certifications, awards, reviews, statistics, guarantees, addresses, years in business, licensing, pricing, or medical, legal, or financial claims.",
     "Use every allowed service exactly once and every allowed page exactly once. Never rename, add, or remove either.",

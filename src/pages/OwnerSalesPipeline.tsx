@@ -27,18 +27,18 @@ function outreachTemplate(prospect: Prospect | undefined, channel: string, step:
     : prospect?.qualification_signals.weak_mobile
       ? "I noticed the current mobile path could make it harder for customers to reach out quickly."
       : "I noticed an opportunity to make your services, service area, and contact path clearer online.";
-  if (channel === "sms") return { subject: "", body: `Hi, this is Christian from NXQ Web. Thanks for giving me permission to text. I put together an idea for ${business}'s website${area ? ` in ${area}` : ""}. Want me to send the short preview?` };
-  if (channel === "discord") return { subject: "", body: `Hey - Christian from NXQ Web here. Since you opted into the NXQ server, I can share the tree-service website concept for ${business} here if you'd like.` };
+  if (channel === "sms") return { subject: "", body: `Hi, this is Christian from NXQ-Web. Thanks for giving me permission to text. I put together an idea for ${business}'s website${area ? ` in ${area}` : ""}. Want me to send the short preview?` };
+  if (channel === "discord") return { subject: "", body: `Hey - Christian from NXQ-Web here. Since you opted into the NXQ server, I can share the tree-service website concept for ${business} here if you'd like.` };
   if (step === 2) return { subject: `Quick follow-up for ${business}`, body: `Hi${prospect?.contact_name ? ` ${prospect.contact_name}` : ""},\n\nJust following up on the website idea I sent for ${business}. I can show you a short premium ${businessKind} website example built around clearer services and contact paths.\n\nWould you like me to send the preview?\n\n- Christian` };
   if (step === 3) return { subject: `Should I close this out for ${business}?`, body: `Hi${prospect?.contact_name ? ` ${prospect.contact_name}` : ""},\n\nI don't want to crowd your inbox, so this will be my last follow-up. If improving ${business}'s website becomes a priority, I can show you a premium website concept and the $50-$150 monthly options.\n\nShould I close this out for now?\n\n- Christian` };
-  return { subject: `Website idea for ${business}`, body: `Hi${prospect?.contact_name ? ` ${prospect.contact_name}` : ""},\n\nI'm Christian from NXQ Web. ${detail}\n\nNXQ Web builds and hosts premium websites for $50-$150 per month. I can show you a short premium website example built around clear services, mobile contact, and customer inquiries.\n\nWould you like me to send the preview?\n\n- Christian` };
+  return { subject: `Website idea for ${business}`, body: `Hi${prospect?.contact_name ? ` ${prospect.contact_name}` : ""},\n\nI'm Christian from NXQ-Web. ${detail}\n\nNXQ-Web builds and hosts premium websites for $50-$150 per month. I can show you a short premium website example built around clear services, mobile contact, and customer inquiries.\n\nWould you like me to send the preview?\n\n- Christian` };
 }
 
 export function OwnerSalesPipeline() {
   const [data, setData] = useState<Pipeline>({});
   const [selectedId, setSelectedId] = useState("");
   const [error, setError] = useState(""); const [notice, setNotice] = useState(""); const [busy, setBusy] = useState(false);
-  const [senderName, setSenderName] = useState("Christian at NXQ Web"); const [senderEmail, setSenderEmail] = useState(""); const [postalAddress, setPostalAddress] = useState("");
+  const [senderName, setSenderName] = useState("Christian at NXQ-Web"); const [senderEmail, setSenderEmail] = useState(""); const [postalAddress, setPostalAddress] = useState("");
   const [businessName, setBusinessName] = useState(""); const [nicheKey, setNicheKey] = useState("other"); const [websiteUrl, setWebsiteUrl] = useState(""); const [city, setCity] = useState(""); const [stateRegion, setStateRegion] = useState("");
   const [contactName, setContactName] = useState(""); const [contactEmail, setContactEmail] = useState(""); const [contactPhone, setContactPhone] = useState(""); const [sourceUrl, setSourceUrl] = useState(""); const [researchNotes, setResearchNotes] = useState("");
   const [signals, setSignals] = useState<Record<string, boolean>>({});
@@ -58,7 +58,7 @@ export function OwnerSalesPipeline() {
     setBusy(false);
     if (result.error) { setError(result.error.message); return; }
     const next = (result.data || {}) as Pipeline; setData(next);
-    setSenderName(next.settings?.sender_display_name || "Christian at NXQ Web"); setSenderEmail(next.settings?.sender_email || ""); setPostalAddress(next.settings?.postal_address || "");
+    setSenderName(next.settings?.sender_display_name || "Christian at NXQ-Web"); setSenderEmail(next.settings?.sender_email || ""); setPostalAddress(next.settings?.postal_address || "");
     if (next.prospects?.[0]) setSelectedId(current => current || next.prospects?.[0]?.id || "");
   }, []);
   useEffect(() => { void load(); }, [load]);

@@ -146,7 +146,7 @@ export function ClientWebsiteHealth() {
                 <Fingerprint size={20} />
                 <h2>NXQ ID</h2>
                 <p><strong>{data.nxq_id || "Pending setup"}</strong></p>
-                <p className="subtle">NXQ Web Client ID: {data.client_code || "Pending"}</p>
+                <p className="subtle">NXQ-Web Client ID: {data.client_code || "Pending"}</p>
                 <p className="subtle">Identity assurance: Level {data.assurance_level}</p>
                 <p className="subtle">Account: {pretty(data.nxq_account_status)}</p>
               </section>

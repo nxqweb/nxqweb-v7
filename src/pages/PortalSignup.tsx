@@ -119,7 +119,7 @@ export function PortalSignup() {
             <div className="notice-card">
               <strong>{unavailableFamily.name} is still in development.</strong>
               <p>
-                NXQ Business was selected instead so no unfinished product workflow can be purchased accidentally.
+                NXQ-Business was selected instead so no unfinished product workflow can be purchased accidentally.
               </p>
             </div>
           ) : null}

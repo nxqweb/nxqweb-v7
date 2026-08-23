@@ -5,7 +5,7 @@ const tutorialKey = "nxq-client-portal-tutorial-v2-complete";
 
 const steps = [
   {
-    title: "Welcome to your NXQ Web workspace",
+    title: "Welcome to your NXQ-Web workspace",
     body: "This portal is the home for your website, messages, files, billing, domain setup, and ongoing website health.",
   },
   {
@@ -21,7 +21,7 @@ const steps = [
     body: "Settings keeps your login, appearance, plan, and domain information together. Domain automation will show a clear action-required message only when your registrar needs something NXQ cannot do yet.",
   },
   {
-    title: "Your NXQ ID goes beyond NXQ Web",
+    title: "Your NXQ ID goes beyond NXQ-Web",
     body: "Your NXQ ID is your shared identity across future NXQ products. Products that need stronger identity proof can ask you to add verification without creating a separate NXQ account.",
   },
 ];

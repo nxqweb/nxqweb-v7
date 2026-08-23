@@ -229,7 +229,7 @@ async function ensureRepository(
     body: JSON.stringify({
       owner,
       name: repositoryName,
-      description: `${businessName} ${familySlug} website managed by NXQ Web`,
+      description: `${businessName} ${familySlug} website managed by NXQ-Web`,
       include_all_branches: false,
       private: true,
     }),

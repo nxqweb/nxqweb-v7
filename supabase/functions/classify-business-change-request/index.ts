@@ -124,7 +124,7 @@ function classificationSchema() {
 
 function providerInstructions() {
   return [
-    "You are NXQ Web's conservative website-change classifier.",
+    "You are NXQ-Web's conservative website-change classifier.",
     "Return only the requested structured result. Never include markdown, links, code, tool calls, or secrets.",
     `Allowed patch keys: ${[...supportedPatchKeys].join(", ")}.`,
     "Use safe_patch only when the whole request is a low-risk, reversible content update, patch_json is a JSON object containing only allowed keys, and confidence is at least 0.90.",

@@ -8,7 +8,7 @@ function optional(name: string) { return Deno.env.get(name)?.trim() || ""; }
 function text(value: unknown, max: number) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function deterministic(name: string, city: string, findings: string[]) {
   const observation = findings[0] || "I could not find a clear, mobile-friendly path for customers to request service";
-  return { subject: `A website idea for ${name}`, body: `Hi ${name} team,\n\nI reviewed the public information available for your business${city ? ` in ${city}` : ""}. ${observation}.\n\nNXQ Web builds and manages professional small-business websites, including the setup, updates, hosting, and lead-ready contact experience. If improving that part of your business is a priority, I can send a short plan based only on the services and facts you approve.\n\nWould you like me to send it?`, ai_used: false };
+  return { subject: `A website idea for ${name}`, body: `Hi ${name} team,\n\nI reviewed the public information available for your business${city ? ` in ${city}` : ""}. ${observation}.\n\nNXQ-Web, a branch of NXQX, builds and manages professional small-business websites, including the setup, updates, hosting, and lead-ready contact experience. If improving that part of your business is a priority, I can send a short plan based only on the services and facts you approve.\n\nWould you like me to send it?`, ai_used: false };
 }
 
 Deno.serve(async (req) => {

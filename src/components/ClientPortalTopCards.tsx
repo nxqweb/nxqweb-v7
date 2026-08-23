@@ -191,7 +191,7 @@ export function ClientPortalTopCards() {
             <Ban size={20} />
             <div>
               <strong>Website setup was not approved</strong>
-              <p>{billing?.pipeline_stop_reason || "Your NXQ Web setup request was denied and automation has been stopped."}</p>
+              <p>{billing?.pipeline_stop_reason || "Your NXQ-Web setup request was denied and automation has been stopped."}</p>
               <p className="subtle">No new website infrastructure or automation will continue. For questions, contact websitedesignercontact@protonmail.com.</p>
             </div>
           </div>

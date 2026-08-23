@@ -1,6 +1,6 @@
-# NXQ Web V11
+# NXQ-Web V11
 
-NXQ Web is a multi-tenant website operations platform with shared owner/client authentication, Business website onboarding and automation, Commerce management, guarded provider orchestration, and tenant-derived portal read models.
+NXQ-Web is a multi-tenant website operations platform with shared owner/client authentication, Business website onboarding and automation, Commerce management, guarded provider orchestration, and tenant-derived portal read models.
 
 ## Product rules
 

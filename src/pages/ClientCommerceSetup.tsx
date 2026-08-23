@@ -206,7 +206,7 @@ export function ClientCommerceSetup() {
           <div className="panel-title">
             <ShoppingBag size={22} />
             <div>
-              <h1>NXQ Commerce setup</h1>
+              <h1>NXQ-Commerce setup</h1>
               <p className="subtle">Define the storefront, migration path, motion, checkout, and fulfillment before the build starts.</p>
             </div>
           </div>

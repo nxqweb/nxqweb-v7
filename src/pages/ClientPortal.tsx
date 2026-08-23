@@ -1703,8 +1703,8 @@ export function ClientPortal() {
                   />
                   <span>
                     I confirm I purchased and own or control this domain. I keep ownership,
-                    renewal responsibility, and registrar access. NXQ only provides DNS
-                    instructions, verifies the connection, and monitors SSL; NXQ will never ask
+                    renewal responsibility, and registrar access. NXQ-Web only provides DNS
+                    instructions, verifies the connection, and monitors SSL; NXQ-Web will never ask
                     for my registrar password or take ownership of the domain.
                   </span>
                 </label>
@@ -1919,7 +1919,6 @@ export function ClientPortal() {
     </main>
   );
 }
-
 
 
 

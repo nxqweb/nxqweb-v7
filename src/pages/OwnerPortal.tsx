@@ -1203,7 +1203,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                         onClick={() => {
                           const enteredReason = window.prompt(
                             `Why are you denying ${clientName}?`,
-                            "The project was not accepted. Please contact NXQ Web support if you believe this decision was made in error."
+                            "The project was not accepted. Please contact NXQ-Web support if you believe this decision was made in error."
                           );
 
                           if (enteredReason === null) return;

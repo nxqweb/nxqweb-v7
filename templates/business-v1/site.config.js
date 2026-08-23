@@ -10,7 +10,7 @@ export const siteConfig = {
   brand: {
     eyebrow: "Trusted local service",
     headline: "Professional service. Clear results.",
-    subheadline: "A premium local business website managed by NXQ Web.",
+    subheadline: "A premium local business website managed by NXQ-Web.",
     primaryCta: "Request a Quote",
     secondaryCta: "View Services",
   },
@@ -25,7 +25,7 @@ export const siteConfig = {
   },
   about: {
     heading: "A local team focused on doing the job right",
-    body: "Use the approved NXQ intake and build plan to tell the business story, explain what makes it different, and give customers a clear reason to reach out.",
+    body: "Use the approved NXQ-Web intake and build plan to tell the business story, explain what makes it different, and give customers a clear reason to reach out.",
   },
   seo: {
     title: "Your Business | Local Professional Services",

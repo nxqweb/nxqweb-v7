@@ -112,7 +112,7 @@ export function ClientDomainStatus() {
             <div>
               <p className="eyebrow">Guided domain connection</p>
               <h1>Domain status</h1>
-              <p className="subtle">NXQ checks DNS and SSL automatically. If your registrar needs you, the exact next action stays here.</p>
+              <p className="subtle">NXQ-Web checks DNS and SSL automatically. If your registrar needs you, the exact next action stays here.</p>
               <p className="subtle">{clientDomainPolicy.summary}</p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export function ClientDomainStatus() {
           <div className="empty-state">
             <Globe2 size={22} />
             <strong>No domain submitted yet</strong>
-            <p>You can submit the domain you already own from Settings. If you do not have one, purchase it from a registrar in your own name first; NXQ does not sell, register, own, renew, or take registrar credentials for client domains.</p>
+            <p>You can submit the domain you already own from Settings. If you do not have one, purchase it from a registrar in your own name first; NXQ-Web does not sell, register, own, renew, or take registrar credentials for client domains.</p>
             <a className="wide-btn" href="/client/settings" style={{ width: "auto" }}>Open domain settings</a>
           </div>
         ) : null}
@@ -166,15 +166,15 @@ export function ClientDomainStatus() {
                         <ol aria-label={`${guide.provider} navigation path`}>
                           {guide.openPath.map((step) => <li key={step}>{step}</li>)}
                         </ol>
-                        <p>Make the NXQ-provided change in <strong>{guide.recordArea}</strong>.</p>
+                        <p>Make the NXQ-Web-provided change in <strong>{guide.recordArea}</strong>.</p>
                       </div>
                     ) : (
-                      <p>Sign in to the company where your DNS is managed, open the DNS records for this domain, and use the exact NXQ instructions below.</p>
+                      <p>Sign in to the company where your DNS is managed, open the DNS records for this domain, and use the exact NXQ-Web instructions below.</p>
                     )}
 
                     {domain.dns_instructions ? (
                       <div className="domain-exact-instructions">
-                        <span>Exact NXQ instructions</span>
+                        <span>Exact NXQ-Web instructions</span>
                         <pre>{domain.dns_instructions}</pre>
                       </div>
                     ) : (
@@ -191,7 +191,7 @@ export function ClientDomainStatus() {
                 {!connected && !action ? (
                   <div className="domain-checking-state">
                     <Clock3 size={18} />
-                    <div><strong>NXQ is checking automatically</strong><p>No change is required unless this card switches to Action required.</p></div>
+                    <div><strong>NXQ-Web is checking automatically</strong><p>No change is required unless this card switches to Action required.</p></div>
                   </div>
                 ) : null}
 

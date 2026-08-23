@@ -47,7 +47,7 @@ export function ForgotPassword() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal/login">
-          NXQ Web Portal
+          NXQ-Web Portal
         </a>
 
         <form className="auth-card" onSubmit={handleResetRequest}>

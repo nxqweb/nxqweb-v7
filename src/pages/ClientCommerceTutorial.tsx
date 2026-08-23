@@ -4,7 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
 
 const tutorialSteps = [
   {
-    title: "Welcome to NXQ Commerce",
+    title: "Welcome to NXQ-Commerce",
     text: "Your Commerce workspace keeps products, images, categories, inventory, orders, customer requests, usage limits, and launch setup in one place.",
     href: "/client/commerce",
     action: "Open dashboard",
