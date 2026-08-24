@@ -295,6 +295,19 @@ Deno.serve(async (request) => {
     .eq("id", launch.deployment_record_id)
     .eq("status", "queued");
 
+  const reservation = await supabase.rpc("nxq_reserve_netlify_build", {
+    target_client_id: launch.client_id,
+    target_project_id: launch.project_id,
+    target_build_kind: "manual_production",
+    target_reservation_key: `production-launch:${launch.id}:netlify:${productionCommitSha}`,
+    target_metadata: { production_launch_request_id: launch.id, expected_commit_sha: productionCommitSha },
+  });
+  if (reservation.error) {
+    await supabase.from("production_launch_requests").update({ status: "prepared", execution_started_at: null, error_message: reservation.error.message }).eq("id", launch.id).eq("status", "launching");
+    await supabase.from("project_deployments").update({ status: "queued", started_at: null, error_message: reservation.error.message }).eq("id", launch.deployment_record_id).eq("status", "building");
+    return jsonResponse({ error: reservation.error.message }, 409);
+  }
+
   const buildUrl = new URL(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}/builds`
   );

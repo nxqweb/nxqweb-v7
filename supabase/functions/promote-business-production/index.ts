@@ -215,6 +215,18 @@ async function triggerProductionBuild(siteId: string) {
   return body;
 }
 
+async function reserveNetlifyBuild(admin: AdminClient, job: AutomationJob, runId: string, commitSha: string) {
+  const reservation = await admin.rpc("nxq_reserve_netlify_build", {
+    target_client_id: job.client_id,
+    target_project_id: job.project_id,
+    target_build_kind: "production",
+    target_reservation_key: `website-run:${runId}:netlify-production:${commitSha}`,
+    target_metadata: { website_automation_run_id: runId, expected_commit_sha: commitSha },
+  });
+  if (reservation.error) throw new Error(reservation.error.message);
+  return reservation.data;
+}
+
 async function findExistingProductionDeploy(siteId: string, expectedCommit: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
@@ -351,6 +363,7 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
   let build = await findExistingProductionDeploy(configRes.data.netlify_site_id, sourceSha);
   if (!build) {
     await assertProviderMutationAllowed(admin, job);
+    await reserveNetlifyBuild(admin, job, runId, sourceSha);
     const started = await triggerProductionBuild(configRes.data.netlify_site_id);
     build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };
   }

@@ -417,6 +417,18 @@ async function triggerBranchBuild(siteId: string, branch: string) {
   return body;
 }
 
+async function reserveNetlifyBuild(admin: AdminClient, job: AutomationJob, runId: string, commitSha: string) {
+  const reservation = await admin.rpc("nxq_reserve_netlify_build", {
+    target_client_id: job.client_id,
+    target_project_id: job.project_id,
+    target_build_kind: "preview",
+    target_reservation_key: `website-run:${runId}:netlify-preview:${commitSha}`,
+    target_metadata: { website_automation_run_id: runId, expected_commit_sha: commitSha },
+  });
+  if (reservation.error) throw new Error(reservation.error.message);
+  return reservation.data;
+}
+
 async function findExistingBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
   const token = requiredSecret("NETLIFY_ACCESS_TOKEN");
   const res = await timedFetch(`https://api.netlify.com/api/v1/sites/${siteId}/deploys?per_page=20`, {
@@ -595,6 +607,7 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   let build = await findExistingBranchDeploy(configRes.data.netlify_site_id, sourceBranch, expectedPreviewCommitSha);
   if (!build) {
     await assertProviderMutationAllowed(admin, job);
+    await reserveNetlifyBuild(admin, job, runId, expectedPreviewCommitSha);
     const started = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);
     build = started && !Array.isArray(started) ? { ...started, reconciled_existing_deploy: false } : { reconciled_existing_deploy: false };
   }
