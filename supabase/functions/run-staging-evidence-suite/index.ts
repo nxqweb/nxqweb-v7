@@ -97,7 +97,6 @@ Deno.serve(async (req) => {
       project_name: `NXQ Evidence Project ${index + 1} ${runId}`,
       stage: "intake",
       website_status: "intake",
-      qa_only: true,
     }))).select("id,client_id"), "Create project fixtures");
 
     const sessions = [await signIn(url, anonKey, emails[0], password), await signIn(url, anonKey, emails[1], password)];

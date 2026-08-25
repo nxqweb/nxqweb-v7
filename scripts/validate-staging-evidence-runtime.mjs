@@ -9,6 +9,7 @@ const config = read("supabase/config.toml");
 const checks = [
   ["runner fails closed outside staging", worker.includes('NXQ_RUNTIME_ENVIRONMENT') && worker.includes('Staging evidence suite refused outside staging')],
   ["runner uses two ephemeral auth tenants", worker.includes("admin.auth.admin.createUser") && worker.includes("clientIds.length !== 2")],
+  ["QA isolation is owned by clients, not projects", worker.includes("qa_only: true") && !/from\("projects"\)\.insert[\s\S]{0,500}qa_only:\s*true/.test(worker)],
   ["RLS cross-tenant read and write probes", worker.includes("tenant_a_sees_only_own_client") && worker.includes("tenant_a_cannot_update_tenant_b")],
   ["storage metadata and signed-access probes", worker.includes("tenant_a_sees_only_own_file_metadata") && worker.includes("tenant_a_is_denied_tenant_b_file")],
   ["non-destructive restore simulation", worker.includes("create_verified_project_restore_point") && worker.includes("simulate_project_restore")],
