@@ -102,11 +102,16 @@ Deno.serve(async (req) => {
     const sessions = [await signIn(url, anonKey, emails[0], password), await signIn(url, anonKey, emails[1], password)];
     const ownClients = await requireOk(sessions[0].client.from("clients").select("id"), "Tenant A client read");
     const ownProjects = await requireOk(sessions[0].client.from("projects").select("id,client_id"), "Tenant A project read");
-    const crossUpdate = await requireOk(sessions[0].client.from("clients").update({ notes: "cross-tenant-write-must-not-land" }).eq("id", clientIds[1]).select("id"), "Cross-tenant update probe");
+    const crossUpdate = await sessions[0].client.from("clients").update({ notes: "cross-tenant-write-must-not-land" }).eq("id", clientIds[1]).select("id");
+    const expectedCrossTenantDenial = crossUpdate.error?.code === "42501"
+      || /permission denied|row-level security/i.test(crossUpdate.error?.message || "");
+    if (crossUpdate.error && !expectedCrossTenantDenial) {
+      throw new Error(`Cross-tenant update probe: ${crossUpdate.error.message}`);
+    }
     const rlsChecks = {
       tenant_a_sees_only_own_client: ownClients.length === 1 && String(ownClients[0].id) === clientIds[0],
       tenant_a_sees_only_own_project: ownProjects.length === 1 && String(ownProjects[0].client_id) === clientIds[0],
-      tenant_a_cannot_update_tenant_b: crossUpdate.length === 0,
+      tenant_a_cannot_update_tenant_b: expectedCrossTenantDenial || (crossUpdate.data || []).length === 0,
       fixture_projects_are_distinct: projectRows.length === 2 && String(projectRows[0].client_id) !== String(projectRows[1].client_id),
     };
     if (Object.values(rlsChecks).some((value) => !value)) throw new Error(`RLS isolation failed: ${JSON.stringify(rlsChecks)}`);
