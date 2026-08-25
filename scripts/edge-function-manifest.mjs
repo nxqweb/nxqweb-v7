@@ -37,6 +37,7 @@ export const edgeFunctionManifest = Object.freeze([
   entry("reconcile-domain", false, "trusted-worker-or-owner"),
   entry("refresh-production-deployment-preparation", true, "owner-jwt"),
   entry("run-backup-restore-drill", false, "worker-token"),
+  entry("run-staging-evidence-suite", false, "worker-token"),
   entry("run-website-maintenance", false, "worker-token"),
   entry("scan-client-file", false, "worker-token"),
   entry("secure-client-file-access", true, "client-jwt"),

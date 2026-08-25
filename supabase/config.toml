@@ -68,6 +68,9 @@ verify_jwt = false
 verify_jwt = true
 [functions.run-backup-restore-drill]
 verify_jwt = false
+
+[functions.run-staging-evidence-suite]
+verify_jwt = false
 [functions.run-website-maintenance]
 verify_jwt = false
 [functions.scan-client-file]
