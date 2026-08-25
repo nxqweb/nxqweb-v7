@@ -5,6 +5,7 @@ const worker = read("supabase/functions/run-staging-evidence-suite/index.ts");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
+const clientFilesBucket = read("supabase/migrations/235_create_private_client_files_bucket.sql");
 
 const checks = [
   ["runner fails closed outside staging", worker.includes('NXQ_RUNTIME_ENVIRONMENT') && worker.includes('Staging evidence suite refused outside staging')],
@@ -13,6 +14,7 @@ const checks = [
   ["RLS cross-tenant read and write probes", worker.includes("tenant_a_sees_only_own_client") && worker.includes("tenant_a_cannot_update_tenant_b")],
   ["RLS policy denial counts as a successful write probe", worker.includes('crossUpdate.error?.code === "42501"') && worker.includes("expectedCrossTenantDenial || (crossUpdate.data || []).length === 0")],
   ["storage metadata and signed-access probes", worker.includes("tenant_a_sees_only_own_file_metadata") && worker.includes("tenant_a_is_denied_tenant_b_file")],
+  ["canonical private client-files bucket is migration-managed", clientFilesBucket.includes("insert into storage.buckets") && clientFilesBucket.includes("'client-files'") && clientFilesBucket.includes("public = false") && clientFilesBucket.includes("26214400")],
   ["non-destructive restore simulation", worker.includes("create_verified_project_restore_point") && worker.includes("simulate_project_restore")],
   ["records expiring server-authoritative evidence", worker.includes("record_staging_readiness_evidence") && worker.includes("target_expires_at")],
   ["fixtures removed on success and failure", (worker.match(/removeFixtures\(/g) || []).length >= 3],
