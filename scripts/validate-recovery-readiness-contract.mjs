@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 const source = fs.readFileSync("supabase/migrations/141_launch_readiness_qa_and_restore_automation.sql", "utf8");
+const digestSearchPathFix = fs.readFileSync("supabase/migrations/236_fix_restore_digest_search_path.sql", "utf8");
 const productionWorker = fs.readFileSync("supabase/functions/promote-business-production/index.ts", "utf8");
 
 const checks = [
@@ -10,6 +11,7 @@ const checks = [
   ["Restore points use the real deployment commit column", source.includes("last_deployed_commit") && !source.includes("last_deployed_commit_sha")],
   ["Production worker writes the same deployment commit column", productionWorker.includes("last_deployed_commit: expectedCommit")],
   ["Restore points include a SHA-256 integrity checksum", source.includes("digest(") && source.includes("'sha256'")],
+  ["Recovery RPCs resolve pgcrypto from the extensions schema", digestSearchPathFix.includes("set search_path = public, extensions") && digestSearchPathFix.includes("create_verified_project_restore_point") && digestSearchPathFix.includes("simulate_project_restore")],
   ["Restore simulation validates checksum", source.includes("checksum_matches") && source.includes("expected_checksum")],
   ["Restore simulation is explicitly non-destructive", source.includes("external_changes_made', false") && source.includes("simulation_is_non_destructive")],
   ["Restore simulation never calls GitHub/Netlify/DNS", !source.includes("api.github.com") && !source.includes("api.netlify.com") && !source.includes("net.http_post")],
