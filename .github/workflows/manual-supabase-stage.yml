@@ -16,6 +16,7 @@ on:
           - validate
           - apply_migrations
           - deploy_functions
+          - deploy_zero_netlify_readiness
           - run_evidence_suite
           - dispatch_workers
           - apply_all
@@ -129,6 +130,22 @@ jobs:
           set -euo pipefail
           npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
           node scripts/check-runtime-stage-readiness.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+
+      - name: Deploy zero-Netlify readiness functions only
+        if: inputs.action == 'deploy_zero_netlify_readiness'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            build-business-seo-artifacts
+            reconcile-domain
+            run-staging-evidence-suite
+            run-website-maintenance
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped zero-Netlify readiness function: $fn"
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          done
 
       - name: Run zero-Netlify staging evidence suite
         if: inputs.action == 'run_evidence_suite'
