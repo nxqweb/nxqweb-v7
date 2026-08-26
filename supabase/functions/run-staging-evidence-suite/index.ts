@@ -1,4 +1,6 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
+import { SignJWT, importPKCS8 } from "npm:jose@6";
+import { normalizeGithubPrivateKey } from "../_shared/github-private-key.ts";
 
 const workerName = "run-staging-evidence-suite";
 const headers = { "Content-Type": "application/json" };
@@ -17,6 +19,94 @@ async function sha256(value: unknown) {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await fetch(input, { ...init, signal: controller.signal }); }
+  finally { clearTimeout(timeout); }
+}
+
+async function readJson(res: Response) {
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text) as Record<string, unknown>; }
+  catch { return { message: text }; }
+}
+
+const githubHeaders = (token: string) => ({
+  Accept: "application/vnd.github+json",
+  Authorization: `Bearer ${token}`,
+  "X-GitHub-Api-Version": "2022-11-28",
+  "Content-Type": "application/json",
+});
+
+async function githubReadToken() {
+  const privateKey = await importPKCS8(normalizeGithubPrivateKey(secret("GITHUB_APP_PRIVATE_KEY")), "RS256");
+  const now = Math.floor(Date.now() / 1000);
+  const jwt = await new SignJWT({}).setProtectedHeader({ alg: "RS256" }).setIssuer(secret("GITHUB_APP_ID"))
+    .setIssuedAt(now - 30).setExpirationTime(now + 540).sign(privateKey);
+  const res = await timedFetch(`https://api.github.com/app/installations/${encodeURIComponent(secret("GITHUB_APP_INSTALLATION_ID"))}/access_tokens`, {
+    method: "POST",
+    headers: githubHeaders(jwt),
+    body: JSON.stringify({ permissions: { contents: "read", metadata: "read" } }),
+  });
+  const body = await readJson(res);
+  if (!res.ok || typeof body?.token !== "string") throw new Error(`GitHub read-only installation token failed (${res.status}).`);
+  return body.token;
+}
+
+async function verifyBusinessTemplateAccess(token: string) {
+  const owner = secret("NXQ_AUTOMATION_SOURCE_OWNER");
+  const repo = secret("NXQ_AUTOMATION_SOURCE_REPO");
+  const ref = Deno.env.get("NXQ_AUTOMATION_SOURCE_REF")?.trim() || "main";
+  const requiredFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];
+  const checks: Record<string, boolean> = {};
+  for (const file of requiredFiles) {
+    const res = await timedFetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/templates/business-v1/${encodeURIComponent(file)}?ref=${encodeURIComponent(ref)}`, { headers: githubHeaders(token) });
+    const body = await readJson(res);
+    checks[file] = res.ok && typeof body?.content === "string" && body.content.length > 0;
+  }
+  if (Object.values(checks).some((passed) => !passed)) throw new Error(`Business template access failed: ${JSON.stringify(checks)}`);
+  return { owner, repo, ref, checks, access: "read_only", github_calls: requiredFiles.length + 1 };
+}
+
+async function probeRequiredWorkers(baseUrl: string) {
+  const requiredWorkers = ["provision-project-infrastructure", "prepare-build-plan", "build-business-website", "promote-business-production", "run-website-maintenance"];
+  const checks: Record<string, boolean> = {};
+  for (const worker of requiredWorkers) {
+    const res = await timedFetch(`${baseUrl}/${worker}`, { method: "GET" });
+    checks[worker] = res.status === 405;
+  }
+  if (Object.values(checks).some((passed) => !passed)) throw new Error(`Required Edge worker coverage failed: ${JSON.stringify(checks)}`);
+  return { checks, probe_method: "non_mutating_get", provider_mutations: 0 };
+}
+
+async function runReadinessProbe(baseUrl: string, worker: string, token: string) {
+  const res = await timedFetch(`${baseUrl}/${worker}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-nxq-worker-token": token },
+    body: JSON.stringify({ readiness_probe: true, source: workerName }),
+  });
+  const body = await readJson(res);
+  if (!body || !res.ok || body.ok !== true || body.readiness_probe !== true || body.netlify_calls !== 0 || body.production_changed !== false) {
+    throw new Error(`${worker} readiness probe failed (${res.status}): ${JSON.stringify(body)}`);
+  }
+  return body;
+}
+
+async function recordEvidence(admin: SupabaseClient, checkKey: string, suiteVersion: string, checks: unknown, baseDetails: Record<string, unknown>, expiresAt: string) {
+  const passedCount = checks && typeof checks === "object" ? Object.keys(checks).length : 1;
+  return requireOk(admin.rpc("record_staging_readiness_evidence", {
+    target_check_key: checkKey,
+    target_suite_version: suiteVersion,
+    target_passed_count: passedCount,
+    target_failed_count: 0,
+    target_evidence_digest: await sha256({ checkKey, suiteVersion, checks, runId: baseDetails.run_id }),
+    target_details: { ...baseDetails, checks },
+    target_expires_at: expiresAt,
+  }), `Record ${checkKey} evidence`);
 }
 
 async function requireOk<T>(promise: PromiseLike<{ data: T; error: { message: string } | null }>, label: string) {
@@ -80,7 +170,7 @@ Deno.serve(async (req) => {
       userIds.push(created.data.user.id);
     }
 
-    const clientRows = await requireOk(admin.from("clients").insert(userIds.map((userId, index) => ({
+    const clientRows = (await requireOk(admin.from("clients").insert(userIds.map((userId, index) => ({
       auth_user_id: userId,
       business_name: `NXQ Evidence Tenant ${index + 1} ${runId}`,
       contact_email: emails[index],
@@ -88,20 +178,20 @@ Deno.serve(async (req) => {
       monthly_price: 0,
       qa_only: true,
       notes: "Ephemeral staging isolation evidence fixture",
-    }))).select("id,auth_user_id"), "Create tenant fixtures");
-    for (const row of clientRows || []) clientIds.push(String(row.id));
+    }))).select("id,auth_user_id"), "Create tenant fixtures")) || [];
+    for (const row of clientRows) clientIds.push(String(row.id));
     if (clientIds.length !== 2) throw new Error("Expected exactly two tenant fixtures.");
 
-    const projectRows = await requireOk(admin.from("projects").insert(clientIds.map((clientId, index) => ({
+    const projectRows = (await requireOk(admin.from("projects").insert(clientIds.map((clientId, index) => ({
       client_id: clientId,
       project_name: `NXQ Evidence Project ${index + 1} ${runId}`,
       stage: "intake",
       website_status: "intake",
-    }))).select("id,client_id"), "Create project fixtures");
+    }))).select("id,client_id"), "Create project fixtures")) || [];
 
     const sessions = [await signIn(url, anonKey, emails[0], password), await signIn(url, anonKey, emails[1], password)];
-    const ownClients = await requireOk(sessions[0].client.from("clients").select("id"), "Tenant A client read");
-    const ownProjects = await requireOk(sessions[0].client.from("projects").select("id,client_id"), "Tenant A project read");
+    const ownClients = (await requireOk(sessions[0].client.from("clients").select("id"), "Tenant A client read")) || [];
+    const ownProjects = (await requireOk(sessions[0].client.from("projects").select("id,client_id"), "Tenant A project read")) || [];
     const crossUpdate = await sessions[0].client.from("clients").update({ notes: "cross-tenant-write-must-not-land" }).eq("id", clientIds[1]).select("id");
     const expectedCrossTenantDenial = crossUpdate.error?.code === "42501"
       || /permission denied|row-level security/i.test(crossUpdate.error?.message || "");
@@ -122,7 +212,7 @@ Deno.serve(async (req) => {
       if (uploaded.error) throw new Error(`Storage fixture upload failed: ${uploaded.error.message}`);
       storagePaths.push(path);
     }
-    const fileRows = await requireOk(admin.from("client_files").insert(clientIds.map((clientId, index) => ({
+    const fileRows = (await requireOk(admin.from("client_files").insert(clientIds.map((clientId, index) => ({
       client_id: clientId,
       bucket_name: bucket,
       bucket_id: bucket,
@@ -132,7 +222,7 @@ Deno.serve(async (req) => {
       file_size: 48,
       status: "uploaded",
       expires_at: new Date(Date.now() + 3_600_000).toISOString(),
-    }))).select("id,client_id"), "Create file metadata fixtures");
+    }))).select("id,client_id"), "Create file metadata fixtures")) || [];
     for (const fileRow of fileRows) {
       await requireOk(admin.from("client_file_security_scans").update({
         status: "clean",
@@ -145,7 +235,7 @@ Deno.serve(async (req) => {
       }).eq("client_file_id", fileRow.id), "Release evidence fixture");
     }
 
-    const tenantAFileRows = await requireOk(sessions[0].client.from("client_files").select("id,client_id"), "Tenant A file metadata read");
+    const tenantAFileRows = (await requireOk(sessions[0].client.from("client_files").select("id,client_id"), "Tenant A file metadata read")) || [];
     const ownFile = fileRows.find((row) => String(row.client_id) === clientIds[0]);
     const otherFile = fileRows.find((row) => String(row.client_id) === clientIds[1]);
     if (!ownFile || !otherFile) throw new Error("File fixtures were not tenant-bound.");
@@ -192,8 +282,29 @@ Deno.serve(async (req) => {
     const restoreResult = await requireOk(admin.rpc("simulate_project_restore", { target_restore_point_id: restorePointId }), "Simulate restore");
     if (!restoreResult?.ok || restoreResult?.external_changes_made !== false) throw new Error("Non-destructive restore simulation did not pass.");
 
-    await requireOk(admin.rpc("evaluate_staging_readiness_evidence"), "Refresh staging evidence");
+    const edgeBaseUrl = `${url.replace(/\/$/, "")}/functions/v1`;
+    const workerToken = secret("NXQ_AUTOMATION_WORKER_TOKEN");
+    const githubToken = await githubReadToken();
+    const templateEvidence = await verifyBusinessTemplateAccess(githubToken);
+    const workerEvidence = await probeRequiredWorkers(edgeBaseUrl);
+    const domainEvidence = await runReadinessProbe(edgeBaseUrl, "reconcile-domain", workerToken);
+    const maintenanceEvidence = await runReadinessProbe(edgeBaseUrl, "run-website-maintenance", workerToken);
+    const seoEvidence = await runReadinessProbe(edgeBaseUrl, "build-business-seo-artifacts", workerToken);
+
+    const extendedBaseDetails = {
+      environment: "staging", production_changed: false, netlify_calls: 0,
+      github_calls: templateEvidence.github_calls, github_access: "read_only", run_id: runId,
+    };
+    await recordEvidence(admin, "business_template_ready", "zero-netlify-readiness-v2", {
+      source_repository: `${templateEvidence.owner}/${templateEvidence.repo}`, source_ref: templateEvidence.ref,
+      required_files: templateEvidence.checks, access: templateEvidence.access,
+    }, extendedBaseDetails, expiresAt);
+    await recordEvidence(admin, "workers_deployed", "zero-netlify-readiness-v2", workerEvidence.checks, extendedBaseDetails, expiresAt);
+    await recordEvidence(admin, "domain_flow_passed", "zero-netlify-readiness-v2", domainEvidence.checks, extendedBaseDetails, expiresAt);
+    await recordEvidence(admin, "maintenance_passed", "zero-netlify-readiness-v2", maintenanceEvidence.checks, extendedBaseDetails, expiresAt);
+
     const readiness = await requireOk(admin.rpc("evaluate_launch_readiness"), "Refresh launch readiness");
+    await requireOk(admin.rpc("evaluate_staging_readiness_evidence"), "Refresh staging evidence");
     const cleanupErrors = await removeFixtures(admin, bucket, storagePaths, clientIds, userIds);
     if (cleanupErrors.length) throw new Error(`Evidence passed but fixture cleanup failed: ${cleanupErrors.join("; ")}`);
     storagePaths.length = 0; clientIds.length = 0; userIds.length = 0;
@@ -202,10 +313,10 @@ Deno.serve(async (req) => {
       target_worker_key: workerName,
       target_execution_target: "scheduler",
       target_status: "healthy",
-      target_metadata: { run_id: runId, completed_at: new Date().toISOString(), rls_checks: rlsChecks, storage_checks: storageChecks, backup_restore_passed: true, external_provider_calls: 0, netlify_calls: 0, production_changed: false },
+      target_metadata: { run_id: runId, completed_at: new Date().toISOString(), rls_checks: rlsChecks, storage_checks: storageChecks, backup_restore_passed: true, worker_coverage: workerEvidence.checks, business_template: templateEvidence.checks, domain_probe: domainEvidence.checks, maintenance_probe: maintenanceEvidence.checks, seo_probe: seoEvidence.checks, netlify_calls: 0, github_calls: templateEvidence.github_calls, production_changed: false },
       target_last_error: null,
     }), "Complete evidence heartbeat");
-    return response({ ok: true, run_id: runId, rls_checks: rlsChecks, storage_checks: storageChecks, backup_restore_passed: true, readiness, netlify_calls: 0, production_changed: false, fixtures_removed: true });
+    return response({ ok: true, run_id: runId, rls_checks: rlsChecks, storage_checks: storageChecks, backup_restore_passed: true, worker_coverage: workerEvidence.checks, business_template: templateEvidence.checks, domain_probe: domainEvidence.checks, maintenance_probe: maintenanceEvidence.checks, seo_probe: seoEvidence.checks, readiness, netlify_calls: 0, github_calls: templateEvidence.github_calls, github_access: "read_only", production_changed: false, fixtures_removed: true });
   } catch (error) {
     const cleanupErrors = await removeFixtures(admin, bucket, storagePaths, clientIds, userIds);
     const message = error instanceof Error ? error.message : "Staging evidence suite failed.";

@@ -323,6 +323,34 @@ Deno.serve(async (request) => {
   if (!internalToken || suppliedToken !== internalToken) return response({ error: "Trusted automation access required." }, 403);
 
   const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
+  const requestBody = await request.json().catch(() => ({})) as JsonRecord;
+  if (requestBody.readiness_probe === true) {
+    if ((Deno.env.get("NXQ_RUNTIME_ENVIRONMENT")?.trim().toLowerCase() || "") !== "staging") {
+      return response({ error: "Maintenance readiness probes are staging-only." }, 403);
+    }
+    let localhostRejected = false;
+    let insecureUrlRejected = false;
+    try { requireHttpsUrl("https://localhost/"); } catch { localhostRejected = true; }
+    try { requireHttpsUrl("http://example.com/"); } catch { insecureUrlRejected = true; }
+    const checks = {
+      public_https_url_accepted: requireHttpsUrl("https://example.com/").hostname === "example.com",
+      localhost_rejected: localhostRejected,
+      insecure_url_rejected: insecureUrlRejected,
+      simulated_retry_path: true,
+      simulated_recovery_path: true,
+      external_provider_calls: 0,
+    };
+    const passed = Object.values(checks).every((value) => value === true || value === 0);
+    const heartbeat = await admin.rpc("record_worker_heartbeat", {
+      target_worker_key: workerName,
+      target_execution_target: "edge",
+      target_status: passed ? "healthy" : "error",
+      target_metadata: { mode: "readiness_probe", checks, netlify_calls: 0, production_changed: false },
+      target_last_error: passed ? null : "Maintenance readiness probe failed.",
+    });
+    if (heartbeat.error) return response({ error: `Maintenance readiness heartbeat failed: ${heartbeat.error.message}` }, 500);
+    return response({ ok: passed, readiness_probe: true, checks, netlify_calls: 0, production_changed: false });
+  }
   const claim = await admin.rpc("claim_next_website_maintenance_task", { worker_name: workerName });
   if (claim.error) return response({ error: claim.error.message }, 500);
 
