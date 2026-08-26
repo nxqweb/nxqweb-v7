@@ -63,6 +63,8 @@ const authMarkers = {
   "worker-token": ["x-nxq-worker-token"],
   "trusted-worker-or-owner": ["x-nxq-worker-token", "auth.getUser"],
   "adapter-token": ["NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN", "Authorization"],
+  "malware-adapter-token": ["NXQ_MALWARE_SCAN_ADAPTER_TOKEN", "Authorization", "constantTimeEqual"],
+  "notification-adapter-token": ["NXQ_NOTIFICATION_ADAPTER_TOKEN", "Authorization", "constantTimeEqual"],
   "provider-health-adapter-token": ["NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN", "Authorization", "constantTimeEqual"],
   "billing-adapter-token": ["NXQ_BILLING_ADAPTER_TOKEN", "x-nxq-billing-adapter-token"],
   "public-ingest-key": ["public_ingest_key"],
@@ -92,7 +94,7 @@ const referencedSecretNames = new Set();
 for (const regex of [
   /Deno\.env\.get\(["']([A-Z0-9_]+)["']\)/g,
   /Deno\.env\.([A-Z][A-Z0-9_]*)/g,
-  /(?:secret|requiredSecret|optionalSecret)\(["']([A-Z0-9_]+)["']\)/g,
+  /(?:secret|requiredSecret|optionalSecret|environmentSecret)\(["']([A-Z0-9_]+)["']\)/g,
 ]) {
   for (const match of allFunctionSource.matchAll(regex)) referencedSecretNames.add(match[1]);
 }

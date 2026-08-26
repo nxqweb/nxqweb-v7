@@ -168,9 +168,14 @@ Deno.serve(async (req) => {
     let healthy = 0;
     let degraded = 0;
     let errors = 0;
+    let activityEvidence = 0;
 
     for (const raw of due.data || []) {
       const connection = raw as ProviderConnection;
+      if (connection.config?.health_check_mode === "activity_evidence") {
+        activityEvidence += 1;
+        continue;
+      }
       const check = await checkThroughAdapter(connection);
       if (!check.configured) continue;
 
@@ -211,7 +216,14 @@ Deno.serve(async (req) => {
       target_worker_key: "check-provider-health",
       target_execution_target: "provider",
       target_status: "healthy",
-      target_metadata: { checked, healthy, degraded, errors },
+      target_metadata: {
+        adapter_configured: true,
+        checked,
+        healthy,
+        degraded,
+        errors,
+        activity_evidence_connections_skipped: activityEvidence,
+      },
       target_last_error: null,
     });
 
@@ -223,6 +235,7 @@ Deno.serve(async (req) => {
       healthy,
       degraded,
       errors,
+      activity_evidence_connections_skipped: activityEvidence,
       launch_readiness_evaluated: !readiness.error,
     });
   } catch (error) {
@@ -231,7 +244,7 @@ Deno.serve(async (req) => {
       target_worker_key: "check-provider-health",
       target_execution_target: "provider",
       target_status: "error",
-      target_metadata: {},
+      target_metadata: { adapter_configured: adapterConfigured },
       target_last_error: message,
     });
     return response({ ok: false, error: message }, 500);

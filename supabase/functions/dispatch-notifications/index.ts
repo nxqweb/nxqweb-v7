@@ -21,6 +21,9 @@ type Delivery = {
 
 type AdapterResponse = Record<string, unknown>;
 type DeliveryDecision={decision?:string;reason?:string;next_run_after?:string};
+type ProviderUpdateResult={error:{message:string}|null};
+type ProviderUpdateFilter={eq:(column:string,value:unknown)=>ProviderUpdateFilter;is:(column:string,value:unknown)=>PromiseLike<ProviderUpdateResult>};
+type ProviderUpdateClient={from:(table:string)=>{update:(values:Record<string,unknown>)=>ProviderUpdateFilter}};
 const headers = { "Content-Type": "application/json" };
 const workerName = "dispatch-notifications";
 
@@ -28,6 +31,23 @@ function secret(name: string) { const value = Deno.env.get(name)?.trim(); if (!v
 function response(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers }); }
 function asAdapterResponse(value: unknown): AdapterResponse { if (!value || typeof value !== "object" || Array.isArray(value)) return {}; return value as AdapterResponse; }
 function asDecision(value:unknown):DeliveryDecision{if(!value||typeof value!=="object"||Array.isArray(value))return {};return value as DeliveryDecision;}
+
+async function recordNotificationProviderHealth(
+  admin: unknown,
+  status: "healthy" | "error",
+  error: string | null,
+) {
+  const now = new Date().toISOString();
+  const client = admin as ProviderUpdateClient;
+  const update = await client.from("nxq_provider_connections").update({
+    status,
+    last_checked_at: now,
+    last_success_at: status === "healthy" ? now : undefined,
+    last_error: status === "healthy" ? null : error?.slice(0, 500) || "Notification provider call failed.",
+    updated_at: now,
+  }).eq("provider_key", "notification_adapter").eq("scope_type", "global").is("scope_id", null);
+  if (update.error) console.error("Failed to persist notification provider health", update.error.message);
+}
 
 async function postAdapter(delivery: Delivery) {
   const endpoint = Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim();
@@ -112,6 +132,7 @@ Deno.serve(async (req) => {
       const current = claim.data as Delivery;
       let providerAccepted = false;
       let acceptedProviderMessageId = "";
+      let providerCallAttempted = false;
       try {
         if (current.channel === "in_app") {
           const done = await admin.from("notification_deliveries").update({ status: "delivered", delivered_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString() }).eq("id", current.id).eq("status","sending");
@@ -123,6 +144,7 @@ Deno.serve(async (req) => {
           if(blockedWrite.error)throw new Error(`Notification adapter-block persistence failed: ${blockedWrite.error.message}`);
           blocked++; continue;
         }
+        providerCallAttempted = true;
         const result = await postAdapter(current);
         providerAccepted = true;
         acceptedProviderMessageId = result.provider_message_id;
@@ -135,6 +157,7 @@ Deno.serve(async (req) => {
           metadata: { ...(current.metadata || {}), provider_status: result.provider_status, provider_idempotency_key: result.idempotency_key },
         }).eq("id", current.id).eq("status","sending");
         if(deliveredWrite.error)throw new Error(`Notification delivered-state persistence failed after provider acceptance: ${deliveredWrite.error.message}`);
+        await recordNotificationProviderHealth(admin, "healthy", null);
         delivered++;
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown notification failure";
@@ -151,6 +174,7 @@ Deno.serve(async (req) => {
           }
           blocked++; continue;
         }
+        if(providerCallAttempted) await recordNotificationProviderHealth(admin, "error", message);
         const exhausted = current.attempts >= current.max_attempts;
         const failedWrite=await admin.from("notification_deliveries").update({ status: exhausted ? "blocked" : "failed", last_error: message.slice(0, 2000), run_after: exhausted ? current.metadata?.run_after : new Date(Date.now() + Math.min(3600000, Math.max(120000, 2 ** Math.min(current.attempts, 5) * 60000))).toISOString(), updated_at: new Date().toISOString() }).eq("id", current.id).eq("status","sending");
         if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`, { cause: error });

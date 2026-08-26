@@ -53,9 +53,29 @@ No change from this audit has been applied to Supabase, Netlify, GitHub client i
 
    For an OpenAI Responses configuration, set the URL to the provider's Responses endpoint and the protocol to `openai_responses`. Store the API key only in Supabase Edge secrets; never paste it into chat, source, logs, workflow inputs, or a committed environment file. The selected model must support strict structured outputs.
 
+   Provider readiness also uses two first-party, protected adapter functions. Point each adapter URL at the matching function in the same staging project and use a separate randomly generated adapter token. Never reuse the automation worker token or place any value in source, GitHub workflow inputs, or chat.
+
+   Notification delivery requires:
+
+   - `NXQ_NOTIFICATION_ADAPTER_URL` → the hosted `notification-provider-adapter` function
+   - `NXQ_NOTIFICATION_ADAPTER_TOKEN`
+   - `NXQ_RESEND_API_KEY`
+   - `NXQ_NOTIFICATION_FROM_EMAIL`
+
+   Malware scanning requires:
+
+   - `NXQ_MALWARE_SCAN_ADAPTER_URL` → the hosted `malware-scan-provider-adapter` function
+   - `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`
+   - `NXQ_CLOUDMERSIVE_API_KEY`
+
+   The default Cloudmersive adapter limit is 3,500,000 bytes so the evaluation tier fails closed before an unsupported upload. A later paid plan may use the optional `NXQ_MALWARE_ADAPTER_MAX_BYTES`, capped by NXQ at 100 MiB. File access remains restricted unless the provider returns valid clean evidence and the independently computed SHA-256 matches.
+
+   Merely adding these names cannot make readiness green. Notification readiness requires a real successful delivery within 30 days. File-security readiness requires real provider success plus a released clean scan within 30 days. The generic provider-health worker deliberately preserves those activity-owned statuses instead of fabricating health from configuration.
+
 5. Before the real AI key is available, run **NXQ Manual Supabase Stage** with action `validate_prelaunch`. It links staging, dry-runs migrations, and proves every other launch secret name is present without changing the database.
-6. Run `validate_zero_key` while the challenge, malware-scan, and external-notification providers are intentionally unavailable. This validates the existing public analytics/lead endpoints and fingerprint salt without accepting fake adapter values. `validate_prelaunch` must continue to fail on those six adapter names until real providers are connected.
-7. Run `validate_non_ai` while using the temporary staging fallback. Only after the real provider token is added should `validate` and `apply_all` be allowed to pass. `apply_all` requires confirmation `APPLY-NXQ-SUPABASE-STAGING`; confirm migrations 220–222 are included before deploying the client portal and changed Edge functions.
+6. Run `validate_zero_key` while the challenge, malware-scan, and external-notification providers are intentionally unavailable. This validates the existing public analytics/lead endpoints and fingerprint salt without accepting fake adapter values. `validate_prelaunch` must continue to fail on those nine adapter/provider names until real providers are connected.
+7. Run `validate_non_ai` while using the temporary staging fallback. Only after the real provider token is added should `validate` and `apply_all` be allowed to pass. `apply_all` requires confirmation `APPLY-NXQ-SUPABASE-STAGING`; confirm migration 238 and every earlier pending migration are included before deploying the client portal and changed Edge functions.
+   After migration 238 is applied, the manual staging action `deploy_provider_readiness` deploys exactly the six provider-readiness functions changed by that repair. It does not deploy the full function manifest or call Netlify.
 8. Sign into the staging Owner Portal, open **Launch readiness**, and choose **Configure staging runtime routes**. Confirm the exact phrase shown by the dialog.
 9. Refresh Provider Health and request checks for the configured providers. Missing provider secret names stay visible; no secret value is displayed.
 10. Re-check provider capacity before retrying the existing QA02 preview. Its last recorded Netlify attempt was skipped because account build credits were exhausted; do not blindly create a replacement site or deploy.

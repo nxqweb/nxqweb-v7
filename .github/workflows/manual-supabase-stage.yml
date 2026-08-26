@@ -16,6 +16,7 @@ on:
           - validate
           - apply_migrations
           - deploy_functions
+          - deploy_provider_readiness
           - deploy_zero_netlify_readiness
           - run_evidence_suite
           - dispatch_workers
@@ -145,6 +146,28 @@ jobs:
           for fn in "${functions[@]}"; do
             echo "Deploying scoped zero-Netlify readiness function: $fn"
             npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          done
+
+      - name: Deploy provider-readiness functions only
+        if: inputs.action == 'deploy_provider_readiness'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            bootstrap-runtime-vault
+            check-provider-health
+            dispatch-notifications
+            malware-scan-provider-adapter
+            notification-provider-adapter
+            scan-client-file
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped provider-readiness function: $fn"
+            if [ "$fn" = "bootstrap-runtime-vault" ]; then
+              npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
+            else
+              npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+            fi
           done
 
       - name: Run zero-Netlify staging evidence suite

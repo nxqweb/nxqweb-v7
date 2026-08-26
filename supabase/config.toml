@@ -38,6 +38,10 @@ verify_jwt = false
 verify_jwt = false
 [functions.ingest-business-lead]
 verify_jwt = false
+[functions.malware-scan-provider-adapter]
+verify_jwt = false
+[functions.notification-provider-adapter]
+verify_jwt = false
 [functions.discover-sales-prospects]
 verify_jwt = true
 [functions.audit-prospect-website]

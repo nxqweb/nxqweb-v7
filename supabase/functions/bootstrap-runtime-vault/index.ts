@@ -25,8 +25,17 @@ function asRecord(value: unknown): Record<string, unknown> {
 const providerRequirements: Record<string, string[]> = {
   github: ["GITHUB_APP_ID", "GITHUB_APP_INSTALLATION_ID", "GITHUB_APP_PRIVATE_KEY"],
   netlify: ["NETLIFY_ACCESS_TOKEN", "NETLIFY_GITHUB_INSTALLATION_ID"],
-  malware_scan: ["NXQ_MALWARE_SCAN_ADAPTER_URL", "NXQ_MALWARE_SCAN_ADAPTER_TOKEN"],
-  notification_adapter: ["NXQ_NOTIFICATION_ADAPTER_URL", "NXQ_NOTIFICATION_ADAPTER_TOKEN"],
+  malware_scan: [
+    "NXQ_MALWARE_SCAN_ADAPTER_URL",
+    "NXQ_MALWARE_SCAN_ADAPTER_TOKEN",
+    "NXQ_CLOUDMERSIVE_API_KEY",
+  ],
+  notification_adapter: [
+    "NXQ_NOTIFICATION_ADAPTER_URL",
+    "NXQ_NOTIFICATION_ADAPTER_TOKEN",
+    "NXQ_RESEND_API_KEY",
+    "NXQ_NOTIFICATION_FROM_EMAIL",
+  ],
   provider_health_adapter: ["NXQ_PROVIDER_HEALTH_ADAPTER_URL", "NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN"],
   change_classifier_ai: [
     "NXQ_AI_MODEL_PROVIDER_URL",

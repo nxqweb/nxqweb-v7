@@ -24,6 +24,15 @@ type AdapterResult = {
   findings?: Record<string, unknown>;
 };
 
+type ProviderUpdateResult = { error: { message: string } | null };
+type ProviderUpdateFilter = {
+  eq: (column: string, value: unknown) => ProviderUpdateFilter;
+  is: (column: string, value: unknown) => PromiseLike<ProviderUpdateResult>;
+};
+type ProviderUpdateClient = {
+  from: (table: string) => { update: (values: Record<string, unknown>) => ProviderUpdateFilter };
+};
+
 const headers = { "Content-Type": "application/json" };
 const workerName = "scan-client-file";
 const STAGING_ENVIRONMENTS = new Set(["staging", "stage", "development", "dev", "test", "qa"]);
@@ -52,6 +61,23 @@ function normalizeClaim(value: unknown): ScanRow | null {
 function normalizeAdapterResult(value: unknown): AdapterResult {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return value as AdapterResult;
+}
+
+async function recordMalwareProviderHealth(
+  admin: unknown,
+  status: "healthy" | "error",
+  error: string | null,
+) {
+  const now = new Date().toISOString();
+  const client = admin as ProviderUpdateClient;
+  const update = await client.from("nxq_provider_connections").update({
+    status,
+    last_checked_at: now,
+    last_success_at: status === "healthy" ? now : undefined,
+    last_error: status === "healthy" ? null : error?.slice(0, 500) || "Malware provider call failed.",
+    updated_at: now,
+  }).eq("provider_key", "malware_scan").eq("scope_type", "global").is("scope_id", null);
+  if (update.error) console.error("Failed to persist malware provider health", update.error.message);
 }
 
 async function sha256Hex(bytes: ArrayBuffer) {
@@ -137,6 +163,8 @@ Deno.serve(async (req) => {
   if (claim.error) return response({ ok: false, error: claim.error.message }, 500);
 
   let scan: ScanRow | null;
+  let providerCallAttempted = false;
+  let providerCallSucceeded = false;
   try {
     scan = normalizeClaim(claim.data);
   } catch (error) {
@@ -171,7 +199,9 @@ Deno.serve(async (req) => {
     if (bytes.byteLength > maxBytes) throw new Error(`Downloaded file exceeds the configured scan limit of ${maxBytes} bytes.`);
 
     const checksum = await sha256Hex(bytes);
+    providerCallAttempted = true;
     const result = await scanWithAdapter(file, bytes, checksum);
+    providerCallSucceeded = true;
 
     const completed = await admin.rpc("complete_client_file_security_scan", {
       target_scan_id: scan.id,
@@ -182,6 +212,7 @@ Deno.serve(async (req) => {
       target_findings: result.findings || {},
     });
     if (completed.error) throw new Error(completed.error.message);
+    await recordMalwareProviderHealth(admin, "healthy", null);
 
     return response({
       ok: true,
@@ -193,6 +224,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Client file scan failed.";
+    if (providerCallAttempted && !providerCallSucceeded) {
+      await recordMalwareProviderHealth(admin, "error", message);
+    }
     const failed = await admin.rpc("fail_client_file_security_scan", {
       target_scan_id: scan.id,
       target_error: message,
