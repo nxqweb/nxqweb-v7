@@ -56,6 +56,16 @@ export const managedEdgeSecrets = Object.freeze([
 const sourceRef = "NXQ_AUTOMATION_SOURCE_REF";
 
 export const runtimeSecretProfiles = Object.freeze({
+  "business-internal-provider-adapters": Object.freeze([
+    "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
+    "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
+    "NXQ_MALWARE_SCAN_ADAPTER_TOKEN",
+    "NXQ_MALWARE_SCAN_ADAPTER_URL",
+    "NXQ_NOTIFICATION_ADAPTER_TOKEN",
+    "NXQ_NOTIFICATION_ADAPTER_URL",
+    "NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN",
+    "NXQ_PROVIDER_HEALTH_ADAPTER_URL",
+  ]),
   "business-configured-foundation": Object.freeze([
     "GITHUB_APP_ID",
     "GITHUB_APP_INSTALLATION_ID",

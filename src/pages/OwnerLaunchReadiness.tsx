@@ -230,11 +230,19 @@ export function OwnerLaunchReadiness() {
                   </div>
                   <span className="status-summary">add later</span>
                 </div>
-                <p><strong>Account step:</strong> {group.accountTask}</p>
-                <p><strong>Protected secret names:</strong></p>
+                <p><strong>NXQ prepares through the guarded staging action:</strong></p>
                 <ul>
-                  {group.secretNames.map((secretName) => <li key={secretName}><code>{secretName}</code></li>)}
+                  {group.preparedSecretNames.map((secretName) => <li key={secretName}><code>{secretName}</code></li>)}
                 </ul>
+                <p><strong>Account step:</strong> {group.accountTask}</p>
+                {group.accountSecretNames.length ? (
+                  <>
+                    <p><strong>Provider values you add later:</strong></p>
+                    <ul>
+                      {group.accountSecretNames.map((secretName) => <li key={secretName}><code>{secretName}</code></li>)}
+                    </ul>
+                  </>
+                ) : <p><strong>Provider values you add later:</strong> None.</p>}
                 <p><strong>Staging proof:</strong> {group.proof}</p>
               </article>
             ))}
@@ -243,7 +251,8 @@ export function OwnerLaunchReadiness() {
           <div className="auth-success" data-provider-setup-safety>
             <strong>Safe hookup order</strong>
             <ol>
-              <li>Create eligible provider accounts and obtain the real values from those providers.</li>
+              <li>Under separate authorization, run the guarded <code>configure_internal_provider_adapters</code> staging action to derive first-party URLs and generate dedicated tokens.</li>
+              <li>Create eligible provider accounts and obtain the remaining real values from those providers.</li>
               <li>{providerSetupSafetyRules[0]}</li>
               <li>Use “Configure staging runtime routes” below, then open Provider Health and recheck.</li>
               <li>Run real staging proof only with separate explicit authorization.</li>

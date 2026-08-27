@@ -17,6 +17,7 @@ on:
           - apply_migrations
           - deploy_functions
           - deploy_provider_readiness
+          - configure_internal_provider_adapters
           - deploy_zero_netlify_readiness
           - run_evidence_suite
           - dispatch_workers
@@ -169,6 +170,47 @@ jobs:
               npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
             fi
           done
+
+      - name: Configure internal provider adapters only
+        if: inputs.action == 'configure_internal_provider_adapters'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-internal-provider-adapters.env"
+          secret_names_file="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          trap 'rm -f "$secrets_file" "$secret_names_file"' EXIT
+
+          function_base_url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          notification_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          malware_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          provider_health_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          build_plan_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+
+          printf '%s=%s\n' \
+            NXQ_NOTIFICATION_ADAPTER_URL "${function_base_url}/notification-provider-adapter" \
+            NXQ_NOTIFICATION_ADAPTER_TOKEN "$notification_token" \
+            NXQ_MALWARE_SCAN_ADAPTER_URL "${function_base_url}/malware-scan-provider-adapter" \
+            NXQ_MALWARE_SCAN_ADAPTER_TOKEN "$malware_token" \
+            NXQ_PROVIDER_HEALTH_ADAPTER_URL "${function_base_url}/provider-health-adapter" \
+            NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN "$provider_health_token" \
+            NXQ_BUILD_PLAN_AI_ADAPTER_URL "${function_base_url}/generate-business-build-plan" \
+            NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN "$build_plan_token" \
+            > "$secrets_file"
+
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+
+          npx --no-install supabase secrets list \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --output-format json > "$secret_names_file"
+          node scripts/check-runtime-stage-readiness.mjs \
+            --profile=business-internal-provider-adapters \
+            --supabase-secrets-json="$secret_names_file"
+          echo "Configured eight protected internal adapter names; no value was printed."
+          echo "Scheduled provider-health checks may begin after this action and require separate authorization before it is run."
 
       - name: Run zero-Netlify staging evidence suite
         if: inputs.action == 'run_evidence_suite'

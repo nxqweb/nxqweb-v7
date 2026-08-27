@@ -99,9 +99,10 @@ NXQ can remain safely staged until the provider accounts are available. The Owne
 
 Prepare the accounts in this order:
 
-1. Notification delivery: verify the sender domain and obtain a sending-only key. Add `NXQ_NOTIFICATION_ADAPTER_URL`, `NXQ_NOTIFICATION_ADAPTER_TOKEN`, `NXQ_RESEND_API_KEY`, and `NXQ_NOTIFICATION_FROM_EMAIL` directly to protected Supabase staging Edge secrets.
-2. Malware scanning: obtain a file-scanning key. Add `NXQ_MALWARE_SCAN_ADAPTER_URL`, `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`, and `NXQ_CLOUDMERSIVE_API_KEY` directly to protected Supabase staging Edge secrets.
-3. AI classification and planning: choose a strict-structured-output model. Add `NXQ_AI_MODEL_PROVIDER_URL`, `NXQ_AI_MODEL_PROVIDER_TOKEN`, `NXQ_AI_MODEL_PROVIDER_MODEL`, `NXQ_AI_MODEL_PROVIDER_PROTOCOL`, `NXQ_BUILD_PLAN_AI_ADAPTER_URL`, and `NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN` directly to protected Supabase staging Edge secrets.
+1. Under separate staging-mutation authorization, run `configure_internal_provider_adapters` with the exact workflow confirmation. It derives the four first-party function URLs and generates four independent adapter tokens. It sets `NXQ_NOTIFICATION_ADAPTER_URL`, `NXQ_NOTIFICATION_ADAPTER_TOKEN`, `NXQ_MALWARE_SCAN_ADAPTER_URL`, `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`, `NXQ_PROVIDER_HEALTH_ADAPTER_URL`, `NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN`, `NXQ_BUILD_PLAN_AI_ADAPTER_URL`, and `NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN` together without printing their values. The temporary secret file is removed before the job ends. Because the provider-health scheduler may begin read-only GitHub/Netlify checks after configuration, do not run this action without explicit authorization for those resulting calls.
+2. Notification delivery: verify the sender domain and obtain a sending-only key. Add only `NXQ_RESEND_API_KEY` and `NXQ_NOTIFICATION_FROM_EMAIL` directly to protected Supabase staging Edge secrets.
+3. Malware scanning: obtain a file-scanning key. Add only `NXQ_CLOUDMERSIVE_API_KEY` directly to protected Supabase staging Edge secrets.
+4. AI classification and planning: choose a strict-structured-output model. Add only `NXQ_AI_MODEL_PROVIDER_URL`, `NXQ_AI_MODEL_PROVIDER_TOKEN`, `NXQ_AI_MODEL_PROVIDER_MODEL`, and `NXQ_AI_MODEL_PROVIDER_PROTOCOL` directly to protected Supabase staging Edge secrets.
 
 Then configure staging runtime routes from Owner Launch Readiness, open Provider Health, and recheck the connections. Real notification, scanning, AI, evidence, or QA activity remains a separate explicitly authorized step. Never put a provider value in chat, source, logs, workflow inputs, or a committed environment file.
 
