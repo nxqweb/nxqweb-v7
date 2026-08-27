@@ -7,6 +7,8 @@ const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const clientFilesBucket = read("supabase/migrations/235_create_private_client_files_bucket.sql");
 const extension = read("supabase/migrations/237_extend_zero_netlify_readiness_evidence.sql");
+const deploymentFoundation = read("supabase/migrations/018_ai_build_deployment_foundation.sql");
+const recoveryFoundation = read("supabase/migrations/134_provider_observability_and_recovery_foundation.sql");
 const domainWorker = read("supabase/functions/reconcile-domain/index.ts");
 const maintenanceWorker = read("supabase/functions/run-website-maintenance/index.ts");
 const seoWorker = read("supabase/functions/build-business-seo-artifacts/index.ts");
@@ -19,7 +21,10 @@ const checks = [
   ["RLS policy denial counts as a successful write probe", worker.includes('crossUpdate.error?.code === "42501"') && /expectedCrossTenantDenial\s*\|\|\s*\(crossUpdate\.data\s*\|\|\s*\[\]\)\.length\s*===\s*0/.test(worker)],
   ["storage metadata and signed-access probes", worker.includes("tenant_a_sees_only_own_file_metadata") && worker.includes("tenant_a_is_denied_tenant_b_file")],
   ["canonical private client-files bucket is migration-managed", clientFilesBucket.includes("insert into storage.buckets") && clientFilesBucket.includes("'client-files'") && clientFilesBucket.includes("public = false") && clientFilesBucket.includes("26214400")],
-  ["non-destructive restore simulation", worker.includes("create_verified_project_restore_point") && worker.includes("simulate_project_restore")],
+  ["restore simulation uses its own ephemeral QA project", worker.includes("const restoreFixture = projectRows[0]") && worker.includes('github_owner: "nxq-staging-evidence"') && !worker.includes("Find restore fixture")],
+  ["restore fixture cannot resolve or auto-publish", worker.includes(".example.invalid") && worker.includes("auto_publish_locked: true") && worker.includes('production_branch: "staging-evidence"')],
+  ["non-destructive restore simulation is asserted", worker.includes("create_verified_project_restore_point") && worker.includes("simulate_project_restore") && worker.includes("restoreResult?.checks?.non_destructive !== true")],
+  ["restore artifacts cascade with QA fixture cleanup", deploymentFoundation.includes("project_id uuid not null unique references public.projects(id) on delete cascade") && recoveryFoundation.includes("project_id uuid not null references public.projects(id) on delete cascade") && recoveryFoundation.includes("project_id uuid references public.projects(id) on delete cascade")],
   ["records expiring server-authoritative evidence", worker.includes("record_staging_readiness_evidence") && worker.includes("target_expires_at")],
   ["fixtures removed on success and failure", (worker.match(/removeFixtures\(/g) || []).length >= 3],
   ["zero Netlify provider calls", !worker.includes("api.netlify.com") && worker.includes("netlify_calls: 0")],

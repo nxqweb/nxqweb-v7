@@ -276,11 +276,28 @@ Deno.serve(async (req) => {
       target_expires_at: expiresAt,
     }), "Record storage evidence");
 
-    const published = await requireOk(admin.from("project_deployment_configs").select("project_id").eq("last_deployment_status", "published").not("production_url", "is", null).not("last_deployed_commit", "is", null).limit(1).maybeSingle(), "Find restore fixture");
-    if (!published?.project_id) throw new Error("No verified published staging project is available for the restore simulation.");
-    const restorePointId = await requireOk(admin.rpc("create_verified_project_restore_point", { target_project_id: published.project_id, target_restore_kind: "full_project" }), "Create restore point");
+    const restoreFixture = projectRows[0];
+    if (!restoreFixture?.id || String(restoreFixture.client_id) !== clientIds[0]) {
+      throw new Error("Ephemeral restore fixture is not bound to the first QA tenant.");
+    }
+    const restoreFixtureUrl = `https://nxq-staging-evidence-${runId}.example.invalid`;
+    const restoreFixtureCommit = (await sha256({ runId, check: "restore-fixture" })).slice(0, 40);
+    await requireOk(admin.from("project_deployment_configs").insert({
+      project_id: restoreFixture.id,
+      client_id: clientIds[0],
+      github_owner: "nxq-staging-evidence",
+      github_repo: `restore-${runId}`,
+      production_branch: "staging-evidence",
+      production_url: restoreFixtureUrl,
+      auto_publish_locked: true,
+      last_deployed_commit: restoreFixtureCommit,
+      last_deployment_status: "published",
+    }), "Create isolated restore fixture");
+    const restorePointId = await requireOk(admin.rpc("create_verified_project_restore_point", { target_project_id: restoreFixture.id, target_restore_kind: "full_project" }), "Create restore point");
     const restoreResult = await requireOk(admin.rpc("simulate_project_restore", { target_restore_point_id: restorePointId }), "Simulate restore");
-    if (!restoreResult?.ok || restoreResult?.external_changes_made !== false) throw new Error("Non-destructive restore simulation did not pass.");
+    if (!restoreResult?.ok || restoreResult?.external_changes_made !== false || restoreResult?.checks?.non_destructive !== true) {
+      throw new Error("Non-destructive restore simulation did not pass.");
+    }
 
     const edgeBaseUrl = `${url.replace(/\/$/, "")}/functions/v1`;
     const workerToken = secret("NXQ_AUTOMATION_WORKER_TOKEN");
