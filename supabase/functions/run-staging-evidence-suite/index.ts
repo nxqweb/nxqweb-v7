@@ -320,8 +320,8 @@ Deno.serve(async (req) => {
     await recordEvidence(admin, "domain_flow_passed", "zero-netlify-readiness-v2", domainEvidence.checks, extendedBaseDetails, expiresAt);
     await recordEvidence(admin, "maintenance_passed", "zero-netlify-readiness-v2", maintenanceEvidence.checks, extendedBaseDetails, expiresAt);
 
-    const readiness = await requireOk(admin.rpc("evaluate_launch_readiness"), "Refresh launch readiness");
     await requireOk(admin.rpc("evaluate_staging_readiness_evidence"), "Refresh staging evidence");
+    const readiness = await requireOk(admin.rpc("evaluate_launch_readiness"), "Refresh launch readiness");
     const cleanupErrors = await removeFixtures(admin, bucket, storagePaths, clientIds, userIds);
     if (cleanupErrors.length) throw new Error(`Evidence passed but fixture cleanup failed: ${cleanupErrors.join("; ")}`);
     storagePaths.length = 0; clientIds.length = 0; userIds.length = 0;

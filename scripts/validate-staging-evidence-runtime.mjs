@@ -35,6 +35,7 @@ const checks = [
   ["SEO probe refreshes heartbeat without claiming a job", seoWorker.indexOf("requestBody.readiness_probe") < seoWorker.indexOf('claim_next_external_automation_job') && /job_claimed:\s*false/.test(seoWorker) && /netlify_calls:\s*0/.test(seoWorker)],
   ["evidence gate accepts and expires worker coverage", extension.includes("'workers_deployed'") && extension.includes("nxq-staging-evidence-gate-v2") && extension.includes("expires_at>now()")],
   ["evidence gate requires explicit zero-Netlify proof", extension.includes("target_details->>'netlify_calls'") && extension.includes("production and Netlify were untouched")],
+  ["returned readiness includes the final staging evidence refresh", worker.indexOf('admin.rpc("evaluate_staging_readiness_evidence")') < worker.indexOf('admin.rpc("evaluate_launch_readiness")')],
   ["manual workflow exposes explicit evidence action", workflow.includes("- run_evidence_suite") && workflow.includes("inputs.action == 'run_evidence_suite'")],
   ["manual workflow requires mutation confirmation", workflow.includes("Require explicit mutation confirmation") && workflow.includes("APPLY-NXQ-SUPABASE-STAGING")],
   ["manual workflow asserts safety response", workflow.includes("r.netlify_calls!==0") && workflow.includes("r.production_changed!==false") && workflow.includes("r.fixtures_removed!==true")],
