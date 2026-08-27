@@ -65,6 +65,7 @@ export const runtimeSecretProfiles = Object.freeze({
     "NXQ_NOTIFICATION_ADAPTER_URL",
     "NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN",
     "NXQ_PROVIDER_HEALTH_ADAPTER_URL",
+    sourceRef,
   ]),
   "business-configured-foundation": Object.freeze([
     "GITHUB_APP_ID",
