@@ -93,6 +93,18 @@ When Netlify production deployments resume and the model-provider token is avail
 5. Complete one DENY-path run and ten consecutive APPROVE-path external runs without duplicate infrastructure, crossed tenant data, or manual rescue.
 6. Review the production change, provide explicit owner signoff, and make a separate production launch decision. No earlier step merges or publishes production.
 
+## Future one-session provider hookup
+
+NXQ can remain safely staged until the provider accounts are available. The Owner Portal **Launch readiness** page now carries the same secret-name-only checklist. It does not collect, store, or display any secret value.
+
+Prepare the accounts in this order:
+
+1. Notification delivery: verify the sender domain and obtain a sending-only key. Add `NXQ_NOTIFICATION_ADAPTER_URL`, `NXQ_NOTIFICATION_ADAPTER_TOKEN`, `NXQ_RESEND_API_KEY`, and `NXQ_NOTIFICATION_FROM_EMAIL` directly to protected Supabase staging Edge secrets.
+2. Malware scanning: obtain a file-scanning key. Add `NXQ_MALWARE_SCAN_ADAPTER_URL`, `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`, and `NXQ_CLOUDMERSIVE_API_KEY` directly to protected Supabase staging Edge secrets.
+3. AI classification and planning: choose a strict-structured-output model. Add `NXQ_AI_MODEL_PROVIDER_URL`, `NXQ_AI_MODEL_PROVIDER_TOKEN`, `NXQ_AI_MODEL_PROVIDER_MODEL`, `NXQ_AI_MODEL_PROVIDER_PROTOCOL`, `NXQ_BUILD_PLAN_AI_ADAPTER_URL`, and `NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN` directly to protected Supabase staging Edge secrets.
+
+Then configure staging runtime routes from Owner Launch Readiness, open Provider Health, and recheck the connections. Real notification, scanning, AI, evidence, or QA activity remains a separate explicitly authorized step. Never put a provider value in chat, source, logs, workflow inputs, or a committed environment file.
+
 ## Production remains blocked
 
 Production still requires the ten strict external staging runs, healthy provider/worker evidence, recovery proof, owner signoff, a separate production change review, and an explicit production deployment decision. The staging workflow cannot merge a branch, publish Netlify production, change DNS, enable billing, or mark QA evidence passed.

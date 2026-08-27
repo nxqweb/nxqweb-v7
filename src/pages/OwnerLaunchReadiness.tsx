@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, FlaskConical, RefreshCcw, Rocket, ServerCog, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, FlaskConical, KeyRound, RefreshCcw, Rocket, ServerCog, ShieldAlert } from "lucide-react";
+import { providerSetupGroups, providerSetupSafetyRules } from "../lib/providerSetup";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type Check = {
@@ -29,11 +30,11 @@ type QaRun = {
 };
 
 const blockerGuidance: Record<string, string> = {
-  notification_pipeline_ready: "Add the notification adapter URL/token later, then run a verified staging dispatch heartbeat.",
+  notification_pipeline_ready: "Complete the notification provider checklist, then run one verified staging delivery.",
   change_classifier_ready: "Add the model-provider token later and complete one successful staging classification.",
   business_build_plan_ai_ready: "Add the model-provider token later and complete one validated AI-enriched build plan.",
   business_template_ready: "Verify the private template repository and record a successful GitHub App access check.",
-  provider_health_pipeline_ready: "Add the remaining provider adapter secrets and record a fresh provider-health heartbeat.",
+  provider_health_pipeline_ready: "Complete the remaining provider checklist items and record a fresh provider-health heartbeat.",
   domain_flow_passed: "Run the non-production domain/SSL reconciliation simulation and preserve its evidence.",
   maintenance_passed: "Run staging maintenance plus restore verification without changing production.",
   ten_clean_runs: "Complete ten consecutive monitored disposable lifecycle runs with no safety or isolation failures.",
@@ -41,7 +42,7 @@ const blockerGuidance: Record<string, string> = {
   workers_deployed: "Deploy the exact staging Edge Function manifest, then verify complete remote coverage.",
   migrations_applied: "Apply the pending staging migrations and verify the latest migration sentinel.",
   vault_configured: "Configure the protected staging runtime routes and verify every required Vault route name.",
-  file_security_pipeline_ready: "Add the malware-scanner adapter URL/token later and complete a clean staging scan heartbeat.",
+  file_security_pipeline_ready: "Complete the malware-scanner provider checklist, then record one clean staging scan.",
   storage_isolation_passed: "Run the storage cross-tenant denial suite and save the signed test result.",
   rls_isolation_passed: "Run the database cross-tenant RLS denial suite and save the signed test result.",
   business_seo_publish_lane_ready: "Complete a staging SEO publish-lane heartbeat without touching production.",
@@ -206,6 +207,50 @@ export function OwnerLaunchReadiness() {
           <section className="panel"><h2>Readiness</h2><div className="status-summary">{pct}%</div></section>
           <section className="panel"><h2>Blocking/unknown</h2><div className="status-summary">{blocked}</div></section>
         </div>
+
+        <section className="panel panel-wide" data-provider-setup-checklist>
+          <div className="panel-title panel-title-row">
+            <div className="panel-title">
+              <KeyRound size={20} />
+              <div>
+                <h2>Future provider plug-in checklist</h2>
+                <p className="subtle">Everything NXQ can safely prepare is already separated from the real account credentials. When the provider accounts are available, add only the named values directly to protected Supabase staging secrets.</p>
+              </div>
+            </div>
+            <a className="icon-btn" href="/owner/providers">Open provider health</a>
+          </div>
+
+          <div className="owner-message-list" data-provider-setup-groups>
+            {providerSetupGroups.map((group, index) => (
+              <article className="owner-message-card" key={group.id}>
+                <div className="panel-title panel-title-row">
+                  <div>
+                    <strong>{index + 1}. {group.title}</strong>
+                    <p className="subtle">{group.purpose}</p>
+                  </div>
+                  <span className="status-summary">add later</span>
+                </div>
+                <p><strong>Account step:</strong> {group.accountTask}</p>
+                <p><strong>Protected secret names:</strong></p>
+                <ul>
+                  {group.secretNames.map((secretName) => <li key={secretName}><code>{secretName}</code></li>)}
+                </ul>
+                <p><strong>Staging proof:</strong> {group.proof}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="auth-success" data-provider-setup-safety>
+            <strong>Safe hookup order</strong>
+            <ol>
+              <li>Create eligible provider accounts and obtain the real values from those providers.</li>
+              <li>{providerSetupSafetyRules[0]}</li>
+              <li>Use “Configure staging runtime routes” below, then open Provider Health and recheck.</li>
+              <li>Run real staging proof only with separate explicit authorization.</li>
+            </ol>
+            <p>{providerSetupSafetyRules[1]} {providerSetupSafetyRules[2]}</p>
+          </div>
+        </section>
 
         <section className="panel panel-wide">
           <div className="panel-title panel-title-row">
