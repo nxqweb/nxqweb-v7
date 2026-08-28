@@ -316,7 +316,10 @@ Deno.serve(async (req) => {
       source_repository: `${templateEvidence.owner}/${templateEvidence.repo}`, source_ref: templateEvidence.ref,
       required_files: templateEvidence.checks, access: templateEvidence.access,
     }, extendedBaseDetails, expiresAt);
-    await recordEvidence(admin, "workers_deployed", "zero-netlify-readiness-v2", workerEvidence.checks, extendedBaseDetails, expiresAt);
+    await recordEvidence(admin, "workers_deployed", "zero-netlify-readiness-v2", {
+      ...workerEvidence.checks,
+      seo_publish_lane: seoEvidence.checks,
+    }, extendedBaseDetails, expiresAt);
     await recordEvidence(admin, "domain_flow_passed", "zero-netlify-readiness-v2", domainEvidence.checks, extendedBaseDetails, expiresAt);
     await recordEvidence(admin, "maintenance_passed", "zero-netlify-readiness-v2", maintenanceEvidence.checks, extendedBaseDetails, expiresAt);
 

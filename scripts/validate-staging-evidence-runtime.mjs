@@ -7,6 +7,7 @@ const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const clientFilesBucket = read("supabase/migrations/235_create_private_client_files_bucket.sql");
 const extension = read("supabase/migrations/237_extend_zero_netlify_readiness_evidence.sql");
+const seoReadinessRepair = read("supabase/migrations/239_bound_staging_seo_readiness_probe.sql");
 const deploymentFoundation = read("supabase/migrations/018_ai_build_deployment_foundation.sql");
 const recoveryFoundation = read("supabase/migrations/134_provider_observability_and_recovery_foundation.sql");
 const domainWorker = read("supabase/functions/reconcile-domain/index.ts");
@@ -33,6 +34,10 @@ const checks = [
   ["domain probe is staging-only and zero-Netlify", domainWorker.includes("Domain readiness probes are staging-only") && domainWorker.includes("readiness_probe") && domainWorker.includes("netlify_calls: 0")],
   ["maintenance probe is staging-only and does not claim tasks", maintenanceWorker.indexOf("requestBody.readiness_probe") < maintenanceWorker.indexOf('claim_next_website_maintenance_task') && maintenanceWorker.includes("netlify_calls: 0")],
   ["SEO probe refreshes heartbeat without claiming a job", seoWorker.indexOf("requestBody.readiness_probe") < seoWorker.indexOf('claim_next_external_automation_job') && /job_claimed:\s*false/.test(seoWorker) && /netlify_calls:\s*0/.test(seoWorker)],
+  ["SEO probe is persisted inside expiring server evidence", worker.includes("seo_publish_lane: seoEvidence.checks") && worker.indexOf("const seoEvidence") < worker.indexOf('recordEvidence(admin, "workers_deployed"')],
+  ["ordinary SEO runtime heartbeats retain strict freshness", seoReadinessRepair.includes("coalesce(metadata->>'mode','runtime')<>'readiness_probe'") && seoReadinessRepair.includes("now()-interval '15 minutes'")],
+  ["bounded SEO proof requires fresh staging evidence", seoReadinessRepair.includes("suite_version='zero-netlify-readiness-v2'") && seoReadinessRepair.includes("expires_at>now()") && seoReadinessRepair.includes("details->>'environment'")],
+  ["bounded SEO proof requires a non-mutating zero-Netlify probe", ["worker_reachable","job_claimed","github_calls","netlify_calls","production_changed"].every((key) => seoReadinessRepair.includes(`{checks,seo_publish_lane,${key}}`)) && seoReadinessRepair.includes("bounded_staging_probe_ready")],
   ["evidence gate accepts and expires worker coverage", extension.includes("'workers_deployed'") && extension.includes("nxq-staging-evidence-gate-v2") && extension.includes("expires_at>now()")],
   ["evidence gate requires explicit zero-Netlify proof", extension.includes("target_details->>'netlify_calls'") && extension.includes("production and Netlify were untouched")],
   ["returned readiness includes the final staging evidence refresh", worker.indexOf('admin.rpc("evaluate_staging_readiness_evidence")') < worker.indexOf('admin.rpc("evaluate_launch_readiness")')],
