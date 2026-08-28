@@ -115,6 +115,39 @@ async function requireOk<T>(promise: PromiseLike<{ data: T; error: { message: st
   return result.data;
 }
 
+type LaunchReadinessRow = {
+  check_key: string;
+  status: string;
+  required: boolean;
+  evidence: Record<string, unknown> | null;
+};
+
+async function loadFinalReadinessSnapshot(admin: SupabaseClient, baseline: Record<string, unknown>) {
+  const rows = (await requireOk(
+    admin.from("launch_readiness_checks").select("check_key,status,required,evidence"),
+    "Read final launch readiness",
+  ) || []) as LaunchReadinessRow[];
+  const checks: Record<string, { status: string; required: boolean; evidence: Record<string, unknown> }> = Object.fromEntries(rows.map((row) => [row.check_key, {
+    status: row.status,
+    required: row.required,
+    evidence: row.evidence || {},
+  }]));
+  const requiredChecks = rows.filter((row) => row.required);
+  const requiredReady = requiredChecks.filter((row) => row.status === "ready").length;
+
+  return {
+    ...baseline,
+    ok: true,
+    checks,
+    workers_healthy: checks.workers_deployed?.status === "ready",
+    required_ready: requiredReady,
+    required_total: requiredChecks.length,
+    readiness_percent: requiredChecks.length ? Math.floor((requiredReady / requiredChecks.length) * 100) : 0,
+    blocking_unknown: requiredChecks.filter((row) => row.status !== "ready").length,
+    evaluated_at: new Date().toISOString(),
+  };
+}
+
 async function signIn(url: string, anonKey: string, email: string, password: string) {
   const client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const result = await client.auth.signInWithPassword({ email, password });
@@ -323,8 +356,10 @@ Deno.serve(async (req) => {
     await recordEvidence(admin, "domain_flow_passed", "zero-netlify-readiness-v2", domainEvidence.checks, extendedBaseDetails, expiresAt);
     await recordEvidence(admin, "maintenance_passed", "zero-netlify-readiness-v2", maintenanceEvidence.checks, extendedBaseDetails, expiresAt);
 
-    await requireOk(admin.rpc("evaluate_staging_readiness_evidence"), "Refresh staging evidence");
-    const readiness = await requireOk(admin.rpc("evaluate_launch_readiness"), "Refresh launch readiness");
+    const baselineReadiness = await requireOk(admin.rpc("evaluate_launch_readiness"), "Refresh baseline launch readiness");
+    await requireOk(admin.rpc("evaluate_staging_readiness_evidence"), "Apply final staging evidence");
+    await requireOk(admin.rpc("evaluate_business_seo_publish_readiness"), "Apply final SEO publish readiness");
+    const readiness = await loadFinalReadinessSnapshot(admin, baselineReadiness as Record<string, unknown>);
     const cleanupErrors = await removeFixtures(admin, bucket, storagePaths, clientIds, userIds);
     if (cleanupErrors.length) throw new Error(`Evidence passed but fixture cleanup failed: ${cleanupErrors.join("; ")}`);
     storagePaths.length = 0; clientIds.length = 0; userIds.length = 0;
