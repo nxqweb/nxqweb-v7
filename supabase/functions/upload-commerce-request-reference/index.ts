@@ -153,7 +153,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
   const fixtureTag = `nxq-commerce-reference-smoke-${runId}`;
   let clientId = "";
   let requestId: string;
-  let clientFileId = "";
+  let clientFileId: string;
   let storagePath = "";
   let cleanReleaseVerified = false;
   let multimodalContextVerified = false;
