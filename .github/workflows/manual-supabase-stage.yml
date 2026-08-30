@@ -20,6 +20,7 @@ on:
           - configure_internal_provider_adapters
           - deploy_zero_netlify_readiness
           - deploy_commerce_reference_upload
+          - deploy_commerce_reference_ai_handoff
           - smoke_commerce_reference_upload
           - run_evidence_suite
           - dispatch_workers
@@ -182,6 +183,22 @@ jobs:
           npx --no-install supabase functions deploy upload-commerce-request-reference \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --no-verify-jwt
+
+      - name: Deploy Commerce reference AI-handoff functions only
+        if: inputs.action == 'deploy_commerce_reference_ai_handoff'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            upload-commerce-request-reference
+            prepare-commerce-reference-build-context
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped Commerce reference AI-handoff function: $fn"
+            npx --no-install supabase functions deploy "$fn" \
+              --project-ref "$SUPABASE_PROJECT_REF" \
+              --no-verify-jwt
+          done
 
       - name: Smoke test Commerce reference upload only
         if: inputs.action == 'smoke_commerce_reference_upload'
