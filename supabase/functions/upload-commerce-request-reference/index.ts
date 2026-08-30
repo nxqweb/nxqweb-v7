@@ -144,7 +144,7 @@ async function uploadReference(
   };
 }
 
-async function runStagingSmokeTest(admin: SupabaseClient) {
+async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = false) {
   if (secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging") {
     throw new CommerceReferenceContextError("Commerce reference smoke testing is restricted to staging.", 403);
   }
@@ -153,7 +153,12 @@ async function runStagingSmokeTest(admin: SupabaseClient) {
   const fixtureTag = `nxq-commerce-reference-smoke-${runId}`;
   let clientId = "";
   let requestId: string;
+  let clientFileId = "";
   let storagePath = "";
+  let cleanReleaseVerified = false;
+  let multimodalContextVerified = false;
+  let shortLivedAccessVerified = false;
+  let handoffAuditVerified = false;
 
   try {
     const client = await admin.from("clients").insert({
@@ -196,6 +201,7 @@ async function runStagingSmokeTest(admin: SupabaseClient) {
 
     const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), (value) => value.charCodeAt(0));
     const uploaded = await uploadReference(admin, requestId, uploadTicket, new File([png], "nxq-reference-smoke.png", { type: "image/png" }));
+    clientFileId = uploaded.clientFileId;
     storagePath = uploaded.storagePath;
 
     const [file, scan, relation, bucket] = await Promise.all([
@@ -230,21 +236,114 @@ async function runStagingSmokeTest(admin: SupabaseClient) {
       || uploaded.quarantineStatus !== "restricted") {
       throw new Error("Commerce reference smoke invariants did not all pass.");
     }
+
+    if (includeAiHandoff) {
+      const releasedAt = new Date().toISOString();
+      const contentSha256 = await sha256Hex(`${runId}:${uploaded.clientFileId}:clean-release`);
+      const released = await admin.from("client_file_security_scans").update({
+        status: "clean",
+        quarantine_status: "released",
+        provider_key: "nxq-staging-smoke-simulated",
+        provider_reference: `qa-only:${runId}`,
+        content_sha256: contentSha256,
+        findings: { simulated: true, qa_only: true, provider_invoked: false },
+        scanned_at: releasedAt,
+        released_at: releasedAt,
+        last_error: null,
+        updated_at: releasedAt,
+      }).eq("client_file_id", uploaded.clientFileId).eq("client_id", clientId)
+        .eq("status", "pending")
+        .select("status,quarantine_status,content_sha256,released_at")
+        .single();
+      cleanReleaseVerified = !released.error && released.data?.status === "clean"
+        && released.data?.quarantine_status === "released"
+        && released.data?.content_sha256 === contentSha256
+        && Boolean(released.data?.released_at);
+      if (!cleanReleaseVerified) throw new Error("QA-only clean-scan release simulation did not complete.");
+
+      const context = await createCommerceReferenceBuildContext(admin, requestId, {
+        expiresInSeconds: 60,
+        expectedClientId: clientId,
+      });
+      const message = context.multimodal_input[0];
+      const content = Array.isArray(message?.content) ? message.content : [];
+      const imageParts = content.filter((part) => part.type === "input_image");
+      const imageUrl = typeof imageParts[0]?.image_url === "string" ? imageParts[0].image_url : "";
+      const evidenceFiles = context.evidence.reference_files;
+      multimodalContextVerified = context.schema_version === "nxq-commerce-reference-build-context-v1"
+        && context.task === "enrich_commerce_request_from_references_v1"
+        && context.client_id === clientId
+        && context.request_id === requestId
+        && context.provider_invoked === false
+        && content[0]?.type === "input_text"
+        && imageParts.length === 1
+        && evidenceFiles.length === 1
+        && evidenceFiles[0]?.client_file_id === uploaded.clientFileId
+        && evidenceFiles[0]?.scan_status === "clean"
+        && evidenceFiles[0]?.quarantine_status === "released"
+        && context.evidence.tenant_bound === true
+        && context.evidence.clean_released_only === true;
+      shortLivedAccessVerified = context.expires_in_seconds === 60
+        && imageUrl.startsWith("https://")
+        && imageUrl.includes("/storage/v1/object/sign/client-files/")
+        && context.evidence.signed_urls_audited_but_not_persisted === true;
+      if (!multimodalContextVerified || !shortLivedAccessVerified) {
+        throw new Error("Released Commerce reference did not enter the protected multimodal build context.");
+      }
+
+      const audit = await admin.from("automation_audit_log").insert({
+        client_id: clientId,
+        event_type: "commerce_reference_build_context_issued",
+        actor_type: "backend",
+        details: {
+          request_id: requestId,
+          schema_version: context.schema_version,
+          task: context.task,
+          client_file_ids: evidenceFiles.map((file) => file.client_file_id),
+          reference_count: evidenceFiles.length,
+          expires_in_seconds: context.expires_in_seconds,
+          tenant_bound: true,
+          clean_released_only: true,
+          provider_invoked: false,
+          signed_urls_persisted: false,
+          qa_only: true,
+          run_id: runId,
+        },
+      }).select("id,event_type,details").single();
+      handoffAuditVerified = !audit.error
+        && audit.data?.event_type === "commerce_reference_build_context_issued"
+        && audit.data?.details?.request_id === requestId
+        && audit.data?.details?.provider_invoked === false
+        && audit.data?.details?.signed_urls_persisted === false;
+      if (!handoffAuditVerified) throw new Error("Commerce reference AI-handoff audit evidence was not recorded.");
+    }
   } finally {
     if (storagePath) await admin.storage.from("client-files").remove([storagePath]);
     if (clientId) await admin.from("clients").delete().eq("id", clientId).eq("qa_only", true);
   }
 
-  const [clientGone, requestGone, objectGone] = await Promise.all([
+  const [clientGone, requestGone, fileGone, scanGone, relationGone, ticketGone, objectGone] = await Promise.all([
     admin.from("clients").select("id").eq("id", clientId).maybeSingle(),
     admin.from("commerce_customer_requests").select("id").eq("id", requestId).maybeSingle(),
+    admin.from("client_files").select("id").eq("id", clientFileId).maybeSingle(),
+    admin.from("client_file_security_scans").select("id").eq("client_file_id", clientFileId).maybeSingle(),
+    admin.from("commerce_customer_request_reference_files").select("client_file_id").eq("client_file_id", clientFileId).maybeSingle(),
+    admin.from("commerce_request_reference_upload_tickets").select("request_id").eq("request_id", requestId).maybeSingle(),
     admin.storage.from("client-files").list(`${clientId}/commerce-requests/${requestId}`, { limit: 1 }),
   ]);
-  const cleanupPassed = !clientGone.data && !requestGone.data && !objectGone.error && (objectGone.data?.length || 0) === 0;
+  const cleanupPassed = !clientGone.error && !clientGone.data
+    && !requestGone.error && !requestGone.data
+    && !fileGone.error && !fileGone.data
+    && !scanGone.error && !scanGone.data
+    && !relationGone.error && !relationGone.data
+    && !ticketGone.error && !ticketGone.data
+    && !objectGone.error && (objectGone.data?.length || 0) === 0;
   if (!cleanupPassed) throw new Error("Commerce reference smoke fixture cleanup did not complete.");
 
-  await admin.from("automation_audit_log").insert({
-    event_type: "commerce_reference_upload_smoke_passed",
+  const finalAudit = await admin.from("automation_audit_log").insert({
+    event_type: includeAiHandoff
+      ? "commerce_reference_ai_handoff_smoke_passed"
+      : "commerce_reference_upload_smoke_passed",
     actor_type: "backend",
     details: {
       run_id: runId,
@@ -254,12 +353,19 @@ async function runStagingSmokeTest(admin: SupabaseClient) {
       quarantine_restricted: true,
       restricted_context_denied: true,
       cross_tenant_context_denied: true,
+      clean_release_verified: includeAiHandoff ? cleanReleaseVerified : undefined,
+      multimodal_context_verified: includeAiHandoff ? multimodalContextVerified : undefined,
+      short_lived_access_verified: includeAiHandoff ? shortLivedAccessVerified : undefined,
+      handoff_audit_verified: includeAiHandoff ? handoffAuditVerified : undefined,
       fixture_removed: true,
       provider_invoked: false,
       netlify_calls: 0,
       production_changed: false,
     },
-  });
+  }).select("id").single();
+  if (finalAudit.error || !finalAudit.data?.id) {
+    throw new Error("Commerce reference smoke result audit could not be recorded.");
+  }
 
   return {
     ok: true,
@@ -272,6 +378,13 @@ async function runStagingSmokeTest(admin: SupabaseClient) {
     cross_tenant_access_denied: true,
     fixture_removed: true,
     audit_recorded: true,
+    ...(includeAiHandoff ? {
+      clean_release_verified: true,
+      multimodal_context_verified: true,
+      short_lived_access_verified: true,
+      handoff_audit_verified: true,
+      signed_urls_persisted: false,
+    } : {}),
     provider_invoked: false,
     netlify_calls: 0,
     production_changed: false,
@@ -291,13 +404,13 @@ Deno.serve(async (req) => {
     const contentType = req.headers.get("content-type")?.toLowerCase() || "";
     if (contentType.includes("application/json")) {
       const payload = await req.json().catch(() => ({})) as { mode?: unknown };
-      if (payload.mode === "staging_smoke_test") {
+      if (payload.mode === "staging_smoke_test" || payload.mode === "staging_ai_handoff_smoke_test") {
         const configuredToken = secret("NXQ_AUTOMATION_WORKER_TOKEN");
         const suppliedToken = req.headers.get("x-nxq-worker-token")?.trim() || "";
         if (!suppliedToken || !await constantTimeEqual(suppliedToken, configuredToken)) {
           return response({ ok: false, error: "Trusted staging automation access required." }, 403);
         }
-        return response(await runStagingSmokeTest(admin), 200);
+        return response(await runStagingSmokeTest(admin, payload.mode === "staging_ai_handoff_smoke_test"), 200);
       }
       return response({ ok: false, error: "Unsupported protected operation." }, 400, origin);
     }
