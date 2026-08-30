@@ -50,6 +50,8 @@ verify_jwt = true
 verify_jwt = true
 [functions.prepare-build-plan]
 verify_jwt = false
+[functions.prepare-commerce-reference-build-context]
+verify_jwt = false
 [functions.prepare-preview-deployment-execution]
 verify_jwt = true
 [functions.prepare-production-deployment-execution]

@@ -3,10 +3,13 @@ import fs from "node:fs";
 const read = (path) => fs.readFileSync(path, "utf8");
 const migration = read("supabase/migrations/240_protected_commerce_reference_uploads.sql");
 const edge = read("supabase/functions/upload-commerce-request-reference/index.ts");
+const sharedContext = read("supabase/functions/_shared/commerce-reference-build-context.ts");
+const contextEdge = read("supabase/functions/prepare-commerce-reference-build-context/index.ts");
 const publicPage = read("src/pages/PublicCommerceRequest.tsx");
 const clientPage = read("src/pages/ClientCommerceRequests.tsx");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
+const workflow = read(".github/workflows/manual-supabase-stage.yml");
 
 const assertions = [
   [migration.includes("commerce_request_reference_upload_tickets"), "request-scoped upload tickets are persisted"],
@@ -29,8 +32,22 @@ const assertions = [
   [publicPage.includes('functions.invoke("upload-commerce-request-reference"'), "customer form uses the guarded upload Edge function"],
   [publicPage.includes("remain unavailable until security scanning passes"), "customer receives explicit quarantine disclosure"],
   [clientPage.includes("restricted pending security approval"), "client request view does not imply quarantined images are available"],
-  [manifest.includes('entry("upload-commerce-request-reference", false, "request-upload-ticket")'), "Edge manifest records the capability authentication boundary"],
+  [manifest.includes('entry("upload-commerce-request-reference", false, "request-upload-ticket-or-worker-token")'), "Edge manifest records the upload-ticket and protected smoke-test boundary"],
   [config.includes("[functions.upload-commerce-request-reference]\nverify_jwt = false"), "gateway permits source-level upload-ticket authentication"],
+  [workflow.includes("- smoke_commerce_reference_upload") && workflow.includes("inputs.action == 'smoke_commerce_reference_upload'"), "manual staging exposes one exact Commerce reference smoke action"],
+  [workflow.includes("staging_smoke_test") && workflow.includes("upload-commerce-request-reference") && !workflow.includes("smoke_commerce_reference_upload &&"), "smoke action invokes only the scoped upload function"],
+  [edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging"') && edge.includes("qa_only: true"), "smoke fixture is staging-only and marked QA-only"],
+  [edge.includes("createCommerceReferenceBuildContext") && edge.includes("error.status === 423") && edge.includes("error.status === 403"), "smoke mode proves quarantine and cross-tenant context denial"],
+  [edge.includes('admin.storage.from("client-files").remove([storagePath])') && edge.includes('.delete().eq("id", clientId).eq("qa_only", true)'), "smoke mode removes private storage and database fixtures"],
+  [edge.includes('event_type: "commerce_reference_upload_smoke_passed"') && edge.includes("provider_invoked: false") && edge.includes("netlify_calls: 0"), "smoke action records bounded zero-provider audit evidence"],
+  [sharedContext.includes('scan.status !== "clean"') && sharedContext.includes('scan.quarantine_status !== "released"') && sharedContext.includes("!scan.released_at"), "multimodal context rejects anything not clean and released"],
+  [sharedContext.includes("expectedClientId !== clientId") && sharedContext.includes("safeStoragePath(storagePath, clientId, requestId)"), "multimodal context binds request, tenant, and storage namespace"],
+  [sharedContext.includes('type: "input_image"') && sharedContext.includes('type: "input_text"') && sharedContext.includes('task: "enrich_commerce_request_from_references_v1"'), "clean request data and actual images form a request-specific multimodal context"],
+  [sharedContext.includes("createSignedUrl(storagePath, expiresInSeconds)") && sharedContext.includes("expiresInSeconds > 120"), "AI image access uses bounded short-lived signed URLs"],
+  [sharedContext.includes("provider_invoked: false") && contextEdge.includes("provider_invoked: false"), "AI provider invocation remains disabled"],
+  [contextEdge.includes('requiredSecret("NXQ_AUTOMATION_WORKER_TOKEN")') && contextEdge.includes("constantTimeEqual"), "AI context handoff requires protected worker authentication"],
+  [contextEdge.includes('event_type: "commerce_reference_build_context_issued"') && contextEdge.includes("signed_urls_persisted: false"), "AI handoff records file-scoped audit evidence without persisting signed URLs"],
+  [manifest.includes('entry("prepare-commerce-reference-build-context", false, "worker-token")') && config.includes("[functions.prepare-commerce-reference-build-context]\nverify_jwt = false"), "AI handoff is declared with its source-level worker authentication boundary"],
 ];
 
 let failed = false;

@@ -28,6 +28,7 @@ export const edgeFunctionManifest = Object.freeze([
   entry("malware-scan-provider-adapter", false, "malware-adapter-token"),
   entry("notification-provider-adapter", false, "notification-adapter-token"),
   entry("prepare-build-plan", false, "trusted-worker-or-owner"),
+  entry("prepare-commerce-reference-build-context", false, "worker-token"),
   entry("prepare-preview-deployment-execution", true, "owner-jwt"),
   entry("prepare-production-deployment-execution", true, "owner-jwt"),
   entry("process-data-subject-request", false, "worker-token"),
@@ -44,7 +45,7 @@ export const edgeFunctionManifest = Object.freeze([
   entry("scan-client-file", false, "worker-token"),
   entry("secure-client-file-access", true, "client-jwt"),
   entry("secure-owner-file-access", true, "owner-jwt"),
-  entry("upload-commerce-request-reference", false, "request-upload-ticket"),
+  entry("upload-commerce-request-reference", false, "request-upload-ticket-or-worker-token"),
   entry("verify-deployment-connection", true, "owner-jwt"),
 ]);
 
