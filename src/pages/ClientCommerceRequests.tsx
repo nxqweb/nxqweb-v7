@@ -32,6 +32,12 @@ type CustomerRequest = {
   status: string;
   client_note: string;
   created_at: string;
+  reference_images?: Array<{
+    client_file_id: string;
+    file_name: string;
+    scan_status: string;
+    quarantine_status: string;
+  }>;
 };
 
 const requestTypeOptions = [
@@ -274,6 +280,16 @@ function RequestCard({ request, onSave }: { request: CustomerRequest; onSave: (r
         <div><strong>Needed by</strong><p>{request.needed_by_date || "Not provided"}</p></div>
         <div><strong>Preferred contact</strong><p>{request.preferred_contact_method}</p></div>
       </div>
+      {request.reference_images?.length ? (
+        <div className="empty-state">
+          <strong>Private reference images</strong>
+          {request.reference_images.map((file) => (
+            <p className="subtle" key={file.client_file_id}>
+              {file.file_name} · {file.scan_status === "clean" && file.quarantine_status === "released" ? "security scan passed" : "restricted pending security approval"}
+            </p>
+          ))}
+        </div>
+      ) : null}
       <div className="setup-form-grid">
         <label><span>Status</span><select className="auth-input" value={status} onChange={(event) => setStatus(event.target.value)}>{statusOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label><span>Store note</span><input className="auth-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Internal note or response summary" /></label>

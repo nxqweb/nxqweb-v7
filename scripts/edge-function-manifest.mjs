@@ -44,6 +44,7 @@ export const edgeFunctionManifest = Object.freeze([
   entry("scan-client-file", false, "worker-token"),
   entry("secure-client-file-access", true, "client-jwt"),
   entry("secure-owner-file-access", true, "owner-jwt"),
+  entry("upload-commerce-request-reference", false, "request-upload-ticket"),
   entry("verify-deployment-connection", true, "owner-jwt"),
 ]);
 

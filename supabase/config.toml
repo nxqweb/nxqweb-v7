@@ -83,5 +83,7 @@ verify_jwt = false
 verify_jwt = true
 [functions.secure-owner-file-access]
 verify_jwt = true
+[functions.upload-commerce-request-reference]
+verify_jwt = false
 [functions.verify-deployment-connection]
 verify_jwt = true
