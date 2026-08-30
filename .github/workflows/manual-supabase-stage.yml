@@ -19,6 +19,7 @@ on:
           - deploy_provider_readiness
           - configure_internal_provider_adapters
           - deploy_zero_netlify_readiness
+          - deploy_commerce_reference_upload
           - run_evidence_suite
           - dispatch_workers
           - apply_all
@@ -170,6 +171,16 @@ jobs:
               npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
             fi
           done
+
+      - name: Deploy Commerce reference-upload function only
+        if: inputs.action == 'deploy_commerce_reference_upload'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Deploying scoped Commerce reference-upload function: upload-commerce-request-reference"
+          npx --no-install supabase functions deploy upload-commerce-request-reference \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --no-verify-jwt
 
       - name: Configure internal provider adapters only
         if: inputs.action == 'configure_internal_provider_adapters'
