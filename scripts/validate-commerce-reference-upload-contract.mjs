@@ -1,4 +1,7 @@
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { serializeDotenvValue, writeRuntimeGuardsEnv } from "./write-supabase-runtime-guards-env.mjs";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const migration = read("supabase/migrations/240_protected_commerce_reference_uploads.sql");
@@ -10,6 +13,65 @@ const clientPage = read("src/pages/ClientCommerceRequests.tsx");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
+
+function parseSerializedDotenvValue(serialized) {
+  const quote = serialized[0];
+  if ((quote === "'" || quote === '"' || quote === "`") && serialized.at(-1) === quote) {
+    const value = serialized.slice(1, -1);
+    return quote === '"' ? value.replace(/\\n/g, "\n").replace(/\\r/g, "\r") : value;
+  }
+  return serialized.split("#", 1)[0].trim();
+}
+
+const serializationCases = [
+  "plain-token_123-ABC",
+  "token=with+dollar$and\\backslash",
+  "token with internal spaces",
+  "token-with-all-three-quotes-'\"`-but-no-comment",
+  "'token-already-wrapped-in-single-quotes'",
+  '`token-already-wrapped-in-backticks`',
+  "token#with-comment-marker",
+  "token#with-'single-quote",
+  "token#with-'single-and-`backtick",
+  String.raw`token-with-literal-\\n-and-\\r`,
+];
+const serializationRoundTrips = serializationCases.every((value) =>
+  parseSerializedDotenvValue(serializeDotenvValue(value)) === value
+);
+let rejectsUnrepresentableToken = false;
+let rejectsHeaderControlCharacters = false;
+let rejectsTrailingBackslashWhenQuoting = false;
+try {
+  serializeDotenvValue("token#with-'single-\"double-and-`backtick");
+} catch {
+  rejectsUnrepresentableToken = true;
+}
+try {
+  serializeDotenvValue("token-with-newline\n");
+} catch {
+  rejectsHeaderControlCharacters = true;
+}
+try {
+  serializeDotenvValue("token#requiring-quotes\\");
+} catch {
+  rejectsTrailingBackslashWhenQuoting = true;
+}
+
+const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "nxq-runtime-guards-contract-"));
+const fixturePath = path.join(fixtureDirectory, "runtime-guards.env");
+const fixtureToken = "synthetic#token-with-'quote";
+let runtimeGuardsFileIsExact = false;
+try {
+  writeRuntimeGuardsEnv(fixturePath, fixtureToken);
+  const fixture = fs.readFileSync(fixturePath, "utf8").split("\n");
+  runtimeGuardsFileIsExact =
+    fixture[0] === "NXQ_RUNTIME_ENVIRONMENT=staging" &&
+    fixture[1]?.startsWith("NXQ_AUTOMATION_WORKER_TOKEN=") &&
+    parseSerializedDotenvValue(fixture[1].slice(fixture[1].indexOf("=") + 1)) === fixtureToken &&
+    (fs.statSync(fixturePath).mode & 0o777) === 0o600;
+} finally {
+  fs.rmSync(fixtureDirectory, { recursive: true, force: true });
+}
 
 const assertions = [
   [migration.includes("commerce_request_reference_upload_tickets"), "request-scoped upload tickets are persisted"],
@@ -42,7 +104,10 @@ const assertions = [
   [workflow.includes('secrets_file="$RUNNER_TEMP/nxq-staging-worker-token.env"') && workflow.includes("umask 077") && workflow.includes("trap 'rm -f \"$secrets_file\"' EXIT"), "worker-token synchronization uses a protected temporary file with guaranteed cleanup"],
   [workflow.includes("supabase secrets set") && workflow.includes('--env-file "$secrets_file"') && workflow.includes("set +x"), "worker-token synchronization avoids command tracing and inline secret arguments"],
   [!workflow.includes('echo "$NXQ_AUTOMATION_WORKER_TOKEN"') && !workflow.includes('secrets set NXQ_AUTOMATION_WORKER_TOKEN="$NXQ_AUTOMATION_WORKER_TOKEN"'), "workflow never prints or passes the worker token as an inline CLI argument"],
-  [workflow.includes('secrets_file="$RUNNER_TEMP/nxq-staging-runtime-guards.env"') && workflow.includes("printf 'NXQ_RUNTIME_ENVIRONMENT=staging\\nNXQ_AUTOMATION_WORKER_TOKEN=%s\\n'"), "runtime-guard synchronization writes the literal staging marker and protected token through a restricted file"],
+  [workflow.includes('secrets_file="$RUNNER_TEMP/nxq-staging-runtime-guards.env"') && workflow.includes('node scripts/write-supabase-runtime-guards-env.mjs "$secrets_file"'), "runtime-guard synchronization uses the lossless serializer through a restricted file"],
+  [serializationRoundTrips, "runtime-guard serialization round-trips supported special characters exactly"],
+  [rejectsUnrepresentableToken && rejectsHeaderControlCharacters && rejectsTrailingBackslashWhenQuoting, "runtime-guard serialization refuses values it cannot preserve or safely send as an HTTP header"],
+  [runtimeGuardsFileIsExact, "runtime-guard writer fixes the staging marker, preserves the token, and creates a mode-0600 file"],
   [workflow.includes('safeReasons = new Set([') && workflow.includes('Commerce reference AI-handoff smoke rejected (HTTP ${process.argv[3]})') && workflow.includes("Never print an unparsed or unexpected response body."), "AI-handoff smoke reports only a whitelisted rejection reason without raw response output"],
   [workflow.includes("--output \"$result_file\"") && workflow.includes("--write-out '%{http_code}'") && !workflow.includes("curl --fail-with-body --silent --show-error \\\n            --request POST \\\n            --header \"Content-Type: application/json\" \\\n            --header \"x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN\" \\\n            --data '{\"mode\":\"staging_ai_handoff_smoke_test\"}'"), "AI-handoff smoke captures non-success bodies privately for sanitized classification"],
   [workflow.includes("staging_ai_handoff_smoke_test") && workflow.includes('"multimodal_context_verified"') && workflow.includes('"short_lived_access_verified"'), "AI-handoff action requires positive multimodal and bounded-access evidence"],

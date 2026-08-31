@@ -140,12 +140,7 @@ jobs:
           secrets_file="$RUNNER_TEMP/nxq-staging-runtime-guards.env"
           trap 'rm -f "$secrets_file"' EXIT
 
-          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || {
-            echo "Protected staging worker token is unavailable."
-            exit 1
-          }
-          printf 'NXQ_RUNTIME_ENVIRONMENT=staging\nNXQ_AUTOMATION_WORKER_TOKEN=%s\n' \
-            "$NXQ_AUTOMATION_WORKER_TOKEN" > "$secrets_file"
+          node scripts/write-supabase-runtime-guards-env.mjs "$secrets_file"
           npx --no-install supabase secrets set \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --env-file "$secrets_file"
