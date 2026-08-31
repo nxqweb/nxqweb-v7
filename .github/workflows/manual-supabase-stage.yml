@@ -19,6 +19,7 @@ on:
           - deploy_provider_readiness
           - configure_internal_provider_adapters
           - sync_staging_worker_token
+          - sync_staging_runtime_guards
           - deploy_zero_netlify_readiness
           - deploy_commerce_reference_upload
           - deploy_commerce_reference_ai_handoff
@@ -67,7 +68,7 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
-          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ]; then
+          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ] || [ "${{ inputs.action }}" = "sync_staging_runtime_guards" ]; then
             test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
           fi
 
@@ -128,6 +129,28 @@ jobs:
             --env-file "$secrets_file"
           rm -f "$secrets_file"
           echo "Protected worker-token synchronization completed for Supabase staging; no value was displayed."
+
+      - name: Synchronize protected staging runtime guards only
+        if: inputs.action == 'sync_staging_runtime_guards'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-staging-runtime-guards.env"
+          trap 'rm -f "$secrets_file"' EXIT
+
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || {
+            echo "Protected staging worker token is unavailable."
+            exit 1
+          }
+          printf 'NXQ_RUNTIME_ENVIRONMENT=staging\nNXQ_AUTOMATION_WORKER_TOKEN=%s\n' \
+            "$NXQ_AUTOMATION_WORKER_TOKEN" > "$secrets_file"
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          echo "Protected staging runtime guards synchronized; no protected value was displayed."
 
       - name: Deploy custom-auth and public-ingest functions
         if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
@@ -271,13 +294,32 @@ jobs:
           set -euo pipefail
           result_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.json"
           trap 'rm -f "$result_file"' EXIT
-          curl --fail-with-body --silent --show-error \
+          http_status="$(curl --silent --show-error \
             --request POST \
             --header "Content-Type: application/json" \
             --header "x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN" \
             --data '{"mode":"staging_ai_handoff_smoke_test"}' \
             "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/upload-commerce-request-reference" \
-            > "$result_file"
+            --output "$result_file" \
+            --write-out '%{http_code}')"
+          if [ "$http_status" -lt 200 ] || [ "$http_status" -ge 300 ]; then
+            node --input-type=module - "$result_file" "$http_status" <<'NODE'
+          import fs from "node:fs";
+          const safeReasons = new Set([
+            "Trusted staging automation access required.",
+            "Commerce reference smoke testing is restricted to staging.",
+          ]);
+          let reason = "Protected staging request was rejected.";
+          try {
+            const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            if (typeof result.error === "string" && safeReasons.has(result.error)) reason = result.error;
+          } catch {
+            // Never print an unparsed or unexpected response body.
+          }
+          console.error(`Commerce reference AI-handoff smoke rejected (HTTP ${process.argv[3]}): ${reason}`);
+          NODE
+            exit 1
+          fi
           node --input-type=module - "$result_file" <<'NODE'
           import fs from "node:fs";
           const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
