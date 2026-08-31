@@ -18,6 +18,7 @@ on:
           - deploy_functions
           - deploy_provider_readiness
           - configure_internal_provider_adapters
+          - sync_staging_worker_token
           - deploy_zero_netlify_readiness
           - deploy_commerce_reference_upload
           - deploy_commerce_reference_ai_handoff
@@ -66,7 +67,7 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
-          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ]; then
+          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ]; then
             test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
           fi
 
@@ -106,6 +107,27 @@ jobs:
       - name: Apply migrations
         if: inputs.action == 'apply_migrations' || inputs.action == 'apply_all'
         run: npx --no-install supabase db push --linked
+
+      - name: Synchronize protected staging worker token only
+        if: inputs.action == 'sync_staging_worker_token'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-staging-worker-token.env"
+          trap 'rm -f "$secrets_file"' EXIT
+
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || {
+            echo "Protected staging worker token is unavailable."
+            exit 1
+          }
+          printf 'NXQ_AUTOMATION_WORKER_TOKEN=%s\n' "$NXQ_AUTOMATION_WORKER_TOKEN" > "$secrets_file"
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          echo "Protected worker-token synchronization completed for Supabase staging; no value was displayed."
 
       - name: Deploy custom-auth and public-ingest functions
         if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
