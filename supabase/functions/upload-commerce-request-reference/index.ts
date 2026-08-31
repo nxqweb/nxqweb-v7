@@ -46,8 +46,12 @@ function cors(origin: string) {
   };
 }
 
-function response(body: unknown, status: number, origin = "") {
-  return new Response(JSON.stringify(body), { status, headers: cors(origin) });
+function response(body: unknown, status: number, origin = "", rejectionSource = "") {
+  const headers: Record<string, string> = cors(origin);
+  if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
+    headers["X-NXQ-Rejection-Source"] = rejectionSource;
+  }
+  return new Response(JSON.stringify(body), { status, headers });
 }
 
 function hasControlCharacters(value: string) {
@@ -408,7 +412,12 @@ Deno.serve(async (req) => {
         const configuredToken = secret("NXQ_AUTOMATION_WORKER_TOKEN");
         const suppliedToken = req.headers.get("x-nxq-worker-token")?.trim() || "";
         if (!suppliedToken || !await constantTimeEqual(suppliedToken, configuredToken)) {
-          return response({ ok: false, error: "Trusted staging automation access required." }, 403);
+          return response(
+            { ok: false, error: "Trusted staging automation access required." },
+            403,
+            "",
+            "worker-token-guard",
+          );
         }
         return response(await runStagingSmokeTest(admin, payload.mode === "staging_ai_handoff_smoke_test"), 200);
       }
@@ -438,6 +447,9 @@ Deno.serve(async (req) => {
   } catch (error) {
     const status = error instanceof CommerceReferenceContextError ? error.status : 500;
     const message = error instanceof Error ? error.message : "Reference image upload failed.";
-    return response({ ok: false, error: message }, status, origin);
+    const rejectionSource = message === "Commerce reference smoke testing is restricted to staging."
+      ? "runtime-environment-guard"
+      : "";
+    return response({ ok: false, error: message }, status, origin, rejectionSource);
   }
 });
