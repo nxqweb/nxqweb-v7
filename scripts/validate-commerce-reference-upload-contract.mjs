@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { commerceReferenceRemoteAuthResults } from "./audit-commerce-reference-remote-auth.mjs";
 import { classifyCommerceReferenceSmokeRejection } from "./classify-commerce-reference-smoke-rejection.mjs";
 import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
 import { serializeDotenvValue, writeRuntimeGuardsEnv } from "./write-supabase-runtime-guards-env.mjs";
@@ -15,6 +16,7 @@ const clientPage = read("src/pages/ClientCommerceRequests.tsx");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
+const remoteAuthAudit = read("scripts/audit-commerce-reference-remote-auth.mjs");
 
 function workflowStep(name) {
   const marker = `      - name: ${name}`;
@@ -36,6 +38,7 @@ function configuredJwtBoundary(name) {
 }
 
 const commerceAiDeployStep = workflowStep("Deploy Commerce reference AI-handoff functions only");
+const mutationConfirmationStep = workflowStep("Require explicit mutation confirmation");
 const commerceAiFunctionBlock = /functions=\(\s*\n([\s\S]*?)\n\s*\)/.exec(commerceAiDeployStep)?.[1] || "";
 const commerceAiFunctions = commerceAiFunctionBlock.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
 const expectedCommerceAiFunctions = [
@@ -60,6 +63,22 @@ const commerceSourceGuardsArePreserved =
   contextEdge.includes('requiredSecret("NXQ_AUTOMATION_WORKER_TOKEN")') &&
   contextEdge.includes('request.headers.get("x-nxq-worker-token")') &&
   contextEdge.includes("constantTimeEqual(suppliedToken, configuredToken)");
+const remoteAuthAuditAcceptsOnlyExactDisabledBoundaries =
+  commerceReferenceRemoteAuthResults([
+    { slug: "upload-commerce-request-reference", verify_jwt: false },
+    { slug: "prepare-commerce-reference-build-context", verify_jwt: false },
+    { slug: "unrelated-function", verify_jwt: true },
+  ]).every((result) => result.passed) &&
+  commerceReferenceRemoteAuthResults([
+    { slug: "upload-commerce-request-reference", verify_jwt: true },
+    { slug: "prepare-commerce-reference-build-context", verify_jwt: false },
+  ]).some((result) => !result.passed) &&
+  commerceReferenceRemoteAuthResults([
+    { slug: "upload-commerce-request-reference", verify_jwt: false },
+    { slug: "upload-commerce-request-reference", verify_jwt: false },
+    { slug: "prepare-commerce-reference-build-context", verify_jwt: false },
+  ]).some((result) => !result.passed) &&
+  commerceReferenceRemoteAuthResults({ functions: [] }).every((result) => !result.passed);
 
 function parseSerializedDotenvValue(serialized) {
   const quote = serialized[0];
@@ -160,6 +179,12 @@ const assertions = [
   [commerceGatewayBoundariesAreExact, "both Commerce functions declare gateway JWT bypass in config and the deployment manifest"],
   [everyGatewayBoundaryMatchesManifest, "focused Commerce repair preserves every other function authentication boundary"],
   [commerceSourceGuardsArePreserved, "Commerce gateway exceptions retain staging-only smoke and constant-time worker-token guards"],
+  [workflow.includes("- audit_commerce_reference_remote_auth") && workflow.includes("inputs.action == 'audit_commerce_reference_remote_auth'"), "manual staging exposes one exact read-only Commerce remote-auth audit action"],
+  [mutationConfirmationStep.includes("APPLY-NXQ-SUPABASE-STAGING") && !mutationConfirmationStep.includes("audit_commerce_reference_remote_auth"), "read-only Commerce remote-auth audit still requires the guarded staging confirmation"],
+  [workflow.includes('metadata_file="$RUNNER_TEMP/nxq-commerce-reference-remote-functions.json"') && workflow.includes("trap 'rm -f \"$metadata_file\"' EXIT") && !workflow.includes('cat "$metadata_file"'), "remote-auth metadata remains private and is always removed"],
+  [workflow.includes('functions list \\\n            --project-ref "$SUPABASE_PROJECT_REF" \\\n            --output-format json > "$metadata_file"') && workflow.includes('node scripts/audit-commerce-reference-remote-auth.mjs "$metadata_file"'), "remote-auth action reads only Supabase function metadata through the sanitized auditor"],
+  [remoteAuthAudit.includes('console.log(`${result.passed ? "PASS" : "FAIL"}: ${result.name} remote gateway JWT bypass`);') && remoteAuthAudit.includes('console.log(`${passed ? "PASS" : "FAIL"}: Commerce remote authentication audit`);') && (remoteAuthAudit.match(/console\.log/g) || []).length === 2 && !remoteAuthAudit.includes("JSON.stringify") && !remoteAuthAudit.includes("console.log(metadata)"), "remote-auth auditor emits only sanitized pass or fail statements"],
+  [remoteAuthAuditAcceptsOnlyExactDisabledBoundaries, "remote-auth auditor requires one exact disabled-JWT record for each Commerce function and fails closed"],
   [workflow.includes("- smoke_commerce_reference_upload") && workflow.includes("inputs.action == 'smoke_commerce_reference_upload'"), "manual staging exposes one exact Commerce reference smoke action"],
   [workflow.includes("staging_smoke_test") && workflow.includes("upload-commerce-request-reference") && !workflow.includes("smoke_commerce_reference_upload &&"), "smoke action invokes only the scoped upload function"],
   [workflow.includes("- smoke_commerce_reference_ai_handoff") && workflow.includes("inputs.action == 'smoke_commerce_reference_ai_handoff'"), "manual staging exposes one exact Commerce reference AI-handoff smoke action"],
