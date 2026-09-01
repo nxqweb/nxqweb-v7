@@ -6,6 +6,14 @@ const SAFE_REJECTION_SOURCES = new Map([
   ["runtime-environment-guard", "commerce-function-runtime-environment-guard"],
 ]);
 const COMMERCE_FUNCTION_REACHED = "commerce-reference-upload";
+const SAFE_SMOKE_FAILURES = new Map([
+  ["fixture-setup:completed", "commerce-smoke-fixture-setup-rejection-cleanup-completed"],
+  ["isolation-verification:completed", "commerce-smoke-isolation-verification-rejection-cleanup-completed"],
+  ["clean-release-simulation:completed", "commerce-smoke-clean-release-simulation-rejection-cleanup-completed"],
+  ["multimodal-context-creation:completed", "commerce-smoke-multimodal-context-creation-rejection-cleanup-completed"],
+  ["audit-writing:completed", "commerce-smoke-audit-writing-rejection-cleanup-completed"],
+  ["cleanup-failure:not-completed", "commerce-smoke-cleanup-failure-cleanup-not-completed"],
+]);
 
 function headerValues(headersText, headerName) {
   return headersText
@@ -22,17 +30,31 @@ export function classifyCommerceReferenceSmokeRejection(headersText) {
   if (typeof headersText !== "string") return "unclassified-protected-rejection";
 
   const rejectionSources = headerValues(headersText, "x-nxq-rejection-source");
+  const reachedMarkers = headerValues(headersText, "x-nxq-function-reached");
+  const smokePhases = headerValues(headersText, "x-nxq-smoke-phase");
+  const smokeCleanup = headerValues(headersText, "x-nxq-smoke-cleanup");
+
+  if (reachedMarkers.length === 0) {
+    return rejectionSources.length === 0 && smokePhases.length === 0 && smokeCleanup.length === 0
+      ? "gateway-or-upstream-before-commerce-function"
+      : "unclassified-protected-rejection";
+  }
+  if (reachedMarkers.length !== 1 || reachedMarkers[0] !== COMMERCE_FUNCTION_REACHED) {
+    return "unclassified-protected-rejection";
+  }
+
   if (rejectionSources.length > 0) {
-    if (rejectionSources.length !== 1) return "unclassified-protected-rejection";
+    if (rejectionSources.length !== 1 || smokePhases.length !== 0 || smokeCleanup.length !== 0) {
+      return "unclassified-protected-rejection";
+    }
     return SAFE_REJECTION_SOURCES.get(rejectionSources[0]) || "unclassified-protected-rejection";
   }
 
-  const reachedMarkers = headerValues(headersText, "x-nxq-function-reached");
-  if (reachedMarkers.length === 0) return "gateway-or-upstream-before-commerce-function";
-  if (reachedMarkers.length === 1 && reachedMarkers[0] === COMMERCE_FUNCTION_REACHED) {
+  if (smokePhases.length === 0 && smokeCleanup.length === 0) {
     return "commerce-function-post-auth-rejection";
   }
-  return "unclassified-protected-rejection";
+  if (smokePhases.length !== 1 || smokeCleanup.length !== 1) return "unclassified-protected-rejection";
+  return SAFE_SMOKE_FAILURES.get(`${smokePhases[0]}:${smokeCleanup[0]}`) || "unclassified-protected-rejection";
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -11,6 +11,25 @@ type UploadAuthorization = {
   expires_at?: string;
 };
 
+type SmokeFailurePhase =
+  | "fixture-setup"
+  | "isolation-verification"
+  | "clean-release-simulation"
+  | "multimodal-context-creation"
+  | "audit-writing"
+  | "cleanup-failure";
+
+class CommerceReferenceSmokeDiagnosticError extends Error {
+  constructor(
+    message: string,
+    readonly phase: SmokeFailurePhase,
+    readonly cleanupCompleted: boolean,
+  ) {
+    super(message);
+    this.name = "CommerceReferenceSmokeDiagnosticError";
+  }
+}
+
 const MAX_MULTIPART_BYTES = 21 * 1024 * 1024;
 const ALLOWED_TYPES = new Map([
   ["image/jpeg", "jpg"],
@@ -46,11 +65,24 @@ function cors(origin: string) {
   };
 }
 
-function response(body: unknown, status: number, origin = "", rejectionSource = "") {
+function response(
+  body: unknown,
+  status: number,
+  origin = "",
+  rejectionSource = "",
+  smokePhase = "",
+  smokeCleanup = "",
+) {
   const headers: Record<string, string> = cors(origin);
   headers["X-NXQ-Function-Reached"] = "commerce-reference-upload";
   if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
     headers["X-NXQ-Rejection-Source"] = rejectionSource;
+  }
+  if (["fixture-setup", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
+    headers["X-NXQ-Smoke-Phase"] = smokePhase;
+  }
+  if (smokeCleanup === "completed" || smokeCleanup === "not-completed") {
+    headers["X-NXQ-Smoke-Cleanup"] = smokeCleanup;
   }
   return new Response(JSON.stringify(body), { status, headers });
 }
@@ -157,13 +189,16 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
   const runId = crypto.randomUUID();
   const fixtureTag = `nxq-commerce-reference-smoke-${runId}`;
   let clientId = "";
-  let requestId: string;
-  let clientFileId: string;
+  let requestId = "";
+  let clientFileId = "";
   let storagePath = "";
   let cleanReleaseVerified = false;
   let multimodalContextVerified = false;
   let shortLivedAccessVerified = false;
   let handoffAuditVerified = false;
+  let failurePhase: SmokeFailurePhase = "fixture-setup";
+  let smokeFailure: unknown = null;
+  let cleanupAttemptFailed = false;
 
   try {
     const client = await admin.from("clients").insert({
@@ -209,6 +244,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     clientFileId = uploaded.clientFileId;
     storagePath = uploaded.storagePath;
 
+    failurePhase = "isolation-verification";
     const [file, scan, relation, bucket] = await Promise.all([
       admin.from("client_files").select("id,client_id,bucket_id,storage_path,status").eq("id", uploaded.clientFileId).single(),
       admin.from("client_file_security_scans").select("status,quarantine_status,released_at").eq("client_file_id", uploaded.clientFileId).single(),
@@ -243,6 +279,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     }
 
     if (includeAiHandoff) {
+      failurePhase = "clean-release-simulation";
       const releasedAt = new Date().toISOString();
       const contentSha256 = await sha256Hex(`${runId}:${uploaded.clientFileId}:clean-release`);
       const released = await admin.from("client_file_security_scans").update({
@@ -266,6 +303,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
         && Boolean(released.data?.released_at);
       if (!cleanReleaseVerified) throw new Error("QA-only clean-scan release simulation did not complete.");
 
+      failurePhase = "multimodal-context-creation";
       const context = await createCommerceReferenceBuildContext(admin, requestId, {
         expiresInSeconds: 60,
         expectedClientId: clientId,
@@ -296,6 +334,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
         throw new Error("Released Commerce reference did not enter the protected multimodal build context.");
       }
 
+      failurePhase = "audit-writing";
       const audit = await admin.from("automation_audit_log").insert({
         client_id: clientId,
         event_type: "commerce_reference_build_context_issued",
@@ -322,54 +361,95 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
         && audit.data?.details?.signed_urls_persisted === false;
       if (!handoffAuditVerified) throw new Error("Commerce reference AI-handoff audit evidence was not recorded.");
     }
+  } catch (error) {
+    smokeFailure = error;
   } finally {
-    if (storagePath) await admin.storage.from("client-files").remove([storagePath]);
-    if (clientId) await admin.from("clients").delete().eq("id", clientId).eq("qa_only", true);
+    try {
+      if (storagePath) {
+        const removed = await admin.storage.from("client-files").remove([storagePath]);
+        cleanupAttemptFailed ||= Boolean(removed.error);
+      }
+    } catch {
+      cleanupAttemptFailed = true;
+    }
+    try {
+      if (clientId) {
+        const removed = await admin.from("clients").delete().eq("id", clientId).eq("qa_only", true);
+        cleanupAttemptFailed ||= Boolean(removed.error);
+      }
+    } catch {
+      cleanupAttemptFailed = true;
+    }
   }
 
-  const [clientGone, requestGone, fileGone, scanGone, relationGone, ticketGone, objectGone] = await Promise.all([
-    admin.from("clients").select("id").eq("id", clientId).maybeSingle(),
-    admin.from("commerce_customer_requests").select("id").eq("id", requestId).maybeSingle(),
-    admin.from("client_files").select("id").eq("id", clientFileId).maybeSingle(),
-    admin.from("client_file_security_scans").select("id").eq("client_file_id", clientFileId).maybeSingle(),
-    admin.from("commerce_customer_request_reference_files").select("client_file_id").eq("client_file_id", clientFileId).maybeSingle(),
-    admin.from("commerce_request_reference_upload_tickets").select("request_id").eq("request_id", requestId).maybeSingle(),
-    admin.storage.from("client-files").list(`${clientId}/commerce-requests/${requestId}`, { limit: 1 }),
-  ]);
-  const cleanupPassed = !clientGone.error && !clientGone.data
-    && !requestGone.error && !requestGone.data
-    && !fileGone.error && !fileGone.data
-    && !scanGone.error && !scanGone.data
-    && !relationGone.error && !relationGone.data
-    && !ticketGone.error && !ticketGone.data
-    && !objectGone.error && (objectGone.data?.length || 0) === 0;
-  if (!cleanupPassed) throw new Error("Commerce reference smoke fixture cleanup did not complete.");
+  let cleanupPassed = false;
+  try {
+    const [clientGone, requestGone, fileGone, scanGone, relationGone, ticketGone, objectGone] = await Promise.all([
+      clientId ? admin.from("clients").select("id").eq("id", clientId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      requestId ? admin.from("commerce_customer_requests").select("id").eq("id", requestId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      clientFileId ? admin.from("client_files").select("id").eq("id", clientFileId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      clientFileId ? admin.from("client_file_security_scans").select("id").eq("client_file_id", clientFileId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      clientFileId ? admin.from("commerce_customer_request_reference_files").select("client_file_id").eq("client_file_id", clientFileId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      requestId ? admin.from("commerce_request_reference_upload_tickets").select("request_id").eq("request_id", requestId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      clientId && requestId
+        ? admin.storage.from("client-files").list(`${clientId}/commerce-requests/${requestId}`, { limit: 1 })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    cleanupPassed = !cleanupAttemptFailed
+      && !clientGone.error && !clientGone.data
+      && !requestGone.error && !requestGone.data
+      && !fileGone.error && !fileGone.data
+      && !scanGone.error && !scanGone.data
+      && !relationGone.error && !relationGone.data
+      && !ticketGone.error && !ticketGone.data
+      && !objectGone.error && (objectGone.data?.length || 0) === 0;
+  } catch {
+    cleanupPassed = false;
+  }
+  if (!cleanupPassed) {
+    throw new CommerceReferenceSmokeDiagnosticError(
+      "Commerce reference smoke fixture cleanup did not complete.",
+      "cleanup-failure",
+      false,
+    );
+  }
+  if (smokeFailure) {
+    const message = smokeFailure instanceof Error ? smokeFailure.message : "Commerce reference smoke failed.";
+    throw new CommerceReferenceSmokeDiagnosticError(message, failurePhase, true);
+  }
 
-  const finalAudit = await admin.from("automation_audit_log").insert({
-    event_type: includeAiHandoff
-      ? "commerce_reference_ai_handoff_smoke_passed"
-      : "commerce_reference_upload_smoke_passed",
-    actor_type: "backend",
-    details: {
-      run_id: runId,
-      environment: "staging",
-      tenant_namespaced: true,
-      private_bucket: true,
-      quarantine_restricted: true,
-      restricted_context_denied: true,
-      cross_tenant_context_denied: true,
-      clean_release_verified: includeAiHandoff ? cleanReleaseVerified : undefined,
-      multimodal_context_verified: includeAiHandoff ? multimodalContextVerified : undefined,
-      short_lived_access_verified: includeAiHandoff ? shortLivedAccessVerified : undefined,
-      handoff_audit_verified: includeAiHandoff ? handoffAuditVerified : undefined,
-      fixture_removed: true,
-      provider_invoked: false,
-      netlify_calls: 0,
-      production_changed: false,
-    },
-  }).select("id").single();
-  if (finalAudit.error || !finalAudit.data?.id) {
-    throw new Error("Commerce reference smoke result audit could not be recorded.");
+  failurePhase = "audit-writing";
+  try {
+    const finalAudit = await admin.from("automation_audit_log").insert({
+      event_type: includeAiHandoff
+        ? "commerce_reference_ai_handoff_smoke_passed"
+        : "commerce_reference_upload_smoke_passed",
+      actor_type: "backend",
+      details: {
+        run_id: runId,
+        environment: "staging",
+        tenant_namespaced: true,
+        private_bucket: true,
+        quarantine_restricted: true,
+        restricted_context_denied: true,
+        cross_tenant_context_denied: true,
+        clean_release_verified: includeAiHandoff ? cleanReleaseVerified : undefined,
+        multimodal_context_verified: includeAiHandoff ? multimodalContextVerified : undefined,
+        short_lived_access_verified: includeAiHandoff ? shortLivedAccessVerified : undefined,
+        handoff_audit_verified: includeAiHandoff ? handoffAuditVerified : undefined,
+        fixture_removed: true,
+        provider_invoked: false,
+        netlify_calls: 0,
+        production_changed: false,
+      },
+    }).select("id").single();
+    if (finalAudit.error || !finalAudit.data?.id) throw new Error("Smoke pass audit was not accepted.");
+  } catch {
+    throw new CommerceReferenceSmokeDiagnosticError(
+      "Commerce reference smoke result audit could not be recorded.",
+      failurePhase,
+      true,
+    );
   }
 
   return {
@@ -447,10 +527,15 @@ Deno.serve(async (req) => {
     }, 201, origin);
   } catch (error) {
     const status = error instanceof CommerceReferenceContextError ? error.status : 500;
-    const message = error instanceof Error ? error.message : "Reference image upload failed.";
+    const isSmokeDiagnostic = error instanceof CommerceReferenceSmokeDiagnosticError;
+    const message = isSmokeDiagnostic
+      ? "Commerce reference smoke failed."
+      : error instanceof Error ? error.message : "Reference image upload failed.";
     const rejectionSource = message === "Commerce reference smoke testing is restricted to staging."
       ? "runtime-environment-guard"
       : "";
-    return response({ ok: false, error: message }, status, origin, rejectionSource);
+    const smokePhase = isSmokeDiagnostic ? error.phase : "";
+    const smokeCleanup = isSmokeDiagnostic ? (error.cleanupCompleted ? "completed" : "not-completed") : "";
+    return response({ ok: false, error: message }, status, origin, rejectionSource, smokePhase, smokeCleanup);
   }
 });
