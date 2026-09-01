@@ -140,12 +140,18 @@ try {
 }
 
 const diagnosticCasesAreExact =
-  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-rejection-source: worker-token-guard\r\n") ===
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-rejection-source: worker-token-guard\r\n") ===
     "commerce-function-worker-token-guard" &&
-  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nX-NXQ-Rejection-Source: runtime-environment-guard\r\n") ===
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nX-NXQ-Function-Reached: commerce-reference-upload\r\nX-NXQ-Rejection-Source: runtime-environment-guard\r\n") ===
     "commerce-function-runtime-environment-guard" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\n") ===
+    "commerce-function-post-auth-rejection" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\ncontent-type: application/json\r\n") ===
     "gateway-or-upstream-before-commerce-function" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: unexpected-value\r\n") ===
+    "unclassified-protected-rejection" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-function-reached: commerce-reference-upload\r\n") ===
+    "unclassified-protected-rejection" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-rejection-source: unexpected-value\r\n") ===
     "unclassified-protected-rejection" &&
   classifyCommerceReferenceSmokeRejection(
@@ -197,10 +203,11 @@ const assertions = [
   [serializationRoundTrips, "runtime-guard serialization round-trips supported special characters exactly"],
   [rejectsUnrepresentableToken && rejectsHeaderControlCharacters && rejectsTrailingBackslashWhenQuoting, "runtime-guard serialization refuses values it cannot preserve or safely send as an HTTP header"],
   [runtimeGuardsFileIsExact, "runtime-guard writer fixes the staging marker, preserves the token, and creates a mode-0600 file"],
+  [edge.includes('headers["X-NXQ-Function-Reached"] = "commerce-reference-upload"'), "Commerce responses expose one constant non-sensitive source-reached marker"],
   [edge.includes('"X-NXQ-Rejection-Source"') && edge.includes('"worker-token-guard"') && edge.includes('"runtime-environment-guard"'), "Commerce source guards emit only constant non-sensitive rejection markers"],
   [workflow.includes('headers_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.headers"') && workflow.includes('--dump-header "$headers_file"') && workflow.includes('node scripts/classify-commerce-reference-smoke-rejection.mjs "$headers_file" "$http_status"'), "AI-handoff smoke privately captures response metadata for guarded classification"],
   [workflow.includes('umask 077\n          result_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.json"') && workflow.includes("trap 'rm -f \"$result_file\" \"$headers_file\"' EXIT") && !workflow.includes('cat "$headers_file"') && !workflow.includes('cat "$result_file"'), "AI-handoff diagnostic files are private, always removed, and never printed"],
-  [diagnosticCasesAreExact, "rejection classifier distinguishes both Commerce guards from gateway or unknown failures without returning raw metadata"],
+  [diagnosticCasesAreExact, "rejection classifier distinguishes Commerce guards, post-auth source failures, gateway failures, and unknown metadata without returning raw values"],
   [workflow.includes("Never print an unparsed or unexpected response body.") === false, "AI-handoff smoke no longer parses or prints response bodies on rejection"],
   [workflow.includes("--output \"$result_file\"") && workflow.includes("--write-out '%{http_code}'") && !workflow.includes("curl --fail-with-body --silent --show-error \\\n            --request POST \\\n            --header \"Content-Type: application/json\" \\\n            --header \"x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN\" \\\n            --data '{\"mode\":\"staging_ai_handoff_smoke_test\"}'"), "AI-handoff smoke captures non-success bodies privately for sanitized classification"],
   [workflow.includes("staging_ai_handoff_smoke_test") && workflow.includes('"multimodal_context_verified"') && workflow.includes('"short_lived_access_verified"'), "AI-handoff action requires positive multimodal and bounded-access evidence"],

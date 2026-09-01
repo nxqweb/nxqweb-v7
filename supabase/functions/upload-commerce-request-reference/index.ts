@@ -48,6 +48,7 @@ function cors(origin: string) {
 
 function response(body: unknown, status: number, origin = "", rejectionSource = "") {
   const headers: Record<string, string> = cors(origin);
+  headers["X-NXQ-Function-Reached"] = "commerce-reference-upload";
   if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
     headers["X-NXQ-Rejection-Source"] = rejectionSource;
   }
