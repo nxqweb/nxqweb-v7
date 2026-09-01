@@ -12,7 +12,10 @@ type UploadAuthorization = {
 };
 
 type SmokeFailurePhase =
-  | "fixture-setup"
+  | "fixture-client-creation"
+  | "fixture-request-creation"
+  | "fixture-ticket-creation"
+  | "fixture-upload-registration"
   | "isolation-verification"
   | "clean-release-simulation"
   | "multimodal-context-creation"
@@ -78,7 +81,7 @@ function response(
   if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
     headers["X-NXQ-Rejection-Source"] = rejectionSource;
   }
-  if (["fixture-setup", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
+  if (["fixture-client-creation", "fixture-request-creation", "fixture-ticket-creation", "fixture-upload-registration", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
     headers["X-NXQ-Smoke-Phase"] = smokePhase;
   }
   if (smokeCleanup === "completed" || smokeCleanup === "not-completed") {
@@ -196,7 +199,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
   let multimodalContextVerified = false;
   let shortLivedAccessVerified = false;
   let handoffAuditVerified = false;
-  let failurePhase: SmokeFailurePhase = "fixture-setup";
+  let failurePhase: SmokeFailurePhase = "fixture-client-creation";
   let smokeFailure: unknown = null;
   let cleanupAttemptFailed = false;
 
@@ -213,6 +216,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     if (client.error || !client.data?.id) throw new Error("QA-only Commerce client fixture could not be created.");
     clientId = String(client.data.id);
 
+    failurePhase = "fixture-request-creation";
     const requestRecord = await admin.from("commerce_customer_requests").insert({
       client_id: clientId,
       request_type: "general_suggestion",
@@ -227,6 +231,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     if (requestRecord.error || !requestRecord.data?.id) throw new Error("QA-only Commerce request fixture could not be created.");
     requestId = String(requestRecord.data.id);
 
+    failurePhase = "fixture-ticket-creation";
     const uploadTicket = Array.from(crypto.getRandomValues(new Uint8Array(32)))
       .map((byte) => byte.toString(16).padStart(2, "0")).join("");
     const ticket = await admin.from("commerce_request_reference_upload_tickets").insert({
@@ -239,6 +244,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     });
     if (ticket.error) throw new Error("QA-only upload capability could not be created.");
 
+    failurePhase = "fixture-upload-registration";
     const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), (value) => value.charCodeAt(0));
     const uploaded = await uploadReference(admin, requestId, uploadTicket, new File([png], "nxq-reference-smoke.png", { type: "image/png" }));
     clientFileId = uploaded.clientFileId;

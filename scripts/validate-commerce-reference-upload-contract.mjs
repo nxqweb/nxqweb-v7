@@ -146,8 +146,14 @@ const diagnosticCasesAreExact =
     "commerce-function-runtime-environment-guard" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\n") ===
     "commerce-function-post-auth-rejection" &&
-  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-cleanup: completed\r\n") ===
-    "commerce-smoke-fixture-setup-rejection-cleanup-completed" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-client-creation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+    "commerce-smoke-fixture-client-creation-rejection-cleanup-completed" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-request-creation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+    "commerce-smoke-fixture-request-creation-rejection-cleanup-completed" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-ticket-creation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+    "commerce-smoke-fixture-ticket-creation-rejection-cleanup-completed" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-upload-registration\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+    "commerce-smoke-fixture-upload-registration-rejection-cleanup-completed" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: isolation-verification\r\nx-nxq-smoke-cleanup: completed\r\n") ===
     "commerce-smoke-isolation-verification-rejection-cleanup-completed" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: clean-release-simulation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
@@ -166,11 +172,13 @@ const diagnosticCasesAreExact =
     "unclassified-protected-rejection" &&
   classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-rejection-source: unexpected-value\r\n") ===
     "unclassified-protected-rejection" &&
-  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-cleanup: not-completed\r\n") ===
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-client-creation\r\nx-nxq-smoke-cleanup: not-completed\r\n") ===
     "unclassified-protected-rejection" &&
-  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-client-creation\r\nx-nxq-smoke-phase: fixture-client-creation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
     "unclassified-protected-rejection" &&
-  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-rejection-source: worker-token-guard\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+  classifyCommerceReferenceSmokeRejection("HTTP/2 403\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-rejection-source: worker-token-guard\r\nx-nxq-smoke-phase: fixture-client-creation\r\nx-nxq-smoke-cleanup: completed\r\n") ===
+    "unclassified-protected-rejection" &&
+  classifyCommerceReferenceSmokeRejection("HTTP/2 500\r\nx-nxq-function-reached: commerce-reference-upload\r\nx-nxq-smoke-phase: fixture-setup\r\nx-nxq-smoke-cleanup: completed\r\n") ===
     "unclassified-protected-rejection" &&
   classifyCommerceReferenceSmokeRejection(
     "HTTP/2 403\r\nx-nxq-rejection-source: worker-token-guard\r\nx-nxq-rejection-source: runtime-environment-guard\r\n",
@@ -224,6 +232,7 @@ const assertions = [
   [edge.includes('headers["X-NXQ-Function-Reached"] = "commerce-reference-upload"'), "Commerce responses expose one constant non-sensitive source-reached marker"],
   [edge.includes('"X-NXQ-Rejection-Source"') && edge.includes('"worker-token-guard"') && edge.includes('"runtime-environment-guard"'), "Commerce source guards emit only constant non-sensitive rejection markers"],
   [edge.includes('headers["X-NXQ-Smoke-Phase"] = smokePhase') && edge.includes('headers["X-NXQ-Smoke-Cleanup"] = smokeCleanup'), "Commerce smoke failures emit only whitelisted phase and cleanup markers"],
+  [edge.includes('let failurePhase: SmokeFailurePhase = "fixture-client-creation"') && ["fixture-request-creation", "fixture-ticket-creation", "fixture-upload-registration"].every((phase) => edge.includes(`failurePhase = "${phase}"`)), "Commerce smoke fixture setup exposes only four constant diagnostic subphases"],
   [edge.includes('"Commerce reference smoke failed."') && edge.includes("error instanceof CommerceReferenceSmokeDiagnosticError"), "Commerce smoke diagnostics replace internal error details with one constant response body"],
   [workflow.includes('headers_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.headers"') && workflow.includes('--dump-header "$headers_file"') && workflow.includes('node scripts/classify-commerce-reference-smoke-rejection.mjs "$headers_file" "$http_status"'), "AI-handoff smoke privately captures response metadata for guarded classification"],
   [workflow.includes('umask 077\n          result_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.json"') && workflow.includes("trap 'rm -f \"$result_file\" \"$headers_file\"' EXIT") && !workflow.includes('cat "$headers_file"') && !workflow.includes('cat "$result_file"'), "AI-handoff diagnostic files are private, always removed, and never printed"],

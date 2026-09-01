@@ -7,7 +7,10 @@ const SAFE_REJECTION_SOURCES = new Map([
 ]);
 const COMMERCE_FUNCTION_REACHED = "commerce-reference-upload";
 const SAFE_SMOKE_FAILURES = new Map([
-  ["fixture-setup:completed", "commerce-smoke-fixture-setup-rejection-cleanup-completed"],
+  ["fixture-client-creation:completed", "commerce-smoke-fixture-client-creation-rejection-cleanup-completed"],
+  ["fixture-request-creation:completed", "commerce-smoke-fixture-request-creation-rejection-cleanup-completed"],
+  ["fixture-ticket-creation:completed", "commerce-smoke-fixture-ticket-creation-rejection-cleanup-completed"],
+  ["fixture-upload-registration:completed", "commerce-smoke-fixture-upload-registration-rejection-cleanup-completed"],
   ["isolation-verification:completed", "commerce-smoke-isolation-verification-rejection-cleanup-completed"],
   ["clean-release-simulation:completed", "commerce-smoke-clean-release-simulation-rejection-cleanup-completed"],
   ["multimodal-context-creation:completed", "commerce-smoke-multimodal-context-creation-rejection-cleanup-completed"],
