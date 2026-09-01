@@ -382,7 +382,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     }
   }
 
-  let cleanupPassed = false;
+  let cleanupPassed: boolean;
   try {
     const [clientGone, requestGone, fileGone, scanGone, relationGone, ticketGone, objectGone] = await Promise.all([
       clientId ? admin.from("clients").select("id").eq("id", clientId).maybeSingle() : Promise.resolve({ data: null, error: null }),
