@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { classifyCommerceReferenceSmokeRejection } from "./classify-commerce-reference-smoke-rejection.mjs";
+import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
 import { serializeDotenvValue, writeRuntimeGuardsEnv } from "./write-supabase-runtime-guards-env.mjs";
 
 const read = (path) => fs.readFileSync(path, "utf8");
@@ -14,6 +15,51 @@ const clientPage = read("src/pages/ClientCommerceRequests.tsx");
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
+
+function workflowStep(name) {
+  const marker = `      - name: ${name}`;
+  const start = workflow.indexOf(marker);
+  if (start < 0) return "";
+  const end = workflow.indexOf("\n      - name:", start + marker.length);
+  return workflow.slice(start, end < 0 ? workflow.length : end);
+}
+
+function configuredJwtBoundary(name) {
+  const marker = `[functions.${name}]\n`;
+  const start = config.indexOf(marker);
+  if (start < 0 || config.indexOf(marker, start + marker.length) >= 0) return null;
+  const bodyStart = start + marker.length;
+  const nextSection = config.indexOf("\n[functions.", bodyStart);
+  const section = config.slice(bodyStart, nextSection < 0 ? config.length : nextSection);
+  const values = [...section.matchAll(/^verify_jwt = (true|false)$/gm)].map((match) => match[1]);
+  return values.length === 1 ? values[0] === "true" : null;
+}
+
+const commerceAiDeployStep = workflowStep("Deploy Commerce reference AI-handoff functions only");
+const commerceAiFunctionBlock = /functions=\(\s*\n([\s\S]*?)\n\s*\)/.exec(commerceAiDeployStep)?.[1] || "";
+const commerceAiFunctions = commerceAiFunctionBlock.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+const expectedCommerceAiFunctions = [
+  "upload-commerce-request-reference",
+  "prepare-commerce-reference-build-context",
+];
+const commerceAiDeploymentIsExact =
+  JSON.stringify(commerceAiFunctions) === JSON.stringify(expectedCommerceAiFunctions) &&
+  (commerceAiDeployStep.match(/--no-verify-jwt/g) || []).length === 1;
+const commerceGatewayBoundariesAreExact = expectedCommerceAiFunctions.every((name) =>
+  configuredJwtBoundary(name) === false &&
+  edgeFunctionManifest.some((item) => item.name === name && item.verifyJwt === false)
+);
+const everyGatewayBoundaryMatchesManifest = edgeFunctionManifest.every((item) =>
+  configuredJwtBoundary(item.name) === item.verifyJwt
+);
+const commerceSourceGuardsArePreserved =
+  edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging"') &&
+  edge.includes('secret("NXQ_AUTOMATION_WORKER_TOKEN")') &&
+  edge.includes('req.headers.get("x-nxq-worker-token")') &&
+  edge.includes("constantTimeEqual(suppliedToken, configuredToken)") &&
+  contextEdge.includes('requiredSecret("NXQ_AUTOMATION_WORKER_TOKEN")') &&
+  contextEdge.includes('request.headers.get("x-nxq-worker-token")') &&
+  contextEdge.includes("constantTimeEqual(suppliedToken, configuredToken)");
 
 function parseSerializedDotenvValue(serialized) {
   const quote = serialized[0];
@@ -110,6 +156,10 @@ const assertions = [
   [clientPage.includes("restricted pending security approval"), "client request view does not imply quarantined images are available"],
   [manifest.includes('entry("upload-commerce-request-reference", false, "request-upload-ticket-or-worker-token")'), "Edge manifest records the upload-ticket and protected smoke-test boundary"],
   [config.includes("[functions.upload-commerce-request-reference]\nverify_jwt = false"), "gateway permits source-level upload-ticket authentication"],
+  [commerceAiDeploymentIsExact, "scoped AI-handoff deployment disables gateway JWT for exactly the two Commerce functions"],
+  [commerceGatewayBoundariesAreExact, "both Commerce functions declare gateway JWT bypass in config and the deployment manifest"],
+  [everyGatewayBoundaryMatchesManifest, "focused Commerce repair preserves every other function authentication boundary"],
+  [commerceSourceGuardsArePreserved, "Commerce gateway exceptions retain staging-only smoke and constant-time worker-token guards"],
   [workflow.includes("- smoke_commerce_reference_upload") && workflow.includes("inputs.action == 'smoke_commerce_reference_upload'"), "manual staging exposes one exact Commerce reference smoke action"],
   [workflow.includes("staging_smoke_test") && workflow.includes("upload-commerce-request-reference") && !workflow.includes("smoke_commerce_reference_upload &&"), "smoke action invokes only the scoped upload function"],
   [workflow.includes("- smoke_commerce_reference_ai_handoff") && workflow.includes("inputs.action == 'smoke_commerce_reference_ai_handoff'"), "manual staging exposes one exact Commerce reference AI-handoff smoke action"],
