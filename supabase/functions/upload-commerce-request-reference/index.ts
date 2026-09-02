@@ -15,7 +15,8 @@ type SmokeFailurePhase =
   | "fixture-client-creation"
   | "fixture-request-creation"
   | "fixture-ticket-creation"
-  | "fixture-upload-registration"
+  | "fixture-private-storage-upload"
+  | "fixture-database-registration"
   | "isolation-verification"
   | "clean-release-simulation"
   | "multimodal-context-creation"
@@ -81,7 +82,7 @@ function response(
   if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
     headers["X-NXQ-Rejection-Source"] = rejectionSource;
   }
-  if (["fixture-client-creation", "fixture-request-creation", "fixture-ticket-creation", "fixture-upload-registration", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
+  if (["fixture-client-creation", "fixture-request-creation", "fixture-ticket-creation", "fixture-private-storage-upload", "fixture-database-registration", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
     headers["X-NXQ-Smoke-Phase"] = smokePhase;
   }
   if (smokeCleanup === "completed" || smokeCleanup === "not-completed") {
@@ -123,6 +124,7 @@ async function uploadReference(
   requestId: string,
   uploadTicket: string,
   fileValue: File,
+  onPrivateStorageUploaded?: () => void,
 ) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
     throw new CommerceReferenceContextError("Request reference is invalid.", 400);
@@ -162,6 +164,7 @@ async function uploadReference(
     upsert: false,
   });
   if (uploaded.error) throw new Error("Private reference image upload failed.");
+  onPrivateStorageUploaded?.();
 
   const registered = await admin.rpc("register_commerce_request_reference_upload", {
     target_request_id: requestId,
@@ -244,9 +247,17 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     });
     if (ticket.error) throw new Error("QA-only upload capability could not be created.");
 
-    failurePhase = "fixture-upload-registration";
+    failurePhase = "fixture-private-storage-upload";
     const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), (value) => value.charCodeAt(0));
-    const uploaded = await uploadReference(admin, requestId, uploadTicket, new File([png], "nxq-reference-smoke.png", { type: "image/png" }));
+    const uploaded = await uploadReference(
+      admin,
+      requestId,
+      uploadTicket,
+      new File([png], "nxq-reference-smoke.png", { type: "image/png" }),
+      () => {
+        failurePhase = "fixture-database-registration";
+      },
+    );
     clientFileId = uploaded.clientFileId;
     storagePath = uploaded.storagePath;
 
