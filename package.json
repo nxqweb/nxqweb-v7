@@ -14,7 +14,7 @@
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/smoke-built-routes.mjs",
     "test:families": "node scripts/validate-autonomy-ops-wave30-contract.mjs",
-    "test:runtime-stage": "node scripts/check-runtime-stage-readiness.mjs",
+    "test:runtime-stage": "node scripts/check-runtime-stage-readiness-readonly.mjs",
     "test:provider-setup": "node scripts/validate-provider-plug-in-readiness-contract.mjs",
     "test:migrations": "node scripts/check-migration-integrity.mjs",
     "test:growth": "node scripts/validate-growth-and-outreach-contract.mjs",
