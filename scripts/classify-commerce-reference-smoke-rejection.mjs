@@ -10,6 +10,8 @@ const SAFE_SMOKE_FAILURES = new Map([
   ["fixture-client-creation:completed", "commerce-smoke-fixture-client-creation-rejection-cleanup-completed"],
   ["fixture-request-creation:completed", "commerce-smoke-fixture-request-creation-rejection-cleanup-completed"],
   ["fixture-ticket-creation:completed", "commerce-smoke-fixture-ticket-creation-rejection-cleanup-completed"],
+  ["fixture-upload-authorization-resolution:completed", "commerce-smoke-fixture-upload-authorization-resolution-rejection-cleanup-completed"],
+  ["fixture-upload-authorization-validation:completed", "commerce-smoke-fixture-upload-authorization-validation-rejection-cleanup-completed"],
   ["fixture-private-storage-upload:completed", "commerce-smoke-fixture-private-storage-upload-rejection-cleanup-completed"],
   ["fixture-private-storage-auth-rejection:completed", "commerce-smoke-private-storage-auth-rejection-cleanup-completed"],
   ["fixture-private-storage-resource-unavailable:completed", "commerce-smoke-private-storage-resource-unavailable-cleanup-completed"],
