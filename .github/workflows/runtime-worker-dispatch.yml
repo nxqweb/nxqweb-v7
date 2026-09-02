@@ -2,102 +2,98 @@ name: NXQ Staging Worker Dispatcher
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
 
+concurrency:
+  group: nxq-staging-worker-dispatch
+  cancel-in-progress: false
+
 jobs:
-  diagnose-business-ai-latest:
+  dispatch:
     runs-on: ubuntu-latest
     environment: nxq-staging
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      NXQ_AUTOMATION_WORKER_TOKEN: ${{ secrets.NXQ_AUTOMATION_WORKER_TOKEN }}
     steps:
-      - name: Diagnose latest Business AI proof heartbeat read-only
+      - name: Require protected staging configuration
         shell: bash
         run: |
           set -euo pipefail
-          set +x
+          test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
 
-          node --input-type=module <<'NODE'
-          const accessToken = process.env.SUPABASE_ACCESS_TOKEN || "";
-          const projectRef = process.env.SUPABASE_PROJECT_REF || "";
-          if (!accessToken || !projectRef) {
-            console.log("INCONCLUSIVE business-build-plan-ai-latest");
-            process.exit(1);
+      - name: Verify staging Edge gateway is reachable
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          code="$(curl --silent --show-error --output /tmp/nxq-edge-probe.txt --write-out '%{http_code}' \
+            --connect-timeout 15 --max-time 30 \
+            -X POST "${base}/check-provider-health" \
+            -H "Content-Type: application/json" \
+            -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+            --data '{"source":"github_actions_edge_probe"}' || true)"
+          echo "Edge gateway probe HTTP status: ${code:-curl_failed}"
+          if [[ -z "$code" || "$code" == "000" ]]; then
+            cat /tmp/nxq-edge-probe.txt 2>/dev/null || true
+            echo "The external fallback cannot reach the Supabase Edge gateway."
+            exit 1
+          fi
+
+      - name: Wake every internal runtime lane
+        shell: bash
+        run: |
+          set -uo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          failures=0
+
+          wake() {
+            local fn="$1"
+            local count="${2:-1}"
+            for ((i=1; i<=count; i++)); do
+              echo "Waking ${fn} (${i}/${count})..."
+              if ! curl --silent --show-error --fail-with-body \
+                --connect-timeout 15 \
+                --max-time 60 \
+                -X POST "${base}/${fn}" \
+                -H "Content-Type: application/json" \
+                -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+                --data '{"source":"github_actions_staging_dispatch"}'; then
+                echo "::error::${fn} wake ${i}/${count} failed; continuing so other runtime lanes are not starved."
+                failures=$((failures + 1))
+              fi
+              echo
+            done
           }
 
-          const query = `
-            select
-              coalesce((metadata->>'provider_call_proven')::boolean, false) as provider_call_proven,
-              coalesce((metadata->>'provider_configured')::boolean, false) as provider_configured,
-              coalesce((metadata->>'staging_fallback')::boolean, false) as staging_fallback
-            from public.automation_worker_heartbeats
-            where worker_key = 'generate-business-build-plan'
-              and execution_target = 'ai'
-            limit 1;
-          `;
+          wake provision-project-infrastructure 5
+          wake prepare-build-plan 5
+          wake build-business-website 5
+          wake promote-business-production 5
+          wake provision-storefront 3
+          wake build-business-seo-artifacts 2
+          wake classify-business-change-request 2
+          wake reconcile-domain 2
+          wake scan-client-file 2
+          wake run-website-maintenance 2
+          wake dispatch-notifications 2
+          wake process-data-subject-request 2
+          wake check-provider-health 2
+          wake run-backup-restore-drill 1
 
-          let response;
-          try {
-            response = await fetch(
-              `https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query/read-only`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ query }),
-              },
-            );
-          } catch {
-            console.log("INCONCLUSIVE business-build-plan-ai-latest");
-            process.exit(1);
-          }
-
-          if (!response.ok) {
-            console.log("INCONCLUSIVE business-build-plan-ai-latest");
-            process.exit(1);
-          }
-
-          let payload;
-          try {
-            payload = await response.json();
-          } catch {
-            console.log("INCONCLUSIVE business-build-plan-ai-latest");
-            process.exit(1);
-          }
-
-          const rows = Array.isArray(payload)
-            ? payload
-            : Array.isArray(payload?.result)
-              ? payload.result
-              : Array.isArray(payload?.data)
-                ? payload.data
-                : [];
-          const row = rows[0] || {};
-
-          if (
-            row.provider_call_proven === true
-            && row.provider_configured === true
-            && row.staging_fallback === false
-          ) {
-            console.log("REAL_PROVIDER_CALL business-build-plan-ai-latest");
-            process.exit(0);
-          }
-
-          if (row.provider_call_proven === false && row.staging_fallback === true) {
-            console.log("STAGING_FALLBACK business-build-plan-ai-latest");
-            process.exit(0);
-          }
-
-          console.log("INCONCLUSIVE business-build-plan-ai-latest");
-          process.exit(1);
-          NODE
+          if (( failures > 0 )); then
+            echo "::error::${failures} runtime wake request(s) failed, but every configured lane was attempted."
+            exit 1
+          fi
 
       - name: Safety note
         if: always()
         run: |
-          echo "Read-only diagnostic only. No provider call, deployment, migration application, Netlify call, worker dispatch, production change, or secret display occurred."
+          echo "Staging runtime dispatch attempted every configured runtime lane."
+          echo "A failing worker cannot prevent later workers from being woken."
+          echo "Supabase remains source of truth for eligibility, claims, retries, approvals, and lifecycle state."
