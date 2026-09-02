@@ -16,7 +16,8 @@ type SmokeFailurePhase =
   | "fixture-request-creation"
   | "fixture-ticket-creation"
   | "fixture-upload-authorization-resolution"
-  | "fixture-upload-authorization-validation"
+  | "fixture-upload-authorization-rpc-rejection-or-no-data"
+  | "fixture-upload-authorization-payload-structure"
   | "fixture-private-storage-upload"
   | "fixture-private-storage-auth-rejection"
   | "fixture-private-storage-resource-unavailable"
@@ -54,7 +55,8 @@ const SAFE_SMOKE_PHASES = new Set<SmokeFailurePhase>([
   "fixture-request-creation",
   "fixture-ticket-creation",
   "fixture-upload-authorization-resolution",
-  "fixture-upload-authorization-validation",
+  "fixture-upload-authorization-rpc-rejection-or-no-data",
+  "fixture-upload-authorization-payload-structure",
   "fixture-private-storage-upload",
   "fixture-private-storage-auth-rejection",
   "fixture-private-storage-resource-unavailable",
@@ -194,8 +196,8 @@ async function uploadReference(
     target_request_id: requestId,
     upload_ticket: uploadTicket,
   });
-  onPrivateStorageFailure?.("fixture-upload-authorization-validation");
   if (authorization.error || !authorization.data) {
+    onPrivateStorageFailure?.("fixture-upload-authorization-rpc-rejection-or-no-data");
     throw new CommerceReferenceContextError("Upload authorization is invalid or expired.", 403);
   }
 
@@ -203,6 +205,7 @@ async function uploadReference(
   const clientId = String(allowed.client_id || "");
   const maxFileSize = Number(allowed.max_file_size_bytes || 0);
   if (!/^[0-9a-f-]{36}$/i.test(clientId) || !Number.isSafeInteger(maxFileSize) || maxFileSize < 1) {
+    onPrivateStorageFailure?.("fixture-upload-authorization-payload-structure");
     throw new Error("Upload authorization could not be resolved.");
   }
   if (fileValue.size > maxFileSize) {
