@@ -87,15 +87,15 @@ jobs:
           set -euo pipefail
           npx --no-install supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-secrets.json"
           if [ "${{ inputs.action }}" = "validate_foundation" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           elif [ "${{ inputs.action }}" = "validate_zero_key" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-zero-key-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-zero-key-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           elif [ "${{ inputs.action }}" = "validate_prelaunch" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-prelaunch --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-prelaunch --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           else
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           fi
 
       - name: Require explicit mutation confirmation
@@ -177,7 +177,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
-          node scripts/check-runtime-stage-readiness.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+          node scripts/check-runtime-stage-readiness-readonly.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
 
       - name: Audit Commerce remote authentication boundaries only
         if: inputs.action == 'audit_commerce_reference_remote_auth'
@@ -454,7 +454,7 @@ jobs:
           npx --no-install supabase secrets list \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --output-format json > "$secret_names_file"
-          node scripts/check-runtime-stage-readiness.mjs \
+          node scripts/check-runtime-stage-readiness-readonly.mjs \
             --profile=business-internal-provider-adapters \
             --supabase-secrets-json="$secret_names_file"
           echo "Configured eight protected internal adapter names; no value was printed."
