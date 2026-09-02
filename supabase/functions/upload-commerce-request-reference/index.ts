@@ -204,11 +204,17 @@ async function uploadReference(
   }
 
   const storagePath = `${clientId}/commerce-requests/${requestId}/${crypto.randomUUID()}.${extension}`;
-  const uploaded = await admin.storage.from("client-files").upload(storagePath, fileValue, {
-    contentType: fileType,
-    cacheControl: "0",
-    upsert: false,
-  });
+  let uploaded;
+  try {
+    uploaded = await admin.storage.from("client-files").upload(storagePath, fileValue, {
+      contentType: fileType,
+      cacheControl: "0",
+      upsert: false,
+    });
+  } catch (error) {
+    onPrivateStorageFailure?.(classifyPrivateStorageFailurePhase(error) || "fixture-private-storage-unclassified");
+    throw new Error("Private reference image upload failed.");
+  }
   const storageFailurePhase = classifyPrivateStorageFailurePhase(uploaded.error);
   if (storageFailurePhase) onPrivateStorageFailure?.(storageFailurePhase);
   if (uploaded.error) throw new Error("Private reference image upload failed.");
