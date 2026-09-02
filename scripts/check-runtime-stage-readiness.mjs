@@ -134,12 +134,12 @@ const workflowProof = [
   'npx --no-install supabase db push --dry-run --linked',
   'edge-function-manifest.mjs --group=no-verify-jwt',
   'edge-function-manifest.mjs --group=verify-jwt',
-  'check-runtime-stage-readiness.mjs --profile=business-configured-foundation',
-  'check-runtime-stage-readiness.mjs --profile=business-non-ai-staging',
-  'check-runtime-stage-readiness.mjs --profile=business-zero-key-staging',
-  'check-runtime-stage-readiness.mjs --profile=business-prelaunch',
-  'check-runtime-stage-readiness.mjs --profile=business-external-qa',
-  'check-runtime-stage-readiness.mjs --supabase-functions-json=',
+  'check-runtime-stage-readiness-readonly.mjs --profile=business-configured-foundation',
+  'check-runtime-stage-readiness-readonly.mjs --profile=business-non-ai-staging',
+  'check-runtime-stage-readiness-readonly.mjs --profile=business-zero-key-staging',
+  'check-runtime-stage-readiness-readonly.mjs --profile=business-prelaunch',
+  'check-runtime-stage-readiness-readonly.mjs --profile=business-external-qa',
+  'check-runtime-stage-readiness-readonly.mjs --supabase-functions-json=',
   'APPLY-NXQ-SUPABASE-STAGING',
 ];
 for (const proof of workflowProof) if (!workflow.includes(proof)) fail(`Manual staging workflow is missing: ${proof}`);
@@ -147,7 +147,7 @@ const nonAiDeployGate = 'elif [ "${{ inputs.action }}" = "validate_non_ai" ] || 
 if (!workflow.includes(nonAiDeployGate)) fail("deploy_functions must use the non-AI staging profile");
 if (!workflow.includes('inputs.action != \'validate_prelaunch\'')) fail("Prelaunch validation must never require mutation confirmation");
 if (!workflow.includes('inputs.action != \'validate_zero_key\'')) fail("Zero-key validation must never require mutation confirmation");
-if (!workflow.includes("else\n            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa")) {
+if (!workflow.includes("else\n            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-external-qa")) {
   fail("The strict external-QA profile must remain the fallback for apply_all");
 }
 if (!workflow.includes("--no-verify-jwt")) fail("Manual staging workflow does not preserve custom-auth gateway exceptions");
