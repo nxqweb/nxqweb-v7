@@ -15,6 +15,8 @@ type SmokeFailurePhase =
   | "fixture-client-creation"
   | "fixture-request-creation"
   | "fixture-ticket-creation"
+  | "fixture-upload-authorization-resolution"
+  | "fixture-upload-authorization-validation"
   | "fixture-private-storage-upload"
   | "fixture-private-storage-auth-rejection"
   | "fixture-private-storage-resource-unavailable"
@@ -51,6 +53,8 @@ const SAFE_SMOKE_PHASES = new Set<SmokeFailurePhase>([
   "fixture-client-creation",
   "fixture-request-creation",
   "fixture-ticket-creation",
+  "fixture-upload-authorization-resolution",
+  "fixture-upload-authorization-validation",
   "fixture-private-storage-upload",
   "fixture-private-storage-auth-rejection",
   "fixture-private-storage-resource-unavailable",
@@ -185,10 +189,12 @@ async function uploadReference(
   if (!extension) throw new CommerceReferenceContextError("Only JPEG, PNG, and WebP reference images are supported.", 415);
   if (fileValue.size < 1) throw new CommerceReferenceContextError("Reference image is empty.", 400);
 
+  onPrivateStorageFailure?.("fixture-upload-authorization-resolution");
   const authorization = await admin.rpc("resolve_commerce_request_reference_upload", {
     target_request_id: requestId,
     upload_ticket: uploadTicket,
   });
+  onPrivateStorageFailure?.("fixture-upload-authorization-validation");
   if (authorization.error || !authorization.data) {
     throw new CommerceReferenceContextError("Upload authorization is invalid or expired.", 403);
   }
@@ -203,6 +209,7 @@ async function uploadReference(
     throw new CommerceReferenceContextError(`Reference image exceeds the storefront's ${Math.floor(maxFileSize / 1048576)} MB limit.`, 413);
   }
 
+  onPrivateStorageFailure?.("fixture-private-storage-upload");
   const storagePath = `${clientId}/commerce-requests/${requestId}/${crypto.randomUUID()}.${extension}`;
   let uploaded;
   try {
@@ -301,7 +308,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     });
     if (ticket.error) throw new Error("QA-only upload capability could not be created.");
 
-    failurePhase = "fixture-private-storage-upload";
+    failurePhase = "fixture-upload-authorization-resolution";
     const png = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), (value) => value.charCodeAt(0));
     const uploaded = await uploadReference(
       admin,
