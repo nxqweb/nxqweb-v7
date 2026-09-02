@@ -7,14 +7,14 @@ permissions:
   contents: read
 
 jobs:
-  diagnose-business-ai-run-172:
+  diagnose-business-ai-latest:
     runs-on: ubuntu-latest
     environment: nxq-staging
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
-      - name: Diagnose Business AI proof heartbeat read-only
+      - name: Diagnose latest Business AI proof heartbeat read-only
         shell: bash
         run: |
           set -euo pipefail
@@ -24,17 +24,12 @@ jobs:
           const accessToken = process.env.SUPABASE_ACCESS_TOKEN || "";
           const projectRef = process.env.SUPABASE_PROJECT_REF || "";
           if (!accessToken || !projectRef) {
-            console.log("INCONCLUSIVE business-build-plan-ai-run-172");
+            console.log("INCONCLUSIVE business-build-plan-ai-latest");
             process.exit(1);
           }
 
           const query = `
             select
-              coalesce(
-                heartbeat_at >= '2026-09-02T22:20:53Z'::timestamptz
-                and heartbeat_at <= '2026-09-02T22:21:10Z'::timestamptz,
-                false
-              ) as matches_run_172,
               coalesce((metadata->>'provider_call_proven')::boolean, false) as provider_call_proven,
               coalesce((metadata->>'provider_configured')::boolean, false) as provider_configured,
               coalesce((metadata->>'staging_fallback')::boolean, false) as staging_fallback
@@ -58,12 +53,12 @@ jobs:
               },
             );
           } catch {
-            console.log("INCONCLUSIVE business-build-plan-ai-run-172");
+            console.log("INCONCLUSIVE business-build-plan-ai-latest");
             process.exit(1);
           }
 
           if (!response.ok) {
-            console.log("INCONCLUSIVE business-build-plan-ai-run-172");
+            console.log("INCONCLUSIVE business-build-plan-ai-latest");
             process.exit(1);
           }
 
@@ -71,7 +66,7 @@ jobs:
           try {
             payload = await response.json();
           } catch {
-            console.log("INCONCLUSIVE business-build-plan-ai-run-172");
+            console.log("INCONCLUSIVE business-build-plan-ai-latest");
             process.exit(1);
           }
 
@@ -84,26 +79,21 @@ jobs:
                 : [];
           const row = rows[0] || {};
 
-          if (row.matches_run_172 !== true) {
-            console.log("INCONCLUSIVE business-build-plan-ai-run-172");
-            process.exit(1);
-          }
-
           if (
             row.provider_call_proven === true
             && row.provider_configured === true
             && row.staging_fallback === false
           ) {
-            console.log("REAL_PROVIDER_CALL business-build-plan-ai-run-172");
+            console.log("REAL_PROVIDER_CALL business-build-plan-ai-latest");
             process.exit(0);
           }
 
           if (row.provider_call_proven === false && row.staging_fallback === true) {
-            console.log("STAGING_FALLBACK business-build-plan-ai-run-172");
+            console.log("STAGING_FALLBACK business-build-plan-ai-latest");
             process.exit(0);
           }
 
-          console.log("INCONCLUSIVE business-build-plan-ai-run-172");
+          console.log("INCONCLUSIVE business-build-plan-ai-latest");
           process.exit(1);
           NODE
 
