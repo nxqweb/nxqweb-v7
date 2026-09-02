@@ -120,6 +120,10 @@ export function commercePostgresContractAudit() {
   };
 }
 
+function writeConstantLine(value) {
+  process.stdout.write(`${value}\n`);
+}
+
 function run(metadataPath) {
   let results = commerceReferenceRemoteAuthResults([]);
   try {
@@ -136,7 +140,7 @@ function run(metadataPath) {
 
   const postgresAudit = commercePostgresContractAudit();
   if (!postgresAudit.available || !postgresAudit.checks) {
-    console.log("FAIL: commerce-postgres-contract-audit-unavailable");
+    writeConstantLine("FAIL: commerce-postgres-contract-audit-unavailable");
     process.exitCode = 1;
     return;
   }
@@ -148,11 +152,11 @@ function run(metadataPath) {
     ["migration-current", postgresAudit.checks.migrationCurrent],
   ];
   for (const [name, passed] of checks) {
-    console.log(`${passed ? "PASS" : "FAIL"}: ${name}`);
+    writeConstantLine(`${passed ? "PASS" : "FAIL"}: ${name}`);
   }
 
   const schemaDriftDetected = checks.some(([, passed]) => !passed);
-  console.log(`${schemaDriftDetected ? "FAIL" : "PASS"}: schema-drift-detected=${schemaDriftDetected ? "true" : "false"}`);
+  writeConstantLine(`${schemaDriftDetected ? "FAIL" : "PASS"}: schema-drift-detected=${schemaDriftDetected ? "true" : "false"}`);
 
   if (!remoteAuthPassed || schemaDriftDetected) process.exitCode = 1;
 }
