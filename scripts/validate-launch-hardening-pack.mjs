@@ -6,6 +6,7 @@ const domainPage = read("src/pages/ClientDomainStatus.tsx");
 const portal = read("src/pages/ClientPortal.tsx");
 const migration = read("supabase/migrations/231_enforce_client_owned_domain_policy.sql");
 const architecture = read("supabase/migrations/243_launch_architecture_freeze_tiers_economics_intelligence.sql");
+const growthArchitecture = read("supabase/migrations/244_launch_architecture_freeze_growth_enterprise_qa.sql");
 const runbook = read("docs/LAUNCH_HARDENING_CHECKLIST.md");
 
 const checks = [
@@ -43,6 +44,15 @@ const checks = [
   ["automation jobs have idempotency, retries, review and dead-letter states", architecture.includes("nxq_automation_jobs_v2") && architecture.includes("idempotency_key text not null unique") && architecture.includes("'needs_review'") && architecture.includes("'dead_letter'")],
   ["provider registry stores no secret values", architecture.includes("secret_values_stored_here boolean not null default false check(secret_values_stored_here=false)")],
   ["external and high-risk features start disabled", architecture.includes("('behavior_tracking',false,false,false,false)") && architecture.includes("('ai_optimization',false,false,false,false)") && architecture.includes("('paid_usage_topups',false,false,false,false)")],
+
+  ["lead intelligence supports deterministic fallback and provider evidence", growthArchitecture.includes("nxq_lead_intelligence") && growthArchitecture.includes("classification_source") && growthArchitecture.includes("'deterministic','provider','owner'")],
+  ["reputation foundation is provider-agnostic and testimonial approval is explicit", growthArchitecture.includes("nxq_reputation_items") && growthArchitecture.includes("provider_key") && growthArchitecture.includes("testimonial_approved boolean not null default false")],
+  ["change requests have SEO conversion security usage and cost impact assessment", growthArchitecture.includes("nxq_change_impact_assessments") && growthArchitecture.includes("seo_impact") && growthArchitecture.includes("conversion_impact") && growthArchitecture.includes("estimated_provider_cost_cents")],
+  ["Enterprise members and integrations are least-privilege foundations", growthArchitecture.includes("nxq_enterprise_members") && growthArchitecture.includes("permissions jsonb") && growthArchitecture.includes("location_scope") && growthArchitecture.includes("nxq_integration_connections")],
+  ["Enterprise integration rows cannot hold secret values", growthArchitecture.includes("secret_values_stored_here boolean not null default false check(secret_values_stored_here=false)")],
+  ["client value snapshots separate paid usage from billing credits", growthArchitecture.includes("paid_usage_credit_balance_cents") && growthArchitecture.includes("billing_credit_summary")],
+  ["observability prohibits sensitive payload claims", growthArchitecture.includes("nxq_observability_metrics") && growthArchitecture.includes("sensitive_data_present boolean not null default false check(sensitive_data_present=false)")],
+  ["QA fixtures hard-disable providers Netlify and production", growthArchitecture.includes("provider_calls_allowed boolean not null default false check(provider_calls_allowed=false)") && growthArchitecture.includes("netlify_calls_allowed boolean not null default false check(netlify_calls_allowed=false)") && growthArchitecture.includes("production_changes_allowed boolean not null default false check(production_changes_allowed=false)")],
 ];
 
 let failed = 0;
