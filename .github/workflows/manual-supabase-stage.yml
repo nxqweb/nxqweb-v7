@@ -15,6 +15,7 @@ on:
           - validate_prelaunch
           - validate
           - audit_commerce_reference_remote_auth
+          - maintenance_readiness_probe
           - apply_migrations
           - deploy_functions
           - deploy_provider_readiness
@@ -69,7 +70,7 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
-          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ] || [ "${{ inputs.action }}" = "sync_staging_runtime_guards" ]; then
+          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "maintenance_readiness_probe" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ] || [ "${{ inputs.action }}" = "sync_staging_runtime_guards" ]; then
             test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
           fi
 
@@ -98,7 +99,7 @@ jobs:
           fi
 
       - name: Require explicit mutation confirmation
-        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate_zero_key' && inputs.action != 'validate_prelaunch' && inputs.action != 'validate'
+        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate_zero_key' && inputs.action != 'validate_prelaunch' && inputs.action != 'validate' && inputs.action != 'maintenance_readiness_probe'
         shell: bash
         run: |
           if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING" ]; then
@@ -192,6 +193,71 @@ jobs:
             --output-format json > "$metadata_file"
           node scripts/audit-commerce-reference-remote-auth.mjs "$metadata_file"
           rm -f "$metadata_file"
+
+      - name: Probe website maintenance readiness only
+        if: inputs.action == 'maintenance_readiness_probe'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          result_file="$RUNNER_TEMP/nxq-maintenance-readiness.json"
+          trap 'rm -f "$result_file"' EXIT
+
+          set +e
+          http_code="$(curl --silent \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+            --data '{"readiness_probe":true}' \
+            --output "$result_file" \
+            --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/run-website-maintenance")"
+          curl_status=$?
+          set -e
+
+          if [ "$curl_status" -ne 0 ] || [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "FAIL maintenance-runtime-health"
+            exit 1
+          fi
+
+          node --input-type=module - "$result_file" <<'NODE'
+          import fs from "node:fs";
+          let result;
+          try {
+            result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.log("FAIL maintenance-runtime-health");
+            process.exit(1);
+          }
+
+          const checks = result?.checks && typeof result.checks === "object" ? result.checks : {};
+          const expected = [
+            ["public_https_url_accepted", "maintenance-public-https-filter"],
+            ["localhost_rejected", "maintenance-localhost-rejection"],
+            ["insecure_url_rejected", "maintenance-insecure-http-rejection"],
+            ["simulated_retry_path", "maintenance-retry-simulation"],
+            ["simulated_recovery_path", "maintenance-recovery-simulation"],
+          ];
+          let failed = false;
+          for (const [key, label] of expected) {
+            const ok = checks[key] === true;
+            console.log(`${ok ? "PASS" : "FAIL"} ${label}`);
+            if (!ok) failed = true;
+          }
+          const noProviders = checks.external_provider_calls === 0;
+          console.log(`${noProviders ? "PASS" : "FAIL"} maintenance-no-external-provider-calls`);
+          if (!noProviders) failed = true;
+          const noNetlify = result?.netlify_calls === 0;
+          console.log(`${noNetlify ? "PASS" : "FAIL"} maintenance-no-netlify-calls`);
+          if (!noNetlify) failed = true;
+          const noProduction = result?.production_changed === false;
+          console.log(`${noProduction ? "PASS" : "FAIL"} maintenance-no-production-change`);
+          if (!noProduction) failed = true;
+          const runtimeHealthy = result?.ok === true && result?.readiness_probe === true && !failed;
+          console.log(`${runtimeHealthy ? "PASS" : "FAIL"} maintenance-runtime-health`);
+          if (!runtimeHealthy) process.exit(1);
+          NODE
 
       - name: Deploy zero-Netlify readiness functions only
         if: inputs.action == 'deploy_zero_netlify_readiness'
