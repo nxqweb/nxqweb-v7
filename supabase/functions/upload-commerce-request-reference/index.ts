@@ -16,6 +16,13 @@ type SmokeFailurePhase =
   | "fixture-request-creation"
   | "fixture-ticket-creation"
   | "fixture-private-storage-upload"
+  | "fixture-private-storage-auth-rejection"
+  | "fixture-private-storage-resource-unavailable"
+  | "fixture-private-storage-conflict"
+  | "fixture-private-storage-payload-limit"
+  | "fixture-private-storage-request-rejection"
+  | "fixture-private-storage-service-failure"
+  | "fixture-private-storage-unclassified"
   | "fixture-database-registration"
   | "isolation-verification"
   | "clean-release-simulation"
@@ -39,6 +46,25 @@ const ALLOWED_TYPES = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
   ["image/webp", "webp"],
+]);
+const SAFE_SMOKE_PHASES = new Set<SmokeFailurePhase>([
+  "fixture-client-creation",
+  "fixture-request-creation",
+  "fixture-ticket-creation",
+  "fixture-private-storage-upload",
+  "fixture-private-storage-auth-rejection",
+  "fixture-private-storage-resource-unavailable",
+  "fixture-private-storage-conflict",
+  "fixture-private-storage-payload-limit",
+  "fixture-private-storage-request-rejection",
+  "fixture-private-storage-service-failure",
+  "fixture-private-storage-unclassified",
+  "fixture-database-registration",
+  "isolation-verification",
+  "clean-release-simulation",
+  "multimodal-context-creation",
+  "audit-writing",
+  "cleanup-failure",
 ]);
 
 function secret(name: string) {
@@ -82,7 +108,7 @@ function response(
   if (rejectionSource === "worker-token-guard" || rejectionSource === "runtime-environment-guard") {
     headers["X-NXQ-Rejection-Source"] = rejectionSource;
   }
-  if (["fixture-client-creation", "fixture-request-creation", "fixture-ticket-creation", "fixture-private-storage-upload", "fixture-database-registration", "isolation-verification", "clean-release-simulation", "multimodal-context-creation", "audit-writing", "cleanup-failure"].includes(smokePhase)) {
+  if (SAFE_SMOKE_PHASES.has(smokePhase as SmokeFailurePhase)) {
     headers["X-NXQ-Smoke-Phase"] = smokePhase;
   }
   if (smokeCleanup === "completed" || smokeCleanup === "not-completed") {
@@ -119,11 +145,31 @@ async function constantTimeEqual(left: string, right: string) {
   return difference === 0;
 }
 
+function classifyPrivateStorageFailurePhase(error: unknown): SmokeFailurePhase | null {
+  if (!error || typeof error !== "object") return null;
+  const record = error as Record<string, unknown>;
+  const rawStatus = record.statusCode ?? record.status;
+  const status = typeof rawStatus === "number"
+    ? rawStatus
+    : typeof rawStatus === "string" && /^\d{3}$/.test(rawStatus)
+    ? Number(rawStatus)
+    : NaN;
+
+  if (status === 401 || status === 403) return "fixture-private-storage-auth-rejection";
+  if (status === 404) return "fixture-private-storage-resource-unavailable";
+  if (status === 409) return "fixture-private-storage-conflict";
+  if (status === 413) return "fixture-private-storage-payload-limit";
+  if (status >= 400 && status < 500) return "fixture-private-storage-request-rejection";
+  if (status >= 500 && status < 600) return "fixture-private-storage-service-failure";
+  return "fixture-private-storage-unclassified";
+}
+
 async function uploadReference(
   admin: SupabaseClient,
   requestId: string,
   uploadTicket: string,
   fileValue: File,
+  onPrivateStorageFailure?: (phase: SmokeFailurePhase) => void,
   onPrivateStorageUploaded?: () => void,
 ) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
@@ -163,6 +209,8 @@ async function uploadReference(
     cacheControl: "0",
     upsert: false,
   });
+  const storageFailurePhase = classifyPrivateStorageFailurePhase(uploaded.error);
+  if (storageFailurePhase) onPrivateStorageFailure?.(storageFailurePhase);
   if (uploaded.error) throw new Error("Private reference image upload failed.");
   onPrivateStorageUploaded?.();
 
@@ -254,6 +302,9 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
       requestId,
       uploadTicket,
       new File([png], "nxq-reference-smoke.png", { type: "image/png" }),
+      (phase) => {
+        failurePhase = phase;
+      },
       () => {
         failurePhase = "fixture-database-registration";
       },
