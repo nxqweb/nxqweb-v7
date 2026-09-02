@@ -213,7 +213,7 @@ async function uploadReference(
     });
   } catch (error) {
     onPrivateStorageFailure?.(classifyPrivateStorageFailurePhase(error) || "fixture-private-storage-unclassified");
-    throw new Error("Private reference image upload failed.");
+    throw new Error("Private reference image upload failed.", { cause: error });
   }
   const storageFailurePhase = classifyPrivateStorageFailurePhase(uploaded.error);
   if (storageFailurePhase) onPrivateStorageFailure?.(storageFailurePhase);
