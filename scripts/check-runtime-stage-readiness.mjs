@@ -295,7 +295,7 @@ select label, ok from checks order by label;
 
   let response;
   try {
-    response = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query`, {
+    response = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query/read-only`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
