@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -159,6 +159,15 @@ export function OwnerCommandCenter() {
     void load();
   }, []);
 
+  function openClientChat(event: MouseEvent<HTMLAnchorElement>) {
+    const chatButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".portal-shell button"))
+      .find((button) => button.textContent?.includes("Client chat"));
+
+    if (!chatButton) return;
+    event.preventDefault();
+    chatButton.click();
+  }
+
   const readinessSummary = useMemo(() => {
     if (readinessState !== "ready") return null;
     const required = readiness.length;
@@ -185,7 +194,7 @@ export function OwnerCommandCenter() {
   return createPortal(
     <section className="owner-command-center" aria-label="NXQ owner command center">
       <div className="owner-command-center-head">
-        <div>
+        <div aria-live="polite">
           <span className="owner-command-kicker">NXQ command center</span>
           <h2>
             {hasUrgentWork
@@ -222,7 +231,7 @@ export function OwnerCommandCenter() {
           <ArrowRight size={17} />
         </a>
 
-        <a className={`owner-command-priority ${unreadMessages === null ? "warning" : unreadMessages > 0 ? "needs-action" : "clear"}`} href="/owner">
+        <a className={`owner-command-priority ${unreadMessages === null ? "warning" : unreadMessages > 0 ? "needs-action" : "clear"}`} href="/owner" onClick={openClientChat}>
           <span className="owner-command-icon"><MessageSquareText size={20} /></span>
           <div>
             <small>Client messages</small>
