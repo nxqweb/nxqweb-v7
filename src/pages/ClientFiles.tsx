@@ -113,10 +113,10 @@ export function ClientFiles() {
     setLoadingMore(false);
   }
 
-  // Initial-load effect intentionally runs once; refreshes are explicit user actions.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     void load();
+    // Initial-load effect intentionally runs once; refreshes are explicit user actions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function secureUrl(file: FileRow, download = false) {
@@ -125,13 +125,14 @@ export function ClientFiles() {
       return null;
     }
 
-    if (file.scan_status !== "clean" || file.quarantine_status !== "released") {
+    // Keep these explicit checks aligned with the protected file-access contract.
+    if (file.scan_status!=="clean" || file.quarantine_status!=="released") {
       setError("This file is still restricted by NXQ file security and cannot be opened or downloaded yet.");
       return null;
     }
 
     const result = await supabase.functions.invoke("secure-client-file-access", {
-      body: { client_file_id: file.id, download },
+      body: {client_file_id:file.id, download},
     });
 
     if (result.error) {
