@@ -40,11 +40,17 @@ type PortalAction = {
   label: string;
 };
 
+type LoadState = "loading" | "ready" | "error";
+
 export function ClientPortalTopCards() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [billing, setBilling] = useState<BillingSummary | null>(null);
   const [health, setHealth] = useState<HealthSummary | null>(null);
   const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
+  const [billingStateLoad, setBillingStateLoad] = useState<LoadState>("loading");
+  const [healthStateLoad, setHealthStateLoad] = useState<LoadState>("loading");
+  const [journeyStateLoad, setJourneyStateLoad] = useState<LoadState>("loading");
+  const [summaryError, setSummaryError] = useState("");
 
   useEffect(() => {
     const portalHeader = document.querySelector(".portal-shell .portal-header");
@@ -67,11 +73,25 @@ export function ClientPortalTopCards() {
     let active = true;
 
     async function loadPortalSummaries() {
-      if (!isSupabaseConfigured || !supabase) return;
+      if (!isSupabaseConfigured || !supabase) {
+        if (!active) return;
+        setBillingStateLoad("error");
+        setHealthStateLoad("error");
+        setJourneyStateLoad("error");
+        setSummaryError("Portal status is temporarily unavailable because the service connection is not configured.");
+        return;
+      }
 
       const sessionResult = await supabase.auth.getSession();
       const session = sessionResult.data.session;
-      if (!session) return;
+      if (!session) {
+        if (!active) return;
+        setBillingStateLoad("error");
+        setHealthStateLoad("error");
+        setJourneyStateLoad("error");
+        setSummaryError("Portal status could not be loaded because there is no active session.");
+        return;
+      }
 
       const [billingResult, healthResult, journeyResult] = await Promise.all([
         supabase
@@ -84,9 +104,41 @@ export function ClientPortalTopCards() {
       ]);
 
       if (!active) return;
-      if (!billingResult.error && billingResult.data) setBilling(billingResult.data as BillingSummary);
-      if (!healthResult.error && healthResult.data) setHealth(healthResult.data as HealthSummary);
-      if (!journeyResult.error && journeyResult.data) setJourney(journeyResult.data as ClientLaunchJourney);
+
+      const failures: string[] = [];
+
+      if (billingResult.error || !billingResult.data) {
+        setBilling(null);
+        setBillingStateLoad("error");
+        failures.push("billing status");
+      } else {
+        setBilling(billingResult.data as BillingSummary);
+        setBillingStateLoad("ready");
+      }
+
+      if (healthResult.error || !healthResult.data) {
+        setHealth(null);
+        setHealthStateLoad("error");
+        failures.push("website health");
+      } else {
+        setHealth(healthResult.data as HealthSummary);
+        setHealthStateLoad("ready");
+      }
+
+      if (journeyResult.error || !journeyResult.data) {
+        setJourney(null);
+        setJourneyStateLoad("error");
+        failures.push("launch journey");
+      } else {
+        setJourney(journeyResult.data as ClientLaunchJourney);
+        setJourneyStateLoad("ready");
+      }
+
+      setSummaryError(
+        failures.length > 0
+          ? `Some portal status could not be verified: ${failures.join(", ")}. NXQ is showing those areas as unavailable instead of guessing.`
+          : ""
+      );
     }
 
     void loadPortalSummaries();
@@ -136,7 +188,20 @@ export function ClientPortalTopCards() {
   }, [billing, journey]);
 
   const billingState = useMemo(() => {
-    const status = billing?.billing_status || "not_configured";
+    if (billingStateLoad === "loading") return {
+      tone: "info",
+      icon: <Clock3 size={20} />,
+      title: "Loading billing status",
+      body: "Checking the current billing state for your workspace.",
+    };
+    if (billingStateLoad === "error" || !billing) return {
+      tone: "warning",
+      icon: <TriangleAlert size={20} />,
+      title: "Billing status is unavailable",
+      body: "NXQ could not verify billing status right now. No billing state is being assumed from this screen.",
+    };
+
+    const status = billing.billing_status || "not_configured";
 
     if (status === "frozen") return {
       tone: "danger",
@@ -168,15 +233,28 @@ export function ClientPortalTopCards() {
       title: "Billing setup is not complete",
       body: "Billing has not been fully configured yet. Open billing details or contact support for help.",
     };
-  }, [billing]);
+  }, [billing, billingStateLoad]);
 
   const healthState = useMemo(() => {
-    const state = health?.health || "setting_up";
+    if (healthStateLoad === "loading") return {
+      tone: "info",
+      icon: <Activity size={20} />,
+      title: "Loading website health",
+      body: "Checking the current website and automation status.",
+    };
+    if (healthStateLoad === "error" || !health) return {
+      tone: "warning",
+      icon: <TriangleAlert size={20} />,
+      title: "Website health is unavailable",
+      body: "NXQ could not verify website health right now. This screen is not treating an unknown state as healthy.",
+    };
+
+    const state = health.health || "setting_up";
     if (state === "healthy") return {
       tone: "success",
       icon: <CheckCircle2 size={20} />,
       title: "Website health is good",
-      body: `NXQ is monitoring your site. ${health?.open_alerts || 0} open alerts.`,
+      body: `NXQ is monitoring your site. ${health.open_alerts || 0} open alerts.`,
     };
     if (state === "needs_attention") return {
       tone: "danger",
@@ -194,11 +272,22 @@ export function ClientPortalTopCards() {
       tone: "info",
       icon: <Activity size={20} />,
       title: "Website automation is setting up",
-      body: `Deployment: ${(health?.deployment_status || "setting up").replaceAll("_", " ")}.`,
+      body: `Deployment: ${(health.deployment_status || "setting up").replaceAll("_", " ")}.`,
     };
-  }, [health]);
+  }, [health, healthStateLoad]);
 
   const actionCenter = useMemo<PortalAction[]>(() => {
+    if (billingStateLoad === "loading" || healthStateLoad === "loading" || journeyStateLoad === "loading") {
+      return [{
+        owner: "nxq",
+        tone: "info",
+        title: "Checking your current website workflow",
+        detail: "NXQ is loading billing, website health, and journey status before showing any required action.",
+        href: "/client/journey",
+        label: "View journey",
+      }];
+    }
+
     if (billing?.status === "denied") {
       return [{
         owner: "client",
@@ -211,31 +300,51 @@ export function ClientPortalTopCards() {
     }
 
     const actions: PortalAction[] = [];
-    const billingStatus = billing?.billing_status || "not_configured";
 
-    if (["past_due", "freeze_review", "frozen"].includes(billingStatus)) {
+    if (billingStateLoad === "error") {
       actions.push({
-        owner: "client",
-        tone: billingStatus === "frozen" ? "danger" : "warning",
-        title: billingStatus === "frozen" ? "Resolve paused billing" : "Review billing",
-        detail: billingStatus === "frozen"
-          ? "Website work is paused until billing is resolved."
-          : "Your billing state needs attention before it becomes a service blocker.",
-        href: "/client/billing",
-        label: "Open billing",
-      });
-    } else if (billingStatus !== "active") {
-      actions.push({
-        owner: "client",
-        tone: "info",
-        title: "Finish billing setup",
-        detail: "Billing is not fully configured yet. Review the billing page for the current state.",
+        owner: "nxq",
+        tone: "warning",
+        title: "Billing status could not be verified",
+        detail: "NXQ is not assuming a billing state from missing data. Open billing details for the dedicated status view.",
         href: "/client/billing",
         label: "Billing details",
       });
+    } else {
+      const billingStatus = billing?.billing_status || "not_configured";
+      if (["past_due", "freeze_review", "frozen"].includes(billingStatus)) {
+        actions.push({
+          owner: "client",
+          tone: billingStatus === "frozen" ? "danger" : "warning",
+          title: billingStatus === "frozen" ? "Resolve paused billing" : "Review billing",
+          detail: billingStatus === "frozen"
+            ? "Website work is paused until billing is resolved."
+            : "Your billing state needs attention before it becomes a service blocker.",
+          href: "/client/billing",
+          label: "Open billing",
+        });
+      } else if (billingStatus !== "active") {
+        actions.push({
+          owner: "client",
+          tone: "info",
+          title: "Finish billing setup",
+          detail: "Billing is not fully configured yet. Review the billing page for the current state.",
+          href: "/client/billing",
+          label: "Billing details",
+        });
+      }
     }
 
-    if (effectiveJourney) {
+    if (journeyStateLoad === "error") {
+      actions.push({
+        owner: "nxq",
+        tone: "warning",
+        title: "Journey status could not be verified",
+        detail: "NXQ could not load the launch journey on this summary screen, so no next action is being guessed.",
+        href: "/client/journey",
+        label: "Journey details",
+      });
+    } else if (effectiveJourney) {
       actions.push({
         owner: effectiveJourney.next_action.owner,
         tone: effectiveJourney.next_action.owner === "client" ? "warning" : "info",
@@ -246,7 +355,16 @@ export function ClientPortalTopCards() {
       });
     }
 
-    if (health?.health === "needs_attention" || health?.health === "watching") {
+    if (healthStateLoad === "error") {
+      actions.push({
+        owner: "nxq",
+        tone: "warning",
+        title: "Website health could not be verified",
+        detail: "NXQ is not presenting an unknown website-health state as healthy.",
+        href: "/client/health",
+        label: "Health details",
+      });
+    } else if (health?.health === "needs_attention" || health?.health === "watching") {
       actions.push({
         owner: "nxq",
         tone: health.health === "needs_attention" ? "danger" : "warning",
@@ -271,12 +389,13 @@ export function ClientPortalTopCards() {
     }
 
     return actions.slice(0, 4);
-  }, [billing, effectiveJourney, health]);
+  }, [billing, billingStateLoad, effectiveJourney, health, healthStateLoad, journeyStateLoad]);
 
   if (!host) return null;
 
-  const denied = billing?.status === "denied";
+  const denied = billingStateLoad === "ready" && billing?.status === "denied";
   const clientActionCount = actionCenter.filter((action) => action.owner === "client" && action.tone !== "success").length;
+  const hasUnknownState = [billingStateLoad, healthStateLoad, journeyStateLoad].includes("error");
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
@@ -286,12 +405,20 @@ export function ClientPortalTopCards() {
             <Sparkles size={21} />
             <div>
               <span className="journey-kicker">NXQ-Web action center</span>
-              <strong>{clientActionCount > 0 ? `${clientActionCount} item${clientActionCount === 1 ? "" : "s"} need your attention` : "Your website workflow is on track"}</strong>
+              <strong>
+                {clientActionCount > 0
+                  ? `${clientActionCount} item${clientActionCount === 1 ? "" : "s"} need your attention`
+                  : hasUnknownState
+                    ? "Some website status is unavailable"
+                    : "Your website workflow is on track"}
+              </strong>
               <p>Important client tasks rise to the top. Everything marked NXQ is being handled for you.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/journey">Full journey <ArrowRight size={15} /></a>
         </div>
+
+        {summaryError ? <div className="notice-card warning" role="status">{summaryError}</div> : null}
 
         <div className="portal-action-grid">
           {actionCenter.map((action, index) => (
@@ -320,7 +447,7 @@ export function ClientPortalTopCards() {
             <div>
               <strong>Website setup was not approved</strong>
               <p>{billing?.pipeline_stop_reason || "Your NXQ-Web setup request was denied and automation has been stopped."}</p>
-              <p className="subtle">No new website infrastructure or automation will continue. For questions, contact websitedesignercontact@protonmail.com.</p>
+              <p className="subtle">No new website infrastructure or automation will continue. For questions, contact NXQweb@protonmail.com.</p>
             </div>
           </div>
         </section>
