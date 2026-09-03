@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, MailCheck, Sparkles, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MailCheck, Sparkles } from "lucide-react";
 import {
   getProductFamily,
   getRequestedProductFamily,
