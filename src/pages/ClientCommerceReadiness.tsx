@@ -82,6 +82,7 @@ export function ClientCommerceReadiness() {
   const [data, setData] = useState<ReadinessData | null>(null);
   const [form, setForm] = useState<ReadinessForm>(emptyForm);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -93,30 +94,35 @@ export function ClientCommerceReadiness() {
   async function loadReadiness(showLoading = true) {
     if (showLoading) setLoading(true);
     setError("");
+    setSuccess("");
+    setVerified(false);
+    setData(null);
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce readiness is unavailable because Supabase is not configured.");
+      setError("Commerce launch readiness is temporarily unavailable. No readiness settings were changed.");
       setLoading(false);
-      return;
+      return false;
     }
 
     const sessionResult = await supabase.auth.getSession();
     if (!sessionResult.data.session) {
       window.location.replace("/portal/login");
-      return;
+      return false;
     }
 
     const result = await supabase.rpc("get_my_commerce_launch_readiness");
     if (result.error) {
-      setError(`Commerce readiness failed to load: ${result.error.message}`);
+      setError("Commerce launch readiness could not be verified right now. Please try again shortly.");
       setLoading(false);
-      return;
+      return false;
     }
 
     const nextData = (result.data as ReadinessData) || {};
     setData(nextData);
     setForm({ ...emptyForm, ...(nextData.settings || {}) });
+    setVerified(true);
     setLoading(false);
+    return true;
   }
 
   function updateField<K extends keyof ReadinessForm>(key: K, value: ReadinessForm[K]) {
@@ -124,7 +130,7 @@ export function ClientCommerceReadiness() {
   }
 
   async function saveReadiness() {
-    if (!supabase) return;
+    if (!supabase || !verified || saving) return;
     setSaving(true);
     setError("");
     setSuccess("");
@@ -134,21 +140,31 @@ export function ClientCommerceReadiness() {
     });
 
     if (result.error) {
-      setError(`Readiness settings could not be saved: ${result.error.message}`);
+      setError("Readiness settings could not be saved. The previously verified settings remain unchanged.");
       setSaving(false);
       return;
     }
 
-    await loadReadiness(false);
-    setSuccess("Commerce launch-readiness settings saved.");
+    const reloaded = await loadReadiness(false);
+    if (reloaded) {
+      setSuccess("Commerce launch-readiness settings saved and re-verified.");
+    }
     setSaving(false);
   }
 
-  const checks = useMemo(() => data?.checks || [], [data]);
+  const checks = useMemo(() => (verified ? data?.checks || [] : []), [data, verified]);
   const passedCount = useMemo(() => checks.filter((check) => check.passed).length, [checks]);
   const nonPaymentChecks = useMemo(() => checks.filter((check) => check.key !== "payment"), [checks]);
   const nonPaymentPassed = nonPaymentChecks.filter((check) => check.passed).length;
-  const hasReadinessData = Boolean(data && checks.length > 0);
+  const hasReadinessData = verified && checks.length > 0;
+  const notificationEventCount =
+    typeof data?.notification_events === "number" ? String(data.notification_events) : "—";
+  const notificationDeliveryLabel =
+    typeof data?.notification_delivery_connected === "boolean"
+      ? data.notification_delivery_connected
+        ? "Yes"
+        : "No — intentionally disabled"
+      : "—";
 
   return (
     <main className="nxq-page">
@@ -165,7 +181,7 @@ export function ClientCommerceReadiness() {
               </p>
             </div>
           </div>
-          <button className="icon-btn" onClick={() => void loadReadiness()} type="button">
+          <button className="icon-btn" disabled={loading || saving} onClick={() => void loadReadiness()} type="button">
             <RefreshCcw size={16} /> Refresh
           </button>
         </div>
@@ -174,7 +190,13 @@ export function ClientCommerceReadiness() {
         {success ? <div className="notice-card success">{success}</div> : null}
         {loading ? <div className="empty-state">Loading launch readiness...</div> : null}
 
-        {!loading ? (
+        {!loading && !verified ? (
+          <div className="empty-state">
+            Launch-readiness data is not verified, so NXQ-Web is not showing or accepting readiness changes from this screen.
+          </div>
+        ) : null}
+
+        {!loading && verified ? (
           <>
             <section className="panel panel-wide">
               <div className="panel-title">
@@ -184,7 +206,7 @@ export function ClientCommerceReadiness() {
                   <p className="subtle">
                     {hasReadinessData
                       ? `${nonPaymentPassed} of ${nonPaymentChecks.length} non-payment checks complete. Payment stays intentionally blocked.`
-                      : "Complete the fields below, then refresh after the database repair is applied."}
+                      : "Verified readiness data is available, but no checklist requirements were returned yet."}
                   </p>
                 </div>
               </div>
@@ -202,8 +224,8 @@ export function ClientCommerceReadiness() {
               ) : null}
 
               <div className="notice-card">
-                <strong>{hasReadinessData ? `${passedCount} of ${checks.length} total checks complete` : "Checklist waiting for readiness data"}</strong>
-                <p>Live storefront publication remains unavailable until a real payment provider is connected and separately approved.</p>
+                <strong>{hasReadinessData ? `${passedCount} of ${checks.length} total checks complete` : "No checklist rows returned"}</strong>
+                <p>Live storefront publication and live payments remain separate guarded actions and are not activated by saving this form.</p>
               </div>
             </section>
 
@@ -298,7 +320,7 @@ export function ClientCommerceReadiness() {
                 <ShieldCheck size={20} />
                 <div>
                   <h2>Customer support and notification preparation</h2>
-                  <p className="subtle">Order-message records are prepared now, but no customer email is sent until a delivery provider is connected later.</p>
+                  <p className="subtle">Order-message records can be prepared here, but saving readiness does not send customer email or connect a delivery provider.</p>
                 </div>
               </div>
               <div style={twoColumnGrid}>
@@ -317,16 +339,16 @@ export function ClientCommerceReadiness() {
                     type="checkbox"
                     style={{ flex: "0 0 auto", marginTop: "0.2rem" }}
                   />
-                  <span><strong>Prepare customer order-notification records</strong><br /><span className="subtle">Records only. Email delivery stays disabled.</span></span>
+                  <span><strong>Prepare customer order-notification records</strong><br /><span className="subtle">Records only. Provider delivery remains separately gated.</span></span>
                 </label>
               </div>
               <div className="notice-card">
-                <strong>{data?.notification_events || 0} notification event records prepared</strong>
-                <p>Email delivery connected: {data?.notification_delivery_connected ? "Yes" : "No — intentionally disabled"}</p>
+                <strong>{notificationEventCount} notification event records prepared</strong>
+                <p>Email delivery connected: {notificationDeliveryLabel}</p>
               </div>
             </section>
 
-            <button className="wide-btn" disabled={saving} onClick={() => void saveReadiness()} type="button">
+            <button className="wide-btn" disabled={saving || !verified} onClick={() => void saveReadiness()} type="button">
               <Save size={17} /> {saving ? "Saving..." : "Save launch readiness"}
             </button>
           </>
