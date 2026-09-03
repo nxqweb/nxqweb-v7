@@ -141,9 +141,10 @@ function AppRoutes() {
   if (path === "/client") return <><ClientPortalTopCards /><ClientPortal /><ClientPortalTutorialOverlay /></>;
   if (path.startsWith("/client/")) { window.location.replace("/client"); return null; }
 
-  if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
+  // Keep reserved Commerce routes ahead of the generic /store/:slug matcher.
   if (path === "/store/checkout") return <PublicCommerceCheckout />;
   if (path === "/store/request") return <PublicCommerceRequest />;
+  if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (path === "/plans") return <PublicPlans />;
   if (path === "/portal/login") return <PortalLogin />;
   if (path === "/portal/signup") return <PortalSignup />;
