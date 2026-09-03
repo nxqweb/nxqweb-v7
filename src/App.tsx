@@ -5,6 +5,7 @@ import "./styles/public-premium-wave.css";
 import "./styles/portal-premium.css";
 import "./styles/owner-command-center.css";
 import "./styles/portal-polish.css";
+import "./styles/final-frontend-polish.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
