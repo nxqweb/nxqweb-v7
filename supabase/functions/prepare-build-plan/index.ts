@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { assertGroundedMarketingClaims } from "../_shared/ai-grounding.mjs";
 
 type AutomationJob = {
   id: string;
@@ -38,7 +39,7 @@ type AiAdapterResult = {
 };
 
 const workerName = "prepare-build-plan";
-const workerVersion = "v3-ai-enriched-business";
+const workerVersion = "v4-grounded-ai-business";
 const adapterSchemaVersion = "nxq-business-build-plan-v1";
 const minimumConfidence = 0.82;
 const supportedThemes = new Set(["midnight_blue", "charcoal_gold", "forest_emerald", "royal_violet"]);
@@ -176,7 +177,7 @@ function canonicalLookup(values: string[]) {
   return new Map(values.map((value) => [value.trim().toLowerCase(), value]));
 }
 
-function validateAiStrategy(value: unknown, services: string[], pages: string[]) {
+function validateAiStrategy(value: unknown, services: string[], pages: string[], groundingInput: JsonRecord) {
   const root = record(value);
   const strategy = record(root.strategy);
   const schemaVersion = clean(root.schema_version);
@@ -233,7 +234,7 @@ function validateAiStrategy(value: unknown, services: string[], pages: string[])
   const themeKey = clean(design.theme_key).toLowerCase();
   if (!supportedThemes.has(themeKey)) throw new Error("AI build-plan selected a theme outside the deterministic allowlist.");
 
-  return {
+  const validated = {
     schema_version: schemaVersion,
     request_fingerprint: requestFingerprint,
     confidence,
@@ -266,6 +267,9 @@ function validateAiStrategy(value: unknown, services: string[], pages: string[])
       },
     },
   } satisfies AiAdapterResult;
+
+  assertGroundedMarketingClaims(validated.strategy, groundingInput);
+  return validated;
 }
 
 async function sha256(value: unknown) {
@@ -306,7 +310,7 @@ async function requestAiStrategy(adapterUrl: string, adapterToken: string, reque
     let parsed: unknown;
     try { parsed = bodyText ? JSON.parse(bodyText) : null; }
     catch { throw new Error("AI build-plan adapter returned invalid JSON."); }
-    const result = validateAiStrategy(parsed, services, pages);
+    const result = validateAiStrategy(parsed, services, pages, input);
     if (result.request_fingerprint !== requestFingerprint) {
       throw new Error("AI build-plan adapter fingerprint did not match this intake.");
     }
@@ -325,6 +329,7 @@ function reusableBuildPlan(value: unknown, inputFingerprint: string) {
     && enrichment.status === "validated"
     && enrichment.schema_version === adapterSchemaVersion
     && enrichment.deterministic_safety_merge === true
+    && enrichment.deterministic_grounding_validator === "v1"
     ? plan
     : null;
 }
@@ -374,6 +379,7 @@ Deno.serve(async (request) => {
       adapter_configured: adapterConfigured,
       adapter_schema_version: adapterSchemaVersion,
       deterministic_safety_merge: true,
+      deterministic_grounding_validator: "v1",
       checked_at: new Date().toISOString(),
     },
     target_last_error: adapterConfigured ? null : "AI build-plan adapter URL/token are not configured.",
@@ -522,6 +528,7 @@ Deno.serve(async (request) => {
           confidence: aiResult.confidence,
           risk_flags: [],
           deterministic_safety_merge: true,
+          deterministic_grounding_validator: "v1",
           adapter_contract: "provider_neutral",
           validated_at: new Date().toISOString(),
         },
@@ -578,6 +585,7 @@ Deno.serve(async (request) => {
         adapter_configured: true,
         adapter_schema_version: adapterSchemaVersion,
         deterministic_safety_merge: true,
+        deterministic_grounding_validator: "v1",
         last_input_fingerprint: inputFingerprint,
         adapter_response_reused: adapterReused,
         last_success_at: new Date().toISOString(),
@@ -606,6 +614,7 @@ Deno.serve(async (request) => {
         adapter_configured: adapterConfigured,
         adapter_schema_version: adapterSchemaVersion,
         deterministic_safety_merge: true,
+        deterministic_grounding_validator: "v1",
         failed_at: new Date().toISOString(),
       },
       target_last_error: message,
