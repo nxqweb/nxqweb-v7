@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 type JsonRecord = Record<string, unknown>;
 type ProviderProtocol = "openai_responses" | "openai_chat_completions";
+type ProviderRoute = "external_provider" | "local_adapter";
 type BuildPlanRequest = {
   task: "enrich_business_build_plan_v1";
   schema_version: "nxq-business-build-plan-v1";
@@ -28,9 +29,18 @@ type BuildPlanRequest = {
   };
 };
 
+type ProviderSelection = {
+  route: ProviderRoute;
+  urlRaw: string;
+  token: string;
+  model: string;
+  protocolRaw: string;
+};
+
 const workerName = "generate-business-build-plan";
-const workerVersion = "v1-structured-runtime";
+const workerVersion = "v2-provider-router";
 const schemaVersion = "nxq-business-build-plan-v1";
+const nonProductionEnvironments = new Set(["staging", "stage", "development", "dev", "test", "qa"]);
 const allowedInputKeys = new Set([
   "business_name",
   "business_type",
@@ -86,6 +96,14 @@ function sameStrings(left: string[], right: string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function runtimeEnvironment() {
+  return optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();
+}
+
+function isNonProductionEnvironment() {
+  return nonProductionEnvironments.has(runtimeEnvironment());
+}
+
 function validatePublicHttpsUrl(rawUrl: string, label: string) {
   let url: URL;
   try { url = new URL(rawUrl); }
@@ -97,6 +115,45 @@ function validatePublicHttpsUrl(rawUrl: string, label: string) {
     throw new Error(`${label} must be a credential-free public HTTPS endpoint.`);
   }
   return url.toString();
+}
+
+function configured(urlRaw: string, token: string, model: string) {
+  return Boolean(urlRaw && token && model);
+}
+
+function selectProvider(): ProviderSelection | null {
+  const external = {
+    route: "external_provider" as const,
+    urlRaw: optionalSecret("NXQ_AI_MODEL_PROVIDER_URL"),
+    token: optionalSecret("NXQ_AI_MODEL_PROVIDER_TOKEN"),
+    model: optionalSecret("NXQ_AI_MODEL_PROVIDER_MODEL"),
+    protocolRaw: optionalSecret("NXQ_AI_MODEL_PROVIDER_PROTOCOL") || "openai_responses",
+  };
+
+  const local = {
+    route: "local_adapter" as const,
+    urlRaw: optionalSecret("NXQ_LOCAL_AI_ADAPTER_URL"),
+    token: optionalSecret("NXQ_LOCAL_AI_ADAPTER_TOKEN"),
+    model: optionalSecret("NXQ_LOCAL_AI_ADAPTER_MODEL"),
+    protocolRaw: optionalSecret("NXQ_LOCAL_AI_ADAPTER_PROTOCOL") || "openai_chat_completions",
+  };
+
+  const requestedRoute = optionalSecret("NXQ_AI_PROVIDER_ROUTE").toLowerCase();
+  if (requestedRoute && requestedRoute !== "external_provider" && requestedRoute !== "local_adapter") {
+    throw new Error("NXQ_AI_PROVIDER_ROUTE must be external_provider or local_adapter.");
+  }
+
+  if (requestedRoute === "local_adapter") {
+    if (!isNonProductionEnvironment()) throw new Error("Local AI adapter is forbidden outside non-production environments.");
+    return configured(local.urlRaw, local.token, local.model) ? local : null;
+  }
+  if (requestedRoute === "external_provider") {
+    return configured(external.urlRaw, external.token, external.model) ? external : null;
+  }
+
+  if (isNonProductionEnvironment() && configured(local.urlRaw, local.token, local.model)) return local;
+  if (configured(external.urlRaw, external.token, external.model)) return external;
+  return null;
 }
 
 async function constantTimeEqual(left: string, right: string) {
@@ -232,7 +289,7 @@ function instructions(request: BuildPlanRequest) {
 
 function providerProtocol(value: string): ProviderProtocol {
   if (value === "openai_responses" || value === "openai_chat_completions") return value;
-  throw new Error("NXQ_AI_MODEL_PROVIDER_PROTOCOL must be openai_responses or openai_chat_completions.");
+  throw new Error("AI provider protocol must be openai_responses or openai_chat_completions.");
 }
 
 function providerPayload(protocol: ProviderProtocol, model: string, request: BuildPlanRequest) {
@@ -309,9 +366,7 @@ function validateProviderResult(value: unknown, request: BuildPlanRequest) {
 }
 
 async function recordHeartbeat(admin: unknown, status: "healthy" | "degraded" | "error", metadata: JsonRecord, error: string | null) {
-  const rpcClient = admin as {
-    rpc: (functionName: string, args: JsonRecord) => PromiseLike<unknown>;
-  };
+  const rpcClient = admin as { rpc: (functionName: string, args: JsonRecord) => PromiseLike<unknown> };
   await rpcClient.rpc("record_worker_heartbeat", {
     target_worker_key: workerName,
     target_execution_target: "ai",
@@ -337,9 +392,7 @@ function stagingFallback(request: BuildPlanRequest) {
     if (normalized.length <= max) return normalized;
     const candidate = normalized.slice(0, max + 1);
     const boundary = candidate.lastIndexOf(" ");
-    const clipped = boundary >= Math.floor(max * 0.7)
-      ? candidate.slice(0, boundary)
-      : normalized.slice(0, max);
+    const clipped = boundary >= Math.floor(max * 0.7) ? candidate.slice(0, boundary) : normalized.slice(0, max);
     return clipped.replace(/[-,:;/]+$/g, "").trim();
   };
   const shortType = clip(t, 48) || "local service";
@@ -407,27 +460,40 @@ Deno.serve(async (request) => {
   const admin = createClient(requiredSecret("SUPABASE_URL"), requiredSecret("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false },
   });
-  const providerUrlRaw = optionalSecret("NXQ_AI_MODEL_PROVIDER_URL");
-  const providerToken = optionalSecret("NXQ_AI_MODEL_PROVIDER_TOKEN");
-  const providerModel = optionalSecret("NXQ_AI_MODEL_PROVIDER_MODEL");
-  const protocolRaw = optionalSecret("NXQ_AI_MODEL_PROVIDER_PROTOCOL") || "openai_responses";
-  const providerConfigured = Boolean(providerUrlRaw && providerToken && providerModel);
-  if (!providerConfigured) {
-    const runtimeEnvironment = optionalSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();
-    const stagingOnlyFallbackAllowed = new Set(["staging", "stage", "development", "dev", "test", "qa"]).has(runtimeEnvironment);
-    if (stagingOnlyFallbackAllowed) {
+
+  let selected: ProviderSelection | null;
+  try {
+    selected = selectProvider();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "AI provider router configuration is invalid.";
+    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false, router_error: true }, message);
+    return response({ ok: false, configured: false, error: message }, 503);
+  }
+
+  if (!selected) {
+    if (isNonProductionEnvironment()) {
       let fallbackRequest: BuildPlanRequest;
       try { fallbackRequest = validateRequest(await request.json()); }
       catch (error) {
         const message = error instanceof Error ? error.message : "Invalid build-plan request.";
-        await recordHeartbeat(admin, "degraded", { provider_configured: false, staging_fallback: true }, message);
+        await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_route: "staging_fallback", staging_fallback: true }, message);
         return response({ ok: false, error: message }, 400);
       }
       const fallback = stagingFallback(fallbackRequest);
-      await recordHeartbeat(admin, "healthy", { provider_configured: false, provider_call_proven: false, staging_fallback: true, schema_version: schemaVersion }, null);
+      await recordHeartbeat(admin, "healthy", {
+        provider_configured: false,
+        provider_call_proven: false,
+        provider_route: "staging_fallback",
+        staging_fallback: true,
+        schema_version: schemaVersion,
+      }, null);
       return response(fallback);
     }
-    await recordHeartbeat(admin, "degraded", { provider_configured: false, provider_call_proven: false }, "AI model provider is not configured.");
+    await recordHeartbeat(admin, "degraded", {
+      provider_configured: false,
+      provider_call_proven: false,
+      provider_route: "none",
+    }, "AI model provider is not configured.");
     return response({ ok: false, configured: false, error: "AI model provider is not configured." }, 503);
   }
 
@@ -450,14 +516,18 @@ Deno.serve(async (request) => {
   let protocol: ProviderProtocol;
   let providerUrl: string;
   try {
-    protocol = providerProtocol(protocolRaw);
-    providerUrl = validatePublicHttpsUrl(providerUrlRaw, "AI model provider URL");
-    text(providerModel, "AI model provider model", 1, 200);
+    if (selected.route === "local_adapter" && !isNonProductionEnvironment()) {
+      throw new Error("Local AI adapter is forbidden outside non-production environments.");
+    }
+    protocol = providerProtocol(selected.protocolRaw);
+    providerUrl = validatePublicHttpsUrl(selected.urlRaw, selected.route === "local_adapter" ? "Local AI adapter URL" : "AI model provider URL");
+    text(selected.model, "AI model provider model", 1, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI model provider configuration is invalid.";
     await recordHeartbeat(admin, "degraded", {
       provider_configured: false,
       provider_call_proven: false,
+      provider_route: selected.route,
       schema_version: schemaVersion,
     }, message);
     return response({ ok: false, configured: false, error: message }, 503);
@@ -470,13 +540,14 @@ Deno.serve(async (request) => {
     try {
       providerResponse = await fetch(providerUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${providerToken}` },
-        body: JSON.stringify(providerPayload(protocol, providerModel, parsedRequest)),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${selected.token}` },
+        body: JSON.stringify(providerPayload(protocol, selected.model, parsedRequest)),
         signal: controller.signal,
       });
     } finally {
       clearTimeout(timer);
     }
+
     const providerText = await providerResponse.text();
     if (providerText.length > 256_000) throw new Error("AI provider response exceeded the 256 KB safety limit.");
     if (!providerResponse.ok) throw new Error(`AI provider request failed with HTTP ${providerResponse.status}.`);
@@ -490,16 +561,22 @@ Deno.serve(async (request) => {
     catch { throw new Error("AI provider structured output was not valid JSON."); }
     const result = validateProviderResult(structured, parsedRequest);
     const now = new Date().toISOString();
+
     await recordHeartbeat(admin, "healthy", {
       provider_configured: true,
       provider_protocol: protocol,
+      provider_route: selected.route,
+      local_adapter: selected.route === "local_adapter",
       model_configured: true,
       schema_version: schemaVersion,
       task_supported: parsedRequest.task,
-      provider_call_proven: true,
+      provider_call_proven: selected.route === "external_provider",
+      local_adapter_call_proven: selected.route === "local_adapter",
+      staging_fallback: false,
       last_request_fingerprint: parsedRequest.request_fingerprint,
       last_success_at: now,
     }, null);
+
     await admin.from("nxq_provider_connections").update({
       status: "healthy",
       last_checked_at: now,
@@ -507,16 +584,20 @@ Deno.serve(async (request) => {
       last_error: null,
       updated_at: now,
     }).eq("provider_key", "business_build_plan_ai").eq("scope_type", "global").is("scope_id", null);
+
     return response(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI build-plan runtime failed.";
     await recordHeartbeat(admin, "error", {
       provider_configured: true,
       provider_protocol: protocol,
+      provider_route: selected.route,
+      local_adapter: selected.route === "local_adapter",
       model_configured: true,
       schema_version: schemaVersion,
       task_supported: "enrich_business_build_plan_v1",
       provider_call_proven: false,
+      local_adapter_call_proven: false,
       request_fingerprint: parsedRequest.request_fingerprint,
       failed_at: new Date().toISOString(),
     }, message);
