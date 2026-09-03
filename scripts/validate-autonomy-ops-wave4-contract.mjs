@@ -12,7 +12,7 @@ const checks=[
   ["Domain page shows DNS and SSL evidence",domainPage.includes("dns_status")&&domainPage.includes("ssl_status")&&domainPage.includes("action_required_message")],
   ["Domain page uses safe recheck RPC",domainPage.includes("current_client_request_domain_recheck")],
   ["Domain status route is wired",app.includes("/client/domain")&&app.includes("ClientDomainStatus")],
-  ["Ready privacy export is client-downloadable",privacyPage.includes("Download export")&&privacyPage.includes("JSON.stringify(r.result")],
+  ["Ready privacy export is client-downloadable",privacyPage.includes("Download export")&&privacyPage.includes("JSON.stringify(requestRow.result")],
   ["Privacy export download is local blob, not public URL",privacyPage.includes("URL.createObjectURL")&&!privacyPage.includes("publicUrl")],
   ["Deletion remains identity-check gated",privacyRoute.includes("request_type = 'delete'")&&privacyRoute.includes("identity_check")],
   ["Extended readiness adds notification pipeline gate",readiness.includes("notification_pipeline_ready")&&readiness.includes("nxq-dispatch-notifications")],
