@@ -8,6 +8,7 @@ import "./styles/portal-polish.css";
 import "./styles/final-frontend-polish.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
+import "./styles/nxqx-neural-glass.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
 import { OwnerCommandCenter } from "./components/OwnerCommandCenter";
