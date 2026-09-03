@@ -12,7 +12,7 @@
     "test:security": "node scripts/audit-frontend-security.mjs",
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
-    "test:routes": "node scripts/smoke-built-routes.mjs",
+    "test:routes": "node scripts/validate-public-commerce-route-order.mjs && node scripts/smoke-built-routes.mjs",
     "test:families": "node scripts/validate-autonomy-ops-wave30-contract.mjs",
     "test:runtime-stage": "node scripts/check-runtime-stage-readiness-readonly.mjs",
     "test:provider-setup": "node scripts/validate-provider-plug-in-readiness-contract.mjs",
