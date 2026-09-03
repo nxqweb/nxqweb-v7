@@ -39,6 +39,7 @@ export function ClientCommercePreview() {
   const [category, setCategory] = useState("All");
   const [selectedProduct, setSelectedProduct] = useState<PreviewProduct | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
   const configuredClient = useMemo(() => (isSupabaseConfigured && supabase ? supabase : null), []);
 
@@ -48,10 +49,14 @@ export function ClientCommercePreview() {
 
   async function loadPreview() {
     setLoading(true);
+    setVerified(false);
     setError("");
+    setProducts([]);
+    setSelectedProduct(null);
+    setCategory("All");
 
     if (!configuredClient) {
-      setError("Storefront preview is unavailable because Supabase is not configured.");
+      setError("Storefront preview is temporarily unavailable. No storefront or catalog changes were made.");
       setLoading(false);
       return;
     }
@@ -64,7 +69,7 @@ export function ClientCommercePreview() {
 
     const result = await configuredClient.rpc("get_my_commerce_storefront_preview");
     if (result.error) {
-      setError(`Preview failed to load: ${result.error.message}`);
+      setError("Storefront preview could not be verified right now. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -83,6 +88,7 @@ export function ClientCommercePreview() {
 
     setStoreName(data.storefront?.store_name || "Commerce storefront");
     setProducts(withImages);
+    setVerified(true);
     setLoading(false);
   }
 
@@ -131,7 +137,7 @@ export function ClientCommercePreview() {
           ) : (
             <div className="empty-state" style={{ aspectRatio: "1 / 1", minHeight: 0 }}>
               <ImageOff size={30} />
-              No product image
+              No product image available in this preview
             </div>
           )}
         </button>
@@ -167,7 +173,7 @@ export function ClientCommercePreview() {
           <Eye size={22} />
           <div>
             <h1>Storefront preview</h1>
-            <p className="subtle">Preview the catalog as a customer would see it before a separate client website is created.</p>
+            <p className="subtle">Preview the verified saved catalog without publishing a storefront or enabling checkout.</p>
           </div>
         </div>
 
@@ -175,27 +181,28 @@ export function ClientCommercePreview() {
 
         <div className="notice-card" style={{ marginBottom: "1rem" }}>
           <strong>Protected preview — not live</strong>
-          <p>Products, images, prices, categories, and stock are rendered from saved Commerce data. Checkout remains disabled.</p>
+          <p>This screen is read-only. Viewing products here cannot publish a storefront, activate payments, or contact customers.</p>
         </div>
 
         {error ? <div className="auth-error">{error}</div> : null}
         {loading ? <div className="empty-state">Loading storefront preview...</div> : null}
+        {!loading && !verified ? <div className="empty-state">Preview data is not verified, so no catalog preview is being shown.</div> : null}
 
-        {!loading && !error ? (
+        {!loading && verified ? (
           <section className="panel panel-wide" style={{ display: "grid", gap: "1.25rem" }}>
             <div className="panel-title panel-title-row">
               <div style={{ alignItems: "center", display: "flex", gap: "0.75rem" }}>
                 <ShoppingBag size={20} />
                 <div>
                   <h2>{storeName}</h2>
-                  <p className="subtle">Draft storefront catalog</p>
+                  <p className="subtle">Verified draft storefront catalog</p>
                 </div>
               </div>
               <span className="notice-card" style={{ margin: 0 }}>Not live</span>
             </div>
 
             {products.length === 0 ? (
-              <div className="empty-state"><PackageOpen size={28} /> No product drafts are available yet.</div>
+              <div className="empty-state"><PackageOpen size={28} /> No product drafts are available in the verified preview.</div>
             ) : (
               <>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.65rem" }}>
@@ -241,7 +248,7 @@ export function ClientCommercePreview() {
         ) : null}
       </section>
 
-      {selectedProduct ? (
+      {verified && selectedProduct ? (
         <div
           aria-modal="true"
           aria-labelledby="commerce-product-preview-title"
@@ -271,7 +278,7 @@ export function ClientCommercePreview() {
                   style={{ aspectRatio: "1 / 1", borderRadius: "18px", objectFit: "cover", width: "100%" }}
                 />
               ) : (
-                <div className="empty-state" style={{ aspectRatio: "1 / 1" }}><ImageOff size={34} /> No product image</div>
+                <div className="empty-state" style={{ aspectRatio: "1 / 1" }}><ImageOff size={34} /> No product image available in this preview</div>
               )}
 
               <div style={{ alignContent: "start", display: "grid", gap: "0.85rem" }}>
