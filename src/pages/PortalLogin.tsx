@@ -19,7 +19,7 @@ export function PortalLogin() {
     setErrorMessage("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setErrorMessage("Supabase is not configured yet. Check .env.local.");
+      setErrorMessage("Portal access is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -50,7 +50,7 @@ export function PortalLogin() {
     if (ownerResult.error) {
       setIsSubmitting(false);
       await supabase.auth.signOut();
-      setErrorMessage(`Owner access check failed: ${ownerResult.error.message}`);
+      setErrorMessage("We could not verify portal access right now. Please try again.");
       return;
     }
 
@@ -70,7 +70,7 @@ export function PortalLogin() {
 
     if (clientResult.error) {
       await supabase.auth.signOut();
-      setErrorMessage(`Client access check failed: ${clientResult.error.message}`);
+      setErrorMessage("We could not verify client access right now. Please try again.");
       return;
     }
 
@@ -104,13 +104,14 @@ export function PortalLogin() {
             Portal, and client accounts open their own Client Portal.
           </p>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <label className="auth-label" htmlFor="email">
             Email
           </label>
           <input
+            autoComplete="email"
             className="auth-input"
             id="email"
             onChange={(event) => setEmail(event.target.value)}
@@ -123,6 +124,7 @@ export function PortalLogin() {
             Password
           </label>
           <input
+            autoComplete="current-password"
             className="auth-input"
             id="password"
             onChange={(event) => setPassword(event.target.value)}
