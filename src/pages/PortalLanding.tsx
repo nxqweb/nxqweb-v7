@@ -1,4 +1,4 @@
-﻿import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
 
 import { appConfig } from "../lib/appConfig";
 
@@ -35,8 +35,7 @@ export function PortalLanding() {
           <div className="history-item">
             <LockKeyhole size={16} />
             <p>
-              Email verification and protected client access will connect in the
-              next phase.
+              Email verification and protected client access help keep each workspace tied to the right account.
             </p>
           </div>
         </div>
