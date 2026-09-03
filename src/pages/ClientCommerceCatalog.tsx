@@ -67,7 +67,7 @@ export function ClientCommerceCatalog() {
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce catalog is unavailable because Supabase is not configured.");
+      setError("Commerce catalog is temporarily unavailable. No catalog changes were made.");
       setLoading(false);
       return;
     }
@@ -81,7 +81,7 @@ export function ClientCommerceCatalog() {
 
     const result = await client.rpc("get_my_commerce_catalog_manager");
     if (result.error) {
-      setError(`Catalog failed to load: ${result.error.message}`);
+      setError("Catalog could not be loaded right now. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -124,7 +124,7 @@ export function ClientCommerceCatalog() {
 
     setSaving(false);
     if (result.error) {
-      setError(`Category could not be updated: ${result.error.message}`);
+      setError("Category could not be updated. The previous product category was left unchanged.");
       return;
     }
 
@@ -148,7 +148,7 @@ export function ClientCommerceCatalog() {
 
     if (upload.error) {
       setSaving(false);
-      setError(`Image upload failed: ${upload.error.message}`);
+      setError("Image upload could not be completed. No product image was added.");
       return;
     }
 
@@ -168,7 +168,7 @@ export function ClientCommerceCatalog() {
     if (register.error) {
       await supabase.storage.from("commerce-product-media").remove([storagePath]);
       setSaving(false);
-      setError(`Image could not be registered: ${register.error.message}`);
+      setError("Image upload could not be completed. The temporary upload was cleaned up.");
       return;
     }
 
@@ -194,7 +194,7 @@ export function ClientCommerceCatalog() {
 
     setSaving(false);
     if (result.error) {
-      setError(`Image could not be updated: ${result.error.message}`);
+      setError("Image details could not be updated. Previous image settings were left unchanged.");
       return;
     }
 
@@ -217,7 +217,7 @@ export function ClientCommerceCatalog() {
 
     if (result.error) {
       setSaving(false);
-      setError(`Image could not be removed: ${result.error.message}`);
+      setError("Image could not be removed. No product image changes were made.");
       return;
     }
 
@@ -225,7 +225,7 @@ export function ClientCommerceCatalog() {
     setSaving(false);
 
     if (remove.error) {
-      setError(`Image record was removed, but storage cleanup failed: ${remove.error.message}`);
+      setError("The image was removed from the catalog, but protected storage cleanup still needs attention.");
     } else {
       setMessage("Product image removed.");
     }
