@@ -33,6 +33,7 @@ export function PortalSignup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [familyDetails, setFamilyDetails] = useState("");
+  const [familyAnswers, setFamilyAnswers] = useState<Record<string, string>>({});
   const [serviceArea, setServiceArea] = useState("");
   const [primaryGoal, setPrimaryGoal] = useState("");
   const [tierGoal, setTierGoal] = useState("");
@@ -67,6 +68,10 @@ export function PortalSignup() {
     };
   }, [selectedTier]);
 
+  function updateFamilyAnswer(key: string, value: string) {
+    setFamilyAnswers((current) => ({ ...current, [key]: value }));
+  }
+
   async function handleSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -75,6 +80,9 @@ export function PortalSignup() {
     const trimmedEmail = email.trim();
     const trimmedFamilyDetails = familyDetails.trim();
     const trimmedPrimaryGoal = primaryGoal.trim();
+    const missingFamilyQuestion = selectedFamily.intakeQuestions.find(
+      (question) => question.required && !(familyAnswers[question.key] || "").trim()
+    );
 
     setStatusMessage("");
     setErrorMessage("");
@@ -99,6 +107,11 @@ export function PortalSignup() {
       return;
     }
 
+    if (missingFamilyQuestion) {
+      setErrorMessage(`Complete the required ${selectedFamily.name} question: ${missingFamilyQuestion.label}`);
+      return;
+    }
+
     if (!trimmedEmail || !password) {
       setErrorMessage("Enter your email and create a password.");
       return;
@@ -111,6 +124,12 @@ export function PortalSignup() {
 
     setIsSubmitting(true);
 
+    const sanitizedFamilyAnswers = Object.fromEntries(
+      selectedFamily.intakeQuestions
+        .map((question) => [question.key, (familyAnswers[question.key] || "").trim()] as const)
+        .filter(([, value]) => value.length > 0)
+    );
+
     const { error } = await supabase.auth.signUp({
       email: trimmedEmail,
       password,
@@ -122,6 +141,7 @@ export function PortalSignup() {
           product_family_slug: selectedFamily.slug,
           product_tier_key: selectedTier,
           intake_family_details: trimmedFamilyDetails,
+          intake_family_answers: sanitizedFamilyAnswers,
           intake_service_area: serviceArea.trim(),
           intake_primary_goal: trimmedPrimaryGoal,
           intake_tier_goal: tierGoal.trim(),
@@ -217,6 +237,29 @@ export function PortalSignup() {
                 <span>{selectedFamily.intakeLabel}</span>
                 <textarea className="auth-input" onChange={(event) => setFamilyDetails(event.target.value)} placeholder={selectedFamily.intakePlaceholder} rows={4} value={familyDetails} />
               </label>
+
+              {selectedFamily.intakeQuestions.map((question) => (
+                <label className={question.multiline ? "full" : undefined} key={question.key}>
+                  <span>{question.label}{question.required ? " *" : ""}</span>
+                  {question.multiline ? (
+                    <textarea
+                      className="auth-input"
+                      onChange={(event) => updateFamilyAnswer(question.key, event.target.value)}
+                      placeholder={question.placeholder}
+                      rows={3}
+                      value={familyAnswers[question.key] || ""}
+                    />
+                  ) : (
+                    <input
+                      className="auth-input"
+                      onChange={(event) => updateFamilyAnswer(question.key, event.target.value)}
+                      placeholder={question.placeholder}
+                      type="text"
+                      value={familyAnswers[question.key] || ""}
+                    />
+                  )}
+                </label>
+              ))}
 
               <label>
                 <span>Primary service area or market</span>
