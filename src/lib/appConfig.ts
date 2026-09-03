@@ -2,7 +2,7 @@ export const appConfig = {
   companyName: import.meta.env.VITE_COMPANY_NAME || "NXQX",
   productName: import.meta.env.VITE_PRODUCT_NAME || "NXQ-Web",
   appName: import.meta.env.VITE_APP_NAME || import.meta.env.VITE_PRODUCT_NAME || "NXQ-Web",
-  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || "websitedesignercontact@protonmail.com",
+  supportEmail: import.meta.env.VITE_SUPPORT_EMAIL || "NXQweb@protonmail.com",
   appEnv: import.meta.env.VITE_APP_ENV || "local",
   publicSiteUrl: import.meta.env.VITE_PUBLIC_SITE_URL || "http://localhost:5173",
   ownerPortalUrl: import.meta.env.VITE_OWNER_PORTAL_URL || "http://localhost:5173/owner",
