@@ -6,7 +6,7 @@ type SeoIssue={id:string;category:string;severity:string;status:string;title:str
 type SeoArtifact={id:string;artifact_type:string;status:string;git_path:string|null;canonical_base_url:string|null;last_generated_at:string|null;last_verified_at:string|null;last_error:string|null};
 type SeoRun={id:string;status:string;source_branch:string;preview_url:string|null;production_url:string|null;production_commit_sha:string|null;last_error:string|null;preview_verified_at:string|null;published_at:string|null;created_at:string};
 
-function runLabel(status:string){return ({generated:"Generating artifacts",preview_building:"Building preview",preview_ready:"Preview verified",promoting:"Promotion review in progress",production_building:"Publishing",published:"Published",blocked:"Waiting for safe regeneration",failed:"Needs attention",cancelled:"Cancelled"} as Record<string,string>)[status]||status.replaceAll("_"," ");}
+function runLabel(status:string){return ({generated:"Generating artifacts",preview_building:"Building preview",preview_ready:"Preview verified",promoting:"Promoting safely",production_building:"Publishing",published:"Published",blocked:"Waiting for safe regeneration",failed:"Needs attention",cancelled:"Cancelled"} as Record<string,string>)[status]||status.replaceAll("_"," ");}
 
 export function ClientBusinessSeo(){
   const [issues,setIssues]=useState<SeoIssue[]>([]);
