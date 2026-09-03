@@ -3,10 +3,12 @@ import "./styles/nxq.css";
 import "./styles/public-premium.css";
 import "./styles/public-premium-wave.css";
 import "./styles/portal-premium.css";
+import "./styles/owner-command-center.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
+import { OwnerCommandCenter } from "./components/OwnerCommandCenter";
 import { OwnerProtectedRoute } from "./components/OwnerProtectedRoute";
 
 const named = <T extends Record<string, unknown>, K extends keyof T>(loader: () => Promise<T>, key: K) =>
@@ -99,7 +101,7 @@ function AppRoutes() {
   if (path === "/owner/sales") return <OwnerProtectedRoute><OwnerSalesPipeline /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
-  if (path === "/owner") return <OwnerProtectedRoute><OwnerPortal /></OwnerProtectedRoute>;
+  if (path === "/owner") return <OwnerProtectedRoute><><OwnerCommandCenter /><OwnerPortal /></></OwnerProtectedRoute>;
   if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 
   if (path === "/client/billing") return <ClientBillingStatus />;
