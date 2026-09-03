@@ -88,7 +88,7 @@ export function PortalSignup() {
     setErrorMessage("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setErrorMessage("Supabase is not configured yet. Check .env.local.");
+      setErrorMessage("Account creation is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -117,8 +117,8 @@ export function PortalSignup() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters.");
       return;
     }
 
@@ -152,7 +152,7 @@ export function PortalSignup() {
     setIsSubmitting(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage("We could not create the account right now. Check your details or try again shortly.");
       return;
     }
 
@@ -204,6 +204,7 @@ export function PortalSignup() {
                 const isSelected = selectedTier === item.key;
                 return (
                   <button
+                    aria-pressed={isSelected}
                     className={`premium-tier-option ${isSelected ? "selected" : ""}`}
                     key={item.key}
                     onClick={() => setSelectedTier(item.key)}
@@ -225,12 +226,12 @@ export function PortalSignup() {
             <div className="premium-form-grid">
               <label>
                 <span>Business name</span>
-                <input className="auth-input" onChange={(event) => setBusinessName(event.target.value)} placeholder="Smith Tree Service" type="text" value={businessName} />
+                <input autoComplete="organization" className="auth-input" onChange={(event) => setBusinessName(event.target.value)} placeholder="Smith Tree Service" type="text" value={businessName} />
               </label>
 
               <label>
                 <span>Your name</span>
-                <input className="auth-input" onChange={(event) => setContactName(event.target.value)} placeholder="John Smith" type="text" value={contactName} />
+                <input autoComplete="name" className="auth-input" onChange={(event) => setContactName(event.target.value)} placeholder="John Smith" type="text" value={contactName} />
               </label>
 
               <label className="full">
@@ -285,18 +286,18 @@ export function PortalSignup() {
             <div className="premium-form-grid">
               <label>
                 <span>Email</span>
-                <input className="auth-input" id="signup-email" onChange={(event) => setEmail(event.target.value)} placeholder="client@example.com" type="email" value={email} />
+                <input autoComplete="email" className="auth-input" id="signup-email" onChange={(event) => setEmail(event.target.value)} placeholder="client@example.com" type="email" value={email} />
               </label>
 
               <label>
                 <span>Password</span>
-                <input className="auth-input" id="signup-password" onChange={(event) => setPassword(event.target.value)} placeholder="Create a secure password" type="password" value={password} />
+                <input autoComplete="new-password" className="auth-input" id="signup-password" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" type="password" value={password} />
               </label>
             </div>
           </section>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <div className="notice-card">
             <strong>{selectedFamily.name} · {tier.name}</strong>
