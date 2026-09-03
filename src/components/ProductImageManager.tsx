@@ -26,24 +26,38 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
   const [clientId, setClientId] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   async function loadImages() {
-    if (!supabase) return;
+    if (!supabase) {
+      setVerified(false);
+      setLoading(false);
+      setError("Product photos are temporarily unavailable.");
+      return;
+    }
+    setLoading(true);
+    setVerified(false);
     setError("");
     const result = await supabase.rpc("get_my_commerce_product_images", {
       product_uuid: productId,
     });
 
     if (result.error) {
-      setError(result.error.message);
+      setImages([]);
+      setClientId("");
+      setError("Product photos could not be loaded right now. No image changes were made.");
+      setLoading(false);
       return;
     }
 
     const data = result.data as ProductImageResult;
     setClientId(data.client_id);
     setImages(Array.isArray(data.image_urls) ? data.image_urls : []);
+    setVerified(true);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -58,7 +72,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     });
 
     if (result.error) {
-      setError(result.error.message);
+      setError("Product photo changes could not be saved. The previous image order and list were left unchanged.");
       return false;
     }
 
@@ -67,7 +81,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
   }
 
   async function uploadFiles(fileList: FileList | null) {
-    if (!supabase || !fileList || !clientId) return;
+    if (!supabase || !fileList || !clientId || !verified || busy) return;
     const selectedFiles = Array.from(fileList);
 
     if (images.length + selectedFiles.length > maxImages) {
@@ -108,23 +122,34 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       const nextImages = [...images, ...uploadedUrls];
       const saved = await persist(nextImages);
       if (!saved) {
-        await supabase.storage.from(bucketName).remove(uploadedPaths);
+        const cleanup = await supabase.storage.from(bucketName).remove(uploadedPaths);
+        if (cleanup.error) {
+          setError("Product photo changes were not saved, and temporary storage cleanup still needs attention. The catalog image list was not changed.");
+        }
         return;
       }
 
-      setMessage(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? "" : "s"} uploaded.`);
-    } catch (uploadError) {
-      if (uploadedPaths.length) await supabase.storage.from(bucketName).remove(uploadedPaths);
-      setError(uploadError instanceof Error ? uploadError.message : "Images could not be uploaded.");
+      setMessage(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? "" : "s"} uploaded. This does not publish or activate the storefront.`);
+    } catch {
+      if (uploadedPaths.length) {
+        const cleanup = await supabase.storage.from(bucketName).remove(uploadedPaths);
+        if (cleanup.error) {
+          setError("Images could not be uploaded and temporary storage cleanup still needs attention. No storefront publish was triggered.");
+          return;
+        }
+      }
+      setError("Images could not be uploaded. No storefront publish was triggered.");
     } finally {
       setBusy(false);
     }
   }
 
   async function removeImage(index: number) {
-    if (!supabase) return;
+    if (!supabase || !verified || busy) return;
     const imageUrl = images[index];
     const nextImages = images.filter((_, imageIndex) => imageIndex !== index);
+    const confirmed = window.confirm("Remove this product image? This does not publish or activate the storefront.");
+    if (!confirmed) return;
 
     setBusy(true);
     setError("");
@@ -132,13 +157,21 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     const saved = await persist(nextImages);
     if (saved) {
       const storagePath = getStoragePath(imageUrl);
-      if (storagePath) await supabase.storage.from(bucketName).remove([storagePath]);
-      setMessage("Image removed.");
+      if (storagePath) {
+        const cleanup = await supabase.storage.from(bucketName).remove([storagePath]);
+        if (cleanup.error) {
+          setError("The image was removed from the product list, but protected storage cleanup still needs attention.");
+          setBusy(false);
+          return;
+        }
+      }
+      setMessage("Image removed. No storefront publish was triggered.");
     }
     setBusy(false);
   }
 
   async function moveImage(index: number, direction: -1 | 1) {
+    if (!verified || busy) return;
     const destination = index + direction;
     if (destination < 0 || destination >= images.length) return;
     const nextImages = [...images];
@@ -147,7 +180,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     setBusy(true);
     setError("");
     setMessage("");
-    if (await persist(nextImages)) setMessage("Image order saved.");
+    if (await persist(nextImages)) setMessage("Image order saved. No storefront publish was triggered.");
     setBusy(false);
   }
 
@@ -158,17 +191,17 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
           <ImagePlus size={19} />
           <div>
             <strong>Product photos</strong>
-            <p className="subtle">Upload up to 8 images. The first image is the main storefront photo.</p>
+            <p className="subtle">Upload up to 8 images. The first image is the main storefront photo after an approved storefront publish.</p>
           </div>
         </div>
-        <label className="icon-btn" aria-disabled={busy || images.length >= maxImages}>
+        <label className="icon-btn" aria-disabled={busy || loading || !verified || images.length >= maxImages}>
           <ImagePlus size={15} /> {busy ? "Uploading..." : "Upload photos"}
           <input
             hidden
             multiple
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
-            disabled={busy || images.length >= maxImages}
+            disabled={busy || loading || !verified || images.length >= maxImages}
             onChange={(event) => {
               void uploadFiles(event.target.files);
               event.currentTarget.value = "";
@@ -177,12 +210,15 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
         </label>
       </div>
 
-      {error ? <div className="auth-error">{error}</div> : null}
+      {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {message ? <div className="auth-success">{message}</div> : null}
+      {loading ? <div className="empty-state">Loading product photos...</div> : null}
 
-      {images.length === 0 ? (
+      {!loading && verified && images.length === 0 ? (
         <div className="empty-state">No photos uploaded yet.</div>
-      ) : (
+      ) : null}
+
+      {!loading && verified && images.length > 0 ? (
         <div className="settings-grid">
           {images.map((imageUrl, index) => (
             <article className="settings-card" key={imageUrl}>
@@ -200,7 +236,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
             </article>
           ))}
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
