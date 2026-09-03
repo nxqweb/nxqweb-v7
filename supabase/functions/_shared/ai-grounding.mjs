@@ -43,7 +43,7 @@ export const unsupportedMarketingClaimRules = Object.freeze([
   ["years or experience", /\b(?:\d+\+?\s+years?|years? of experience|experienced)\b/i, /\b(?:\d+\+?\s+years?|years? of experience|experienced)\b/i],
   ["24/7 availability", /\b(?:24\s*\/\s*7|24[- ]hour|around[- ]the[- ]clock)\b/i, /\b(?:24\s*\/\s*7|24[- ]hour|around[- ]the[- ]clock)\b/i],
   ["specific response time", /\b(?:same[- ]day|within\s+\d+\s+(?:minutes?|hours?|days?))\b/i, /\b(?:same[- ]day|within\s+\d+\s+(?:minutes?|hours?|days?))\b/i],
-  ["free offer", /\bfree\s+(?:quote|estimate|consultation|inspection|assessment)\b/i, /\bfree\s+(?:quote|estimate|consultation|inspection|assessment)\b/i],
+  ["free offer", /\bfree\s+(?:quotes?|estimates?|consultations?|inspections?|assessments?)\b/i, /\bfree\s+(?:quotes?|estimates?|consultations?|inspections?|assessments?)\b/i],
   ["guarantee", /\bguarantee(?:d|s)?\b/i, /\bguarantee(?:d|s)?\b/i],
   ["environmental claim", /\b(?:eco[- ]friendly|eco[- ]conscious|environmentally\s+(?:friendly|responsible)|sustainable)\b/i, /\b(?:eco[- ]friendly|eco[- ]conscious|environmentally\s+(?:friendly|responsible)|sustainable)\b/i],
   ["trust or reliability claim", /\b(?:trusted|trustworthy|reliable|dependable)\b/i, /\b(?:trusted|trustworthy|reliable|dependable)\b/i],
