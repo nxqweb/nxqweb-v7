@@ -124,6 +124,170 @@
   letter-spacing: -.05em;
 }
 
+.lux-story-shell {
+  display: grid;
+  grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+  gap: clamp(26px, 5vw, 64px);
+  margin-top: 58px;
+  align-items: start;
+}
+
+.lux-story-sticky {
+  position: sticky;
+  top: 108px;
+  min-height: 560px;
+  padding: clamp(22px, 4vw, 34px);
+  border-radius: 32px;
+  overflow: hidden;
+}
+
+.lux-story-sticky::before {
+  content: "";
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  right: -80px;
+  bottom: -90px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(244,207,100,.16), transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+}
+
+.lux-story-preview {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 470px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.lux-story-preview h3 {
+  max-width: 610px;
+  margin-top: 14px;
+  font-size: clamp(2.1rem, 4.4vw, 4.3rem);
+  line-height: .96;
+  letter-spacing: -.06em;
+}
+
+.lux-story-preview > p {
+  max-width: 620px;
+  margin-top: 18px;
+  color: #aaa69b;
+  line-height: 1.72;
+}
+
+.lux-story-signal {
+  margin-top: 28px;
+  padding: 18px;
+  border: 1px solid rgba(244,207,100,.15);
+  border-radius: 20px;
+  background: rgba(255,255,255,.024);
+}
+
+.lux-story-signal span,
+.lux-story-signal strong {
+  display: block;
+}
+
+.lux-story-signal span {
+  color: var(--lux-gold);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  font-weight: 850;
+}
+
+.lux-story-signal strong {
+  margin-top: 8px;
+  color: #ddd6c9;
+  font-size: .92rem;
+  line-height: 1.55;
+}
+
+.lux-story-progress {
+  display: flex;
+  gap: 8px;
+  margin-top: 26px;
+}
+
+.lux-story-progress i {
+  width: 34px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.09);
+  transition: width 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.lux-story-progress i.active {
+  width: 64px;
+  background: linear-gradient(90deg, #f4cf64, #7ca58c);
+  box-shadow: 0 0 18px rgba(244,207,100,.24);
+}
+
+.lux-story-steps {
+  display: grid;
+  gap: 22px;
+}
+
+.lux-story-step {
+  min-height: 58vh;
+  padding: clamp(24px, 4vw, 36px);
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: .56;
+  transform: translateY(10px) scale(.985);
+  transition: opacity 260ms ease, transform 260ms ease, border-color 260ms ease, background 260ms ease;
+}
+
+.lux-story-step.active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  border-color: rgba(244,207,100,.42);
+  background: linear-gradient(145deg, rgba(46,39,21,.58), rgba(8,11,10,.72));
+}
+
+.lux-story-step > span {
+  color: var(--lux-gold);
+  font-size: .74rem;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  font-weight: 850;
+}
+
+.lux-story-step h3 {
+  margin-top: 13px;
+  font-size: clamp(1.7rem, 3vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: -.045em;
+}
+
+.lux-story-step p {
+  margin-top: 14px;
+  color: #9f9b91;
+  line-height: 1.7;
+  max-width: 620px;
+}
+
+.lux-story-preview[data-active-story="found"] {
+  text-shadow: 0 0 32px rgba(76,145,105,.08);
+}
+
+.lux-story-preview[data-active-story="leads"] {
+  text-shadow: 0 0 32px rgba(244,207,100,.08);
+}
+
+.lux-story-preview[data-active-story="analytics"] {
+  text-shadow: 0 0 32px rgba(92,170,255,.08);
+}
+
+.lux-story-preview[data-active-story="improve"] {
+  text-shadow: 0 0 32px rgba(109,211,158,.08);
+}
+
 .lux-comparison-wrap {
   margin-top: 22px;
   padding: clamp(22px, 4vw, 34px);
@@ -403,6 +567,24 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .lux-story-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .lux-story-sticky {
+    position: relative;
+    top: auto;
+    min-height: 0;
+  }
+
+  .lux-story-preview {
+    min-height: 390px;
+  }
+
+  .lux-story-step {
+    min-height: 360px;
+  }
+
   .lux-process-track::before {
     display: none;
   }
@@ -430,6 +612,28 @@
     grid-template-columns: 1fr;
   }
 
+  .lux-story-shell {
+    gap: 16px;
+    margin-top: 36px;
+  }
+
+  .lux-story-preview {
+    min-height: 330px;
+  }
+
+  .lux-story-step {
+    min-height: 310px;
+    opacity: .78;
+  }
+
+  .lux-story-progress i {
+    width: 24px;
+  }
+
+  .lux-story-progress i.active {
+    width: 42px;
+  }
+
   .lux-preview-status {
     align-items: flex-start;
     flex-direction: column;
@@ -444,7 +648,9 @@
 @media (prefers-reduced-motion: reduce) {
   .lux-process-step,
   .lux-value-grid > div,
-  .lux-pointer-depth {
+  .lux-pointer-depth,
+  .lux-story-step,
+  .lux-story-progress i {
     transition: none;
     transform: none !important;
   }
