@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   ArrowRight,
@@ -25,12 +25,66 @@ const comparisonRows = [
   { label: "Multi-location scale", starter: "—", growth: "—", intelligence: "—", enterprise: "Available" },
 ];
 
+type StoryStage = "build" | "found" | "leads" | "analytics" | "improve";
+
+const storyStages: Array<{
+  key: StoryStage;
+  eyebrow: string;
+  title: string;
+  body: string;
+  signal: string;
+  detail: string;
+}> = [
+  {
+    key: "build",
+    eyebrow: "01 · Build",
+    title: "Start with a site that already feels premium.",
+    body: "NXQ-Web turns the business setup into a polished, responsive website structure instead of handing the owner a blank builder.",
+    signal: "Launch foundation",
+    detail: "Pages, brand direction, calls to action, and client controls stay connected to the same project.",
+  },
+  {
+    key: "found",
+    eyebrow: "02 · Get found",
+    title: "Structure the site around how customers actually search.",
+    body: "Growth-focused plans organize service pages, local coverage, and SEO opportunities around the business instead of treating search visibility as an afterthought.",
+    signal: "Search visibility",
+    detail: "Service-area structure and content opportunities become part of the managed website cycle.",
+  },
+  {
+    key: "leads",
+    eyebrow: "03 · Convert",
+    title: "Turn visits into clear next actions.",
+    body: "The site is designed around calls, forms, estimate requests, and stronger customer paths so attention has somewhere useful to go.",
+    signal: "Lead flow",
+    detail: "Lead capture and conversion-focused layouts stay tied to the website instead of living in a disconnected tool.",
+  },
+  {
+    key: "analytics",
+    eyebrow: "04 · Understand",
+    title: "See what the website is actually doing.",
+    body: "Higher tiers add progressively deeper reporting and behavior insight so decisions can be based on evidence instead of guesses.",
+    signal: "Performance signals",
+    detail: "Advanced tracking remains tier- and consent-gated rather than being silently enabled for every client.",
+  },
+  {
+    key: "improve",
+    eyebrow: "05 · Improve",
+    title: "Keep the website moving after launch.",
+    body: "NXQ-Web is designed around ongoing care: maintenance, content improvements, SEO opportunities, and higher-tier optimization cycles.",
+    signal: "Ongoing care",
+    detail: "The website stays part of an active managed system instead of becoming a forgotten one-time project.",
+  },
+];
+
 export function PublicHome() {
   const interactionRootRef = useRef<HTMLElement | null>(null);
+  const [storyStage, setStoryStage] = useState<StoryStage>("build");
 
   useEffect(() => {
     const root = interactionRootRef.current;
     if (!root) return;
+    const interactionRoot = root;
 
     const finePointer = window.matchMedia("(pointer: fine)");
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -39,10 +93,9 @@ export function PublicHome() {
     let frame = 0;
 
     function updatePointer(event: PointerEvent) {
-      if (!root) return;
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
-        const rect = root.getBoundingClientRect();
+        const rect = interactionRoot.getBoundingClientRect();
         const localX = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
         const localY = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
         const xRatio = rect.width > 0 ? localX / rect.width : 0.5;
@@ -50,32 +103,53 @@ export function PublicHome() {
         const tiltX = (0.5 - yRatio) * 5;
         const tiltY = (xRatio - 0.5) * 8;
 
-        root.style.setProperty("--lux-pointer-x", `${(xRatio * 100).toFixed(2)}%`);
-        root.style.setProperty("--lux-pointer-y", `${(yRatio * 100).toFixed(2)}%`);
-        root.style.setProperty("--lux-tilt-x", `${tiltX.toFixed(2)}deg`);
-        root.style.setProperty("--lux-tilt-y", `${tiltY.toFixed(2)}deg`);
-        root.dataset.pointerActive = "true";
+        interactionRoot.style.setProperty("--lux-pointer-x", `${(xRatio * 100).toFixed(2)}%`);
+        interactionRoot.style.setProperty("--lux-pointer-y", `${(yRatio * 100).toFixed(2)}%`);
+        interactionRoot.style.setProperty("--lux-tilt-x", `${tiltX.toFixed(2)}deg`);
+        interactionRoot.style.setProperty("--lux-tilt-y", `${tiltY.toFixed(2)}deg`);
+        interactionRoot.dataset.pointerActive = "true";
       });
     }
 
     function resetPointer() {
       window.cancelAnimationFrame(frame);
-      root.style.setProperty("--lux-pointer-x", "50%");
-      root.style.setProperty("--lux-pointer-y", "24%");
-      root.style.setProperty("--lux-tilt-x", "0deg");
-      root.style.setProperty("--lux-tilt-y", "-4deg");
-      delete root.dataset.pointerActive;
+      interactionRoot.style.setProperty("--lux-pointer-x", "50%");
+      interactionRoot.style.setProperty("--lux-pointer-y", "24%");
+      interactionRoot.style.setProperty("--lux-tilt-x", "0deg");
+      interactionRoot.style.setProperty("--lux-tilt-y", "-4deg");
+      delete interactionRoot.dataset.pointerActive;
     }
 
-    root.addEventListener("pointermove", updatePointer);
-    root.addEventListener("pointerleave", resetPointer);
+    interactionRoot.addEventListener("pointermove", updatePointer);
+    interactionRoot.addEventListener("pointerleave", resetPointer);
 
     return () => {
       window.cancelAnimationFrame(frame);
-      root.removeEventListener("pointermove", updatePointer);
-      root.removeEventListener("pointerleave", resetPointer);
+      interactionRoot.removeEventListener("pointermove", updatePointer);
+      interactionRoot.removeEventListener("pointerleave", resetPointer);
     };
   }, []);
+
+  useEffect(() => {
+    const storyItems = Array.from(document.querySelectorAll<HTMLElement>("[data-story-stage]"));
+    if (storyItems.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const nextStage = visible?.target.getAttribute("data-story-stage") as StoryStage | null;
+        if (nextStage) setStoryStage(nextStage);
+      },
+      { rootMargin: "-28% 0px -46% 0px", threshold: [0.2, 0.45, 0.7] }
+    );
+
+    storyItems.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
+
+  const activeStory = storyStages.find((stage) => stage.key === storyStage) || storyStages[0];
 
   return (
     <main ref={interactionRootRef} className="lux-home lux-interactive-home">
@@ -201,6 +275,43 @@ export function PublicHome() {
               <h3>Improve</h3>
               <p>Higher tiers add behavior insights, performance review, and an ongoing optimization cycle.</p>
             </article>
+          </div>
+
+          <div className="lux-story-shell" aria-label="NXQ-Web managed website lifecycle demonstration">
+            <div className="lux-story-sticky lux-card" aria-live="polite">
+              <div className="lux-browser-topline">
+                <div className="lux-dots"><span /><span /><span /></div>
+                <span>Live system story</span>
+              </div>
+              <div className="lux-story-preview" data-active-story={storyStage}>
+                <span className="lux-kicker">{activeStory.eyebrow}</span>
+                <h3>{activeStory.title}</h3>
+                <p>{activeStory.body}</p>
+                <div className="lux-story-signal">
+                  <span>{activeStory.signal}</span>
+                  <strong>{activeStory.detail}</strong>
+                </div>
+                <div className="lux-story-progress" aria-label="Lifecycle progress">
+                  {storyStages.map((stage) => (
+                    <i className={stage.key === storyStage ? "active" : ""} key={stage.key} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lux-story-steps">
+              {storyStages.map((stage) => (
+                <article
+                  className={`lux-card lux-story-step ${stage.key === storyStage ? "active" : ""}`}
+                  data-story-stage={stage.key}
+                  key={stage.key}
+                >
+                  <span>{stage.eyebrow}</span>
+                  <h3>{stage.title}</h3>
+                  <p>{stage.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
