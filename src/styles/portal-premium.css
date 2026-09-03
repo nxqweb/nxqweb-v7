@@ -1,0 +1,404 @@
+/* Premium portal layer: visual-only. Existing routing, data access, approvals, and mutations remain unchanged. */
+
+:root {
+  --portal-gold: #f4cf64;
+  --portal-gold-soft: rgba(244, 207, 100, 0.18);
+  --portal-cyan: #7dd3fc;
+  --portal-emerald: #6ee7b7;
+  --portal-surface: rgba(10, 14, 20, 0.7);
+  --portal-surface-strong: rgba(12, 17, 24, 0.9);
+  --portal-border: rgba(255, 255, 255, 0.09);
+  --portal-muted: #a8b1bf;
+}
+
+body:not([data-nxq-theme="light"]) .nxq-page {
+  background:
+    radial-gradient(circle at 8% 2%, rgba(244, 207, 100, 0.08), transparent 25%),
+    radial-gradient(circle at 92% 12%, rgba(56, 189, 248, 0.08), transparent 27%),
+    radial-gradient(circle at 50% 105%, rgba(16, 185, 129, 0.07), transparent 32%);
+}
+
+.portal-shell {
+  position: relative;
+  isolation: isolate;
+  padding-bottom: 64px;
+}
+
+.portal-shell::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -30px -24px auto;
+  height: 290px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(244, 207, 100, 0.075), transparent 68%);
+}
+
+.portal-header {
+  position: relative;
+  align-items: center;
+  min-height: 116px;
+  margin-bottom: 24px;
+  padding: 26px 28px;
+  border: 1px solid var(--portal-border);
+  border-radius: 30px;
+  background:
+    linear-gradient(135deg, rgba(27, 30, 35, 0.8), rgba(8, 12, 17, 0.74)),
+    radial-gradient(circle at 10% 0%, rgba(244, 207, 100, 0.08), transparent 40%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 26px 70px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(22px) saturate(120%);
+  overflow: hidden;
+}
+
+.portal-header::after {
+  content: "";
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  right: -90px;
+  top: -120px;
+  border-radius: 50%;
+  background: rgba(244, 207, 100, 0.08);
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.portal-header h1 {
+  max-width: none;
+  margin: 8px 0 6px;
+  font-size: clamp(2.35rem, 5vw, 4.7rem);
+  line-height: 0.95;
+  letter-spacing: -0.065em;
+}
+
+.portal-header .eyebrow,
+.portal-header .badge {
+  border-color: rgba(244, 207, 100, 0.22);
+  background: rgba(244, 207, 100, 0.055);
+  color: #ffe594;
+}
+
+.client-portal-top-cards {
+  margin-top: 2px;
+}
+
+.client-portal-top-cards > div {
+  gap: 14px !important;
+  margin-bottom: 20px !important;
+}
+
+.client-portal-top-cards .notice-card,
+.client-portal-top-cards .panel,
+.client-portal-top-cards .glass-card {
+  border-radius: 24px;
+}
+
+.portal-shell .panel,
+.portal-shell .stat-card,
+.portal-shell .approval-card,
+.portal-shell .mini-client-card,
+.portal-shell .glass-card,
+.portal-shell .notice-card {
+  border-color: var(--portal-border);
+  background:
+    linear-gradient(145deg, rgba(17, 22, 29, 0.78), rgba(8, 12, 17, 0.7));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 22px 60px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px) saturate(116%);
+}
+
+.portal-shell .panel,
+.portal-shell .glass-card,
+.portal-shell .approval-card {
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.portal-shell .panel:hover,
+.portal-shell .glass-card:hover,
+.portal-shell .approval-card:hover {
+  border-color: rgba(244, 207, 100, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 28px 72px rgba(0, 0, 0, 0.25);
+}
+
+.portal-shell .panel-title {
+  margin-bottom: 16px;
+}
+
+.portal-shell .panel-title svg,
+.portal-shell .glass-card svg {
+  color: var(--portal-gold);
+}
+
+.portal-shell .panel-title strong,
+.portal-shell .panel-title h2,
+.portal-shell .panel-title h3 {
+  letter-spacing: -0.025em;
+}
+
+.portal-shell .subtle,
+.portal-shell .panel p,
+.portal-shell .notice-card p {
+  color: var(--portal-muted);
+}
+
+.portal-shell .owner-grid,
+.portal-shell .client-grid {
+  gap: 16px;
+}
+
+.portal-shell .client-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portal-shell .panel {
+  border-radius: 26px;
+  padding: 24px;
+}
+
+.portal-shell .stat-card {
+  border-radius: 22px;
+  padding: 20px;
+}
+
+.portal-shell .stat-card span,
+.portal-shell .mini-client-card span,
+.portal-shell .mini-client-card small {
+  color: #8f9bab;
+}
+
+.portal-shell .stat-card strong {
+  color: #f8fafc;
+  letter-spacing: -0.04em;
+}
+
+.portal-shell .primary-btn,
+.portal-shell .secondary-btn,
+.portal-shell .wide-btn,
+.portal-shell .icon-btn {
+  border-radius: 999px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.portal-shell .primary-btn {
+  border-color: rgba(244, 207, 100, 0.38);
+  background: linear-gradient(135deg, #f3d374, #b68220);
+  color: #181206;
+  box-shadow: 0 14px 36px rgba(201, 150, 35, 0.18);
+}
+
+.portal-shell .secondary-btn,
+.portal-shell .icon-btn {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  color: #edf2f7;
+}
+
+.portal-shell .primary-btn:hover,
+.portal-shell .secondary-btn:hover,
+.portal-shell .wide-btn:hover,
+.portal-shell .icon-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(244, 207, 100, 0.38);
+}
+
+.portal-shell input,
+.portal-shell textarea,
+.portal-shell select,
+.portal-shell .auth-input {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(3, 7, 12, 0.48);
+  color: #f8fafc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.portal-shell input:focus,
+.portal-shell textarea:focus,
+.portal-shell select:focus,
+.portal-shell .auth-input:focus {
+  outline: none;
+  border-color: rgba(244, 207, 100, 0.55);
+  box-shadow: 0 0 0 3px rgba(244, 207, 100, 0.08);
+}
+
+.portal-shell .approval-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.portal-shell .approval-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, rgba(244, 207, 100, 0.8), rgba(125, 211, 252, 0.35));
+}
+
+.portal-shell .approval-top {
+  color: #d8c784;
+}
+
+.portal-shell .notice-card {
+  border-radius: 22px;
+}
+
+.portal-shell .notice-card.success {
+  border-color: rgba(110, 231, 183, 0.24);
+  background: linear-gradient(145deg, rgba(11, 42, 34, 0.4), rgba(8, 15, 17, 0.72));
+}
+
+.portal-shell .notice-card.warning {
+  border-color: rgba(251, 191, 36, 0.25);
+  background: linear-gradient(145deg, rgba(58, 42, 11, 0.36), rgba(11, 14, 17, 0.72));
+}
+
+.portal-shell .notice-card.danger {
+  border-color: rgba(248, 113, 113, 0.25);
+  background: linear-gradient(145deg, rgba(58, 19, 22, 0.36), rgba(12, 13, 17, 0.72));
+}
+
+.portal-shell .notice-card.info {
+  border-color: rgba(125, 211, 252, 0.2);
+  background: linear-gradient(145deg, rgba(14, 37, 51, 0.32), rgba(9, 13, 18, 0.72));
+}
+
+.portal-shell .chat-feed {
+  gap: 11px;
+}
+
+.portal-shell .ai-bubble {
+  border-color: rgba(125, 211, 252, 0.16);
+  border-radius: 20px;
+  background: rgba(21, 45, 58, 0.3);
+}
+
+.portal-shell table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.portal-shell th {
+  color: #8895a5;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.portal-shell td,
+.portal-shell th {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.portal-shell tr:last-child td {
+  border-bottom: 0;
+}
+
+.portal-shell .empty-state {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+@media (max-width: 900px) {
+  .portal-header {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .portal-shell .owner-grid,
+  .portal-shell .client-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-shell .panel-large,
+  .portal-shell .panel-wide {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 620px) {
+  .nxq-page {
+    padding: 14px;
+  }
+
+  .portal-header {
+    min-height: 0;
+    border-radius: 22px;
+    padding: 19px;
+  }
+
+  .portal-header h1 {
+    font-size: clamp(2.15rem, 13vw, 3.5rem);
+  }
+
+  .portal-shell .panel,
+  .portal-shell .glass-card,
+  .portal-shell .approval-card,
+  .portal-shell .notice-card {
+    border-radius: 20px;
+  }
+
+  .portal-shell .panel {
+    padding: 18px;
+  }
+
+  .portal-shell .panel-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .portal-shell table,
+  .portal-shell thead,
+  .portal-shell tbody,
+  .portal-shell th,
+  .portal-shell td,
+  .portal-shell tr {
+    display: block;
+  }
+
+  .portal-shell thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .portal-shell tr {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .portal-shell td {
+    padding: 7px 4px;
+    border-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-shell .panel,
+  .portal-shell .glass-card,
+  .portal-shell .approval-card,
+  .portal-shell .primary-btn,
+  .portal-shell .secondary-btn,
+  .portal-shell .wide-btn,
+  .portal-shell .icon-btn {
+    transition: none;
+    transform: none !important;
+  }
+}
