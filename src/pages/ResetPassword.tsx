@@ -43,8 +43,8 @@ export function ResetPassword() {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Your new password must be at least 8 characters.");
+    if (password.length < 10) {
+      setErrorMessage("Your new password must be at least 10 characters.");
       return;
     }
 
@@ -103,8 +103,9 @@ export function ResetPassword() {
             className="auth-input"
             disabled={!hasRecoverySession}
             id="new-password"
+            minLength={10}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
+            placeholder="At least 10 characters"
             type="password"
             value={password}
           />
@@ -118,6 +119,7 @@ export function ResetPassword() {
             className="auth-input"
             disabled={!hasRecoverySession}
             id="confirm-password"
+            minLength={10}
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="Type your new password again"
             type="password"
