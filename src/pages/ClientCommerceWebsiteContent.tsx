@@ -75,6 +75,7 @@ const initialContent: WebsiteContent = {
 export function ClientCommerceWebsiteContent() {
   const [content, setContent] = useState<WebsiteContent>(initialContent);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -82,10 +83,12 @@ export function ClientCommerceWebsiteContent() {
 
   async function loadContent() {
     setLoading(true);
+    setVerified(false);
     setError("");
+    setMessage("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Website content is unavailable because Supabase is not configured.");
+      setError("Website content is temporarily unavailable. No website content changes were made.");
       setLoading(false);
       return;
     }
@@ -97,8 +100,14 @@ export function ClientCommerceWebsiteContent() {
     }
 
     const result = await supabase.rpc("get_my_commerce_website_content");
-    if (result.error) setError(`Website content failed to load: ${result.error.message}`);
-    else if (result.data) setContent({ ...initialContent, ...(result.data as WebsiteContent) });
+    if (result.error || !result.data) {
+      setError("Website content could not be verified right now. Please try again shortly.");
+      setLoading(false);
+      return;
+    }
+
+    setContent({ ...initialContent, ...(result.data as WebsiteContent) });
+    setVerified(true);
     setLoading(false);
   }
 
@@ -111,7 +120,15 @@ export function ClientCommerceWebsiteContent() {
   }
 
   async function saveContent() {
-    if (!supabase) return;
+    if (!supabase || !verified || saving) return;
+
+    if (content.custom_page_published && content.custom_page_addon_enabled) {
+      const confirmed = window.confirm(
+        "Save these website-content changes with the custom page marked published? This can change client-controlled public Commerce content, but it does not deploy code or activate payments."
+      );
+      if (!confirmed) return;
+    }
+
     setSaving(true);
     setMessage("");
     setError("");
@@ -121,25 +138,26 @@ export function ClientCommerceWebsiteContent() {
     delete payload.custom_page_addon_enabled;
 
     const result = await supabase.rpc("save_my_commerce_website_content", { content_payload: payload });
-    setSaving(false);
 
-    if (result.error) {
-      setError(`Website content could not be saved: ${result.error.message}`);
+    if (result.error || !result.data) {
+      setSaving(false);
+      setError("Website content could not be saved. The previously verified saved content remains unchanged.");
       return;
     }
 
-    if (result.data) setContent({ ...initialContent, ...(result.data as WebsiteContent) });
-    setMessage("Website content saved. Public sections update without a redeploy.");
+    setContent({ ...initialContent, ...(result.data as WebsiteContent) });
+    setMessage("Website content saved. This did not deploy code, activate payments, or bypass storefront controls.");
+    setSaving(false);
   }
 
   async function uploadCustomPageImage(file: File) {
-    if (!supabase || !content.client_id) return;
-    if (!file.type.startsWith("image/")) {
+    if (!supabase || !verified || !content.client_id || uploading) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) {
       setError("Choose a JPG, PNG, WEBP, or GIF image.");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError("The image must be 8 MB or smaller.");
+    if (file.size < 1 || file.size > 8 * 1024 * 1024) {
+      setError("The image must be between 1 byte and 8 MB.");
       return;
     }
 
@@ -153,14 +171,25 @@ export function ClientCommerceWebsiteContent() {
 
     if (upload.error) {
       setUploading(false);
-      setError(`Image upload failed: ${upload.error.message}`);
+      setError("Image upload could not be completed. The custom page draft was not changed.");
       return;
     }
 
     const publicUrl = supabase.storage.from("commerce-website-content").getPublicUrl(path).data.publicUrl;
+    if (!publicUrl) {
+      const cleanup = await supabase.storage.from("commerce-website-content").remove([path]);
+      setUploading(false);
+      setError(
+        cleanup.error
+          ? "Image registration could not be completed and protected storage cleanup needs attention. The page draft was not changed."
+          : "Image registration could not be completed. The temporary upload was removed and the page draft was not changed."
+      );
+      return;
+    }
+
     update("custom_page_image_url", publicUrl);
     setUploading(false);
-    setMessage("Image uploaded. Save website content to attach it to the custom page draft.");
+    setMessage("Image uploaded to the draft. Save website content to attach it; uploading alone does not publish the page.");
   }
 
   return (
@@ -173,18 +202,21 @@ export function ClientCommerceWebsiteContent() {
             <FileText size={22} />
             <div>
               <h1>Website content</h1>
-              <p className="subtle">Update safe website sections without editing code or redeploying.</p>
+              <p className="subtle">Manage verified client-controlled Commerce content without editing application code.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/commerce"><ArrowLeft size={16} /> Commerce dashboard</a>
         </div>
 
-        <div className="notice-card">Your content changes never alter the protected website layout. Only the fields below can appear publicly.</div>
+        <div className="notice-card">
+          Content controls stay separate from code deploys, payment activation, provider setup, and protected launch gates.
+        </div>
         {error ? <div className="auth-error">{error}</div> : null}
         {message ? <div className="auth-success">{message}</div> : null}
         {loading ? <div className="empty-state">Loading website content...</div> : null}
+        {!loading && !verified ? <div className="empty-state">Website content is not verified, so editing and publishing controls are disabled.</div> : null}
 
-        {!loading ? (
+        {!loading && verified ? (
           <div style={{ display: "grid", gap: "1rem" }}>
             <section className="panel panel-wide">
               <div className="setup-section-divider"><span>Homepage</span><p>Control the announcement and a short featured message.</p></div>
@@ -237,17 +269,18 @@ export function ClientCommerceWebsiteContent() {
               <div className="panel" style={{ display: "grid", gap: ".75rem" }}>
                 <strong>One page image</strong>
                 {content.custom_page_image_url ? <img src={content.custom_page_image_url} alt="Custom page preview" style={{ width: "100%", maxWidth: 520, maxHeight: 360, objectFit: "cover", borderRadius: 18 }} /> : <div className="empty-state">No image uploaded.</div>}
-                <label className="icon-btn" style={{ width: "fit-content", cursor: uploading ? "wait" : "pointer" }}><ImagePlus size={16} /> {uploading ? "Uploading..." : "Upload image"}<input hidden disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadCustomPageImage(file); e.currentTarget.value = ""; }} /></label>
+                <label className="icon-btn" style={{ width: "fit-content", cursor: uploading ? "wait" : "pointer" }}><ImagePlus size={16} /> {uploading ? "Uploading..." : "Upload image"}<input hidden disabled={uploading || saving} type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadCustomPageImage(file); e.currentTarget.value = ""; }} /></label>
               </div>
               <div className="form-grid-2">
                 <label className="auth-label"><span>Button text</span><input className="auth-input" value={content.custom_page_button_text} onChange={(e) => update("custom_page_button_text", e.target.value)} placeholder="Contact us" /></label>
                 <label className="auth-label"><span>Button link</span><input className="auth-input" value={content.custom_page_button_url} onChange={(e) => update("custom_page_button_url", e.target.value)} placeholder="mailto:hello@example.com" /></label>
               </div>
               <label className="auth-label"><span><input type="checkbox" checked={content.custom_page_show_in_menu} onChange={(e) => update("custom_page_show_in_menu", e.target.checked)} /> Show page in website menu</span></label>
-              <label className="auth-label"><span><input type="checkbox" disabled={!content.custom_page_addon_enabled} checked={content.custom_page_published} onChange={(e) => update("custom_page_published", e.target.checked)} /> Publish custom page</span></label>
+              <label className="auth-label"><span><input type="checkbox" disabled={!content.custom_page_addon_enabled} checked={content.custom_page_published} onChange={(e) => update("custom_page_published", e.target.checked)} /> Mark custom page published</span></label>
+              <p className="subtle">Publishing this client-controlled content page remains separate from application-code deployment and payment activation.</p>
             </section>
 
-            <button className="wide-btn" disabled={saving} onClick={() => void saveContent()} type="button"><Save size={17} /> {saving ? "Saving..." : "Save website content"}</button>
+            <button className="wide-btn" disabled={saving || uploading || !verified} onClick={() => void saveContent()} type="button"><Save size={17} /> {saving ? "Saving..." : "Save website content"}</button>
           </div>
         ) : null}
       </section>
