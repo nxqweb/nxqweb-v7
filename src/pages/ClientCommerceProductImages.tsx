@@ -19,14 +19,16 @@ export function ClientCommerceProductImages() {
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
 
   async function loadProducts() {
     setLoading(true);
+    setLoaded(false);
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Product photos are unavailable because Supabase is not configured.");
+      setError("Product photos are temporarily unavailable. No product-image changes were made.");
       setLoading(false);
       return;
     }
@@ -39,14 +41,20 @@ export function ClientCommerceProductImages() {
 
     const result = await supabase.rpc("get_my_commerce_catalog");
     if (result.error) {
-      setError(`Products failed to load: ${result.error.message}`);
-    } else {
-      const catalog = (result.data as CatalogResult) || {};
-      const loadedProducts = catalog.products || [];
-      setProducts(loadedProducts);
-      if (loadedProducts.length) setSelectedProductId(loadedProducts[0].id);
+      setProducts([]);
+      setSelectedProductId("");
+      setError("Products could not be loaded right now. Please refresh and try again.");
+      setLoading(false);
+      return;
     }
 
+    const catalog = (result.data as CatalogResult) || {};
+    const loadedProducts = catalog.products || [];
+    setProducts(loadedProducts);
+    setSelectedProductId((current) =>
+      loadedProducts.some((product) => product.id === current) ? current : loadedProducts[0]?.id || ""
+    );
+    setLoaded(true);
     setLoading(false);
   }
 
@@ -75,19 +83,19 @@ export function ClientCommerceProductImages() {
         </div>
 
         <div className="notice-card">
-          Upload up to 8 JPG, PNG, WEBP, or GIF images per product. The first image becomes the main shop photo.
+          Upload up to 8 JPG, PNG, WEBP, or GIF images per product. Images remain in the protected Commerce workflow and do not publish a storefront by themselves.
         </div>
 
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
         {loading ? <div className="empty-state">Loading products...</div> : null}
 
-        {!loading && products.length === 0 ? (
+        {!loading && loaded && products.length === 0 ? (
           <div className="empty-state">
-            Create and save a product first, then return here to upload its photos.
+            No saved products were found. Create and save a product first, then return here to upload its photos.
           </div>
         ) : null}
 
-        {!loading && products.length > 0 ? (
+        {!loading && loaded && products.length > 0 ? (
           <section className="panel panel-wide">
             <label className="auth-label">
               <span>Choose product</span>
@@ -103,7 +111,7 @@ export function ClientCommerceProductImages() {
             {selectedProduct ? (
               <div className="setup-section-divider">
                 <span>{selectedProduct.name}</span>
-                <p>Changes appear on the separate storefront after the product is live.</p>
+                <p>Image changes stay inside the protected product workflow. A live storefront still requires the existing publish and approval gates.</p>
               </div>
             ) : null}
 
