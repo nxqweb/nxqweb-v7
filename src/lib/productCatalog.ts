@@ -12,6 +12,14 @@ export type ProductTierKey = "starter" | "growth" | "intelligence" | "enterprise
 
 export type ProductFamilyStatus = "available" | "beta" | "planned" | "private";
 
+export type ProductIntakeQuestion = {
+  key: string;
+  label: string;
+  placeholder: string;
+  required?: boolean;
+  multiline?: boolean;
+};
+
 export type ProductFamilyDefinition = {
   slug: ProductFamilySlug;
   name: string;
@@ -21,6 +29,7 @@ export type ProductFamilyDefinition = {
   outcome: string;
   intakeLabel: string;
   intakePlaceholder: string;
+  intakeQuestions: ProductIntakeQuestion[];
 };
 
 export type ProductTierDefinition = {
@@ -43,6 +52,33 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Look premium, get found, capture leads, and keep improving without babysitting your website.",
     intakeLabel: "Services and service area",
     intakePlaceholder: "Tell us what you sell, where you work, and the kinds of customers you want more of.",
+    intakeQuestions: [
+      {
+        key: "services",
+        label: "What services should the website sell?",
+        placeholder: "Tree removal, trimming, stump grinding, emergency storm cleanup...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "best_customers",
+        label: "Who are your best customers?",
+        placeholder: "Homeowners, property managers, commercial properties, HOAs...",
+        required: true,
+      },
+      {
+        key: "conversion_action",
+        label: "What should visitors do most often?",
+        placeholder: "Call, request an estimate, submit a form, visit the shop...",
+        required: true,
+      },
+      {
+        key: "proof_assets",
+        label: "What proof can we build around?",
+        placeholder: "Reviews, project photos, certifications, warranties, years in business — only include facts you can verify.",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "booking",
@@ -53,6 +89,35 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Turn your website into a clean scheduling system that reduces back-and-forth.",
     intakeLabel: "Booking workflow",
     intakePlaceholder: "Services, appointment lengths, team availability, cancellation rules, and reminder needs.",
+    intakeQuestions: [
+      {
+        key: "bookable_services",
+        label: "What can customers book?",
+        placeholder: "Consultations, haircuts, estimates, lessons, service appointments...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "schedule_rules",
+        label: "How should availability work?",
+        placeholder: "Business hours, staff schedules, appointment lengths, buffers, blackout dates...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "booking_rules",
+        label: "What booking rules matter?",
+        placeholder: "Cancellation window, deposits, rescheduling, lead time, maximum advance booking...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "reminders",
+        label: "What reminders or confirmations do you want?",
+        placeholder: "Email confirmation, 24-hour reminder, same-day reminder...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "commerce",
@@ -63,6 +128,33 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Sell online with a storefront that stays organized from product setup through fulfillment.",
     intakeLabel: "Catalog and fulfillment",
     intakePlaceholder: "Products, inventory, shipping or pickup, checkout needs, and how orders should be managed.",
+    intakeQuestions: [
+      {
+        key: "catalog",
+        label: "What do you sell?",
+        placeholder: "Product types, approximate product count, variants, custom options...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "fulfillment",
+        label: "How do customers receive orders?",
+        placeholder: "Shipping, local delivery, pickup, digital delivery, made-to-order...",
+        required: true,
+      },
+      {
+        key: "inventory",
+        label: "How should inventory behave?",
+        placeholder: "Track quantities, unlimited stock, preorder, low-stock alerts...",
+        required: true,
+      },
+      {
+        key: "store_operations",
+        label: "What does the team need after checkout?",
+        placeholder: "Order statuses, fulfillment notes, customer accounts, returns, staff workflow...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "menu",
@@ -73,6 +165,33 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Make menus fast to browse, easy to update, and ready for ordering integrations.",
     intakeLabel: "Menu structure",
     intakePlaceholder: "Menu categories, specials, hours, locations, dietary notes, and ordering links.",
+    intakeQuestions: [
+      {
+        key: "menu_categories",
+        label: "How is your menu organized?",
+        placeholder: "Breakfast, lunch, dinner, drinks, desserts, services, packages...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "menu_details",
+        label: "What details matter on each item?",
+        placeholder: "Price, description, photo, dietary tags, spice level, availability...",
+        required: true,
+      },
+      {
+        key: "ordering_path",
+        label: "How should customers order?",
+        placeholder: "Call, third-party ordering link, pickup request, reservation, no ordering...",
+        required: true,
+      },
+      {
+        key: "specials_hours",
+        label: "How often do specials, hours, or availability change?",
+        placeholder: "Daily specials, seasonal menu, happy hour, holiday hours...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "property",
@@ -83,6 +202,33 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Present inventory beautifully while routing serious inquiries to the right person.",
     intakeLabel: "Listings and inquiry flow",
     intakePlaceholder: "Property types, listing fields, agents, search filters, and how inquiries should be routed.",
+    intakeQuestions: [
+      {
+        key: "listing_types",
+        label: "What types of properties or listings do you manage?",
+        placeholder: "Homes, apartments, rentals, commercial, land, new construction...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "search_filters",
+        label: "How should visitors search and filter?",
+        placeholder: "Price, beds, baths, city, neighborhood, property type, availability...",
+        required: true,
+      },
+      {
+        key: "listing_source",
+        label: "Where will listing data come from?",
+        placeholder: "Manual entry, existing feed, spreadsheet, approved integration...",
+        required: true,
+      },
+      {
+        key: "inquiry_routing",
+        label: "Who should receive listing inquiries?",
+        placeholder: "Assigned agent, office, location team, shared inbox...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "multi-location",
@@ -93,6 +239,33 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Operate one brand while every location gets its own high-quality local presence.",
     intakeLabel: "Locations and routing",
     intakePlaceholder: "Locations, teams, service differences, contact details, and local SEO priorities.",
+    intakeQuestions: [
+      {
+        key: "location_count",
+        label: "How many locations do you operate?",
+        placeholder: "3 now, growing to 6 this year...",
+        required: true,
+      },
+      {
+        key: "location_differences",
+        label: "What changes by location?",
+        placeholder: "Services, hours, pricing, staff, phone numbers, service areas...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "lead_routing",
+        label: "How should leads route between locations?",
+        placeholder: "ZIP code, city, selected location, service area, central team...",
+        required: true,
+      },
+      {
+        key: "local_seo",
+        label: "What local markets matter most?",
+        placeholder: "Priority cities, neighborhoods, service territories, expansion markets...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "membership",
@@ -103,6 +276,34 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Give customers a secure member experience with recurring access and gated content.",
     intakeLabel: "Membership experience",
     intakePlaceholder: "Membership levels, gated content, billing cadence, member benefits, and renewal rules.",
+    intakeQuestions: [
+      {
+        key: "membership_levels",
+        label: "What membership levels or access groups exist?",
+        placeholder: "Basic, Pro, VIP, student, staff, alumni...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "member_access",
+        label: "What should members get access to?",
+        placeholder: "Content, downloads, dashboards, events, discounts, private pages...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "membership_lifecycle",
+        label: "How should membership start, renew, pause, or end?",
+        placeholder: "Monthly, annual, manual approval, grace period, cancellation rules...",
+        required: true,
+      },
+      {
+        key: "member_actions",
+        label: "What should members be able to manage themselves?",
+        placeholder: "Profile, plan, saved items, billing status, downloads, preferences...",
+        multiline: true,
+      },
+    ],
   },
   {
     slug: "enterprise-systems",
@@ -113,6 +314,35 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
     outcome: "Custom website infrastructure for organizations with deeper operational requirements.",
     intakeLabel: "Enterprise requirements",
     intakePlaceholder: "Teams, permissions, locations, integrations, reporting, and infrastructure needs.",
+    intakeQuestions: [
+      {
+        key: "organization_scope",
+        label: "Describe the organization and website scope.",
+        placeholder: "Departments, brands, regions, teams, public sites, internal surfaces...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "roles_permissions",
+        label: "What roles and permission boundaries are needed?",
+        placeholder: "Admins, editors, regional managers, support, read-only teams...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "integrations",
+        label: "What systems may need approved integrations?",
+        placeholder: "CRM, ERP, identity provider, analytics, support, internal APIs...",
+        required: true,
+        multiline: true,
+      },
+      {
+        key: "compliance_operations",
+        label: "What operational or compliance constraints matter?",
+        placeholder: "Auditability, retention, approvals, data regions, accessibility, reporting...",
+        multiline: true,
+      },
+    ],
   },
 ];
 
