@@ -24,7 +24,7 @@ export function PublicPlans() {
             <span>NXQ-Web systems</span>
             <h2>Choose the website system first. Then choose how far you want it to go.</h2>
             <p>
-              Product families define the kind of website workflow. Tiers define the level of ongoing service, growth, measurement, and optimization.
+              Product families define the kind of website experience your business needs. Tiers define the level of ongoing service, growth, measurement, and optimization.
             </p>
           </div>
 
@@ -34,7 +34,7 @@ export function PublicPlans() {
         <section className="lux-section" id="tiers">
           <div className="lux-section-head">
             <span>Service tiers</span>
-            <h2>The same four service levels stay understandable across NXQ-Web.</h2>
+            <h2>Four clear service levels, from a polished managed site to a custom growth system.</h2>
           </div>
 
           <div className="lux-grid lux-pricing-grid">
@@ -62,8 +62,8 @@ export function PublicPlans() {
         <section className="lux-card lux-final">
           <div>
             <Clock3 size={24} />
-            <h2>More product families are coming without exposing unfinished workflows.</h2>
-            <p>Planned families remain visible for clarity, but only completed public families can enter direct signup. Existing guarded owner-review paths remain unchanged.</p>
+            <h2>More NXQ-Web systems are on the way.</h2>
+            <p>Planned families stay visible so you can see what is coming, but signup stays closed until each experience is ready for clients.</p>
           </div>
           <a className="lux-btn lux-btn-primary" href="/portal/signup?family=business&tier=growth">Start NXQ-Business <ArrowRight size={16} /></a>
         </section>
