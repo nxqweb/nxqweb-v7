@@ -15,7 +15,7 @@ export function ClientSettings() {
 
   async function loadSettings() {
     setLoading(true); setError("");
-    if (!isSupabaseConfigured || !supabase) { setError("Supabase is not configured."); setLoading(false); return; }
+    if (!isSupabaseConfigured || !supabase) { setError("Client settings are temporarily unavailable."); setLoading(false); return; }
     const sessionResult = await supabase.auth.getSession(); const session = sessionResult.data.session;
     if (!session) { window.location.replace("/portal/login"); return; }
     const currentEmail = session.user.email || ""; setEmail(currentEmail); setNewEmail(currentEmail);
@@ -24,7 +24,7 @@ export function ClientSettings() {
       target_cursor_requested_at: null,
       target_cursor_id: null,
     });
-    if (domainResult.error) setError(`Domain settings load failed: ${domainResult.error.message}`); else setDomains((domainResult.data || []) as ClientDomainRow[]);
+    if (domainResult.error) setError("Domain settings could not be loaded right now."); else setDomains((domainResult.data || []) as ClientDomainRow[]);
     setLoading(false);
   }
 
@@ -32,8 +32,8 @@ export function ClientSettings() {
     if (!supabase) return; const cleanEmail = newEmail.trim().toLowerCase();
     if (!cleanEmail || cleanEmail === email.toLowerCase()) { setError("Enter a different valid email address."); return; }
     setSavingEmail(true); setMessage(""); setError(""); const result = await supabase.auth.updateUser({ email: cleanEmail }); setSavingEmail(false);
-    if (result.error) { setError(`Email update failed: ${result.error.message}`); return; }
-    setMessage("Email change requested. Check both inboxes if Supabase requires confirmation.");
+    if (result.error) { setError("Email could not be updated right now. Please try again."); return; }
+    setMessage("Email change requested. Follow any confirmation instructions sent to your inboxes.");
   }
 
   async function updatePassword() {
@@ -41,14 +41,14 @@ export function ClientSettings() {
     if (newPassword.length < 10) { setError("Use a password with at least 10 characters."); return; }
     if (newPassword !== confirmPassword) { setError("The password confirmation does not match."); return; }
     setSavingPassword(true); setMessage(""); setError(""); const result = await supabase.auth.updateUser({ password: newPassword }); setSavingPassword(false);
-    if (result.error) { setError(`Password update failed: ${result.error.message}`); return; }
+    if (result.error) { setError("Password could not be updated right now. Please try again."); return; }
     setNewPassword(""); setConfirmPassword(""); setMessage("Password updated successfully.");
   }
 
   return (
     <main className="nxq-page"><section className="portal-shell">
       <div className="panel-title panel-title-row"><div className="panel-title"><Save size={22}/><div><h1>Client settings</h1><p className="subtle">Manage your account, plan, appearance, security, notifications, files, and domain.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16}/> Back to portal</a></div>
-      {error ? <div className="auth-error">{error}</div> : null}{message ? <div className="auth-success">{message}</div> : null}{loading ? <div className="empty-state">Loading settings...</div> : null}
+      {error ? <div className="auth-error" role="alert">{error}</div> : null}{message ? <div className="auth-success" role="status">{message}</div> : null}{loading ? <div className="empty-state" role="status">Loading settings...</div> : null}
       {!loading ? <div className="owner-detail-grid">
         <ClientPlanManagement />
         <section className="panel panel-wide"><div className="panel-title">{theme === "dark" ? <Moon size={20}/> : <Sun size={20}/>}<div><h2>Appearance</h2><p className="subtle">Choose the portal theme saved on this device.</p></div></div><button className="wide-btn" type="button" onClick={() => setTheme(current => current === "dark" ? "light" : "dark")}>{theme === "dark" ? <Sun size={16}/> : <Moon size={16}/>} Switch to {theme === "dark" ? "light" : "dark"} mode</button></section>
