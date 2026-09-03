@@ -117,8 +117,8 @@ export function PortalSignup() {
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters.");
+    if (password.length < 10) {
+      setErrorMessage("Password must be at least 10 characters.");
       return;
     }
 
@@ -291,7 +291,7 @@ export function PortalSignup() {
 
               <label>
                 <span>Password</span>
-                <input autoComplete="new-password" className="auth-input" id="signup-password" minLength={8} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" type="password" value={password} />
+                <input autoComplete="new-password" className="auth-input" id="signup-password" minLength={10} onChange={(event) => setPassword(event.target.value)} placeholder="At least 10 characters" type="password" value={password} />
               </label>
             </div>
           </section>
