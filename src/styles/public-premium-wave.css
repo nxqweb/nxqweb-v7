@@ -310,6 +310,92 @@
   font-size: .86rem;
 }
 
+/* Pointer-reactive premium layer. Touch devices and reduced-motion users stay static. */
+.lux-interactive-home {
+  --lux-pointer-x: 50%;
+  --lux-pointer-y: 24%;
+  --lux-tilt-x: 0deg;
+  --lux-tilt-y: -4deg;
+}
+
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .lux-interactive-home .lux-page::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle 520px at var(--lux-pointer-x) var(--lux-pointer-y), rgba(244, 207, 100, .11), transparent 66%),
+      radial-gradient(circle 340px at var(--lux-pointer-x) var(--lux-pointer-y), rgba(74, 171, 255, .055), transparent 72%);
+    opacity: .95;
+    transition: opacity 240ms ease;
+  }
+
+  .lux-interactive-home[data-pointer-active="true"] .lux-page::before {
+    opacity: 1;
+  }
+
+  .lux-interactive-home .lux-pointer-depth {
+    transform:
+      perspective(1100px)
+      rotateX(var(--lux-tilt-x))
+      rotateY(var(--lux-tilt-y));
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  .lux-interactive-home .lux-pointer-depth .lux-browser {
+    transform: translateZ(18px);
+    box-shadow: 0 28px 100px rgba(0,0,0,.34);
+  }
+
+  .lux-interactive-home .lux-card,
+  .lux-interactive-home .lux-value-grid > div,
+  .lux-interactive-home .premium-tier-option {
+    position: relative;
+  }
+
+  .lux-interactive-home .lux-card::after,
+  .lux-interactive-home .lux-value-grid > div::after,
+  .lux-interactive-home .premium-tier-option::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(circle 220px at var(--lux-pointer-x) var(--lux-pointer-y), rgba(255,255,255,.055), transparent 72%);
+    mix-blend-mode: screen;
+    opacity: .65;
+    transition: opacity 180ms ease;
+  }
+
+  .lux-interactive-home .lux-card:hover::after,
+  .lux-interactive-home .lux-value-grid > div:hover::after,
+  .lux-interactive-home .premium-tier-option:hover::after {
+    opacity: 1;
+  }
+
+  .lux-interactive-home .lux-btn {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lux-interactive-home .lux-btn::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    background: linear-gradient(110deg, transparent 28%, rgba(255,255,255,.16) 48%, transparent 68%);
+    transform: translateX(-135%);
+    transition: transform 520ms ease;
+  }
+
+  .lux-interactive-home .lux-btn:hover::before {
+    transform: translateX(135%);
+  }
+}
+
 @media (max-width: 980px) {
   .lux-lifecycle-grid,
   .lux-process-track,
@@ -357,7 +443,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .lux-process-step,
-  .lux-value-grid > div {
+  .lux-value-grid > div,
+  .lux-pointer-depth {
     transition: none;
     transform: none !important;
   }
