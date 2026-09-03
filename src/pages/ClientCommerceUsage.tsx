@@ -57,6 +57,7 @@ function UsageBar({ used, limit }: { used: number; limit: number }) {
 export function ClientCommerceUsage() {
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -65,20 +66,32 @@ export function ClientCommerceUsage() {
 
   async function loadUsage() {
     setLoading(true);
+    setVerified(false);
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce usage is unavailable because Supabase is not configured.");
+      setUsage(null);
+      setError("Commerce usage is temporarily unavailable. No allowance values are being shown until they can be verified.");
       setLoading(false);
       return;
     }
 
-    const result = await supabase.rpc("get_commerce_usage_summary", { target_client_id: null });
-    if (result.error) {
-      setError(`Usage failed to load: ${result.error.message}`);
-    } else {
-      setUsage((result.data as UsageSummary) || null);
+    const sessionResult = await supabase.auth.getSession();
+    if (!sessionResult.data.session) {
+      window.location.replace("/portal/login");
+      return;
     }
+
+    const result = await supabase.rpc("get_commerce_usage_summary", { target_client_id: null });
+    if (result.error || !result.data) {
+      setUsage(null);
+      setError("Commerce usage could not be verified right now. Please refresh and try again.");
+      setLoading(false);
+      return;
+    }
+
+    setUsage(result.data as UsageSummary);
+    setVerified(true);
     setLoading(false);
   }
 
@@ -91,19 +104,20 @@ export function ClientCommerceUsage() {
             <h1 style={{ fontSize: "clamp(3rem, 7vw, 5.75rem)", lineHeight: 0.94, marginBottom: "0.75rem" }}>
               Commerce usage
             </h1>
-            <p className="subtle">See how many new products and product images you can add this month.</p>
+            <p className="subtle">See verified monthly product and product-image usage for your Commerce workspace.</p>
           </div>
         </div>
 
         <CommerceNav />
 
-        <button className="icon-btn" onClick={() => void loadUsage()} disabled={loading}>
+        <button className="icon-btn" onClick={() => void loadUsage()} disabled={loading} type="button">
           <RefreshCcw size={16} /> {loading ? "Loading..." : "Refresh usage"}
         </button>
 
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
+        {loading ? <div className="empty-state">Loading Commerce usage...</div> : null}
 
-        {usage ? (
+        {!loading && verified && usage ? (
           <div className="portal-grid" style={{ marginTop: "1rem" }}>
             <article className="panel">
               <h2>New products</h2>
@@ -127,7 +141,7 @@ export function ClientCommerceUsage() {
 
             <article className="panel panel-wide">
               <h2>Monthly reset</h2>
-              <p className="subtle">Your allowances reset on {new Date(usage.resets_at).toLocaleDateString()}. Existing products remain editable after a limit is reached.</p>
+              <p className="subtle">Your verified allowances reset on {new Date(usage.resets_at).toLocaleDateString()}. Existing products remain editable after a limit is reached.</p>
             </article>
           </div>
         ) : null}
