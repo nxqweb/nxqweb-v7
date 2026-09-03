@@ -103,7 +103,7 @@ export function PortalSignup() {
     }
 
     if (!trimmedFamilyDetails || !trimmedPrimaryGoal) {
-      setErrorMessage("Complete the project-fit questions so NXQ can route the right intake after verification.");
+      setErrorMessage("Complete the project-fit questions so NXQ can prepare the right setup after verification.");
       return;
     }
 
@@ -173,14 +173,14 @@ export function PortalSignup() {
             <span><Sparkles size={14} /> Project setup</span>
             <h2>{selectedFamily.name} · {tier.name}</h2>
             <p>
-              This first form is matched to the website system and service level you selected. After verification, the client workspace continues into the existing detailed setup and owner-review workflow.
+              This first step is matched to the website system and service level you selected. After verification, your client workspace continues into the full project setup and review process.
             </p>
           </div>
 
           {unavailableFamily ? (
             <div className="notice-card">
               <strong>{unavailableFamily.name} is still in development.</strong>
-              <p>NXQ-Business was selected instead so an unfinished family cannot be purchased accidentally.</p>
+              <p>NXQ-Business is available now, so we switched you to a client-ready option.</p>
             </div>
           ) : null}
 
@@ -220,7 +220,7 @@ export function PortalSignup() {
 
           <section className="premium-intake-box">
             <h2>Tell us what we are building around.</h2>
-            <p>The questions below change with the family and tier instead of forcing every type of client through the same generic form.</p>
+            <p>The questions below change with the family and tier so your setup reflects the kind of business and website you actually need.</p>
 
             <div className="premium-form-grid">
               <label>
@@ -280,7 +280,7 @@ export function PortalSignup() {
 
           <section className="premium-intake-box">
             <h2>Create your NXQ client account.</h2>
-            <p>Your selection and project-fit answers stay attached to the signup so the client workspace can continue with the correct product context.</p>
+            <p>Your selection and project details stay attached to the account so your workspace can continue with the right website and service context.</p>
 
             <div className="premium-form-grid">
               <label>
@@ -301,7 +301,7 @@ export function PortalSignup() {
           <div className="notice-card">
             <strong>{selectedFamily.name} · {tier.name}</strong>
             <p>
-              Creating an account does not approve or launch the project. Existing owner-review and approval boundaries remain in place before the managed build workflow moves forward.
+              Creating an account does not approve or launch the project. NXQ reviews the completed setup before managed build work can move forward.
             </p>
           </div>
 
