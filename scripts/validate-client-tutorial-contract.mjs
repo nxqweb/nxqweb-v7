@@ -11,7 +11,7 @@ const checks = [
   ['Tutorial explains domain action-required behavior', tutorial.includes('action-required')],
   ['Tutorial is mounted on main client portal', app.includes('<ClientPortalTutorialOverlay />')],
   ['Denied clients get a clear hard-stop notice', topCards.includes('Website setup was not approved')],
-  ['Denied clients get support contact', topCards.includes('websitedesignercontact@protonmail.com')],
+  ['Denied clients get support contact', topCards.includes('NXQweb@protonmail.com')],
   ['Denied clients do not see Commerce shortcut card', topCards.includes('!denied ? <ClientCommercePortalTab /> : null')],
 ];
 
