@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import "./styles/nxq.css";
+import "./styles/public-premium.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
