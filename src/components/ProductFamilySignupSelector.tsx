@@ -13,7 +13,7 @@ export function ProductFamilySignupSelector() {
         <span>Choose your website system</span>
         <h2>Start with the system that matches how your business actually works.</h2>
         <p>
-          NXQ-Business is available now. The other families stay visible so clients can see where the platform is going without accidentally entering an unfinished workflow.
+          NXQ-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
         </p>
       </div>
 
