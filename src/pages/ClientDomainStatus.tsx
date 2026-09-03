@@ -38,20 +38,23 @@ export function ClientDomainStatus() {
   const [hasMore, setHasMore] = useState(false);
 
   async function fetchPage(cursor?: { requested_at: string; id: string }) {
-    if (!supabase) return { rows: [] as Domain[], error: "Supabase is not configured yet." };
+    if (!supabase) return { rows: [] as Domain[], error: "Domain status is temporarily unavailable." };
     const result = await supabase.rpc("current_client_domain_page", {
       target_limit: PAGE_SIZE,
       target_cursor_requested_at: cursor?.requested_at ?? null,
       target_cursor_id: cursor?.id ?? null,
     });
-    return { rows: (result.data || []) as Domain[], error: result.error?.message || "" };
+    return {
+      rows: (result.data || []) as Domain[],
+      error: result.error ? "Domain status could not be loaded right now." : "",
+    };
   }
 
   async function load() {
     setLoading(true);
     setError("");
     if (!isSupabaseConfigured || !supabase) {
-      setError("Supabase is not configured yet.");
+      setError("Domain status is temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -95,7 +98,7 @@ export function ClientDomainStatus() {
     setError("");
     setNotice("");
     const result = await supabase.rpc("current_client_request_domain_recheck", { target_domain_id: domain.id });
-    if (result.error) setError(result.error.message);
+    if (result.error) setError("NXQ could not queue a fresh domain check right now. Please try again shortly.");
     else {
       setNotice(`NXQ queued a fresh DNS and SSL check for ${domain.domain_name}.`);
       await load();
@@ -120,7 +123,7 @@ export function ClientDomainStatus() {
         </div>
 
         {error ? <div className="auth-error" role="alert">{error}</div> : null}
-        {notice ? <div className="auth-success">{notice}</div> : null}
+        {notice ? <div className="auth-success" role="status">{notice}</div> : null}
         {loading ? <div className="empty-state" role="status">Loading domain status...</div> : null}
         {!loading && domains.length === 0 ? (
           <div className="empty-state">
@@ -195,7 +198,7 @@ export function ClientDomainStatus() {
                   </div>
                 ) : null}
 
-                {domain.automation_error && !action ? <p className="subtle">Last check note: {domain.automation_error}</p> : null}
+                {domain.automation_error && !action ? <p className="subtle">Last automatic check needs another retry. NXQ will keep the detailed provider error internal.</p> : null}
                 <div className="domain-meta-grid">
                   <span><strong>Registrar</strong>{domain.registrar_name || "Not specified"}</span>
                   <span><strong>DNS provider</strong>{domain.dns_provider || "Not specified"}</span>
