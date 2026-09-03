@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import {
   Activity,
   ArrowRight,
@@ -25,8 +26,59 @@ const comparisonRows = [
 ];
 
 export function PublicHome() {
+  const interactionRootRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const root = interactionRootRef.current;
+    if (!root) return;
+
+    const finePointer = window.matchMedia("(pointer: fine)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!finePointer.matches || reducedMotion.matches) return;
+
+    let frame = 0;
+
+    function updatePointer(event: PointerEvent) {
+      if (!root) return;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const rect = root.getBoundingClientRect();
+        const localX = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+        const localY = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+        const xRatio = rect.width > 0 ? localX / rect.width : 0.5;
+        const yRatio = rect.height > 0 ? localY / rect.height : 0.25;
+        const tiltX = (0.5 - yRatio) * 5;
+        const tiltY = (xRatio - 0.5) * 8;
+
+        root.style.setProperty("--lux-pointer-x", `${(xRatio * 100).toFixed(2)}%`);
+        root.style.setProperty("--lux-pointer-y", `${(yRatio * 100).toFixed(2)}%`);
+        root.style.setProperty("--lux-tilt-x", `${tiltX.toFixed(2)}deg`);
+        root.style.setProperty("--lux-tilt-y", `${tiltY.toFixed(2)}deg`);
+        root.dataset.pointerActive = "true";
+      });
+    }
+
+    function resetPointer() {
+      window.cancelAnimationFrame(frame);
+      root.style.setProperty("--lux-pointer-x", "50%");
+      root.style.setProperty("--lux-pointer-y", "24%");
+      root.style.setProperty("--lux-tilt-x", "0deg");
+      root.style.setProperty("--lux-tilt-y", "-4deg");
+      delete root.dataset.pointerActive;
+    }
+
+    root.addEventListener("pointermove", updatePointer);
+    root.addEventListener("pointerleave", resetPointer);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      root.removeEventListener("pointermove", updatePointer);
+      root.removeEventListener("pointerleave", resetPointer);
+    };
+  }, []);
+
   return (
-    <main className="lux-home">
+    <main ref={interactionRootRef} className="lux-home lux-interactive-home">
       <section className="lux-page">
         <header className="lux-nav lux-card">
           <a className="lux-brand" href="/">
@@ -76,7 +128,7 @@ export function PublicHome() {
             </div>
           </div>
 
-          <aside className="lux-card lux-preview" aria-label="NXQ-Web system preview">
+          <aside className="lux-card lux-preview lux-pointer-depth" aria-label="NXQ-Web system preview">
             <div className="lux-browser">
               <div className="lux-browser-topline">
                 <div className="lux-dots"><span /><span /><span /></div>
