@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, MailCheck, UserPlus } from "lucide-react";
+import { ArrowLeft, CheckCircle2, MailCheck, Sparkles, UserPlus } from "lucide-react";
 import {
   getProductFamily,
   getRequestedProductFamily,
@@ -32,9 +32,40 @@ export function PortalSignup() {
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [familyDetails, setFamilyDetails] = useState("");
+  const [serviceArea, setServiceArea] = useState("");
+  const [primaryGoal, setPrimaryGoal] = useState("");
+  const [tierGoal, setTierGoal] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const tier = productTiers.find((item) => item.key === selectedTier) || productTiers[0];
+
+  const tierQuestion = useMemo(() => {
+    if (selectedTier === "growth") {
+      return {
+        label: "What should growth focus on first?",
+        placeholder: "Examples: local search visibility, more estimate requests, stronger service pages, better calls to action.",
+      };
+    }
+    if (selectedTier === "intelligence") {
+      return {
+        label: "What result should we measure and improve?",
+        placeholder: "Examples: more qualified leads, more calls, better form completion, stronger conversion on a key service page.",
+      };
+    }
+    if (selectedTier === "enterprise") {
+      return {
+        label: "What makes this project operationally complex?",
+        placeholder: "Locations, departments, permissions, routing, reporting, custom workflows, larger page counts, or higher usage.",
+      };
+    }
+    return {
+      label: "What matters most for the first version?",
+      placeholder: "Examples: look more professional, replace an old site, make it easier for customers to contact us.",
+    };
+  }, [selectedTier]);
 
   async function handleSignup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,6 +73,8 @@ export function PortalSignup() {
     const trimmedBusinessName = businessName.trim();
     const trimmedContactName = contactName.trim();
     const trimmedEmail = email.trim();
+    const trimmedFamilyDetails = familyDetails.trim();
+    const trimmedPrimaryGoal = primaryGoal.trim();
 
     setStatusMessage("");
     setErrorMessage("");
@@ -58,6 +91,11 @@ export function PortalSignup() {
 
     if (!trimmedContactName) {
       setErrorMessage("Enter your name.");
+      return;
+    }
+
+    if (!trimmedFamilyDetails || !trimmedPrimaryGoal) {
+      setErrorMessage("Complete the project-fit questions so NXQ can route the right intake after verification.");
       return;
     }
 
@@ -83,6 +121,10 @@ export function PortalSignup() {
           contact_name: trimmedContactName,
           product_family_slug: selectedFamily.slug,
           product_tier_key: selectedTier,
+          intake_family_details: trimmedFamilyDetails,
+          intake_service_area: serviceArea.trim(),
+          intake_primary_goal: trimmedPrimaryGoal,
+          intake_tier_goal: tierGoal.trim(),
         },
       },
     });
@@ -99,127 +141,129 @@ export function PortalSignup() {
   }
 
   return (
-    <main className="nxq-page">
-      <section className="portal-shell portal-auth-shell">
-        <a className="badge" href="/plans">
+    <main className="lux-home">
+      <section className="premium-signup-shell">
+        <a className="lux-btn lux-btn-secondary" href="/#pricing">
           <ArrowLeft size={15} />
-          Change product family
+          Change family or tier
         </a>
 
-        <form className="auth-card" onSubmit={handleSignup}>
-          <div className="panel-title">
-            <UserPlus size={22} />
-            <div>
-              <h1>Create account</h1>
-              <p className="subtle">{selectedFamily.name}</p>
-            </div>
+        <form className="lux-card premium-signup-card" onSubmit={handleSignup}>
+          <div className="lux-section-head">
+            <span><Sparkles size={14} /> Project setup</span>
+            <h2>{selectedFamily.name} · {tier.name}</h2>
+            <p>
+              This first form is matched to the website system and service level you selected. After verification, the client workspace continues into the existing detailed setup and owner-review workflow.
+            </p>
           </div>
 
           {unavailableFamily ? (
             <div className="notice-card">
               <strong>{unavailableFamily.name} is still in development.</strong>
-              <p>
-                NXQ-Business was selected instead so no unfinished product workflow can be purchased accidentally.
-              </p>
+              <p>NXQ-Business was selected instead so an unfinished family cannot be purchased accidentally.</p>
             </div>
           ) : null}
 
-          <p className="subtle">{selectedFamily.description}</p>
+          <div className="premium-selection-summary">
+            <span className="lux-plan-badge">{selectedFamily.name}</span>
+            <span className="lux-plan-badge">{tier.name} · {tier.priceLabel}</span>
+            <span className="lux-plan-badge">{tier.outcome}</span>
+          </div>
 
-          <section className="panel">
+          <section className="premium-intake-box">
             <div className="panel-title">
               <CheckCircle2 size={20} />
               <div>
-                <h2>Choose your tier</h2>
-                <p className="subtle">
-                  Your product family is selected. Choose the monthly service level that fits your business.
-                </p>
+                <h2>Choose your service level</h2>
+                <p className="subtle">You can change this before creating the account.</p>
               </div>
             </div>
 
-            <div className="settings-grid">
-              {productTiers.map((tier) => {
-                const isSelected = selectedTier === tier.key;
-
+            <div className="premium-tier-grid">
+              {productTiers.map((item) => {
+                const isSelected = selectedTier === item.key;
                 return (
                   <button
-                    className={`settings-card ${isSelected ? "selected-plan-card" : ""}`}
-                    key={tier.key}
-                    onClick={() => setSelectedTier(tier.key)}
+                    className={`premium-tier-option ${isSelected ? "selected" : ""}`}
+                    key={item.key}
+                    onClick={() => setSelectedTier(item.key)}
                     type="button"
                   >
-                    <span>{tier.name}</span>
-                    <strong>{tier.priceLabel}</strong>
-                    <p>{tier.description}</p>
-                    <small>{isSelected ? "Selected" : "Choose this tier"}</small>
+                    <span>{item.priceLabel}</span>
+                    <strong>{item.name}</strong>
+                    <small>{item.outcome}</small>
                   </button>
                 );
               })}
             </div>
           </section>
 
+          <section className="premium-intake-box">
+            <h2>Tell us what we are building around.</h2>
+            <p>The questions below change with the family and tier instead of forcing every type of client through the same generic form.</p>
+
+            <div className="premium-form-grid">
+              <label>
+                <span>Business name</span>
+                <input className="auth-input" onChange={(event) => setBusinessName(event.target.value)} placeholder="Smith Tree Service" type="text" value={businessName} />
+              </label>
+
+              <label>
+                <span>Your name</span>
+                <input className="auth-input" onChange={(event) => setContactName(event.target.value)} placeholder="John Smith" type="text" value={contactName} />
+              </label>
+
+              <label className="full">
+                <span>{selectedFamily.intakeLabel}</span>
+                <textarea className="auth-input" onChange={(event) => setFamilyDetails(event.target.value)} placeholder={selectedFamily.intakePlaceholder} rows={4} value={familyDetails} />
+              </label>
+
+              <label>
+                <span>Primary service area or market</span>
+                <input className="auth-input" onChange={(event) => setServiceArea(event.target.value)} placeholder="Chico, CA and nearby communities" type="text" value={serviceArea} />
+              </label>
+
+              <label>
+                <span>Primary website goal</span>
+                <input className="auth-input" onChange={(event) => setPrimaryGoal(event.target.value)} placeholder="More estimate requests" type="text" value={primaryGoal} />
+              </label>
+
+              <label className="full">
+                <span>{tierQuestion.label}</span>
+                <textarea className="auth-input" onChange={(event) => setTierGoal(event.target.value)} placeholder={tierQuestion.placeholder} rows={3} value={tierGoal} />
+              </label>
+            </div>
+          </section>
+
+          <section className="premium-intake-box">
+            <h2>Create your NXQ client account.</h2>
+            <p>Your selection and project-fit answers stay attached to the signup so the client workspace can continue with the correct product context.</p>
+
+            <div className="premium-form-grid">
+              <label>
+                <span>Email</span>
+                <input className="auth-input" id="signup-email" onChange={(event) => setEmail(event.target.value)} placeholder="client@example.com" type="email" value={email} />
+              </label>
+
+              <label>
+                <span>Password</span>
+                <input className="auth-input" id="signup-password" onChange={(event) => setPassword(event.target.value)} placeholder="Create a secure password" type="password" value={password} />
+              </label>
+            </div>
+          </section>
+
           {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
           {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
 
-          <label className="auth-label" htmlFor="business-name">
-            Business name
-          </label>
-          <input
-            className="auth-input"
-            id="business-name"
-            onChange={(event) => setBusinessName(event.target.value)}
-            placeholder="Smith Tree Service"
-            type="text"
-            value={businessName}
-          />
-
-          <label className="auth-label" htmlFor="contact-name">
-            Your name
-          </label>
-          <input
-            className="auth-input"
-            id="contact-name"
-            onChange={(event) => setContactName(event.target.value)}
-            placeholder="John Smith"
-            type="text"
-            value={contactName}
-          />
-
-          <label className="auth-label" htmlFor="signup-email">
-            Email
-          </label>
-          <input
-            className="auth-input"
-            id="signup-email"
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="client@example.com"
-            type="email"
-            value={email}
-          />
-
-          <label className="auth-label" htmlFor="signup-password">
-            Password
-          </label>
-          <input
-            className="auth-input"
-            id="signup-password"
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Create a secure password"
-            type="password"
-            value={password}
-          />
-
           <div className="notice-card">
-            <strong>
-              {selectedFamily.name} · {productTiers.find((tier) => tier.key === selectedTier)?.name}
-            </strong>
+            <strong>{selectedFamily.name} · {tier.name}</strong>
             <p>
-              This selection will be saved to your NXQ client workspace. Major plan or product-family changes can later be requested from Client Settings.
+              Creating an account does not approve or launch the project. Existing owner-review and approval boundaries remain in place before the managed build workflow moves forward.
             </p>
           </div>
 
-          <button className="primary-btn auth-submit" disabled={isSubmitting} type="submit">
-            {isSubmitting ? "Creating account..." : "Create account"}
+          <button className="lux-btn lux-btn-primary auth-submit" disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Creating account..." : "Create account and continue"}
             <MailCheck size={18} />
           </button>
 
