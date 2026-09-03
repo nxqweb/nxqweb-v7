@@ -40,6 +40,8 @@ type ReadinessCheck = {
   status: string;
 };
 
+type SourceState = "idle" | "loading" | "ready" | "error";
+
 function money(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -52,8 +54,12 @@ export function OwnerCommandCenter() {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [summary, setSummary] = useState<OwnerPortalSummary | null>(null);
   const [exceptions, setExceptions] = useState<ExceptionCenterData | null>(null);
-  const [runtimeOpen, setRuntimeOpen] = useState(0);
+  const [runtimeOpen, setRuntimeOpen] = useState<number | null>(null);
   const [readiness, setReadiness] = useState<ReadinessCheck[]>([]);
+  const [summaryState, setSummaryState] = useState<SourceState>("idle");
+  const [exceptionState, setExceptionState] = useState<SourceState>("idle");
+  const [runtimeState, setRuntimeState] = useState<SourceState>("idle");
+  const [readinessState, setReadinessState] = useState<SourceState>("idle");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -77,9 +83,17 @@ export function OwnerCommandCenter() {
   async function load() {
     setLoading(true);
     setError("");
+    setSummaryState("loading");
+    setExceptionState("loading");
+    setRuntimeState("loading");
+    setReadinessState("loading");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Supabase is not configured.");
+      setError("Operational data is unavailable because Supabase is not configured.");
+      setSummaryState("error");
+      setExceptionState("error");
+      setRuntimeState("error");
+      setReadinessState("error");
       setLoading(false);
       return;
     }
@@ -94,18 +108,49 @@ export function OwnerCommandCenter() {
         .eq("required", true),
     ]);
 
-    if (summaryResult.error) setError(`Owner summary failed: ${summaryResult.error.message}`);
-    if (!summaryResult.error) {
+    const failures: string[] = [];
+
+    if (summaryResult.error) {
+      setSummaryState("error");
+      setSummary(null);
+      failures.push("owner summary");
+    } else {
       const row = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
       setSummary((row || null) as OwnerPortalSummary | null);
+      setSummaryState("ready");
     }
 
-    if (!exceptionResult.error) setExceptions((exceptionResult.data || null) as ExceptionCenterData | null);
-    if (!runtimeResult.error) {
+    if (exceptionResult.error) {
+      setExceptionState("error");
+      setExceptions(null);
+      failures.push("exception center");
+    } else {
+      setExceptions((exceptionResult.data || null) as ExceptionCenterData | null);
+      setExceptionState("ready");
+    }
+
+    if (runtimeResult.error) {
+      setRuntimeState("error");
+      setRuntimeOpen(null);
+      failures.push("runtime incidents");
+    } else {
       const runtime = (runtimeResult.data || {}) as RuntimeDispatchData;
       setRuntimeOpen(Number(runtime.open_count || 0));
+      setRuntimeState("ready");
     }
-    if (!readinessResult.error) setReadiness((readinessResult.data || []) as ReadinessCheck[]);
+
+    if (readinessResult.error) {
+      setReadinessState("error");
+      setReadiness([]);
+      failures.push("launch readiness");
+    } else {
+      setReadiness((readinessResult.data || []) as ReadinessCheck[]);
+      setReadinessState("ready");
+    }
+
+    if (failures.length > 0) {
+      setError(`Some operational data could not be loaded: ${failures.join(", ")}. Unknown values are shown as unavailable instead of zero.`);
+    }
 
     setLoading(false);
   }
@@ -115,15 +160,25 @@ export function OwnerCommandCenter() {
   }, []);
 
   const readinessSummary = useMemo(() => {
+    if (readinessState !== "ready") return null;
     const required = readiness.length;
     const ready = readiness.filter((check) => ["ready", "not_applicable"].includes(check.status)).length;
     return { required, ready, blocked: Math.max(0, required - ready) };
-  }, [readiness]);
+  }, [readiness, readinessState]);
 
-  const ownerAttention = Number(exceptions?.needs_owner_attention || 0) + runtimeOpen;
-  const pendingApprovals = Number(summary?.pending_approvals || 0);
-  const unreadMessages = Number(summary?.unread_client_messages || 0);
-  const hasUrgentWork = ownerAttention > 0 || pendingApprovals > 0 || unreadMessages > 0;
+  const ownerAttentionKnown = exceptionState === "ready" && runtimeState === "ready";
+  const ownerAttention = ownerAttentionKnown
+    ? Number(exceptions?.needs_owner_attention || 0) + Number(runtimeOpen || 0)
+    : null;
+  const summaryKnown = summaryState === "ready";
+  const pendingApprovals = summaryKnown ? Number(summary?.pending_approvals || 0) : null;
+  const unreadMessages = summaryKnown ? Number(summary?.unread_client_messages || 0) : null;
+  const hasUrgentWork =
+    (ownerAttention ?? 0) > 0 ||
+    (pendingApprovals ?? 0) > 0 ||
+    (unreadMessages ?? 0) > 0;
+  const hasUnknownOperationalData =
+    [summaryState, exceptionState, runtimeState, readinessState].some((state) => state === "error");
 
   if (!host) return null;
 
@@ -132,13 +187,21 @@ export function OwnerCommandCenter() {
       <div className="owner-command-center-head">
         <div>
           <span className="owner-command-kicker">NXQ command center</span>
-          <h2>{hasUrgentWork ? "Your attention queue" : "Operations are under control"}</h2>
+          <h2>
+            {hasUrgentWork
+              ? "Your attention queue"
+              : hasUnknownOperationalData
+                ? "Operational status needs review"
+                : "Operations are under control"}
+          </h2>
           <p>
             {loading
               ? "Loading the current owner workload..."
               : hasUrgentWork
                 ? "NXQ keeps routine automation out of your way and surfaces only the decisions, messages, and exceptions that need you."
-                : "No immediate owner action is surfaced right now. NXQ can keep handling the normal workflow."}
+                : hasUnknownOperationalData
+                  ? "One or more operational sources could not be verified, so NXQ is showing those values as unavailable instead of assuming everything is healthy."
+                  : "No immediate owner action is surfaced right now. NXQ can keep handling the normal workflow."}
           </p>
         </div>
         <button className="icon-btn owner-command-refresh" type="button" onClick={() => void load()} disabled={loading}>
@@ -149,42 +212,50 @@ export function OwnerCommandCenter() {
       {error ? <div className="owner-command-error" role="alert">{error}</div> : null}
 
       <div className="owner-command-priority-grid">
-        <a className={`owner-command-priority ${pendingApprovals > 0 ? "needs-action" : "clear"}`} href="/owner">
+        <a className={`owner-command-priority ${pendingApprovals === null ? "warning" : pendingApprovals > 0 ? "needs-action" : "clear"}`} href="/owner">
           <span className="owner-command-icon"><ShieldAlert size={20} /></span>
           <div>
             <small>Owner decisions</small>
-            <strong>{pendingApprovals}</strong>
-            <span>{pendingApprovals > 0 ? "approval requests waiting" : "no approval decisions waiting"}</span>
+            <strong>{pendingApprovals === null ? "—" : pendingApprovals}</strong>
+            <span>{pendingApprovals === null ? "approval status unavailable" : pendingApprovals > 0 ? "approval requests waiting" : "no approval decisions waiting"}</span>
           </div>
           <ArrowRight size={17} />
         </a>
 
-        <a className={`owner-command-priority ${unreadMessages > 0 ? "needs-action" : "clear"}`} href="/owner">
+        <a className={`owner-command-priority ${unreadMessages === null ? "warning" : unreadMessages > 0 ? "needs-action" : "clear"}`} href="/owner">
           <span className="owner-command-icon"><MessageSquareText size={20} /></span>
           <div>
             <small>Client messages</small>
-            <strong>{unreadMessages}</strong>
-            <span>{unreadMessages > 0 ? "unread messages need review" : "inbox is clear"}</span>
+            <strong>{unreadMessages === null ? "—" : unreadMessages}</strong>
+            <span>{unreadMessages === null ? "inbox status unavailable" : unreadMessages > 0 ? "unread messages need review" : "inbox is clear"}</span>
           </div>
           <ArrowRight size={17} />
         </a>
 
-        <a className={`owner-command-priority ${ownerAttention > 0 ? "danger" : "clear"}`} href="/owner/exceptions">
+        <a className={`owner-command-priority ${ownerAttention === null ? "warning" : ownerAttention > 0 ? "danger" : "clear"}`} href="/owner/exceptions">
           <span className="owner-command-icon"><AlertTriangle size={20} /></span>
           <div>
             <small>Exceptions</small>
-            <strong>{ownerAttention}</strong>
-            <span>{ownerAttention > 0 ? "items automation could not safely finish" : "no owner exceptions"}</span>
+            <strong>{ownerAttention === null ? "—" : ownerAttention}</strong>
+            <span>{ownerAttention === null ? "exception status unavailable" : ownerAttention > 0 ? "items automation could not safely finish" : "no owner exceptions"}</span>
           </div>
           <ArrowRight size={17} />
         </a>
 
-        <a className={`owner-command-priority ${readinessSummary.blocked > 0 ? "warning" : "clear"}`} href="/owner/launch-readiness">
+        <a className={`owner-command-priority ${readinessSummary === null ? "warning" : readinessSummary.blocked > 0 ? "warning" : "clear"}`} href="/owner/launch-readiness">
           <span className="owner-command-icon"><Rocket size={20} /></span>
           <div>
             <small>Launch readiness</small>
-            <strong>{readinessSummary.required ? `${readinessSummary.ready}/${readinessSummary.required}` : "—"}</strong>
-            <span>{readinessSummary.blocked > 0 ? `${readinessSummary.blocked} required checks not ready` : "required checks currently ready"}</span>
+            <strong>{readinessSummary && readinessSummary.required ? `${readinessSummary.ready}/${readinessSummary.required}` : "—"}</strong>
+            <span>
+              {readinessSummary === null
+                ? "readiness status unavailable"
+                : readinessSummary.blocked > 0
+                  ? `${readinessSummary.blocked} required checks not ready`
+                  : readinessSummary.required > 0
+                    ? "required checks currently ready"
+                    : "no required checks reported"}
+            </span>
           </div>
           <ArrowRight size={17} />
         </a>
@@ -194,22 +265,22 @@ export function OwnerCommandCenter() {
         <div className="owner-command-metric">
           <DollarSign size={18} />
           <span>Active MRR</span>
-          <strong>{money(Number(summary?.active_monthly_revenue || 0))}/mo</strong>
+          <strong>{summaryKnown ? `${money(Number(summary?.active_monthly_revenue || 0))}/mo` : "—"}</strong>
         </div>
         <div className="owner-command-metric">
           <Activity size={18} />
           <span>Pipeline value</span>
-          <strong>{money(Number(summary?.pipeline_monthly_value || 0))}/mo</strong>
+          <strong>{summaryKnown ? `${money(Number(summary?.pipeline_monthly_value || 0))}/mo` : "—"}</strong>
         </div>
         <div className="owner-command-metric">
           <Users size={18} />
           <span>Clients</span>
-          <strong>{Number(summary?.active_clients || 0)} active · {Number(summary?.total_clients || 0)} total</strong>
+          <strong>{summaryKnown ? `${Number(summary?.active_clients || 0)} active · ${Number(summary?.total_clients || 0)} total` : "—"}</strong>
         </div>
         <div className="owner-command-metric">
-          {Number(exceptions?.auto_retrying || 0) > 0 ? <Clock3 size={18} /> : <CheckCircle2 size={18} />}
+          {exceptionState === "ready" && Number(exceptions?.auto_retrying || 0) > 0 ? <Clock3 size={18} /> : <CheckCircle2 size={18} />}
           <span>Automation recovery</span>
-          <strong>{Number(exceptions?.auto_retrying || 0)} auto-retrying</strong>
+          <strong>{exceptionState === "ready" ? `${Number(exceptions?.auto_retrying || 0)} auto-retrying` : "—"}</strong>
         </div>
       </div>
 
