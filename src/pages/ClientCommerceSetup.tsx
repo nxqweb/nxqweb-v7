@@ -110,6 +110,7 @@ export function ClientCommerceSetup() {
   const [intake, setIntake] = useState<CommerceIntake>(initialIntake);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -124,10 +125,11 @@ export function ClientCommerceSetup() {
 
   async function loadIntake() {
     setLoading(true);
+    setVerified(false);
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce setup is unavailable because Supabase is not configured.");
+      setError("Commerce setup is temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -140,9 +142,10 @@ export function ClientCommerceSetup() {
 
     const result = await supabase.rpc("get_my_commerce_intake");
     if (result.error) {
-      setError(`Commerce setup failed to load: ${result.error.message}`);
-    } else if (result.data) {
-      setIntake({ ...initialIntake, ...(result.data as CommerceIntake) });
+      setError("Commerce setup could not be verified right now. Unverified setup fields are not shown.");
+    } else {
+      setIntake({ ...initialIntake, ...((result.data || {}) as Partial<CommerceIntake>) });
+      setVerified(true);
     }
 
     setLoading(false);
@@ -162,7 +165,7 @@ export function ClientCommerceSetup() {
   }
 
   async function saveIntake(submitForReview: boolean) {
-    if (!supabase || isLocked) return;
+    if (!supabase || isLocked || saving || !verified) return;
 
     if (submitForReview && !intake.store_name.trim()) {
       setError("Enter the store name before submitting for review.");
@@ -190,13 +193,15 @@ export function ClientCommerceSetup() {
     setSaving(false);
 
     if (result.error) {
-      setError(`Commerce setup could not be saved: ${result.error.message}`);
+      setError(submitForReview
+        ? "Commerce setup could not be submitted. Nothing was published, activated, or sent to production."
+        : "Commerce setup could not be saved. Your previously saved setup remains unchanged.");
       return;
     }
 
     const response = result.data as { status?: string; message?: string } | null;
     setIntake((current) => ({ ...current, status: response?.status || current.status }));
-    setMessage(response?.message || "Commerce setup saved.");
+    setMessage(submitForReview ? "Commerce setup submitted for NXQ review." : "Commerce setup draft saved.");
   }
 
   return (
@@ -213,12 +218,12 @@ export function ClientCommerceSetup() {
           <a className="icon-btn" href="/client/commerce"><ArrowLeft size={16} /> Back to Commerce</a>
         </div>
 
-        <div className="notice-card">Saving or submitting this form does not publish a store, activate payments, or change your plan.</div>
-        {error ? <div className="auth-error">{error}</div> : null}
+        <div className="notice-card">Saving or submitting this form does not publish a store, activate payments, change your plan, or bypass owner and production safety gates.</div>
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
         {message ? <div className="auth-success">{message}</div> : null}
         {loading ? <div className="empty-state">Loading Commerce setup...</div> : null}
 
-        {!loading ? (
+        {!loading && verified ? (
           <div className="owner-detail-grid">
             <section className="panel panel-wide">
               <div className="panel-title"><ShoppingBag size={20} /><div><h2>Store basics</h2><p className="subtle">Start with what you sell and how the catalog should be organized.</p></div></div>
