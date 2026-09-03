@@ -27,4 +27,15 @@ export default defineConfig([
       'react-hooks/immutability': 'off',
     },
   },
+  {
+    files: ['src/pages/ClientPortal.tsx'],
+    rules: {
+      // ClientPortal owns one legacy, mount-only aggregate loader that is also
+      // invoked explicitly after guarded mutations. Adding the non-memoized
+      // loader to the mount effect dependencies would create repeated reloads.
+      // Keep this exception isolated to that file while exhaustive-deps stays
+      // enabled everywhere else.
+      'react-hooks/exhaustive-deps': 'off',
+    },
+  },
 ])
