@@ -13,7 +13,7 @@ export function ResetPassword() {
   useEffect(() => {
     async function checkRecoverySession() {
       if (!isSupabaseConfigured || !supabase) {
-        setErrorMessage("Password recovery is not configured yet.");
+        setErrorMessage("Password recovery is temporarily unavailable. Please try again later.");
         return;
       }
 
@@ -29,7 +29,7 @@ export function ResetPassword() {
       );
     }
 
-    checkRecoverySession();
+    void checkRecoverySession();
   }, []);
 
   async function handlePasswordUpdate(event: React.FormEvent<HTMLFormElement>) {
@@ -39,7 +39,7 @@ export function ResetPassword() {
     setErrorMessage("");
 
     if (!supabase) {
-      setErrorMessage("Password recovery is not configured yet.");
+      setErrorMessage("Password recovery is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -62,7 +62,7 @@ export function ResetPassword() {
     setIsSubmitting(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage("We could not update your password right now. Request a new recovery link or try again.");
       return;
     }
 
@@ -91,14 +91,15 @@ export function ResetPassword() {
             Choose a new password for your NXQ-Web portal account.
           </p>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <label className="auth-label" htmlFor="new-password">
             New password
           </label>
 
           <input
+            autoComplete="new-password"
             className="auth-input"
             disabled={!hasRecoverySession}
             id="new-password"
@@ -113,6 +114,7 @@ export function ResetPassword() {
           </label>
 
           <input
+            autoComplete="new-password"
             className="auth-input"
             disabled={!hasRecoverySession}
             id="confirm-password"
