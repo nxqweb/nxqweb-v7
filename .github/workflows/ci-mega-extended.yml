@@ -22,6 +22,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Pre-18 launch truth contract
+        run: node scripts/validate-pre18-launch-truth-contract.mjs
       - name: Wave 14 classifier contract
         run: node scripts/validate-autonomy-ops-wave14-contract.mjs
       - name: Extended autonomy safety contract
