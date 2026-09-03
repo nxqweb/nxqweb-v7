@@ -61,7 +61,7 @@ export function ClientWebsiteHealth() {
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Supabase is not configured.");
+      setError("Website health is temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -73,7 +73,7 @@ export function ClientWebsiteHealth() {
     }
 
     const result = await supabase.rpc("current_client_operational_health");
-    if (result.error) setError(`Website health failed to load: ${result.error.message}`);
+    if (result.error) setError("Website health could not be loaded right now.");
     else setData(result.data as HealthData);
     setLoading(false);
   }
@@ -109,8 +109,8 @@ export function ClientWebsiteHealth() {
           </div>
         </div>
 
-        {error ? <div className="auth-error">{error}</div> : null}
-        {loading ? <div className="empty-state">Loading website health...</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
+        {loading ? <div className="empty-state" role="status">Loading website health...</div> : null}
 
         {!loading && data ? (
           <>
@@ -157,7 +157,7 @@ export function ClientWebsiteHealth() {
                 <p className="subtle">Last maintenance: {formatTime(data.last_maintenance_at)}</p>
                 <p className="subtle">Project stage: {pretty(data.project_stage)}</p>
                 <p className="subtle">Website status: {pretty(data.website_status)}</p>
-                {data.latest_maintenance_error ? <p className="auth-error">{data.latest_maintenance_error}</p> : null}
+                {data.latest_maintenance_error ? <p className="auth-error">A maintenance check needs another retry. Detailed provider errors stay internal to NXQ.</p> : null}
               </section>
             </div>
 
@@ -177,7 +177,7 @@ export function ClientWebsiteHealth() {
                     <article className="owner-message-card" key={`${check.task_type}-${check.checked_at}-${index}`}>
                       <strong>{pretty(check.task_type)}</strong>
                       <span className="subtle">Status: {pretty(check.status)} · {formatTime(check.checked_at)}</span>
-                      {check.last_error ? <span className="subtle">{check.last_error}</span> : null}
+                      {check.last_error ? <span className="subtle">This check needs another retry; the detailed provider error is kept internal.</span> : null}
                     </article>
                   ))}
                 </div>
