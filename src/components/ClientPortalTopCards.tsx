@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Ban, CheckCircle2, Clock3, Snowflake, TriangleAlert } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  Ban,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  Route,
+  Snowflake,
+  Sparkles,
+  TriangleAlert,
+} from "lucide-react";
 import { createPortal } from "react-dom";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { ClientCommercePortalTab } from "./ClientCommercePortalTab";
@@ -18,6 +29,15 @@ type HealthSummary = {
   open_alerts?: number;
   deployment_status?: string | null;
   nxq_id?: string | null;
+};
+
+type PortalAction = {
+  owner: "client" | "nxq";
+  tone: "info" | "warning" | "danger" | "success";
+  title: string;
+  detail: string;
+  href: string;
+  label: string;
 };
 
 export function ClientPortalTopCards() {
@@ -178,12 +198,120 @@ export function ClientPortalTopCards() {
     };
   }, [health]);
 
+  const actionCenter = useMemo<PortalAction[]>(() => {
+    if (billing?.status === "denied") {
+      return [{
+        owner: "client",
+        tone: "danger",
+        title: "Project stopped",
+        detail: billing.pipeline_stop_reason || "This website setup was not approved and downstream automation is stopped.",
+        href: "/client",
+        label: "View status",
+      }];
+    }
+
+    const actions: PortalAction[] = [];
+    const billingStatus = billing?.billing_status || "not_configured";
+
+    if (["past_due", "freeze_review", "frozen"].includes(billingStatus)) {
+      actions.push({
+        owner: "client",
+        tone: billingStatus === "frozen" ? "danger" : "warning",
+        title: billingStatus === "frozen" ? "Resolve paused billing" : "Review billing",
+        detail: billingStatus === "frozen"
+          ? "Website work is paused until billing is resolved."
+          : "Your billing state needs attention before it becomes a service blocker.",
+        href: "/client/billing",
+        label: "Open billing",
+      });
+    } else if (billingStatus !== "active") {
+      actions.push({
+        owner: "client",
+        tone: "info",
+        title: "Finish billing setup",
+        detail: "Billing is not fully configured yet. Review the billing page for the current state.",
+        href: "/client/billing",
+        label: "Billing details",
+      });
+    }
+
+    if (effectiveJourney) {
+      actions.push({
+        owner: effectiveJourney.next_action.owner,
+        tone: effectiveJourney.next_action.owner === "client" ? "warning" : "info",
+        title: effectiveJourney.next_action.title,
+        detail: effectiveJourney.next_action.detail,
+        href: effectiveJourney.next_action.href,
+        label: effectiveJourney.next_action.owner === "client" ? "Take action" : "View progress",
+      });
+    }
+
+    if (health?.health === "needs_attention" || health?.health === "watching") {
+      actions.push({
+        owner: "nxq",
+        tone: health.health === "needs_attention" ? "danger" : "warning",
+        title: health.health === "needs_attention" ? "Website issue under recovery" : "Website issue under observation",
+        detail: health.health === "needs_attention"
+          ? "NXQ is already handling the issue through the protected recovery path."
+          : "NXQ is monitoring the issue and will escalate only if it becomes actionable.",
+        href: "/client/health",
+        label: "Health details",
+      });
+    }
+
+    if (actions.length === 0) {
+      actions.push({
+        owner: "nxq",
+        tone: "success",
+        title: "Nothing needs your attention",
+        detail: "NXQ is handling the current website workflow. We will surface a task here when you need to do something.",
+        href: "/client/journey",
+        label: "View journey",
+      });
+    }
+
+    return actions.slice(0, 4);
+  }, [billing, effectiveJourney, health]);
+
   if (!host) return null;
 
   const denied = billing?.status === "denied";
+  const clientActionCount = actionCenter.filter((action) => action.owner === "client" && action.tone !== "success").length;
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+      <section className="notice-card portal-action-center info" aria-label="NXQ-Web action center">
+        <div className="portal-action-center-head">
+          <div className="panel-title">
+            <Sparkles size={21} />
+            <div>
+              <span className="journey-kicker">NXQ-Web action center</span>
+              <strong>{clientActionCount > 0 ? `${clientActionCount} item${clientActionCount === 1 ? "" : "s"} need your attention` : "Your website workflow is on track"}</strong>
+              <p>Important client tasks rise to the top. Everything marked NXQ is being handled for you.</p>
+            </div>
+          </div>
+          <a className="icon-btn" href="/client/journey">Full journey <ArrowRight size={15} /></a>
+        </div>
+
+        <div className="portal-action-grid">
+          {actionCenter.map((action, index) => (
+            <article className={`portal-action-item ${action.tone}`} key={`${action.title}-${index}`}>
+              <div className="portal-action-icon">
+                {action.owner === "client"
+                  ? action.href.includes("billing") ? <CreditCard size={18} /> : <TriangleAlert size={18} />
+                  : action.tone === "success" ? <CheckCircle2 size={18} /> : <Route size={18} />}
+              </div>
+              <div className="portal-action-copy">
+                <span>{action.owner === "client" ? "Your action" : "NXQ handling"}</span>
+                <strong>{action.title}</strong>
+                <p>{action.detail}</p>
+              </div>
+              <a className="icon-btn" href={action.href}>{action.label}</a>
+            </article>
+          ))}
+        </div>
+      </section>
+
       {effectiveJourney ? <ClientJourneySummaryCard journey={effectiveJourney} /> : null}
       {denied ? (
         <section className="notice-card portal-decision-notice danger">
