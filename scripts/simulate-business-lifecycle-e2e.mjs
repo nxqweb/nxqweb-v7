@@ -7,6 +7,7 @@ class LifecycleHarness {
   constructor() {
     this.sequence = 0;
     this.clients = new Map();
+    this.projects = new Map();
     this.jobs = new Map();
     this.githubRepos = new Map();
     this.netlifySites = new Map();
@@ -27,7 +28,7 @@ class LifecycleHarness {
       status: "pending_review",
       intake: { complete: true, family: "business", tier: "growth", services: ["primary-service"] },
       approval: "pending",
-      project: { id: this.next("project"), status: "approved_awaiting_workspace", mainSha: "main-initial" },
+      project: null,
       buildPlan: null,
       infrastructure: { githubRepoId: null, netlifySiteId: null },
       preview: null,
@@ -52,6 +53,18 @@ class LifecycleHarness {
     assert.ok(["approved", "active", "overdue"].includes(client.status), "client lifecycle blocks automation");
   }
 
+  evaluateOnboarding(client) {
+    this.requireEligible(client);
+    let project = this.projects.get(client.id);
+    if (!project) {
+      project = { id: this.next("project"), status: "approved_awaiting_workspace", mainSha: "main-initial" };
+      this.projects.set(client.id, project);
+    }
+    client.project = project;
+    this.job(client, "prepare_build_plan", `build-plan:${project.id}:v2`);
+    return project;
+  }
+
   decide(client, decision) {
     assert.ok(["accept", "deny"].includes(decision), "decision must be accept or deny");
     if (client.approval === (decision === "accept" ? "accepted" : "denied")) return { alreadyApplied: true };
@@ -67,7 +80,7 @@ class LifecycleHarness {
     }
     client.approval = "accepted";
     client.status = "approved";
-    this.job(client, "prepare_build_plan", `build-plan:${client.project.id}:v2`);
+    this.evaluateOnboarding(client);
     this.job(client, "project_infrastructure", `infrastructure:${client.project.id}:v1`);
     this.audit.push([client.id, "owner_approval_accepted"]);
     return { accepted: true };
@@ -294,11 +307,35 @@ for (let index = 1; index <= requestedRuns; index += 1) {
 }
 
 scenario("DENY creates zero provider infrastructure", () => {
-  const before = [harness.githubRepos.size, harness.netlifySites.size, harness.jobs.size];
+  const before = [harness.projects.size, harness.githubRepos.size, harness.netlifySites.size, harness.jobs.size];
   const client = harness.createClient("deny");
   harness.decide(client, "deny");
-  assert.deepEqual([harness.githubRepos.size, harness.netlifySites.size, harness.jobs.size], before);
+  assert.deepEqual([harness.projects.size, harness.githubRepos.size, harness.netlifySites.size, harness.jobs.size], before);
   assert.equal(client.status, "denied");
+});
+
+scenario("Approval and recovery evaluation reuse one project and canonical plan job", () => {
+  const client = harness.createClient("approval-recovery-overlap");
+  harness.decide(client, "accept");
+  const firstProject = client.project;
+  const recoveredProject = harness.evaluateOnboarding(client);
+  assert.equal(recoveredProject.id, firstProject.id);
+  assert.equal([...harness.projects.keys()].filter((id) => id === client.id).length, 1);
+  assert.equal(
+    [...harness.jobs.values()].filter(
+      (job) => job.clientId === client.id && job.type === "prepare_build_plan",
+    ).length,
+    1,
+  );
+  assert.equal(
+    [...harness.jobs.values()].some(
+      (job) =>
+        job.clientId === client.id
+        && job.type === "prepare_build_plan"
+        && job.idempotencyKey.endsWith(":v1"),
+    ),
+    false,
+  );
 });
 
 scenario("GitHub checkpoint retry creates one repo and one site", () => {

@@ -3,10 +3,14 @@ import fs from "node:fs";
 const legacyApproval = fs.readFileSync("supabase/migrations/097_automation_backend_foundation.sql", "utf8");
 const canonicalOnboarding = fs.readFileSync("supabase/migrations/099_automatic_onboarding_and_progression.sql", "utf8");
 const repair = fs.readFileSync("supabase/migrations/245_harden_business_approval_run_idempotency.sql", "utf8");
+const serializedEvaluator = repair.match(
+  /create or replace function public\.evaluate_client_onboarding\(target_client_id uuid\)[\s\S]*?(?=create or replace function public\.bootstrap_approved_client_automation\(\))/,
+)?.[0] || "";
 
 const checks = [
   ["Historical duplicate source remains forward-only", legacyApproval.includes(":prepare-build-plan:v1")],
   ["Canonical Business plan key remains v2", canonicalOnboarding.includes(":prepare-build-plan:v2")],
+  ["Canonical onboarding serializes project creation per client", serializedEvaluator.includes("pg_advisory_xact_lock(hashtextextended(target_client_id::text, 0))") && serializedEvaluator.indexOf("pg_advisory_xact_lock") < serializedEvaluator.indexOf("insert into public.projects")],
   ["Repair redefines approved-client bootstrap", repair.includes("create or replace function public.bootstrap_approved_client_automation()")],
   ["Business bootstrap requires accepted owner setup approval", repair.includes("accepted_owner_approval_required") && repair.includes("website_setup_review")],
   ["Business bootstrap evaluates onboarding immediately", repair.includes("onboarding_result := public.evaluate_client_onboarding(new.id)")],
@@ -32,4 +36,3 @@ for (const [name, passed] of checks) {
 
 console.log(`\n${checks.length - failed}/${checks.length} Business approval/run idempotency checks passed.`);
 if (failed) process.exit(1);
-
