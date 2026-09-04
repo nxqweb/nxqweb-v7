@@ -10,6 +10,7 @@ class LifecycleHarness {
     this.jobs = new Map();
     this.githubRepos = new Map();
     this.netlifySites = new Map();
+    this.websiteRuns = new Map();
     this.audit = [];
   }
 
@@ -66,14 +67,14 @@ class LifecycleHarness {
     }
     client.approval = "accepted";
     client.status = "approved";
-    this.job(client, "prepare_build_plan", `build-plan:${client.project.id}:v1`);
+    this.job(client, "prepare_build_plan", `build-plan:${client.project.id}:v2`);
     this.job(client, "project_infrastructure", `infrastructure:${client.project.id}:v1`);
     this.audit.push([client.id, "owner_approval_accepted"]);
     return { accepted: true };
   }
 
   processBuildPlan(client) {
-    const job = this.jobs.get(`build-plan:${client.project.id}:v1`);
+    const job = this.jobs.get(`build-plan:${client.project.id}:v2`);
     assert.ok(job, "build-plan job must exist");
     if (job.status === "completed") return client.buildPlan;
     this.requireEligible(client);
@@ -126,7 +127,7 @@ class LifecycleHarness {
   }
 
   maybeQueueBuild(client) {
-    const plan = this.jobs.get(`build-plan:${client.project.id}:v1`);
+    const plan = this.jobs.get(`build-plan:${client.project.id}:v2`);
     const infrastructure = this.jobs.get(`infrastructure:${client.project.id}:v1`);
     if (plan?.status === "completed" && infrastructure?.status === "completed") {
       this.job(client, "website_build_preview", `business-build:${client.project.id}:v1`);
@@ -198,6 +199,39 @@ class LifecycleHarness {
     job.status = "completed";
     this.audit.push([client.id, "production_exact_commit_verified"]);
     return client.production;
+  }
+
+  bootstrapWebsiteRun(client, { changeRequestId = null } = {}) {
+    this.requireEligible(client);
+    const existingRuns = this.websiteRuns.get(client.project.id) || [];
+    const active = existingRuns.find((run) => !["published", "failed", "cancelled"].includes(run.status));
+    if (active) return active;
+
+    if (existingRuns.length > 0 && !changeRequestId) return null;
+
+    const intentKey = changeRequestId ? `change:${changeRequestId}` : "initial";
+    const existingIntent = existingRuns.find((run) => run.intentKey === intentKey);
+    if (existingIntent) return existingIntent;
+
+    const run = {
+      id: this.next("website-run"),
+      clientId: client.id,
+      projectId: client.project.id,
+      intentKey,
+      status: "queued",
+    };
+    existingRuns.push(run);
+    this.websiteRuns.set(client.project.id, existingRuns);
+    return run;
+  }
+
+  retryWebsiteRun(client, runId) {
+    this.requireEligible(client);
+    const run = (this.websiteRuns.get(client.project.id) || []).find((candidate) => candidate.id === runId);
+    assert.ok(run, "authorized retry must target an existing website run");
+    assert.ok(["failed", "cancelled"].includes(run.status), "only a terminal website run may be retried");
+    run.status = "queued";
+    return run;
   }
 
   runHappy(label) {
@@ -335,6 +369,36 @@ scenario("Production commit mismatch fails closed", () => {
   harness.processPreview(client);
   assert.throws(() => harness.processProduction(client, { reportedCommit: "wrong-sha" }), /commit mismatch/);
   assert.equal(client.production, null);
+});
+
+scenario("Scheduled bootstrap cannot recreate terminal website runs", () => {
+  const client = harness.createClient("terminal-bootstrap-idempotency");
+  harness.decide(client, "accept");
+  const initial = harness.bootstrapWebsiteRun(client);
+  assert.ok(initial);
+  assert.equal(harness.bootstrapWebsiteRun(client).id, initial.id);
+
+  initial.status = "published";
+  for (let poll = 0; poll < 12; poll += 1) {
+    assert.equal(harness.bootstrapWebsiteRun(client), null);
+  }
+  assert.equal(harness.websiteRuns.get(client.project.id).length, 1);
+
+  const changed = harness.bootstrapWebsiteRun(client, { changeRequestId: "change-1" });
+  assert.ok(changed);
+  assert.equal(harness.bootstrapWebsiteRun(client, { changeRequestId: "change-1" }).id, changed.id);
+  assert.equal(harness.websiteRuns.get(client.project.id).length, 2);
+});
+
+scenario("Authorized retry reuses a failed website run", () => {
+  const client = harness.createClient("website-run-retry");
+  harness.decide(client, "accept");
+  const run = harness.bootstrapWebsiteRun(client);
+  run.status = "failed";
+  assert.equal(harness.bootstrapWebsiteRun(client), null);
+  assert.equal(harness.websiteRuns.get(client.project.id).length, 1);
+  assert.equal(harness.retryWebsiteRun(client, run.id).id, run.id);
+  assert.equal(harness.websiteRuns.get(client.project.id).length, 1);
 });
 
 scenario("Billing grace stops at owner review and verified payment restores", () => {
