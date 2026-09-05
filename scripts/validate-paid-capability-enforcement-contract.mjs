@@ -30,6 +30,12 @@ for (const file of uploadCallers) {
   const source = read(file);
   check(`${file} reserves and finalizes storage`, source.includes("authorizeStorageUpload") && source.includes("completeStorageUpload") && source.includes("cancelStorageUpload"));
 }
+check("Commerce upload tickets avoid redundant nullable initialization",
+  !read("src/pages/ClientCommerceCatalog.tsx").includes("let uploadTicketId: string | null = null") &&
+  !read("src/pages/ClientCommerceWebsiteContent.tsx").includes("let uploadTicketId: string | null = null"));
+check("Product image cleanup retains a non-null storage client",
+  read("src/components/ProductImageManager.tsx").includes("const storageClient = supabase") &&
+  read("src/components/ProductImageManager.tsx").includes("cancelStorageUpload(storageClient, ticketId)"));
 
 const fetchFunctions = fs.readdirSync(path.join(root, "supabase/functions"), { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && entry.name !== "_shared")

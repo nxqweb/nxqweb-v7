@@ -168,7 +168,7 @@ export function ClientCommerceWebsiteContent() {
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${content.client_id}/custom-page/${crypto.randomUUID()}.${extension}`;
-    let uploadTicketId: string | null = null;
+    let uploadTicketId: string;
     try {
       uploadTicketId = await authorizeStorageUpload(supabase, "commerce-website-content", path, file);
     } catch {

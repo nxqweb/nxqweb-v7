@@ -142,7 +142,7 @@ export function ClientCommerceCatalog() {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const safeName = `${crypto.randomUUID()}.${extension}`;
     const storagePath = `${clientId}/${selectedProduct.id}/${safeName}`;
-    let uploadTicketId: string | null = null;
+    let uploadTicketId: string;
 
     try {
       uploadTicketId = await authorizeStorageUpload(supabase, "commerce-product-media", storagePath, file);

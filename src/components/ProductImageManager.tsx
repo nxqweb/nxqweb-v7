@@ -83,6 +83,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
 
   async function uploadFiles(fileList: FileList | null) {
     if (!supabase || !fileList || !clientId || !verified || busy) return;
+    const storageClient = supabase;
     const selectedFiles = Array.from(fileList);
 
     if (images.length + selectedFiles.length > maxImages) {
@@ -109,9 +110,9 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       for (const file of selectedFiles) {
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const filePath = `${clientId}/${productId}/${crypto.randomUUID()}.${extension}`;
-        const uploadTicketId = await authorizeStorageUpload(supabase, bucketName, filePath, file);
+        const uploadTicketId = await authorizeStorageUpload(storageClient, bucketName, filePath, file);
         uploadTickets.push(uploadTicketId);
-        const upload = await supabase.storage.from(bucketName).upload(filePath, file, {
+        const upload = await storageClient.storage.from(bucketName).upload(filePath, file, {
           cacheControl: "3600",
           upsert: false,
           contentType: file.type,
@@ -119,16 +120,16 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
 
         if (upload.error) throw upload.error;
         uploadedPaths.push(filePath);
-        await completeStorageUpload(supabase, uploadTicketId);
-        const publicUrl = supabase.storage.from(bucketName).getPublicUrl(filePath).data.publicUrl;
+        await completeStorageUpload(storageClient, uploadTicketId);
+        const publicUrl = storageClient.storage.from(bucketName).getPublicUrl(filePath).data.publicUrl;
         uploadedUrls.push(publicUrl);
       }
 
       const nextImages = [...images, ...uploadedUrls];
       const saved = await persist(nextImages);
       if (!saved) {
-        const cleanup = await supabase.storage.from(bucketName).remove(uploadedPaths);
-        await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(supabase, ticketId)));
+        const cleanup = await storageClient.storage.from(bucketName).remove(uploadedPaths);
+        await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(storageClient, ticketId)));
         if (cleanup.error) {
           setError("Product photo changes were not saved, and temporary storage cleanup still needs attention. The catalog image list was not changed.");
         }
@@ -138,13 +139,13 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       setMessage(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? "" : "s"} uploaded. This does not publish or activate the storefront.`);
     } catch {
       if (uploadedPaths.length) {
-        const cleanup = await supabase.storage.from(bucketName).remove(uploadedPaths);
+        const cleanup = await storageClient.storage.from(bucketName).remove(uploadedPaths);
         if (cleanup.error) {
           setError("Images could not be uploaded and temporary storage cleanup still needs attention. No storefront publish was triggered.");
           return;
         }
       }
-      await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(supabase, ticketId)));
+      await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(storageClient, ticketId)));
       setError("Images could not be uploaded. No storefront publish was triggered.");
     } finally {
       setBusy(false);
