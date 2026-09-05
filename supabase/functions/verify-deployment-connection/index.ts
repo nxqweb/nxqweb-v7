@@ -133,6 +133,7 @@ Deno.serve(async (request) => {
       autoRefreshToken: false,
     },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const userResult = await supabase.auth.getUser(authorization.replace(/^Bearer\s+/i, ""));
 
@@ -176,6 +177,18 @@ Deno.serve(async (request) => {
 
   if (!configResult.data) {
     return jsonResponse({ error: "Deployment configuration not found." }, 404);
+  }
+
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: configResult.data.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `deployment-connection:${configResult.data.id}:${crypto.randomUUID()}`,
+    target_metadata: { deployment_config_id: configResult.data.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Deployment verification is blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
   }
 
   const config = configResult.data;

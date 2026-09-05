@@ -106,6 +106,7 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -177,6 +178,17 @@ Deno.serve(async (request) => {
   const productionBranch = cleanString(launch.production_branch) || cleanString(config.production_branch) || "main";
   const productionUrl = cleanString(launch.production_url) || cleanString(config.production_url);
   const previewUrl = cleanString(preview.preview_url);
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: launch.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 6, bandwidth_bytes: 3145728 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `production-audit:${launch.id}:${crypto.randomUUID()}`,
+    target_metadata: { production_launch_request_id: launch.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Production audit is blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
 
   const checks: Record<string, AuditCheck> = {};
 
@@ -418,4 +430,3 @@ Deno.serve(async (request) => {
     note: "This production launch audit was read-only. It did not trigger a build, deploy, branch change, or Netlify setting change.",
   });
 });
-

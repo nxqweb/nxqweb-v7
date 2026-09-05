@@ -51,6 +51,7 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -78,7 +79,7 @@ Deno.serve(async (request) => {
   const requestResult = await supabase
     .from("preview_deployment_requests")
     .select(
-      "id, deployment_config_id, source_branch, execution_status, execution_deployment_id, execution_started_at, netlify_build_id, preview_deploy_id, preview_url"
+      "id, deployment_config_id, project_id, client_id, source_branch, execution_status, execution_deployment_id, execution_started_at, netlify_build_id, preview_deploy_id, preview_url"
     )
     .eq("id", body.request_id)
     .maybeSingle();
@@ -109,6 +110,18 @@ Deno.serve(async (request) => {
   const productionBranch = (configResult.data.production_branch || "main").trim();
   if (!sourceBranch || sourceBranch.toLowerCase() === "main" || sourceBranch.toLowerCase() === productionBranch.toLowerCase()) {
     return jsonResponse({ error: "Status tracking blocked because the recorded branch is production-capable." }, 409);
+  }
+
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: previewRequest.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 2 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `preview-status:${previewRequest.id}:${crypto.randomUUID()}`,
+    target_metadata: { preview_request_id: previewRequest.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Preview status checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
   }
 
   const headers = { Authorization: `Bearer ${netlifyToken}` };

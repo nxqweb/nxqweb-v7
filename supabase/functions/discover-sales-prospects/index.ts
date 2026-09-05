@@ -35,15 +35,32 @@ Deno.serve(async (req) => {
     const providerToken = Deno.env.get("NXQ_PROSPECT_DISCOVERY_PROVIDER_TOKEN")?.trim() || "";
     if (!endpoint || !providerToken) return response({ ok: false, configured: false, error: "Prospect discovery provider is not configured. Fictional zero-key mode remains available." }, 503);
     const safeEndpoint = requirePublicHttpsUrl(endpoint, "Prospect discovery provider URL");
+    const costReservationKey = `sales-discovery:${crypto.randomUUID()}`;
+    const costReservation = await admin.rpc("nxq_reserve_platform_usage", {
+      target_operation_key: "sales_prospect_discovery",
+      target_estimated_cost_cents: requestedLimit * 25,
+      target_idempotency_key: costReservationKey,
+      target_metadata: { niche, requested_limit: requestedLimit },
+    });
+    if (costReservation.error || costReservation.data?.allowed !== true) {
+      return response({ ok: false, configured: true, blocked: true, error: "Prospect discovery is blocked by the protected platform cost budget." }, 409);
+    }
 
     const run = await admin.from("nxq_sales_source_runs").insert({ niche_key: niche, geography, provider_key: "approved_business_data_api", mode: "provider_api", status: "running", requested_limit: requestedLimit, requested_by_auth_user_id: user.data.user.id, started_at: new Date().toISOString() }).select("id").single();
-    if (run.error) throw new Error(run.error.message);
+    if (run.error) {
+      await admin.rpc("nxq_finalize_platform_usage", { target_idempotency_key: costReservationKey, target_release: true });
+      throw new Error(run.error.message);
+    }
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
     let imported = 0;
     try {
       const provider = await fetch(safeEndpoint, { method: "POST", redirect: "error", signal: controller.signal, headers: { "Content-Type": "application/json", Authorization: `Bearer ${providerToken}` }, body: JSON.stringify({ niche, geography, limit: requestedLimit, fields: ["business_name", "website_url", "city", "state_region", "public_business_email", "source_url", "source_record_id"] }) });
       if (!provider.ok) throw new Error(`Discovery provider returned HTTP ${provider.status}.`);
       const payload = await provider.json() as { businesses?: Array<Record<string, unknown>>; cost_cents?: number };
+      const actualCost = Math.max(Number(payload.cost_cents) || 0, 0);
+      if (!Number.isSafeInteger(actualCost) || actualCost > requestedLimit * 25) {
+        throw new Error("Discovery provider cost exceeded the pre-authorized reservation.");
+      }
       const businesses = Array.isArray(payload.businesses) ? payload.businesses.slice(0, requestedLimit) : [];
       for (const item of businesses) {
         const businessName = clean(item.business_name, 180); const sourceUrl = clean(item.source_url, 500); const sourceRecordId = clean(item.source_record_id, 180);
@@ -55,7 +72,12 @@ Deno.serve(async (req) => {
         const inserted = await admin.from("nxq_sales_prospects").upsert({ business_name: businessName, niche_key: niche, website_url: websiteUrl || null, normalized_domain: normalizedDomain, city: clean(item.city, 120) || null, state_region: clean(item.state_region, 120) || null, contact_email: clean(item.public_business_email, 180).toLowerCase() || null, source_url: sourceUrl, source_provider: "approved_business_data_api", source_record_id: sourceRecordId, source_retrieved_at: new Date().toISOString(), status: "research", research_notes: "Imported from an approved business-data API. Facts require owner review before outreach." }, { onConflict: "source_provider,source_record_id", ignoreDuplicates: true });
         if (!inserted.error) imported += 1;
       }
-      await admin.from("nxq_sales_source_runs").update({ status: "completed", discovered_count: businesses.length, imported_count: imported, provider_cost_cents: Math.max(Number(payload.cost_cents) || 0, 0), completed_at: new Date().toISOString() }).eq("id", run.data.id);
+      await admin.from("nxq_sales_source_runs").update({ status: "completed", discovered_count: businesses.length, imported_count: imported, provider_cost_cents: actualCost, completed_at: new Date().toISOString() }).eq("id", run.data.id);
+      const reconciled = await admin.rpc("nxq_finalize_platform_usage", {
+        target_idempotency_key: costReservationKey,
+        target_actual_cost_cents: actualCost,
+      });
+      if (reconciled.error) throw new Error("Discovery cost reservation could not be reconciled.");
       return response({ ok: true, run_id: run.data.id, discovered: businesses.length, imported, mode: "provider_api", messages_sent: 0 });
     } finally { clearTimeout(timeout); }
   } catch (error) { return response({ ok: false, error: error instanceof Error ? error.message : "Prospect discovery failed." }, 400); }

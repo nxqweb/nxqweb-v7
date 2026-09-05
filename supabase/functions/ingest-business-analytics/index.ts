@@ -37,7 +37,16 @@ Deno.serve(async (req) => {
     const origins = Array.isArray(profile.allowed_origins) ? profile.allowed_origins : [];if (!origins.includes(origin)) return response({ ok: false, error: "Origin is not allowed." }, 403,origin);
     const rows = payload.events.map((event) => normalizeEvent(event, profile));
     const quota=await reserveAnalyticsQuota(admin,profile,key,rows.length);if(!quota?.allowed)return response({ok:false,error:"Analytics rate limit reached.",retry_after_seconds:quota?.retry_after_seconds||3600},429,origin);
-    const insert = await admin.from("website_analytics_events").insert(rows);if (insert.error) throw new Error(`Analytics insert failed: ${insert.error.message}`);
+    const reservationKey=`analytics-ingest:${profile.id}:${crypto.randomUUID()}`;
+    const authorization=await admin.rpc("nxq_authorize_paid_capability",{target_client_id:profile.client_id,target_feature_key:"basic_analytics",target_resources:{api_requests:1,bandwidth_bytes:payloadSize},target_estimated_provider_cost_cents:0,target_idempotency_key:reservationKey,target_metadata:{analytics_profile_id:profile.id,event_count:rows.length}});
+    if(authorization.error||authorization.data?.allowed!==true)return response({ok:false,error:"Analytics is unavailable under the current subscription, billing state, or resource limits."},409,origin);
+    const insert = await admin.from("website_analytics_events").insert(rows);
+    if (insert.error) {
+      await admin.rpc("nxq_finalize_economic_usage",{target_client_id:profile.client_id,target_idempotency_key:reservationKey,target_release:true});
+      throw new Error(`Analytics insert failed: ${insert.error.message}`);
+    }
+    const finalized=await admin.rpc("nxq_finalize_economic_usage",{target_client_id:profile.client_id,target_idempotency_key:reservationKey,target_actual_provider_cost_cents:0});
+    if(finalized.error)throw new Error("Analytics usage reservation could not be reconciled.");
     await admin.rpc("increment_client_usage", {target_client_id: profile.client_id,target_usage_key: "analytics_events",target_quantity: payload.events.length,target_unit: "event",target_product_family_slug: "business",});
     return response({ ok: true, accepted: rows.length },200,origin);
   } catch (error) {return response({ ok: false, error: error instanceof Error ? error.message : "Analytics ingest failed." }, 400,origin);}

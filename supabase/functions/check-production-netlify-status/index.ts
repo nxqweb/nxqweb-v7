@@ -61,6 +61,7 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -101,6 +102,17 @@ Deno.serve(async (request) => {
   if (!launchResult.data) return jsonResponse({ error: "Production launch request not found." }, 404);
 
   const launch = launchResult.data;
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: launch.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `production-status:${launch.id}:${crypto.randomUUID()}`,
+    target_metadata: { production_launch_request_id: launch.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Production status checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
 
   // Terminal launch states are immutable. A later provider read must never downgrade them.
   if (launch.status === "published") {

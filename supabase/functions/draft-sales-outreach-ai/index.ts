@@ -31,6 +31,16 @@ Deno.serve(async (req) => {
     const endpoint = optional("NXQ_AI_MODEL_PROVIDER_URL"); const apiToken = optional("NXQ_AI_MODEL_PROVIDER_TOKEN"); const model = optional("NXQ_AI_MODEL_PROVIDER_MODEL");
     if (endpoint && apiToken && model && prospect.data.source_provider !== "zero_key_fictional") {
       const safeEndpoint = requirePublicHttpsUrl(endpoint, "AI provider URL");
+      const costReservationKey = `sales-outreach-draft:${prospect.data.id}:${crypto.randomUUID()}`;
+      const costReservation = await admin.rpc("nxq_reserve_platform_usage", {
+        target_operation_key: "sales_outreach_ai_draft",
+        target_estimated_cost_cents: 10,
+        target_idempotency_key: costReservationKey,
+        target_metadata: { prospect_id: prospect.data.id },
+      });
+      if (costReservation.error || costReservation.data?.allowed !== true) {
+        return response({ ok: false, blocked: true, error: "AI outreach drafting is blocked by the protected platform cost budget." }, 409);
+      }
       const prompt = { task: "draft_truthful_small_business_outreach", rules: ["Use only supplied facts.", "Do not claim guaranteed results.", "Describe NXQ as a premium done-for-you website service, not an AI product.", "Ask one low-pressure question.", "No markdown."], prospect: { business_name: prospect.data.business_name, niche: prospect.data.niche_key, city: prospect.data.city, state: prospect.data.state_region, website: prospect.data.website_url, factual_findings: findings } };
       const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
       try {
@@ -40,7 +50,13 @@ Deno.serve(async (req) => {
           const raw = output.flatMap((item) => Array.isArray(item.content) ? item.content as Array<Record<string, unknown>> : []).map((item) => text(item.text, 6000)).find(Boolean);
           if (raw) { const parsed = JSON.parse(raw) as { subject?: unknown; body?: unknown }; const subject = text(parsed.subject, 180); const message = text(parsed.body, 5000); if (subject && message) draft = { subject, body: message, ai_used: true }; }
         }
-      } finally { clearTimeout(timeout); }
+      } finally {
+        clearTimeout(timeout);
+        await admin.rpc("nxq_finalize_platform_usage", {
+          target_idempotency_key: costReservationKey,
+          target_actual_cost_cents: 10,
+        });
+      }
     }
     const step = Math.min(Math.max(Number(body.sequence_step) || 1, 1), 3);
     const created = await userClient.rpc("owner_create_sales_outreach_draft", { target_prospect_id: prospect.data.id, target_channel: "email", target_sequence_step: step, target_subject: draft.subject, target_body: draft.body, target_scheduled_for: null });

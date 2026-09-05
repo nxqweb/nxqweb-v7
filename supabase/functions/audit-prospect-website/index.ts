@@ -24,9 +24,22 @@ Deno.serve(async (req) => {
       await admin.from("nxq_sales_prospects").update({ website_audit_status: "completed", website_quality_score: 0, website_audit_summary: { no_website: true } }).eq("id", prospect.data.id);
       return response({ ok: true, score: 0, findings: ["No public website URL was recorded."], factual_only: true });
     }
+    const costReservationKey = `sales-website-audit:${prospect.data.id}:${crypto.randomUUID()}`;
+    const costReservation = await admin.rpc("nxq_reserve_platform_usage", {
+      target_operation_key: "sales_website_audit",
+      target_estimated_cost_cents: 1,
+      target_idempotency_key: costReservationKey,
+      target_metadata: { prospect_id: prospect.data.id },
+    });
+    if (costReservation.error || costReservation.data?.allowed !== true) {
+      return response({ ok: false, blocked: true, error: "Website auditing is blocked by the protected platform cost budget." }, 409);
+    }
     let current = requirePublicHttpsUrl(prospect.data.website_url, "Prospect website URL");
     const audit = await admin.from("nxq_sales_website_audits").insert({ prospect_id: prospect.data.id, status: "running", requested_url: current.toString() }).select("id").single();
-    if (audit.error) throw new Error(audit.error.message);
+    if (audit.error) {
+      await admin.rpc("nxq_finalize_platform_usage", { target_idempotency_key: costReservationKey, target_release: true });
+      throw new Error(audit.error.message);
+    }
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
     try {
       let page: Response | null = null;
@@ -53,6 +66,11 @@ Deno.serve(async (req) => {
       const findings = Object.entries(checks).filter(([, value]) => !value).map(([key]) => `${key.replaceAll("_", " ")} was not detected on the fetched page.`);
       await admin.from("nxq_sales_website_audits").update({ status: "completed", final_url: current.toString(), score, checks, factual_findings: findings, checked_at: new Date().toISOString() }).eq("id", audit.data.id);
       await admin.from("nxq_sales_prospects").update({ website_audit_status: "completed", website_quality_score: score, website_audit_summary: { checks, findings, audited_url: current.toString() } }).eq("id", prospect.data.id);
+      const finalized = await admin.rpc("nxq_finalize_platform_usage", {
+        target_idempotency_key: costReservationKey,
+        target_actual_cost_cents: 1,
+      });
+      if (finalized.error) throw new Error("Website audit cost reservation could not be reconciled.");
       return response({ ok: true, audit_id: audit.data.id, score, checks, findings, factual_only: true, messages_sent: 0 });
     } finally { clearTimeout(timeout); }
   } catch (error) { return response({ ok: false, error: error instanceof Error ? error.message : "Website audit failed." }, 400); }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, FileText, ImagePlus, Save, Sparkles } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 
 type WebsiteContent = {
   client_id?: string;
@@ -167,17 +168,37 @@ export function ClientCommerceWebsiteContent() {
 
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${content.client_id}/custom-page/${crypto.randomUUID()}.${extension}`;
+    let uploadTicketId: string | null = null;
+    try {
+      uploadTicketId = await authorizeStorageUpload(supabase, "commerce-website-content", path, file);
+    } catch {
+      setUploading(false);
+      setError("Image upload is not available under the current account limits or billing state.");
+      return;
+    }
     const upload = await supabase.storage.from("commerce-website-content").upload(path, file, { upsert: false, contentType: file.type });
 
     if (upload.error) {
+      await cancelStorageUpload(supabase, uploadTicketId);
       setUploading(false);
       setError("Image upload could not be completed. The custom page draft was not changed.");
+      return;
+    }
+
+    try {
+      await completeStorageUpload(supabase, uploadTicketId);
+    } catch {
+      await supabase.storage.from("commerce-website-content").remove([path]);
+      await cancelStorageUpload(supabase, uploadTicketId);
+      setUploading(false);
+      setError("Image upload could not be finalized. The temporary upload was removed.");
       return;
     }
 
     const publicUrl = supabase.storage.from("commerce-website-content").getPublicUrl(path).data.publicUrl;
     if (!publicUrl) {
       const cleanup = await supabase.storage.from("commerce-website-content").remove([path]);
+      await cancelStorageUpload(supabase, uploadTicketId);
       setUploading(false);
       setError(
         cleanup.error

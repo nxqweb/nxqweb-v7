@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 
 type ProductImageManagerProps = {
   productId: string;
@@ -102,11 +103,14 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     setMessage("");
     const uploadedUrls: string[] = [];
     const uploadedPaths: string[] = [];
+    const uploadTickets: string[] = [];
 
     try {
       for (const file of selectedFiles) {
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const filePath = `${clientId}/${productId}/${crypto.randomUUID()}.${extension}`;
+        const uploadTicketId = await authorizeStorageUpload(supabase, bucketName, filePath, file);
+        uploadTickets.push(uploadTicketId);
         const upload = await supabase.storage.from(bucketName).upload(filePath, file, {
           cacheControl: "3600",
           upsert: false,
@@ -115,6 +119,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
 
         if (upload.error) throw upload.error;
         uploadedPaths.push(filePath);
+        await completeStorageUpload(supabase, uploadTicketId);
         const publicUrl = supabase.storage.from(bucketName).getPublicUrl(filePath).data.publicUrl;
         uploadedUrls.push(publicUrl);
       }
@@ -123,6 +128,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       const saved = await persist(nextImages);
       if (!saved) {
         const cleanup = await supabase.storage.from(bucketName).remove(uploadedPaths);
+        await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(supabase, ticketId)));
         if (cleanup.error) {
           setError("Product photo changes were not saved, and temporary storage cleanup still needs attention. The catalog image list was not changed.");
         }
@@ -138,6 +144,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
           return;
         }
       }
+      await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(supabase, ticketId)));
       setError("Images could not be uploaded. No storefront publish was triggered.");
     } finally {
       setBusy(false);

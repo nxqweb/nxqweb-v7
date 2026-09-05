@@ -67,6 +67,9 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -203,6 +206,16 @@ Deno.serve(async (request) => {
         blockers,
         note: "Preview execution was blocked before any Netlify build call.",
       },
+      409
+    );
+  }
+
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_preview_execution", {
+    target_preview_request_id: previewRequest.id,
+  });
+  if (paidAuthorization.error) {
+    return jsonResponse(
+      { ok: false, error: "Preview execution was blocked by server-side usage or deployment limits. No external call was made." },
       409
     );
   }

@@ -12,6 +12,7 @@ type ProviderMetadata = {
 type ProvisioningJob = {
   id: string;
   client_id: string;
+  project_id?: string | null;
   storefront_id: string;
   repository_name?: string | null;
   repository_owner?: string | null;
@@ -748,6 +749,16 @@ Deno.serve(async (request) => {
         VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
         VITE_NXQ_STOREFRONT_SLUG: storefront.store_slug,
       });
+      const buildReservation = await admin.rpc("nxq_reserve_netlify_build", {
+        target_client_id: job.client_id,
+        target_project_id: job.project_id,
+        target_build_kind: "preview",
+        target_idempotency_key: `commerce-storefront:${job.id}:initial-preview`,
+        target_metadata: { storefront_provisioning_id: job.id },
+      });
+      if (buildReservation.error || buildReservation.data?.ok !== true) {
+        throw new Error("Netlify build denied by the protected build-credit budget.");
+      }
       await activateNetlifyBuilds(String(job.netlify_site_id), previewBranch);
       const build = await triggerNetlifyBuild(String(job.netlify_site_id), token, previewBranch);
       await admin.from("commerce_storefront_provisioning").update({

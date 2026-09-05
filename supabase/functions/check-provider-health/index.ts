@@ -164,6 +164,24 @@ Deno.serve(async (req) => {
 
     if (due.error) throw new Error(`Provider queue read failed: ${due.error.message}`);
 
+    const networkChecks = (due.data || []).filter((raw) => {
+      const row = raw as ProviderConnection;
+      return row.config?.health_check_mode !== "activity_evidence";
+    }).length;
+    let costReservationKey = "";
+    if (networkChecks > 0) {
+      costReservationKey = `provider-health:${crypto.randomUUID()}`;
+      const costReservation = await admin.rpc("nxq_reserve_platform_usage", {
+        target_operation_key: "provider_health_checks",
+        target_estimated_cost_cents: networkChecks,
+        target_idempotency_key: costReservationKey,
+        target_metadata: { connection_count: networkChecks },
+      });
+      if (costReservation.error || costReservation.data?.allowed !== true) {
+        return response({ ok: false, blocked: true, reason: "platform_cost_budget_blocked", provider_statuses_changed: 0 }, 409);
+      }
+    }
+
     let checked = 0;
     let healthy = 0;
     let degraded = 0;
@@ -228,6 +246,12 @@ Deno.serve(async (req) => {
     });
 
     const readiness = await admin.rpc("evaluate_launch_readiness");
+    if (costReservationKey) {
+      await admin.rpc("nxq_finalize_platform_usage", {
+        target_idempotency_key: costReservationKey,
+        target_actual_cost_cents: checked,
+      });
+    }
 
     return response({
       ok: true,

@@ -61,6 +61,9 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -207,6 +210,18 @@ Deno.serve(async (request) => {
     );
   }
 
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: launch.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 2, automation_jobs: 1 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `production-execution:${launch.id}:provider-preflight`,
+    target_metadata: { production_launch_request_id: launch.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Production execution was blocked by server-side subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
+
   const githubBranchResponse = await boundedProviderFetch(
     `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(configuredProductionBranch)}`,
     {
@@ -295,7 +310,7 @@ Deno.serve(async (request) => {
     .eq("id", launch.deployment_record_id)
     .eq("status", "queued");
 
-  const reservation = await supabase.rpc("nxq_reserve_netlify_build", {
+  const reservation = await guardAdmin.rpc("nxq_reserve_netlify_build", {
     target_client_id: launch.client_id,
     target_project_id: launch.project_id,
     target_build_kind: "manual_production",

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import type { ClientLaunchJourney } from "../lib/clientJourney";
 
 type ClientRow = {
@@ -895,6 +896,13 @@ export function ClientPortal() {
     try {
       const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const filePath = `${client.id}/${Date.now()}-${safeFileName}`;
+      let uploadTicketId: string | null = null;
+      try {
+        uploadTicketId = await authorizeStorageUpload(supabase, "client-files", filePath, selectedFile);
+      } catch {
+        setErrorMessage("The file upload is not available under the current account limits or billing state.");
+        return;
+      }
       const uploadResult = await supabase.storage
         .from("client-files")
         .upload(filePath, selectedFile, {
@@ -904,7 +912,17 @@ export function ClientPortal() {
         });
 
       if (uploadResult.error) {
+        await cancelStorageUpload(supabase, uploadTicketId);
         setErrorMessage("The file could not be uploaded. No file record was created.");
+        return;
+      }
+
+      try {
+        await completeStorageUpload(supabase, uploadTicketId);
+      } catch {
+        await supabase.storage.from("client-files").remove([filePath]);
+        await cancelStorageUpload(supabase, uploadTicketId);
+        setErrorMessage("The file upload could not be finalized. The temporary upload was removed.");
         return;
       }
 
@@ -917,6 +935,7 @@ export function ClientPortal() {
 
       if (fileRecordResult.error) {
         const cleanupResult = await supabase.storage.from("client-files").remove([filePath]);
+        await cancelStorageUpload(supabase, uploadTicketId);
         if (cleanupResult.error) {
           setErrorMessage("The file could not be registered and automatic cleanup could not be verified. It remains inaccessible while support reviews it.");
           return;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ImagePlus, PackageSearch, Save, Star, Trash2 } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 
 type Category = {
   id: string;
@@ -141,14 +142,34 @@ export function ClientCommerceCatalog() {
     const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const safeName = `${crypto.randomUUID()}.${extension}`;
     const storagePath = `${clientId}/${selectedProduct.id}/${safeName}`;
+    let uploadTicketId: string | null = null;
+
+    try {
+      uploadTicketId = await authorizeStorageUpload(supabase, "commerce-product-media", storagePath, file);
+    } catch {
+      setSaving(false);
+      setError("Image upload is not available under the current account limits or billing state.");
+      return;
+    }
 
     const upload = await supabase.storage
       .from("commerce-product-media")
       .upload(storagePath, file, { cacheControl: "3600", upsert: false });
 
     if (upload.error) {
+      await cancelStorageUpload(supabase, uploadTicketId);
       setSaving(false);
       setError("Image upload could not be completed. No product image was added.");
+      return;
+    }
+
+    try {
+      await completeStorageUpload(supabase, uploadTicketId);
+    } catch {
+      await supabase.storage.from("commerce-product-media").remove([storagePath]);
+      await cancelStorageUpload(supabase, uploadTicketId);
+      setSaving(false);
+      setError("Image upload could not be finalized. The temporary upload was removed.");
       return;
     }
 
@@ -167,6 +188,7 @@ export function ClientCommerceCatalog() {
 
     if (register.error) {
       await supabase.storage.from("commerce-product-media").remove([storagePath]);
+      await cancelStorageUpload(supabase, uploadTicketId);
       setSaving(false);
       setError("Image upload could not be completed. The temporary upload was cleaned up.");
       return;

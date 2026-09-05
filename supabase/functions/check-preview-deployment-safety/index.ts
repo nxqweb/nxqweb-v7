@@ -77,6 +77,7 @@ Deno.serve(async (request) => {
       autoRefreshToken: false,
     },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -144,6 +145,17 @@ Deno.serve(async (request) => {
   const config = configResult.data;
   const sourceBranch = previewRequest.source_branch.trim();
   const productionBranch = (config.production_branch || "main").trim();
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: previewRequest.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `preview-safety:${previewRequest.id}:${crypto.randomUUID()}`,
+    target_metadata: { preview_request_id: previewRequest.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Preview safety checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
 
   const checks: Record<string, SafetyCheck> = {
     owner_approval: staticCheck(

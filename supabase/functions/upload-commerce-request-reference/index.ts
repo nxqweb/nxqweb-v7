@@ -212,6 +212,19 @@ async function uploadReference(
     throw new CommerceReferenceContextError(`Reference image exceeds the storefront's ${Math.floor(maxFileSize / 1048576)} MB limit.`, 413);
   }
 
+  const resourceReservationKey = `commerce-reference:${requestId}:${await sha256Hex(uploadTicket)}`;
+  const resourceAuthorization = await admin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: clientId,
+    target_feature_key: "commerce_storefront",
+    target_resources: { storage_bytes: fileValue.size, api_requests: 1 },
+    target_estimated_provider_cost_cents: 0,
+    target_idempotency_key: resourceReservationKey,
+    target_metadata: { request_id: requestId, upload_kind: "commerce_reference" },
+  });
+  if (resourceAuthorization.error || resourceAuthorization.data?.allowed !== true) {
+    throw new CommerceReferenceContextError("Reference upload is unavailable under the current subscription, billing state, or storage limits.", 409);
+  }
+
   onPrivateStorageFailure?.("fixture-private-storage-upload");
   const storagePath = `${clientId}/commerce-requests/${requestId}/${crypto.randomUUID()}.${extension}`;
   let uploaded;
@@ -222,12 +235,24 @@ async function uploadReference(
       upsert: false,
     });
   } catch (error) {
+    await admin.rpc("nxq_finalize_economic_usage", {
+      target_client_id: clientId,
+      target_idempotency_key: resourceReservationKey,
+      target_release: true,
+    });
     onPrivateStorageFailure?.(classifyPrivateStorageFailurePhase(error) || "fixture-private-storage-unclassified");
     throw new Error("Private reference image upload failed.", { cause: error });
   }
   const storageFailurePhase = classifyPrivateStorageFailurePhase(uploaded.error);
   if (storageFailurePhase) onPrivateStorageFailure?.(storageFailurePhase);
-  if (uploaded.error) throw new Error("Private reference image upload failed.");
+  if (uploaded.error) {
+    await admin.rpc("nxq_finalize_economic_usage", {
+      target_client_id: clientId,
+      target_idempotency_key: resourceReservationKey,
+      target_release: true,
+    });
+    throw new Error("Private reference image upload failed.");
+  }
   onPrivateStorageUploaded?.();
 
   const registered = await admin.rpc("register_commerce_request_reference_upload", {
@@ -240,8 +265,19 @@ async function uploadReference(
   });
   if (registered.error || !registered.data?.ok) {
     await admin.storage.from("client-files").remove([storagePath]);
+    await admin.rpc("nxq_finalize_economic_usage", {
+      target_client_id: clientId,
+      target_idempotency_key: resourceReservationKey,
+      target_release: true,
+    });
     throw new Error("Reference image could not be registered for security scanning.");
   }
+  const finalized = await admin.rpc("nxq_finalize_economic_usage", {
+    target_client_id: clientId,
+    target_idempotency_key: resourceReservationKey,
+    target_actual_provider_cost_cents: 0,
+  });
+  if (finalized.error) throw new Error("Reference upload usage reservation could not be reconciled.");
 
   return {
     clientId,

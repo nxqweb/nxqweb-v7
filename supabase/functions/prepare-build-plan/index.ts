@@ -428,7 +428,7 @@ Deno.serve(async (request) => {
     if (!businessName || !businessType || services.length === 0 || !goals || !desiredStyle) {
       throw new Error("Approved intake is missing required Business build-plan content.");
     }
-    const pages = suggestedPages(services, businessType);
+    let pages = suggestedPages(services, businessType);
 
     let familySlug = clean(intake.product_family_slug) || "business";
     if (clientRes.data.product_family_id) {
@@ -441,6 +441,22 @@ Deno.serve(async (request) => {
     if (clientRes.data.product_tier_id) {
       const tierRes = await admin.from("product_family_tiers").select("tier_key").eq("id", clientRes.data.product_tier_id).maybeSingle();
       if (tierRes.data?.tier_key) tierKey = tierRes.data.tier_key;
+    }
+
+    const websiteAccess = await admin.rpc("client_feature_access", {
+      target_client_id: job.client_id,
+      target_feature_key: "managed_website",
+    });
+    if (websiteAccess.error || websiteAccess.data?.allowed !== true) {
+      throw new Error("The current Business subscription is not entitled to managed website planning.");
+    }
+    const pageLimitValue = websiteAccess.data?.limits?.core_pages;
+    if (pageLimitValue !== "custom") {
+      const pageLimit = Number(pageLimitValue);
+      if (!Number.isSafeInteger(pageLimit) || pageLimit < 1) {
+        throw new Error("The current Business tier is missing an authoritative page limit.");
+      }
+      pages = pages.slice(0, pageLimit);
     }
 
     const fingerprintInput = {
