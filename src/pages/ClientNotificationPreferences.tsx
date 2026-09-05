@@ -1,0 +1,93 @@
+import { useEffect, useState } from "react";
+import { ArrowLeft, Bell, Save } from "lucide-react";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+
+type Pref = { client_id: string; email_enabled: boolean; sms_enabled: boolean; push_enabled: boolean; in_app_enabled: boolean; digest_mode: "off" | "hourly" | "daily" | "weekly"; digest_hour: number; quiet_hours_start: number | null; quiet_hours_end: number | null; timezone: string; allow_critical_override: boolean };
+const fallback: Pref = { client_id: "", email_enabled: true, sms_enabled: false, push_enabled: false, in_app_enabled: true, digest_mode: "daily", digest_hour: 8, quiet_hours_start: 21, quiet_hours_end: 7, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", allow_critical_override: true };
+
+export function ClientNotificationPreferences() {
+  const [pref, setPref] = useState<Pref>(fallback);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    if (!isSupabaseConfigured || !supabase) {
+      setError("Notification preferences are temporarily unavailable.");
+      setLoading(false);
+      return;
+    }
+
+    const session = await supabase.auth.getSession();
+    const uid = session.data.session?.user.id;
+    if (!uid) {
+      window.location.replace("/portal/login");
+      return;
+    }
+
+    const client = await supabase.from("clients").select("id").eq("auth_user_id", uid).maybeSingle();
+    if (client.error || !client.data) {
+      setError("Notification preferences could not be loaded right now.");
+      setLoading(false);
+      return;
+    }
+
+    const result = await supabase.from("client_notification_preferences")
+      .select("client_id,email_enabled,sms_enabled,push_enabled,in_app_enabled,digest_mode,digest_hour,quiet_hours_start,quiet_hours_end,timezone,allow_critical_override")
+      .eq("client_id", client.data.id)
+      .maybeSingle();
+
+    if (result.error) {
+      setError("Notification preferences could not be loaded right now.");
+      setLoading(false);
+      return;
+    }
+
+    setPref(result.data ? result.data as Pref : { ...fallback, client_id: client.data.id });
+    setLoading(false);
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  async function save() {
+    if (!supabase || !pref.client_id) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    const result = await supabase.rpc("current_client_update_notification_preferences", {
+      target_email_enabled: pref.email_enabled,
+      target_sms_enabled: pref.sms_enabled,
+      target_push_enabled: pref.push_enabled,
+      target_in_app_enabled: pref.in_app_enabled,
+      target_digest_mode: pref.digest_mode,
+      target_digest_hour: pref.digest_hour,
+      target_quiet_hours_start: pref.quiet_hours_start ?? 21,
+      target_quiet_hours_end: pref.quiet_hours_end ?? 7,
+      target_timezone: pref.timezone,
+      target_allow_critical_override: pref.allow_critical_override,
+    });
+    setSaving(false);
+    if (result.error) {
+      setError("Notification preferences could not be saved right now. Please try again.");
+      return;
+    }
+    setMessage("Notification preferences saved.");
+    await load();
+  }
+
+  function toggle(key: "email_enabled" | "sms_enabled" | "push_enabled" | "in_app_enabled" | "allow_critical_override") {
+    setPref((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  return (
+    <main className="nxq-page"><section className="portal-shell">
+      <div className="panel-title panel-title-row"><div className="panel-title"><Bell size={22}/><div><h1>Notifications</h1><p className="subtle">Choose how NXQ keeps you updated. Urgent and security-critical notices can stay immediate.</p></div></div><a className="icon-btn" href="/client/settings"><ArrowLeft size={16}/> Settings</a></div>
+      {error ? <div className="auth-error" role="alert">{error}</div> : null}
+      {message ? <div className="auth-success" role="status">{message}</div> : null}
+      {loading ? <div className="empty-state" role="status">Loading notification preferences...</div> : <section className="panel panel-wide"><div className="owner-detail-grid"><label className="owner-message-card"><strong>In-app</strong><span className="subtle">Portal alerts and status updates.</span><input type="checkbox" checked={pref.in_app_enabled} onChange={() => toggle("in_app_enabled")}/></label><label className="owner-message-card"><strong>Email</strong><span className="subtle">Email delivery when an email provider is connected.</span><input type="checkbox" checked={pref.email_enabled} onChange={() => toggle("email_enabled")}/></label><label className="owner-message-card"><strong>SMS</strong><span className="subtle">Text delivery when SMS is connected.</span><input type="checkbox" checked={pref.sms_enabled} onChange={() => toggle("sms_enabled")}/></label><label className="owner-message-card"><strong>Push</strong><span className="subtle">Browser or app push when that delivery channel is available.</span><input type="checkbox" checked={pref.push_enabled} onChange={() => toggle("push_enabled")}/></label></div><div className="owner-detail-grid" style={{marginTop:"1rem"}}><label className="owner-message-card"><strong>Digest</strong><select value={pref.digest_mode} onChange={(event) => setPref((current) => ({...current,digest_mode:event.target.value as Pref["digest_mode"]}))}><option value="off">Immediate normal updates</option><option value="hourly">Hourly digest</option><option value="daily">Daily digest</option><option value="weekly">Weekly digest</option></select></label><label className="owner-message-card"><strong>Digest hour</strong><input type="number" min={0} max={23} value={pref.digest_hour} onChange={(event) => setPref((current) => ({...current,digest_hour:Math.max(0,Math.min(23,Number(event.target.value)||0))}))}/><span className="subtle">0–23 in your selected timezone.</span></label><label className="owner-message-card"><strong>Timezone</strong><input value={pref.timezone} maxLength={80} onChange={(event) => setPref((current) => ({...current,timezone:event.target.value}))}/><span className="subtle">Use a standard timezone such as America/Los_Angeles.</span></label><label className="owner-message-card"><strong>Quiet hours</strong><div style={{display:"flex",gap:".5rem"}}><input aria-label="Quiet hours start" type="number" min={0} max={23} value={pref.quiet_hours_start??21} onChange={(event) => setPref((current) => ({...current,quiet_hours_start:Math.max(0,Math.min(23,Number(event.target.value)||0))}))}/><input aria-label="Quiet hours end" type="number" min={0} max={23} value={pref.quiet_hours_end??7} onChange={(event) => setPref((current) => ({...current,quiet_hours_end:Math.max(0,Math.min(23,Number(event.target.value)||0))}))}/></div></label></div><label className="owner-message-card" style={{marginTop:"1rem"}}><strong>Allow critical override</strong><span className="subtle">Security-critical and urgent notices may bypass quiet hours when this is enabled.</span><input type="checkbox" checked={pref.allow_critical_override} onChange={() => toggle("allow_critical_override")}/></label><button className="wide-btn" type="button" disabled={saving} onClick={() => void save()} style={{marginTop:"1rem"}}><Save size={16}/>{saving?"Saving...":"Save preferences"}</button></section>}
+    </section></main>
+  );
+}

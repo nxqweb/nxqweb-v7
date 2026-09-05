@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# NXQ-Web V11
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+NXQ-Web is a multi-tenant website operations platform with shared owner/client authentication, Business website onboarding and automation, Commerce management, guarded provider orchestration, and tenant-derived portal read models.
 
-Currently, two official plugins are available:
+## Product rules
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Signup creates a lead; completed intake creates one owner `APPROVE`/`DENY` decision.
+- `DENY` is a hard stop and must create no provider infrastructure.
+- One `APPROVE` starts an idempotent backend lifecycle. Provider retries must reuse checkpointed resources.
+- Supabase is the source of truth. Browser code does not receive service-role credentials or direct control-plane mutation authority.
+- Preview and production are distinct. Production promotion is exact-commit, fast-forward-only, and remains locked until verified.
+- Client files, domains, messages, and other tenant data are read through authenticated tenant-derived boundaries.
+- Commerce remains a supported product family and must not be removed while Business automation evolves.
 
-## React Compiler
+## Local verification
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Install the locked dependencies and run the full release gate:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run test:release
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Useful focused checks:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run test:runtime-stage
+npm run test:migrations
+npm run test:edge
+npm run test:security
+npm run test:accessibility
+npm run test:lifecycle
 ```
+
+The local lifecycle simulation proves deterministic application behavior only. It does not count toward the required external Business QA evidence.
+
+## Runtime and release safety
+
+- Edge deployment/auth boundaries are declared in `scripts/edge-function-manifest.mjs` and `supabase/config.toml`.
+- Staging mutations use the protected `nxq-staging` GitHub environment and the confirmation-gated manual workflow.
+- Production remains blocked until 10 consecutive disposable external Business QA runs pass with real Supabase, GitHub, and Netlify evidence, followed by recovery proof and explicit owner signoff.
+- Never merge, publish production, change DNS, or enable billing merely because local checks pass.
+
+See `docs/NXQ_RUNTIME_HANDOFF.md` for the current operational checkpoint and staging continuation order.

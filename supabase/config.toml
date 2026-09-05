@@ -1,0 +1,91 @@
+project_id = "nxqweb-v7"
+
+[functions.apply-business-change-request]
+verify_jwt = false
+[functions.bootstrap-runtime-vault]
+verify_jwt = true
+[functions.build-business-location-pages]
+verify_jwt = false
+[functions.build-business-seo-artifacts]
+verify_jwt = false
+[functions.build-business-website]
+verify_jwt = false
+[functions.check-preview-deployment-safety]
+verify_jwt = true
+[functions.check-preview-netlify-status]
+verify_jwt = true
+[functions.check-production-launch-audit]
+verify_jwt = true
+[functions.check-production-netlify-status]
+verify_jwt = true
+[functions.check-provider-health]
+verify_jwt = false
+[functions.classify-business-change-request]
+verify_jwt = false
+[functions.dispatch-notifications]
+verify_jwt = false
+[functions.execute-preview-netlify-build]
+verify_jwt = true
+[functions.execute-production-netlify-build]
+verify_jwt = true
+[functions.generate-business-build-plan]
+verify_jwt = false
+[functions.ingest-billing-provider-event]
+verify_jwt = false
+[functions.ingest-stripe-webhook]
+verify_jwt = false
+[functions.ingest-business-analytics]
+verify_jwt = false
+[functions.ingest-business-lead]
+verify_jwt = false
+[functions.malware-scan-provider-adapter]
+verify_jwt = false
+[functions.notification-provider-adapter]
+verify_jwt = false
+[functions.discover-sales-prospects]
+verify_jwt = true
+[functions.audit-prospect-website]
+verify_jwt = true
+[functions.draft-sales-outreach-ai]
+verify_jwt = true
+[functions.prepare-build-plan]
+verify_jwt = false
+[functions.prepare-commerce-reference-build-context]
+verify_jwt = false
+[functions.prepare-preview-deployment-execution]
+verify_jwt = true
+[functions.prepare-production-deployment-execution]
+verify_jwt = true
+[functions.process-data-subject-request]
+verify_jwt = false
+[functions.promote-business-production]
+verify_jwt = false
+[functions.provider-health-adapter]
+verify_jwt = false
+[functions.provision-project-infrastructure]
+verify_jwt = false
+[functions.provision-storefront]
+verify_jwt = false
+[functions.publish-production-netlify-deploy]
+verify_jwt = true
+[functions.reconcile-domain]
+verify_jwt = false
+[functions.refresh-production-deployment-preparation]
+verify_jwt = true
+[functions.run-backup-restore-drill]
+verify_jwt = false
+
+[functions.run-staging-evidence-suite]
+verify_jwt = false
+[functions.run-website-maintenance]
+verify_jwt = false
+[functions.scan-client-file]
+verify_jwt = false
+[functions.secure-client-file-access]
+verify_jwt = true
+[functions.secure-owner-file-access]
+verify_jwt = true
+[functions.upload-commerce-request-reference]
+verify_jwt = false
+[functions.verify-deployment-connection]
+verify_jwt = true

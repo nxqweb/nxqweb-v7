@@ -1,0 +1,58 @@
+name: Harden Current Setup Build Plan Handoff
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-harden-current-setup-build-plan.yml
+      - scripts/patch-current-setup-build-plan.py
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Patch build-plan worker
+        run: python3 scripts/patch-current-setup-build-plan.py
+
+      - name: Verify handoff assertions
+        run: |
+          grep -F 'parseSignedSetupReport' supabase/functions/prepare-build-plan/index.ts
+          grep -F 'Services / products' supabase/functions/prepare-build-plan/index.ts
+          grep -F 'Brand difference / positioning' supabase/functions/prepare-build-plan/index.ts
+          grep -F 'Style direction' supabase/functions/prepare-build-plan/index.ts
+
+      - name: Typecheck build-plan worker
+        run: npx deno check supabase/functions/prepare-build-plan/index.ts
+
+      - name: Lint with zero warnings
+        run: npm run lint -- --max-warnings=0
+
+      - name: Commit hardened worker
+        run: |
+          if git diff --quiet -- supabase/functions/prepare-build-plan/index.ts; then
+            echo 'No worker changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/prepare-build-plan/index.ts
+          git commit -m 'fix: bridge signed setup report into build planning'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

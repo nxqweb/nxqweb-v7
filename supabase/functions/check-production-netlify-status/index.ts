@@ -1,10 +1,23 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -19,7 +32,7 @@ function stringValue(value: unknown) {
 
 async function reachable(url: string) {
   try {
-    const response = await fetch(url, { method: "GET", redirect: "follow" });
+    const response = await boundedProviderFetch(url, { method: "GET", redirect: "follow" });
     await response.body?.cancel();
     return { ok: response.ok, status: response.status, finalUrl: response.url };
   } catch {
@@ -48,6 +61,7 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -88,6 +102,17 @@ Deno.serve(async (request) => {
   if (!launchResult.data) return jsonResponse({ error: "Production launch request not found." }, 404);
 
   const launch = launchResult.data;
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: launch.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `production-status:${launch.id}:${crypto.randomUUID()}`,
+    target_metadata: { production_launch_request_id: launch.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Production status checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
 
   // Terminal launch states are immutable. A later provider read must never downgrade them.
   if (launch.status === "published") {
@@ -182,7 +207,7 @@ Deno.serve(async (request) => {
   }
 
   const headers = { Authorization: `Bearer ${netlifyToken}` };
-  const buildResponse = await fetch(
+  const buildResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/builds/${encodeURIComponent(launch.netlify_build_id)}`,
     { headers }
   );
@@ -238,7 +263,7 @@ Deno.serve(async (request) => {
     });
   }
 
-  const deployResponse = await fetch(
+  const deployResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}/deploys/${encodeURIComponent(deployId)}`,
     { headers }
   );

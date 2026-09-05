@@ -13,7 +13,7 @@ export function ResetPassword() {
   useEffect(() => {
     async function checkRecoverySession() {
       if (!isSupabaseConfigured || !supabase) {
-        setErrorMessage("Password recovery is not configured yet.");
+        setErrorMessage("Password recovery is temporarily unavailable. Please try again later.");
         return;
       }
 
@@ -29,7 +29,7 @@ export function ResetPassword() {
       );
     }
 
-    checkRecoverySession();
+    void checkRecoverySession();
   }, []);
 
   async function handlePasswordUpdate(event: React.FormEvent<HTMLFormElement>) {
@@ -39,12 +39,12 @@ export function ResetPassword() {
     setErrorMessage("");
 
     if (!supabase) {
-      setErrorMessage("Password recovery is not configured yet.");
+      setErrorMessage("Password recovery is temporarily unavailable. Please try again later.");
       return;
     }
 
-    if (password.length < 8) {
-      setErrorMessage("Your new password must be at least 8 characters.");
+    if (password.length < 10) {
+      setErrorMessage("Your new password must be at least 10 characters.");
       return;
     }
 
@@ -62,7 +62,7 @@ export function ResetPassword() {
     setIsSubmitting(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage("We could not update your password right now. Request a new recovery link or try again.");
       return;
     }
 
@@ -78,7 +78,7 @@ export function ResetPassword() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal/login">
-          NXQ Web Portal
+          NXQ-Web Portal
         </a>
 
         <form className="auth-card" onSubmit={handlePasswordUpdate}>
@@ -88,22 +88,24 @@ export function ResetPassword() {
           </div>
 
           <p className="subtle">
-            Choose a new password for your NXQ Web portal account.
+            Choose a new password for your NXQ-Web portal account.
           </p>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <label className="auth-label" htmlFor="new-password">
             New password
           </label>
 
           <input
+            autoComplete="new-password"
             className="auth-input"
             disabled={!hasRecoverySession}
             id="new-password"
+            minLength={10}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="At least 8 characters"
+            placeholder="At least 10 characters"
             type="password"
             value={password}
           />
@@ -113,9 +115,11 @@ export function ResetPassword() {
           </label>
 
           <input
+            autoComplete="new-password"
             className="auth-input"
             disabled={!hasRecoverySession}
             id="confirm-password"
+            minLength={10}
             onChange={(event) => setConfirmPassword(event.target.value)}
             placeholder="Type your new password again"
             type="password"

@@ -11,9 +11,24 @@ on:
         options:
           - validate_foundation
           - validate_non_ai
+          - validate_zero_key
+          - validate_prelaunch
           - validate
+          - audit_commerce_reference_remote_auth
+          - maintenance_readiness_probe
           - apply_migrations
           - deploy_functions
+          - deploy_provider_readiness
+          - configure_internal_provider_adapters
+          - sync_staging_worker_token
+          - sync_staging_runtime_guards
+          - deploy_zero_netlify_readiness
+          - deploy_commerce_reference_upload
+          - deploy_commerce_reference_ai_handoff
+          - smoke_commerce_reference_upload
+          - smoke_commerce_reference_ai_handoff
+          - prove_business_build_plan_ai
+          - run_evidence_suite
           - dispatch_workers
           - apply_all
       confirmation:
@@ -56,7 +71,7 @@ jobs:
           test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
           test -n "$SUPABASE_PROJECT_REF" || { echo "Missing SUPABASE_PROJECT_REF"; exit 1; }
           test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
-          if [ "${{ inputs.action }}" = "dispatch_workers" ]; then
+          if [ "${{ inputs.action }}" = "dispatch_workers" ] || [ "${{ inputs.action }}" = "run_evidence_suite" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_upload" ] || [ "${{ inputs.action }}" = "smoke_commerce_reference_ai_handoff" ] || [ "${{ inputs.action }}" = "maintenance_readiness_probe" ] || [ "${{ inputs.action }}" = "sync_staging_worker_token" ] || [ "${{ inputs.action }}" = "sync_staging_runtime_guards" ]; then
             test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || { echo "Missing NXQ_AUTOMATION_WORKER_TOKEN"; exit 1; }
           fi
 
@@ -67,21 +82,25 @@ jobs:
         run: npx --no-install supabase db push --dry-run --linked
 
       - name: Verify staging Edge secret names
-        if: inputs.action == 'validate_foundation' || inputs.action == 'validate_non_ai' || inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
+        if: inputs.action == 'validate_foundation' || inputs.action == 'validate_non_ai' || inputs.action == 'validate_zero_key' || inputs.action == 'validate_prelaunch' || inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
         shell: bash
         run: |
           set -euo pipefail
           npx --no-install supabase secrets list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-secrets.json"
           if [ "${{ inputs.action }}" = "validate_foundation" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
-          elif [ "${{ inputs.action }}" = "validate_non_ai" ]; then
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-configured-foundation --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          elif [ "${{ inputs.action }}" = "validate_non_ai" ] || [ "${{ inputs.action }}" = "deploy_functions" ]; then
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-non-ai-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          elif [ "${{ inputs.action }}" = "validate_zero_key" ]; then
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-zero-key-staging --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          elif [ "${{ inputs.action }}" = "validate_prelaunch" ]; then
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-prelaunch --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           else
-            node scripts/check-runtime-stage-readiness.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
+            node scripts/check-runtime-stage-readiness-readonly.mjs --profile=business-external-qa --supabase-secrets-json="$RUNNER_TEMP/nxq-supabase-secrets.json"
           fi
 
       - name: Require explicit mutation confirmation
-        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate'
+        if: inputs.action != 'validate_foundation' && inputs.action != 'validate_non_ai' && inputs.action != 'validate_zero_key' && inputs.action != 'validate_prelaunch' && inputs.action != 'validate' && inputs.action != 'maintenance_readiness_probe'
         shell: bash
         run: |
           if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING" ]; then
@@ -92,6 +111,44 @@ jobs:
       - name: Apply migrations
         if: inputs.action == 'apply_migrations' || inputs.action == 'apply_all'
         run: npx --no-install supabase db push --linked
+
+      - name: Synchronize protected staging worker token only
+        if: inputs.action == 'sync_staging_worker_token'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-staging-worker-token.env"
+          trap 'rm -f "$secrets_file"' EXIT
+
+          test -n "$NXQ_AUTOMATION_WORKER_TOKEN" || {
+            echo "Protected staging worker token is unavailable."
+            exit 1
+          }
+          printf 'NXQ_AUTOMATION_WORKER_TOKEN=%s\n' "$NXQ_AUTOMATION_WORKER_TOKEN" > "$secrets_file"
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          echo "Protected worker-token synchronization completed for Supabase staging; no value was displayed."
+
+      - name: Synchronize protected staging runtime guards only
+        if: inputs.action == 'sync_staging_runtime_guards'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-staging-runtime-guards.env"
+          trap 'rm -f "$secrets_file"' EXIT
+
+          node scripts/write-supabase-runtime-guards-env.mjs "$secrets_file"
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          echo "Protected staging runtime guards synchronized; no protected value was displayed."
 
       - name: Deploy custom-auth and public-ingest functions
         if: inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
@@ -121,7 +178,448 @@ jobs:
         run: |
           set -euo pipefail
           npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
-          node scripts/check-runtime-stage-readiness.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+          node scripts/check-runtime-stage-readiness-readonly.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+
+      - name: Audit Commerce remote authentication boundaries only
+        if: inputs.action == 'audit_commerce_reference_remote_auth'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          metadata_file="$RUNNER_TEMP/nxq-commerce-reference-remote-functions.json"
+          trap 'rm -f "$metadata_file"' EXIT
+
+          npx --no-install supabase functions list \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --output-format json > "$metadata_file"
+          node scripts/audit-commerce-reference-remote-auth.mjs "$metadata_file"
+          rm -f "$metadata_file"
+
+      - name: Probe website maintenance readiness only
+        if: inputs.action == 'maintenance_readiness_probe'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          result_file="$RUNNER_TEMP/nxq-maintenance-readiness.json"
+          trap 'rm -f "$result_file"' EXIT
+
+          set +e
+          http_code="$(curl --silent \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+            --data '{"readiness_probe":true}' \
+            --output "$result_file" \
+            --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/run-website-maintenance")"
+          curl_status=$?
+          set -e
+
+          if [ "$curl_status" -ne 0 ] || [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "FAIL maintenance-runtime-health"
+            exit 1
+          fi
+
+          node --input-type=module - "$result_file" <<'NODE'
+          import fs from "node:fs";
+          let result;
+          try {
+            result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          } catch {
+            console.log("FAIL maintenance-runtime-health");
+            process.exit(1);
+          }
+
+          const checks = result?.checks && typeof result.checks === "object" ? result.checks : {};
+          const expected = [
+            ["public_https_url_accepted", "maintenance-public-https-filter"],
+            ["localhost_rejected", "maintenance-localhost-rejection"],
+            ["insecure_url_rejected", "maintenance-insecure-http-rejection"],
+            ["simulated_retry_path", "maintenance-retry-simulation"],
+            ["simulated_recovery_path", "maintenance-recovery-simulation"],
+          ];
+          let failed = false;
+          for (const [key, label] of expected) {
+            const ok = checks[key] === true;
+            console.log(`${ok ? "PASS" : "FAIL"} ${label}`);
+            if (!ok) failed = true;
+          }
+          const noProviders = checks.external_provider_calls === 0;
+          console.log(`${noProviders ? "PASS" : "FAIL"} maintenance-no-external-provider-calls`);
+          if (!noProviders) failed = true;
+          const noNetlify = result?.netlify_calls === 0;
+          console.log(`${noNetlify ? "PASS" : "FAIL"} maintenance-no-netlify-calls`);
+          if (!noNetlify) failed = true;
+          const noProduction = result?.production_changed === false;
+          console.log(`${noProduction ? "PASS" : "FAIL"} maintenance-no-production-change`);
+          if (!noProduction) failed = true;
+          const runtimeHealthy = result?.ok === true && result?.readiness_probe === true && !failed;
+          console.log(`${runtimeHealthy ? "PASS" : "FAIL"} maintenance-runtime-health`);
+          if (!runtimeHealthy) process.exit(1);
+          NODE
+
+      - name: Deploy zero-Netlify readiness functions only
+        if: inputs.action == 'deploy_zero_netlify_readiness'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            build-business-seo-artifacts
+            reconcile-domain
+            run-staging-evidence-suite
+            run-website-maintenance
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped zero-Netlify readiness function: $fn"
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          done
+
+      - name: Deploy provider-readiness functions only
+        if: inputs.action == 'deploy_provider_readiness'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            bootstrap-runtime-vault
+            check-provider-health
+            dispatch-notifications
+            malware-scan-provider-adapter
+            notification-provider-adapter
+            scan-client-file
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped provider-readiness function: $fn"
+            if [ "$fn" = "bootstrap-runtime-vault" ]; then
+              npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
+            else
+              npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+            fi
+          done
+
+      - name: Deploy Commerce reference-upload function only
+        if: inputs.action == 'deploy_commerce_reference_upload'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Deploying scoped Commerce reference-upload function: upload-commerce-request-reference"
+          npx --no-install supabase functions deploy upload-commerce-request-reference \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --no-verify-jwt
+
+      - name: Deploy Commerce reference AI-handoff functions only
+        if: inputs.action == 'deploy_commerce_reference_ai_handoff'
+        shell: bash
+        run: |
+          set -euo pipefail
+          functions=(
+            upload-commerce-request-reference
+            prepare-commerce-reference-build-context
+          )
+          for fn in "${functions[@]}"; do
+            echo "Deploying scoped Commerce reference AI-handoff function: $fn"
+            npx --no-install supabase functions deploy "$fn" \
+              --project-ref "$SUPABASE_PROJECT_REF" \
+              --no-verify-jwt
+          done
+
+      - name: Smoke test Commerce reference upload only
+        if: inputs.action == 'smoke_commerce_reference_upload'
+        shell: bash
+        run: |
+          set -euo pipefail
+          result_file="$RUNNER_TEMP/nxq-commerce-reference-smoke.json"
+          trap 'rm -f "$result_file"' EXIT
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN" \
+            --data '{"mode":"staging_smoke_test"}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/upload-commerce-request-reference" \
+            > "$result_file"
+          node --input-type=module - "$result_file" <<'NODE'
+          import fs from "node:fs";
+          const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const required = [
+            "ok", "tenant_namespaced", "private_bucket", "access_denied_until_clean_release",
+            "cross_tenant_access_denied", "fixture_removed", "audit_recorded",
+          ];
+          if (!required.every((key) => result[key] === true)
+            || result.quarantine_status !== "restricted"
+            || result.provider_invoked !== false
+            || result.netlify_calls !== 0
+            || result.production_changed !== false) {
+            throw new Error("Commerce reference upload smoke evidence did not pass every invariant.");
+          }
+          console.log(JSON.stringify({
+            ok: true,
+            run_id: result.run_id,
+            tenant_namespaced: true,
+            quarantine_status: "restricted",
+            access_denied_until_clean_release: true,
+            fixture_removed: true,
+            provider_invoked: false,
+            netlify_calls: 0,
+            production_changed: false,
+          }));
+          NODE
+
+      - name: Smoke test Commerce reference AI handoff only
+        if: inputs.action == 'smoke_commerce_reference_ai_handoff'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          result_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.json"
+          headers_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.headers"
+          trap 'rm -f "$result_file" "$headers_file"' EXIT
+          http_status="$(curl --silent --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN" \
+            --data '{"mode":"staging_ai_handoff_smoke_test"}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/upload-commerce-request-reference" \
+            --dump-header "$headers_file" \
+            --output "$result_file" \
+            --write-out '%{http_code}')"
+          if [ "$http_status" -lt 200 ] || [ "$http_status" -ge 300 ]; then
+            node scripts/classify-commerce-reference-smoke-rejection.mjs "$headers_file" "$http_status"
+            exit 1
+          fi
+          node --input-type=module - "$result_file" <<'NODE'
+          import fs from "node:fs";
+          const result = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const required = [
+            "ok", "tenant_namespaced", "private_bucket", "access_denied_until_clean_release",
+            "cross_tenant_access_denied", "clean_release_verified", "multimodal_context_verified",
+            "short_lived_access_verified", "handoff_audit_verified", "fixture_removed", "audit_recorded",
+          ];
+          if (!required.every((key) => result[key] === true)
+            || result.signed_urls_persisted !== false
+            || result.provider_invoked !== false
+            || result.netlify_calls !== 0
+            || result.production_changed !== false) {
+            throw new Error("Commerce reference AI-handoff smoke evidence did not pass every invariant.");
+          }
+          console.log(JSON.stringify({
+            ok: true,
+            run_id: result.run_id,
+            tenant_namespaced: true,
+            quarantine_denial_verified: true,
+            cross_tenant_access_denied: true,
+            clean_release_verified: true,
+            multimodal_context_verified: true,
+            short_lived_access_verified: true,
+            handoff_audit_verified: true,
+            signed_urls_persisted: false,
+            fixture_removed: true,
+            provider_invoked: false,
+            netlify_calls: 0,
+            production_changed: false,
+          }));
+          NODE
+
+      - name: Prove Business build-plan AI runtime once
+        if: inputs.action == 'prove_business_build_plan_ai'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          secrets_file="$RUNNER_TEMP/nxq-build-plan-proof-token.env"
+          request_file="$RUNNER_TEMP/nxq-build-plan-proof-request.json"
+          result_file="$RUNNER_TEMP/nxq-build-plan-proof-result.json"
+          trap 'rm -f "$secrets_file" "$request_file" "$result_file"' EXIT
+
+          proof_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          proof_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          printf 'NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN=%s\n' "$proof_token" > "$secrets_file"
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+          echo "PASS business-build-plan-proof-adapter-token-rotated-without-display"
+
+          node --input-type=module - "$request_file" <<'NODE'
+          import crypto from "node:crypto";
+          import fs from "node:fs";
+          const output = process.argv[2];
+          const input = {
+            business_name: "NXQ QA Tree Services",
+            business_type: "Tree Service",
+            service_area: "Fictional QA Service Area",
+            services: ["Tree Removal", "Tree Trimming", "Stump Grinding"],
+            goals: "Generate a clear premium local-service website strategy for a fictional staging-only QA business.",
+            desired_style: "Premium dark modern design with restrained motion and strong readability.",
+            approved_pages: ["Home", "About", "Services", "Contact"],
+            product_tier_key: "growth",
+          };
+          const fingerprint = crypto.createHash("sha256").update(JSON.stringify(input)).digest("hex");
+          const body = {
+            task: "enrich_business_build_plan_v1",
+            schema_version: "nxq-business-build-plan-v1",
+            request_fingerprint: fingerprint,
+            input,
+            contract: {
+              plain_text_only: true,
+              no_links_or_markup: true,
+              allowed_services: input.services,
+              allowed_pages: input.approved_pages,
+              allowed_theme_keys: ["midnight_blue", "charcoal_gold", "forest_emerald", "royal_violet"],
+              minimum_confidence: 0.82,
+              production_or_provider_actions_forbidden: true,
+              legal_financial_medical_guarantees_forbidden: true,
+            },
+          };
+          fs.writeFileSync(output, JSON.stringify(body), { mode: 0o600 });
+          NODE
+
+          sleep 8
+          http_status="$(curl --silent --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "Authorization: Bearer ${proof_token}" \
+            --data-binary "@${request_file}" \
+            --output "$result_file" \
+            --write-out '%{http_code}' \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/generate-business-build-plan")"
+
+          if [ "$http_status" -lt 200 ] || [ "$http_status" -ge 300 ]; then
+            echo "FAIL business-build-plan-proof-runtime-call"
+            exit 1
+          fi
+
+          node --input-type=module - "$request_file" "$result_file" <<'NODE'
+          import fs from "node:fs";
+          let request;
+          let result;
+          try {
+            request = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            result = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+          } catch {
+            console.log("FAIL business-build-plan-proof-structured-output");
+            process.exit(1);
+          }
+          const shapeOk = result?.schema_version === "nxq-business-build-plan-v1"
+            && result?.request_fingerprint === request?.request_fingerprint
+            && Number.isFinite(Number(result?.confidence))
+            && Array.isArray(result?.risk_flags)
+            && result?.strategy && typeof result.strategy === "object";
+          console.log(`${shapeOk ? "PASS" : "FAIL"} business-build-plan-proof-structured-output`);
+          if (!shapeOk) process.exit(1);
+          NODE
+
+          PROOF_STARTED_AT="$proof_started_at" node --input-type=module <<'NODE'
+          const accessToken = process.env.SUPABASE_ACCESS_TOKEN || "";
+          const projectRef = process.env.SUPABASE_PROJECT_REF || "";
+          const startedAt = process.env.PROOF_STARTED_AT || "";
+          if (!accessToken || !projectRef || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(startedAt)) {
+            console.log("FAIL business-build-plan-proof-fresh-provider-evidence");
+            process.exit(1);
+          }
+          const query = `
+            select
+              coalesce(status = 'healthy', false) as provider_healthy,
+              coalesce(last_success_at >= '${startedAt}'::timestamptz, false) as fresh_success,
+              coalesce(last_error is null, false) as no_error
+            from public.nxq_provider_connections
+            where provider_key = 'business_build_plan_ai'
+              and scope_type = 'global'
+              and scope_id is null
+            limit 1;
+          `;
+          let response;
+          try {
+            response = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query/read-only`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ query }),
+            });
+          } catch {
+            console.log("FAIL business-build-plan-proof-fresh-provider-evidence");
+            process.exit(1);
+          }
+          if (!response.ok) {
+            console.log("FAIL business-build-plan-proof-fresh-provider-evidence");
+            process.exit(1);
+          }
+          let payload;
+          try { payload = await response.json(); }
+          catch {
+            console.log("FAIL business-build-plan-proof-fresh-provider-evidence");
+            process.exit(1);
+          }
+          const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.result) ? payload.result : Array.isArray(payload?.data) ? payload.data : [];
+          const row = rows[0] || {};
+          const proven = row.provider_healthy === true && row.fresh_success === true && row.no_error === true;
+          console.log(`${proven ? "PASS" : "FAIL"} business-build-plan-proof-fresh-provider-evidence`);
+          if (!proven) process.exit(1);
+          console.log("PASS business-build-plan-proof-one-guarded-provider-call");
+          console.log("PASS business-build-plan-proof-no-netlify-no-production");
+          NODE
+
+      - name: Configure internal provider adapters only
+        if: inputs.action == 'configure_internal_provider_adapters'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-internal-provider-adapters.env"
+          secret_names_file="$RUNNER_TEMP/nxq-supabase-secrets.json"
+          trap 'rm -f "$secrets_file" "$secret_names_file"' EXIT
+
+          function_base_url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          notification_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          malware_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          provider_health_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+          build_plan_token="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('hex'))")"
+
+          printf '%s=%s\n' \
+            NXQ_NOTIFICATION_ADAPTER_URL "${function_base_url}/notification-provider-adapter" \
+            NXQ_NOTIFICATION_ADAPTER_TOKEN "$notification_token" \
+            NXQ_MALWARE_SCAN_ADAPTER_URL "${function_base_url}/malware-scan-provider-adapter" \
+            NXQ_MALWARE_SCAN_ADAPTER_TOKEN "$malware_token" \
+            NXQ_PROVIDER_HEALTH_ADAPTER_URL "${function_base_url}/provider-health-adapter" \
+            NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN "$provider_health_token" \
+            NXQ_BUILD_PLAN_AI_ADAPTER_URL "${function_base_url}/generate-business-build-plan" \
+            NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN "$build_plan_token" \
+            > "$secrets_file"
+
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+          rm -f "$secrets_file"
+
+          npx --no-install supabase secrets list \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --output-format json > "$secret_names_file"
+          node scripts/check-runtime-stage-readiness-readonly.mjs \
+            --profile=business-internal-provider-adapters \
+            --supabase-secrets-json="$secret_names_file"
+          echo "Configured eight protected internal adapter names; no value was printed."
+          echo "Scheduled provider-health checks may begin after this action and require separate authorization before it is run."
+
+      - name: Run zero-Netlify staging evidence suite
+        if: inputs.action == 'run_evidence_suite'
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
+          output="$RUNNER_TEMP/nxq-staging-evidence.json"
+          code="$(curl --silent --show-error --output "$output" --write-out '%{http_code}' \
+            --connect-timeout 15 --max-time 180 \
+            -X POST "${base}/run-staging-evidence-suite" \
+            -H "Content-Type: application/json" \
+            -H "x-nxq-worker-token: ${NXQ_AUTOMATION_WORKER_TOKEN}" \
+            --data '{"source":"github_actions_manual_staging_evidence"}')"
+          cat "$output"
+          test "$code" = "200" || { echo "Staging evidence suite failed with HTTP $code"; exit 1; }
+          node -e 'const fs=require("fs");const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!r.ok||r.netlify_calls!==0||r.production_changed!==false||r.fixtures_removed!==true)process.exit(1)' "$output"
 
       - name: Dispatch queued staging workers externally
         if: inputs.action == 'dispatch_workers'
@@ -129,7 +627,7 @@ jobs:
         run: |
           set -euo pipefail
           base_url="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
-          for fn in provision-project-infrastructure prepare-build-plan; do
+          for fn in provision-project-infrastructure prepare-build-plan build-business-website promote-business-production; do
             echo "Dispatching $fn..."
             response_file="$RUNNER_TEMP/${fn}.json"
             http_code=$(curl --silent --show-error --output "$response_file" --write-out '%{http_code}' \

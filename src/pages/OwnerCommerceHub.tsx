@@ -1,4 +1,4 @@
-import { ArrowLeft, Boxes, Gauge, ShoppingBag, Store, Users } from "lucide-react";
+import { ArrowLeft, Boxes, Gauge, ServerCog, ShoppingBag, Store, Users } from "lucide-react";
 
 const commerceSections = [
   {
@@ -6,6 +6,12 @@ const commerceSections = [
     description: "See each Commerce client's plan, setup status, usage, and major storefront requests without opening their routine store data.",
     href: "/owner/commerce-reviews",
     icon: Users,
+  },
+  {
+    label: "Automatic provisioning",
+    description: "Track automatic GitHub repository creation, Netlify previews, failures, retries, and protected final launch approval.",
+    href: "/owner/storefront-provisioning",
+    icon: ServerCog,
   },
   {
     label: "Build & launch requests",
@@ -34,7 +40,7 @@ export function OwnerCommerceHub() {
           <div className="panel-title">
             <ShoppingBag size={22} />
             <div>
-              <h1>NXQ Commerce</h1>
+              <h1>NXQ-Commerce</h1>
               <p className="subtle">Owner controls for plans, limits, major storefront requests, and protected launches.</p>
             </div>
           </div>

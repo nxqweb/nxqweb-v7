@@ -1,0 +1,183 @@
+name: NXQ Safe CI
+
+on:
+  push:
+    branches:
+      - "safe/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Provisioning contract
+        id: provisioning_contract
+        continue-on-error: true
+        run: node scripts/validate-storefront-provisioning-contract.mjs
+      - name: Automation routing contract
+        id: automation_routing_contract
+        continue-on-error: true
+        run: node scripts/validate-automation-routing-contract.mjs
+      - name: Project infrastructure contract
+        id: project_infrastructure_contract
+        continue-on-error: true
+        run: node scripts/validate-project-infrastructure-contract.mjs
+      - name: Build plan automation contract
+        id: build_plan_contract
+        continue-on-error: true
+        run: node scripts/validate-build-plan-automation-contract.mjs
+      - name: Business template contract
+        id: business_template_contract
+        continue-on-error: true
+        run: node scripts/validate-business-template-contract.mjs
+      - name: Business build worker contract
+        id: business_build_contract
+        continue-on-error: true
+        run: node scripts/validate-business-build-worker-contract.mjs
+      - name: Business production contract
+        id: business_production_contract
+        continue-on-error: true
+        run: node scripts/validate-business-production-contract.mjs
+      - name: NXQ identity contract
+        id: nxq_identity_contract
+        continue-on-error: true
+        run: node scripts/validate-nxq-identity-contract.mjs
+      - name: Maintenance and recovery contract
+        id: maintenance_recovery_contract
+        continue-on-error: true
+        run: node scripts/validate-maintenance-recovery-contract.mjs
+      - name: Operational control surface contract
+        id: operational_control_contract
+        continue-on-error: true
+        run: node scripts/validate-operational-control-surface.mjs
+      - name: Autonomous lifecycle failure simulator
+        id: autonomy_failure_simulator
+        continue-on-error: true
+        run: node scripts/simulate-autonomy-failures.mjs
+      - name: Domain autonomy contract
+        id: domain_autonomy_contract
+        continue-on-error: true
+        run: node scripts/validate-domain-autonomy-contract.mjs
+      - name: Denial hard-stop contract
+        id: denial_hard_stop_contract
+        continue-on-error: true
+        run: node scripts/validate-denial-hard-stop-contract.mjs
+      - name: Client tutorial and denial UX contract
+        id: client_tutorial_contract
+        continue-on-error: true
+        run: node scripts/validate-client-tutorial-contract.mjs
+      - name: Tier entitlement contract
+        id: tier_entitlement_contract
+        continue-on-error: true
+        run: node scripts/validate-tier-entitlement-contract.mjs
+      - name: Mega autonomy feature contract
+        id: mega_autonomy_contract
+        continue-on-error: true
+        run: node scripts/validate-mega-autonomy-contract.mjs
+      - name: Tenant isolation contract
+        id: tenant_isolation_contract
+        continue-on-error: true
+        run: node scripts/validate-tenant-isolation-contract.mjs
+      - name: Recovery and launch readiness contract
+        id: recovery_readiness_contract
+        continue-on-error: true
+        run: node scripts/validate-recovery-readiness-contract.mjs
+      - name: Provider health contract
+        id: provider_health_contract
+        continue-on-error: true
+        run: node scripts/validate-provider-health-contract.mjs
+      - name: Worker heartbeat contract
+        id: worker_heartbeat_contract
+        continue-on-error: true
+        run: node scripts/validate-worker-heartbeat-contract.mjs
+      - name: Client file security contract
+        id: file_security_contract
+        continue-on-error: true
+        run: node scripts/validate-file-security-contract.mjs
+      - name: Autonomy ops wave two contract
+        id: autonomy_ops_wave2_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave2-contract.mjs
+      - name: Autonomy ops wave three contract
+        id: autonomy_ops_wave3_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave3-contract.mjs
+      - name: Autonomy ops wave four contract
+        id: autonomy_ops_wave4_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave4-contract.mjs
+      - name: Autonomy ops wave five contract
+        id: autonomy_ops_wave5_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave5-contract.mjs
+      - name: Autonomy ops wave six contract
+        id: autonomy_ops_wave6_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave6-contract.mjs
+      - name: Autonomy ops wave seven contract
+        id: autonomy_ops_wave7_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave7-contract.mjs
+      - name: Autonomy ops wave eight contract
+        id: autonomy_ops_wave8_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave8-contract.mjs
+      - name: Autonomy ops wave nine contract
+        id: autonomy_ops_wave9_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave9-contract.mjs
+      - name: Autonomy ops wave ten contract
+        id: autonomy_ops_wave10_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave10-contract.mjs
+      - name: Autonomy ops wave eleven contract
+        id: autonomy_ops_wave11_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave11-contract.mjs
+      - name: Autonomy ops wave twelve contract
+        id: autonomy_ops_wave12_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave12-contract.mjs
+      - name: Autonomy ops wave thirteen contract
+        id: autonomy_ops_wave13_contract
+        continue-on-error: true
+        run: node scripts/validate-autonomy-ops-wave13-contract.mjs
+
+      - name: Lint with zero warnings
+        id: lint
+        continue-on-error: true
+        run: npm run lint -- --max-warnings=0
+      - name: Production dependency audit
+        id: audit
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: npm run build
+      - name: Production bundle budget
+        id: bundle_budget
+        continue-on-error: true
+        run: node scripts/check-production-bundle-budget.mjs
+
+      - name: Fail if validation failed
+        if: steps.provisioning_contract.outcome == 'failure' || steps.automation_routing_contract.outcome == 'failure' || steps.project_infrastructure_contract.outcome == 'failure' || steps.build_plan_contract.outcome == 'failure' || steps.business_template_contract.outcome == 'failure' || steps.business_build_contract.outcome == 'failure' || steps.business_production_contract.outcome == 'failure' || steps.nxq_identity_contract.outcome == 'failure' || steps.maintenance_recovery_contract.outcome == 'failure' || steps.operational_control_contract.outcome == 'failure' || steps.autonomy_failure_simulator.outcome == 'failure' || steps.domain_autonomy_contract.outcome == 'failure' || steps.denial_hard_stop_contract.outcome == 'failure' || steps.client_tutorial_contract.outcome == 'failure' || steps.tier_entitlement_contract.outcome == 'failure' || steps.mega_autonomy_contract.outcome == 'failure' || steps.tenant_isolation_contract.outcome == 'failure' || steps.recovery_readiness_contract.outcome == 'failure' || steps.provider_health_contract.outcome == 'failure' || steps.worker_heartbeat_contract.outcome == 'failure' || steps.file_security_contract.outcome == 'failure' || steps.autonomy_ops_wave2_contract.outcome == 'failure' || steps.autonomy_ops_wave3_contract.outcome == 'failure' || steps.autonomy_ops_wave4_contract.outcome == 'failure' || steps.autonomy_ops_wave5_contract.outcome == 'failure' || steps.autonomy_ops_wave6_contract.outcome == 'failure' || steps.autonomy_ops_wave7_contract.outcome == 'failure' || steps.autonomy_ops_wave8_contract.outcome == 'failure' || steps.autonomy_ops_wave9_contract.outcome == 'failure' || steps.autonomy_ops_wave10_contract.outcome == 'failure' || steps.autonomy_ops_wave11_contract.outcome == 'failure' || steps.autonomy_ops_wave12_contract.outcome == 'failure' || steps.autonomy_ops_wave13_contract.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.audit.outcome == 'failure' || steps.build.outcome == 'failure' || steps.bundle_budget.outcome == 'failure'
+        run: |
+          echo "Validation failed. Provisioning=${{ steps.provisioning_contract.outcome }} Routing=${{ steps.automation_routing_contract.outcome }} Infrastructure=${{ steps.project_infrastructure_contract.outcome }} BuildPlan=${{ steps.build_plan_contract.outcome }} BusinessTemplate=${{ steps.business_template_contract.outcome }} BusinessWorker=${{ steps.business_build_contract.outcome }} Production=${{ steps.business_production_contract.outcome }} NXQID=${{ steps.nxq_identity_contract.outcome }} Maintenance=${{ steps.maintenance_recovery_contract.outcome }} Operations=${{ steps.operational_control_contract.outcome }} Simulator=${{ steps.autonomy_failure_simulator.outcome }} Domain=${{ steps.domain_autonomy_contract.outcome }} Denial=${{ steps.denial_hard_stop_contract.outcome }} Tutorial=${{ steps.client_tutorial_contract.outcome }} Tiers=${{ steps.tier_entitlement_contract.outcome }} Mega=${{ steps.mega_autonomy_contract.outcome }} Tenant=${{ steps.tenant_isolation_contract.outcome }} Recovery=${{ steps.recovery_readiness_contract.outcome }} Providers=${{ steps.provider_health_contract.outcome }} Heartbeat=${{ steps.worker_heartbeat_contract.outcome }} FileSecurity=${{ steps.file_security_contract.outcome }} OpsWave2=${{ steps.autonomy_ops_wave2_contract.outcome }} OpsWave3=${{ steps.autonomy_ops_wave3_contract.outcome }} OpsWave4=${{ steps.autonomy_ops_wave4_contract.outcome }} OpsWave5=${{ steps.autonomy_ops_wave5_contract.outcome }} OpsWave6=${{ steps.autonomy_ops_wave6_contract.outcome }} OpsWave7=${{ steps.autonomy_ops_wave7_contract.outcome }} OpsWave8=${{ steps.autonomy_ops_wave8_contract.outcome }} OpsWave9=${{ steps.autonomy_ops_wave9_contract.outcome }} OpsWave10=${{ steps.autonomy_ops_wave10_contract.outcome }} OpsWave11=${{ steps.autonomy_ops_wave11_contract.outcome }} OpsWave12=${{ steps.autonomy_ops_wave12_contract.outcome }} OpsWave13=${{ steps.autonomy_ops_wave13_contract.outcome }} Lint=${{ steps.lint.outcome }} Audit=${{ steps.audit.outcome }} Build=${{ steps.build.outcome }} Bundle=${{ steps.bundle_budget.outcome }}"
+          exit 1

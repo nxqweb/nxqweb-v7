@@ -1,0 +1,47 @@
+name: NXQ Build Plan Fallback Contract Clamp
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-build-plan-fallback-contract-clamp.yml
+      - scripts/patch-build-plan-fallback-contract.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Clamp staging fallback output to contract
+        run: python scripts/patch-build-plan-fallback-contract.py
+      - name: Lint adapter
+        run: npx eslint supabase/functions/generate-business-build-plan/index.ts --max-warnings=0
+      - name: Validate runtime contracts
+        run: npm run test:runtime-stage
+      - name: Verify diff
+        run: git diff --check && git diff -- supabase/functions/generate-business-build-plan/index.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- supabase/functions/generate-business-build-plan/index.ts; then
+            echo "No adapter changes needed."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/generate-business-build-plan/index.ts
+          git commit -m "fix: clamp staging build-plan fallback contract"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

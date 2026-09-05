@@ -1,8 +1,8 @@
-﻿# NXQ Web Capability Roadmap
+﻿# NXQ-Web Capability Roadmap
 
 ## Purpose
 
-NXQ Web must not let AI promise every feature automatically.
+NXQ-Web must not let AI promise every feature automatically.
 
 The AI must classify what a client is asking for, check what NXQ can actually support, and route risky or advanced features to owner review before anything is promised.
 
@@ -187,7 +187,7 @@ Examples:
 
 ## Launch support target
 
-By launch, NXQ Web should support:
+By launch, NXQ-Web should support:
 
 - premium business websites
 - service business websites

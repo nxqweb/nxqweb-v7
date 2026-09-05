@@ -1,0 +1,131 @@
+name: NXQ One-Shot Provider Mutation Kill-Switch Fences
+
+on:
+  push:
+    paths:
+      - '.github/workflows/one-shot-provider-mutation-kill-switch-fences.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.ref == 'refs/heads/safe/checkpoint-autonomy-wave35-sales'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch launch-critical reliability hardening
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected exactly one anchor, found {count}")
+              return text.replace(old, new, 1)
+
+          def patch(path, replacements):
+              p = Path(path)
+              text = p.read_text()
+              for old, new, label in replacements:
+                  text = replace_once(text, old, new, f"{path}: {label}")
+              p.write_text(text)
+
+          helper = '''type MutationGuardRpcClient = {
+            rpc: (fn: never, args?: never) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+          };
+
+          async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job: AutomationJob) {
+            for (const [scopeType, scopeReference] of [["client", job.client_id], ["project", job.project_id]] as const) {
+              const allowed = await admin.rpc("nxq_automation_scope_allowed" as never, {
+                target_scope_type: scopeType,
+                target_scope_reference: scopeReference,
+              } as never);
+              if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
+              if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+            }
+          }
+
+          '''
+
+          notifications = "supabase/functions/dispatch-notifications/index.ts"
+          patch(notifications, [
+            ('        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`);',
+             '        if(failedWrite.error)throw new Error(`Notification failure persistence failed: ${failedWrite.error.message}`, { cause: error });',
+             'preserve notification failure cause'),
+          ])
+
+          provision = "supabase/functions/provision-project-infrastructure/index.ts"
+          patch(provision, [
+            ('function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });\n}\n\n',
+             'function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers: jsonHeaders });\n}\n\n' + helper,
+             'insert helper'),
+            ('      const repository = await ensureRepository(clientRes.data.business_name, job.project_id, familySlug, checkpoint);',
+             '      await assertProviderMutationAllowed(admin, job);\n      const repository = await ensureRepository(clientRes.data.business_name, job.project_id, familySlug, checkpoint);',
+             'guard repository creation'),
+            ('      netlifySite = await createNetlifySite(repositoryFullName, familySlug);',
+             '      await assertProviderMutationAllowed(admin, job);\n      netlifySite = await createNetlifySite(repositoryFullName, familySlug);',
+             'guard Netlify site creation'),
+            ('    await upsertNetlifyEnv(netlifySiteId, {',
+             '    await assertProviderMutationAllowed(admin, job);\n    await upsertNetlifyEnv(netlifySiteId, {',
+             'guard Netlify env mutation'),
+          ])
+
+          build = "supabase/functions/build-business-website/index.ts"
+          patch(build, [
+            ('function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers });\n}\n\n',
+             'function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers });\n}\n\n' + helper,
+             'insert helper'),
+            ('  await ensureSafeBranch(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);',
+             '  await assertProviderMutationAllowed(admin, job);\n  await ensureSafeBranch(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);',
+             'guard safe branch mutation'),
+            ('    await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQ Business v1: sync ${file}`);',
+             '    await assertProviderMutationAllowed(admin, job);\n    await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQ Business v1: sync ${file}`);',
+             'guard blueprint file mutation'),
+            ('  await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");',
+             '  await assertProviderMutationAllowed(admin, job);\n  await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");',
+             'guard generated config mutation'),
+            ('  await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);\n  const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);',
+             '  await assertProviderMutationAllowed(admin, job);\n  await activatePreviewBuilds(configRes.data.netlify_site_id, sourceBranch);\n  await assertProviderMutationAllowed(admin, job);\n  const build = await triggerBranchBuild(configRes.data.netlify_site_id, sourceBranch);',
+             'guard preview activation and build'),
+          ])
+
+          promote = "supabase/functions/promote-business-production/index.ts"
+          patch(promote, [
+            ('function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers });\n}\n\n',
+             'function response(body: unknown, status = 200) {\n  return new Response(JSON.stringify(body), { status, headers });\n}\n\n' + helper,
+             'insert helper'),
+            ('  if (sourceSha !== mainSha) await fastForwardMain(configRes.data.github_owner, configRes.data.github_repo, sourceSha, token);',
+             '  if (sourceSha !== mainSha) {\n    await assertProviderMutationAllowed(admin, job);\n    await fastForwardMain(configRes.data.github_owner, configRes.data.github_repo, sourceSha, token);\n  }',
+             'guard production fast-forward'),
+            ('  const build = await triggerProductionBuild(configRes.data.netlify_site_id);',
+             '  await assertProviderMutationAllowed(admin, job);\n  const build = await triggerProductionBuild(configRes.data.netlify_site_id);',
+             'guard production build'),
+          ])
+      - name: Typecheck hardened Edge workers
+        run: |
+          npx deno check supabase/functions/dispatch-notifications/index.ts
+          npx deno check supabase/functions/provision-project-infrastructure/index.ts
+          npx deno check supabase/functions/build-business-website/index.ts
+          npx deno check supabase/functions/promote-business-production/index.ts
+      - name: Lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit guarded hardening
+        run: |
+          git config user.name "nxqweb"
+          git config user.email "NXQweb@protonmail.com"
+          git add supabase/functions/dispatch-notifications/index.ts supabase/functions/provision-project-infrastructure/index.ts supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit -m "fix: fence provider mutations and notification retries"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

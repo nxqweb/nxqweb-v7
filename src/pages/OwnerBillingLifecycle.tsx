@@ -37,6 +37,15 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
 
+function graceLabel(value: string | null) {
+  if (!value) return "Grace clock unavailable";
+  const elapsedDays = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000));
+  const remainingDays = Math.max(0, 14 - elapsedDays);
+  return remainingDays > 0
+    ? `${remainingDays} grace day${remainingDays === 1 ? "" : "s"} remaining`
+    : `Grace period ended ${Math.max(0, elapsedDays - 14)} day${elapsedDays - 14 === 1 ? "" : "s"} ago`;
+}
+
 export function OwnerBillingLifecycle() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,14 +109,21 @@ export function OwnerBillingLifecycle() {
 
     if (!confirmed) return;
 
-    const note = window.prompt("Optional owner billing note:", "") ?? null;
+    const note = window.prompt(
+      nextStatus === "frozen" ? "Required freeze reason (at least 8 characters):" : "Optional owner billing note:",
+      ""
+    ) ?? null;
     if (note === null) return;
+    if (nextStatus === "frozen" && note.trim().length < 8) {
+      setError("Add a specific freeze reason of at least 8 characters.");
+      return;
+    }
 
     setWorkingClientId(client.id);
     setNotice("");
     setError("");
 
-    const result = await supabase.rpc("set_client_billing_state", {
+    const result = await supabase.rpc("owner_set_client_billing_state", {
       target_client_id: client.id,
       next_billing_status: nextStatus,
       next_billing_provider: client.billing_provider || "manual",
@@ -197,8 +213,14 @@ export function OwnerBillingLifecycle() {
           </div>
         </div>
 
-        {error ? <div className="notice-card error">{error}</div> : null}
-        {notice ? <div className="notice-card success">{notice}</div> : null}
+        {error ? <div className="notice-card error" role="alert">{error}</div> : null}
+        {notice ? <div className="notice-card success" role="status">{notice}</div> : null}
+
+        <div className="portal-grid">
+          <section className="panel"><Clock3 size={20} /><h2>{attentionClients.length}</h2><p className="subtle">Accounts needing review</p></section>
+          <section className="panel"><Snowflake size={20} /><h2>{clients.filter((client) => client.billing_status === "freeze_review").length}</h2><p className="subtle">Human freeze decisions</p></section>
+          <section className="panel"><CheckCircle2 size={20} /><h2>{clients.filter((client) => client.billing_status === "active").length}</h2><p className="subtle">Active accounts</p></section>
+        </div>
 
         <section className="panel panel-wide">
           <div className="panel-title">
@@ -224,24 +246,24 @@ export function OwnerBillingLifecycle() {
 
                 <p>{formatMoney(Number(client.monthly_price || 0))}/month · {client.billing_provider || "manual"}</p>
                 <small>
-                  Overdue since: {formatDate(client.billing_overdue_since)} · Frozen at: {formatDate(client.billing_frozen_at)}
+                  Overdue since: {formatDate(client.billing_overdue_since)} · {graceLabel(client.billing_overdue_since)} · Frozen at: {formatDate(client.billing_frozen_at)}
                 </small>
 
                 <div className="project-stage-row">
                   {client.billing_status === "past_due" ? (
                     <button disabled={workingClientId === client.id} onClick={() => void changeBillingState(client, "freeze_review")} type="button">
-                      Send to Freeze Review
+                      {workingClientId === client.id ? "Updating…" : "Send to Freeze Review"}
                     </button>
                   ) : null}
 
                   {client.billing_status === "freeze_review" ? (
                     <button disabled={workingClientId === client.id} onClick={() => void changeBillingState(client, "frozen")} type="button">
-                      Confirm Freeze
+                      {workingClientId === client.id ? "Updating…" : "Confirm Human Freeze"}
                     </button>
                   ) : null}
 
                   <button disabled={workingClientId === client.id} onClick={() => void recordPayment(client)} type="button">
-                    Record Payment + Restore
+                    {workingClientId === client.id ? "Recording…" : "Record Payment + Restore"}
                   </button>
                 </div>
               </article>

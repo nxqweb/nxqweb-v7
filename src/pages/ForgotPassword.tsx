@@ -16,7 +16,7 @@ export function ForgotPassword() {
     setErrorMessage("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setErrorMessage("Password recovery is not configured yet.");
+      setErrorMessage("Password recovery is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -34,7 +34,7 @@ export function ForgotPassword() {
     setIsSubmitting(false);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage("We could not send a recovery link right now. Please try again.");
       return;
     }
 
@@ -47,7 +47,7 @@ export function ForgotPassword() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal/login">
-          NXQ Web Portal
+          NXQ-Web Portal
         </a>
 
         <form className="auth-card" onSubmit={handleResetRequest}>
@@ -61,14 +61,15 @@ export function ForgotPassword() {
             recovery link.
           </p>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <label className="auth-label" htmlFor="recovery-email">
             Email
           </label>
 
           <input
+            autoComplete="email"
             className="auth-input"
             id="recovery-email"
             onChange={(event) => setEmail(event.target.value)}

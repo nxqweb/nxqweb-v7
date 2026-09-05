@@ -1,0 +1,59 @@
+name: One-shot Scalable Owner Portal
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-scalable-owner-portal.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Anchor ambiguous client-list patch
+        run: node scripts/fix-owner-pagination-patcher-anchor.mjs
+      - name: Apply scalable Owner Portal patch
+        run: node scripts/patch-owner-portal-pagination.mjs
+      - name: Fix compile-only fallback
+        run: node scripts/fix-owner-pagination-compile.mjs
+      - name: Stabilize initial loader hook
+        run: node scripts/fix-owner-pagination-hook.mjs
+      - name: Verify scalable read-model usage
+        run: |
+          grep -q 'owner_portal_summary' src/pages/OwnerPortal.tsx
+          grep -q 'owner_client_directory_page' src/pages/OwnerPortal.tsx
+          grep -q 'owner_client_message_page' src/pages/OwnerPortal.tsx
+          grep -q 'owner_unread_message_page' src/pages/OwnerPortal.tsx
+          grep -q 'Load more clients' src/pages/OwnerPortal.tsx
+          grep -q 'Load older messages' src/pages/OwnerPortal.tsx
+          ! grep -q '.from("clients")' src/pages/OwnerPortal.tsx
+          ! grep -q '.from("projects")' src/pages/OwnerPortal.tsx
+          ! grep -q '.from("client_messages")' src/pages/OwnerPortal.tsx
+      - name: Production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit scalable Owner Portal
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add src/pages/OwnerPortal.tsx
+          git diff --cached --quiet && { echo "No Owner Portal changes to commit."; exit 1; }
+          git commit -m "feat: paginate owner portal for unbounded client growth"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
+
+# rerun: refresh handlers call scalable loader explicitly

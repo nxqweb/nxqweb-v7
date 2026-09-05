@@ -1,0 +1,50 @@
+name: One-shot Security Outbound Hardening
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-security-outbound-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded source patch
+        run: node scripts/patch-security-outbound-guards.mjs
+      - name: Verify expected hardening markers
+        run: |
+          grep -q 'requirePublicHttpsUrl(endpoint, "Malware scanner adapter URL")' supabase/functions/scan-client-file/index.ts
+          grep -q 'NXQ_FILE_SCAN_MAX_BYTES must be a positive integer' supabase/functions/scan-client-file/index.ts
+          grep -q 'requirePublicHttpsUrl(endpoint, "Notification adapter URL")' supabase/functions/dispatch-notifications/index.ts
+          grep -q 'validatedRedirectTarget(location, currentUrl' supabase/functions/run-website-maintenance/index.ts
+          grep -q 'normalizeGithubPrivateKey(requiredSecret("GITHUB_APP_PRIVATE_KEY"))' supabase/functions/run-website-maintenance/index.ts
+      - name: Typecheck hardened Edge functions
+        run: |
+          npx deno check supabase/functions/scan-client-file/index.ts
+          npx deno check supabase/functions/dispatch-notifications/index.ts
+          npx deno check supabase/functions/run-website-maintenance/index.ts
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit hardened workers
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add supabase/functions/scan-client-file/index.ts supabase/functions/dispatch-notifications/index.ts supabase/functions/run-website-maintenance/index.ts
+          git diff --cached --quiet && { echo "No worker changes to commit."; exit 1; }
+          git commit -m "security: harden outbound worker requests"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

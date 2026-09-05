@@ -222,19 +222,12 @@ export function OwnerPreviewRequests() {
     setActionMessage("");
     setErrorMessage("");
 
-    const result = await supabase
-      .from("preview_deployment_requests")
-      .insert({
-        deployment_config_id: selectedConfig.id,
-        project_id: selectedConfig.project_id,
-        client_id: selectedConfig.client_id,
-        source_branch: cleanBranch,
-        requested_commit_sha: requestedCommitSha.trim() || null,
-        owner_decision_note: requestNote.trim() || null,
-        status: "pending_owner_approval",
-      })
-      .select(previewRequestSelect)
-      .single();
+    const result = await supabase.rpc("owner_create_preview_request", {
+      target_deployment_config_id: selectedConfig.id,
+      target_source_branch: cleanBranch,
+      target_requested_commit_sha: requestedCommitSha.trim() || null,
+      target_note: requestNote.trim() || null,
+    });
 
     setIsCreating(false);
     if (result.error) {
@@ -270,25 +263,11 @@ export function OwnerPreviewRequests() {
     setActionMessage("");
     setErrorMessage("");
 
-    const userResult = await supabase.auth.getUser();
-    if (userResult.error || !userResult.data.user) {
-      setDecidingRequestId("");
-      setErrorMessage(userResult.error?.message || "Unable to confirm the owner account.");
-      return;
-    }
-
-    const result = await supabase
-      .from("preview_deployment_requests")
-      .update({
-        status: decision,
-        owner_decision_by: userResult.data.user.id,
-        owner_decision_at: new Date().toISOString(),
-        owner_decision_note: note.trim() || null,
-      })
-      .eq("id", request.id)
-      .eq("status", "pending_owner_approval")
-      .select(previewRequestSelect)
-      .single();
+    const result = await supabase.rpc("owner_decide_preview_request", {
+      target_preview_request_id: request.id,
+      target_decision: decision,
+      target_note: note.trim() || null,
+    });
 
     setDecidingRequestId("");
     if (result.error) {

@@ -1,11 +1,13 @@
-﻿import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+import { ArrowRight, LockKeyhole, Sparkles } from "lucide-react";
+
+import { appConfig } from "../lib/appConfig";
 
 export function PortalLanding() {
   return (
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/">
-          NXQ Web
+          {appConfig.productName}
         </a>
 
         <div className="auth-card">
@@ -15,7 +17,7 @@ export function PortalLanding() {
           </div>
 
           <p className="hero-copy">
-            Access your NXQ Web project workspace, messages, files, approvals,
+            Access your {appConfig.productName} project workspace, messages, files, approvals,
             and launch updates from one secure portal.
           </p>
 
@@ -33,8 +35,7 @@ export function PortalLanding() {
           <div className="history-item">
             <LockKeyhole size={16} />
             <p>
-              Email verification and protected client access will connect in the
-              next phase.
+              Email verification and protected client access help keep each workspace tied to the right account.
             </p>
           </div>
         </div>
@@ -42,4 +43,3 @@ export function PortalLanding() {
     </main>
   );
 }
-
