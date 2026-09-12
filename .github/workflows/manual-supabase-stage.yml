@@ -18,6 +18,7 @@ on:
           - maintenance_readiness_probe
           - apply_migrations
           - deploy_functions
+          - deploy_paid_capability_guards
           - deploy_provider_readiness
           - configure_internal_provider_adapters
           - sync_staging_worker_token
@@ -179,6 +180,41 @@ jobs:
           set -euo pipefail
           npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-supabase-functions.json"
           node scripts/check-runtime-stage-readiness-readonly.mjs --supabase-functions-json="$RUNNER_TEMP/nxq-supabase-functions.json"
+
+      - name: Deploy paid-capability guard functions only
+        if: inputs.action == 'deploy_paid_capability_guards'
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_jwt_functions=(
+            audit-prospect-website
+            check-preview-deployment-safety
+            check-preview-netlify-status
+            check-production-launch-audit
+            check-production-netlify-status
+            discover-sales-prospects
+            draft-sales-outreach-ai
+            execute-preview-netlify-build
+            execute-production-netlify-build
+            publish-production-netlify-deploy
+            verify-deployment-connection
+          )
+          no_verify_jwt_functions=(
+            check-provider-health
+            ingest-business-analytics
+            ingest-business-lead
+            prepare-build-plan
+            provision-storefront
+            upload-commerce-request-reference
+          )
+          for fn in "${verify_jwt_functions[@]}"; do
+            echo "Deploying scoped paid-capability guard function with JWT verification: $fn"
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"
+          done
+          for fn in "${no_verify_jwt_functions[@]}"; do
+            echo "Deploying scoped paid-capability guard function with source-level authentication: $fn"
+            npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
+          done
 
       - name: Audit Commerce remote authentication boundaries only
         if: inputs.action == 'audit_commerce_reference_remote_auth'

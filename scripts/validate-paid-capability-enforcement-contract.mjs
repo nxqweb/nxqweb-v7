@@ -1,11 +1,29 @@
 import fs from "node:fs";
 import path from "node:path";
+import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const migration = read("supabase/migrations/246_enforce_paid_capability_boundaries.sql");
+const stagingWorkflow = read(".github/workflows/manual-supabase-stage.yml").replaceAll("\r\n", "\n");
 const checks = [];
 const check = (name, passed) => checks.push([name, Boolean(passed)]);
+
+function workflowStep(name) {
+  const marker = `      - name: ${name}`;
+  const start = stagingWorkflow.indexOf(marker);
+  if (start < 0) return "";
+  const end = stagingWorkflow.indexOf("\n      - name:", start + marker.length);
+  return stagingWorkflow.slice(start, end < 0 ? stagingWorkflow.length : end);
+}
+
+function functionArray(step, variableName) {
+  const pattern = new RegExp(`${variableName}=\\(\\n([\\s\\S]*?)\\n\\s*\\)`);
+  return (pattern.exec(step)?.[1] || "")
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
 
 check("Canonical authorization requires service role", migration.includes("nxq_authorize_paid_capability") && migration.includes("if auth.role()<>'service_role'"));
 check("Billing and lifecycle deny before entitlement and spend", migration.includes("Paid capability denied by billing state") && migration.includes("Paid capability denied by client lifecycle"));
@@ -19,6 +37,54 @@ check("Business page and location limits are authoritative", read("supabase/func
 check("Storage tickets reserve, consume, cancel, and expire", ["nxq_authorize_storage_upload", "nxq_complete_storage_upload_ticket", "nxq_cancel_storage_upload_ticket", "nxq_storage_upload_ticket_valid", "'consumed','cancelled','expired'", "set status='expired'", "reservation.status='reserved'"].every((token) => migration.includes(token)));
 check("Storage insert and update bypasses are closed", migration.includes("nxq_ticketed_paid_storage_insert") && migration.includes("nxq_ticketed_paid_storage_update"));
 check("Automation, maintenance, Commerce, and notification transitions are guarded", ["nxq_guard_external_job_transition", "nxq_guard_maintenance_transition", "nxq_guard_storefront_transition", "nxq_guard_notification_transition"].every((token) => migration.includes(token)));
+
+const paidGuardDeployStep = workflowStep("Deploy paid-capability guard functions only");
+const expectedVerifyJwtFunctions = [
+  "audit-prospect-website",
+  "check-preview-deployment-safety",
+  "check-preview-netlify-status",
+  "check-production-launch-audit",
+  "check-production-netlify-status",
+  "discover-sales-prospects",
+  "draft-sales-outreach-ai",
+  "execute-preview-netlify-build",
+  "execute-production-netlify-build",
+  "publish-production-netlify-deploy",
+  "verify-deployment-connection",
+];
+const expectedNoVerifyJwtFunctions = [
+  "check-provider-health",
+  "ingest-business-analytics",
+  "ingest-business-lead",
+  "prepare-build-plan",
+  "provision-storefront",
+  "upload-commerce-request-reference",
+];
+const deployedVerifyJwtFunctions = functionArray(paidGuardDeployStep, "verify_jwt_functions");
+const deployedNoVerifyJwtFunctions = functionArray(paidGuardDeployStep, "no_verify_jwt_functions");
+const expectedPaidGuardFunctions = [...expectedVerifyJwtFunctions, ...expectedNoVerifyJwtFunctions];
+const deployedPaidGuardFunctions = [...deployedVerifyJwtFunctions, ...deployedNoVerifyJwtFunctions];
+check("Paid-capability deployment action has the exact 17-function allowlist",
+  stagingWorkflow.includes("          - deploy_paid_capability_guards") &&
+  JSON.stringify(deployedPaidGuardFunctions) === JSON.stringify(expectedPaidGuardFunctions) &&
+  new Set(deployedPaidGuardFunctions).size === 17);
+check("Paid-capability deployment preserves every manifest JWT boundary",
+  expectedVerifyJwtFunctions.every((name) => edgeFunctionManifest.some((entry) => entry.name === name && entry.verifyJwt === true)) &&
+  expectedNoVerifyJwtFunctions.every((name) => edgeFunctionManifest.some((entry) => entry.name === name && entry.verifyJwt === false)) &&
+  (paidGuardDeployStep.match(/--no-verify-jwt/g) || []).length === 1);
+check("Paid-capability deployment excludes every unrelated Edge function",
+  edgeFunctionManifest.filter((entry) => !expectedPaidGuardFunctions.includes(entry.name))
+    .every((entry) => !deployedPaidGuardFunctions.includes(entry.name)));
+const mutationConfirmationStep = workflowStep("Require explicit mutation confirmation");
+check("Paid-capability deployment requires the exact staging mutation confirmation",
+  mutationConfirmationStep.includes('inputs.action != \'validate_non_ai\'') &&
+  !mutationConfirmationStep.includes("inputs.action != 'deploy_paid_capability_guards'") &&
+  mutationConfirmationStep.includes('inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING"'));
+check("Paid-capability deployment cannot run under another action",
+  paidGuardDeployStep.includes("if: inputs.action == 'deploy_paid_capability_guards'") &&
+  !paidGuardDeployStep.includes("apply_all") &&
+  !paidGuardDeployStep.includes("api.netlify.com") &&
+  !paidGuardDeployStep.includes("db push"));
 
 const uploadCallers = [
   "src/pages/ClientPortal.tsx",
