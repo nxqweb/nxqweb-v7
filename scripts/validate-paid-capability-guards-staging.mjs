@@ -32,7 +32,36 @@ try {
 }
 
 const responseText = await response.text();
-const sentinel = /NXQ_PAID_GUARD_RESULT:([A-Za-z0-9+/=]+)/.exec(responseText)?.[1];
+
+function responseStrings(value) {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(responseStrings);
+  if (value && typeof value === "object") {
+    return Object.values(value).flatMap(responseStrings);
+  }
+  return [];
+}
+
+function rollbackSentinel(text) {
+  let candidates = [text];
+  try {
+    // Prefer decoded JSON strings so escaped base64 line breaks are restored
+    // before matching. Keep the raw body as a fallback for nonstandard shapes.
+    candidates = [...responseStrings(JSON.parse(text)), text];
+  } catch {
+    // A non-JSON management response is still eligible for the exact marker.
+  }
+
+  for (const candidate of candidates) {
+    const encoded = /NXQ_PAID_GUARD_RESULT:((?:[A-Za-z0-9+/=]+(?:\r?\n)?)+)/
+      .exec(candidate)?.[1]
+      .replaceAll(/\s/g, "");
+    if (encoded) return encoded;
+  }
+  return null;
+}
+
+const sentinel = rollbackSentinel(responseText);
 
 if (response.ok || !sentinel) {
   console.error(response.ok

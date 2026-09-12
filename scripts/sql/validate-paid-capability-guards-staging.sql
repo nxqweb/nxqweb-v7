@@ -35,13 +35,17 @@ declare
   reservation_entries integer;
   resource_status text;
 begin
-  perform set_config('request.jwt.claim.role', 'service_role', true);
-  perform set_config('request.jwt.claim.sub', user_one::text, true);
-  perform set_config(
-    'request.jwt.claims',
-    jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
-    true
-  );
+  -- Keep all fixture work inside a subtransaction. An unexpected assertion or
+  -- schema-compatibility error rolls back that phase before the outer block
+  -- emits the same sanitized result marker used by successful executions.
+  begin
+    perform set_config('request.jwt.claim.role', 'service_role', true);
+    perform set_config('request.jwt.claim.sub', user_one::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
+      true
+    );
 
   select family.id, tier.id
   into family_id, starter_tier_id
@@ -305,20 +309,25 @@ begin
       select resource_idempotency_key
       from public.nxq_storage_upload_tickets where id = ticket_id
     );
-  if resource_status = 'released'
-     and (select status = 'cancelled'
-       from public.nxq_storage_upload_tickets where id = ticket_id)
-     and not exists(
-       select 1 from storage.objects
-       where bucket_id = 'client-files'
-         and name = client_one::text || '/synthetic/fixture.txt'
-     ) then
-    checks := jsonb_set(checks, '{storage_reservation_cleanup}', 'true');
-  end if;
+    if resource_status = 'released'
+       and (select status = 'cancelled'
+         from public.nxq_storage_upload_tickets where id = ticket_id)
+       and not exists(
+         select 1 from storage.objects
+         where bucket_id = 'client-files'
+           and name = client_one::text || '/synthetic/fixture.txt'
+       ) then
+      checks := jsonb_set(checks, '{storage_reservation_cleanup}', 'true');
+    end if;
+  exception when others then
+    -- The subtransaction has already discarded every synthetic fixture and
+    -- reservation. False checks remain false and are the only reported detail.
+    null;
+  end;
 
   -- A final controlled error is the rollback mechanism. The runner accepts
   -- only this marker and reports the decoded boolean classifications.
   raise exception 'NXQ_PAID_GUARD_RESULT:%',
-    encode(convert_to(checks::text, 'UTF8'), 'base64');
+    replace(encode(convert_to(checks::text, 'UTF8'), 'base64'), E'\n', '');
 end;
 $nxq_paid_guard_validation$;
