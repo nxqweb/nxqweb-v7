@@ -11,6 +11,7 @@ on:
         options:
           - validate_foundation
           - validate_non_ai
+          - validate_paid_capability_guards
           - validate_zero_key
           - validate_prelaunch
           - validate
@@ -112,6 +113,10 @@ jobs:
       - name: Apply migrations
         if: inputs.action == 'apply_migrations' || inputs.action == 'apply_all'
         run: npx --no-install supabase db push --linked
+
+      - name: Validate paid-capability guards transactionally
+        if: inputs.action == 'validate_paid_capability_guards'
+        run: node scripts/validate-paid-capability-guards-staging.mjs
 
       - name: Synchronize protected staging worker token only
         if: inputs.action == 'sync_staging_worker_token'

@@ -5,6 +5,7 @@ import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const migration = read("supabase/migrations/246_enforce_paid_capability_boundaries.sql");
+const economicCeilingMigration = read("supabase/migrations/247_enforce_economic_hard_ceiling.sql");
 const stagingWorkflow = read(".github/workflows/manual-supabase-stage.yml").replaceAll("\r\n", "\n");
 const checks = [];
 const check = (name, passed) => checks.push([name, Boolean(passed)]);
@@ -30,6 +31,21 @@ check("Billing and lifecycle deny before entitlement and spend", migration.inclu
 check("Feature entitlement precedes resource and economic reservations", migration.indexOf("Paid capability denied by subscription tier") < migration.indexOf("for item in select key,value from jsonb_each_text"));
 check("Credits remain usage-only", migration.includes("usage_credit_required") && !migration.includes("credit_unlock"));
 check("Economic reservations support idempotent release and reconciliation", migration.includes("nxq_finalize_economic_usage") && migration.includes("usage-refund:") && migration.includes("status in ('released','reconciled','consumed')"));
+const ceilingCheckPosition = economicCeilingMigration.indexOf("if projected>hard_ceiling then");
+const creditSpendPosition = economicCeilingMigration.indexOf("insert into public.nxq_usage_credit_ledger");
+const reservationInsertPosition = economicCeilingMigration.indexOf("insert into public.nxq_economic_usage_reservations");
+check("Economic hard ceiling rejects before credit spend and reservation creation",
+  economicCeilingMigration.includes("create or replace function public.nxq_reserve_economic_usage") &&
+  economicCeilingMigration.includes("'reason','minimum_margin_ceiling_exceeded'") &&
+  ceilingCheckPosition > economicCeilingMigration.indexOf("projected:=spent_this_month+target_estimated_provider_cost_cents") &&
+  ceilingCheckPosition < creditSpendPosition &&
+  ceilingCheckPosition < reservationInsertPosition);
+check("Economic hard-ceiling migration preserves service-role and billing boundaries",
+  economicCeilingMigration.includes("if auth.role()<>'service_role'") &&
+  economicCeilingMigration.includes("Client lifecycle does not permit paid usage") &&
+  economicCeilingMigration.includes("Client billing state does not permit paid usage") &&
+  economicCeilingMigration.includes("Economic policy missing; deny by default") &&
+  economicCeilingMigration.includes("to service_role"));
 check("Platform-funded Growth and Sales work defaults closed", migration.includes("nxq_platform_cost_settings") && migration.includes("emergency_stop boolean not null default true") && migration.includes("monthly_limit_cents integer not null default 0"));
 check("Automatic policy seeding is owner or service only", migration.includes("Only an owner or protected service may seed resource policies") && migration.includes("update of product_family_id,product_tier_id,monthly_price,qa_only,status"));
 check("Enterprise minimum is enforced on activation and price changes", migration.includes("Enterprise monthly price must be at least $150") && migration.includes("update of product_tier_id,monthly_price,status"));
@@ -85,6 +101,59 @@ check("Paid-capability deployment cannot run under another action",
   !paidGuardDeployStep.includes("apply_all") &&
   !paidGuardDeployStep.includes("api.netlify.com") &&
   !paidGuardDeployStep.includes("db push"));
+
+const paidGuardValidationStep = workflowStep("Validate paid-capability guards transactionally");
+const paidGuardValidationRunner = read("scripts/validate-paid-capability-guards-staging.mjs");
+const paidGuardValidationSql = read("scripts/sql/validate-paid-capability-guards-staging.sql");
+const paidGuardValidationChecks = [
+  "tier_denial",
+  "credits_usage_only",
+  "billing_state_denial",
+  "included_usage_accounting",
+  "purchased_credit_accounting",
+  "business_page_limits",
+  "business_location_limits",
+  "resource_limit_rejection",
+  "economic_margin_rejection",
+  "reservation_idempotency",
+  "reservation_release",
+  "reservation_reconciliation",
+  "storage_quota_authorization",
+  "storage_reservation_cleanup",
+  "tenant_isolation",
+  "synthetic_fixtures_only",
+  "no_external_runtime",
+  "rollback_forced",
+];
+check("Transactional paid-capability validation is an explicit isolated action",
+  stagingWorkflow.includes("          - validate_paid_capability_guards") &&
+  paidGuardValidationStep.includes("if: inputs.action == 'validate_paid_capability_guards'") &&
+  paidGuardValidationStep.includes("node scripts/validate-paid-capability-guards-staging.mjs") &&
+  !paidGuardValidationStep.includes("apply_all"));
+check("Transactional paid-capability validation retains the exact staging confirmation gate",
+  !mutationConfirmationStep.includes("inputs.action != 'validate_paid_capability_guards'") &&
+  mutationConfirmationStep.includes('inputs.confirmation }}\" != \"APPLY-NXQ-SUPABASE-STAGING\"'));
+check("Transactional validation uses a forced rollback sentinel and sanitized booleans only",
+  paidGuardValidationSql.includes("raise exception 'NXQ_PAID_GUARD_RESULT:%'") &&
+  paidGuardValidationSql.includes("encode(convert_to(checks::text, 'UTF8'), 'base64')") &&
+  paidGuardValidationRunner.includes("NXQ_PAID_GUARD_RESULT:") &&
+  paidGuardValidationRunner.includes("rollback-sentinel-missing") &&
+  paidGuardValidationChecks.every((name) =>
+    paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)));
+check("Transactional validation proves margin rejection has no economic side effects",
+  paidGuardValidationSql.includes("result->>'reason' = 'minimum_margin_ceiling_exceeded'") &&
+  paidGuardValidationSql.includes("credit_balance_before_margin = credit_balance_after_margin") &&
+  paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
+  paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
+check("Transactional validation is synthetic and excludes external runtime surfaces",
+  paidGuardValidationSql.includes("@synthetic.invalid") &&
+  paidGuardValidationSql.includes("'no_external_runtime', true") &&
+  !paidGuardValidationSql.includes("http") &&
+  !paidGuardValidationSql.includes("netlify") &&
+  !paidGuardValidationSql.includes("storage.objects(") &&
+  !paidGuardValidationRunner.includes("functions/v1") &&
+  !paidGuardValidationStep.includes("dispatch") &&
+  !paidGuardValidationStep.includes("smoke"));
 
 const uploadCallers = [
   "src/pages/ClientPortal.tsx",
