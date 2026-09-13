@@ -1,12 +1,17 @@
--- Execute the complete synthetic validator as one dynamic statement inside a
--- caught subtransaction. If that statement cannot compile or exits
--- unexpectedly, PostgreSQL rolls back the entire statement before this outer
--- wrapper emits only its SQLSTATE classification.
+-- Compile the complete synthetic validator as a transaction-local pg_temp
+-- function inside a caught subtransaction. A nested DO command cannot be
+-- prepared reliably through PL/pgSQL EXECUTE; CREATE FUNCTION is the supported
+-- dynamic-DDL shape and still lets this wrapper sanitize compile failures. If
+-- compilation or execution fails, the subtransaction rolls back the temporary
+-- function and every synthetic fixture before emitting only its SQLSTATE.
 do $nxq_paid_guard_wrapper$
 begin
   begin
     execute $nxq_paid_guard_statement$
-do $nxq_paid_guard_validation$
+create function pg_temp.nxq_validate_paid_capability_guards()
+returns void
+language plpgsql
+as $nxq_paid_guard_validation$
 declare
   family_id uuid;
   starter_tier_id uuid;
@@ -423,6 +428,7 @@ begin
 end;
 $nxq_paid_guard_validation$;
 $nxq_paid_guard_statement$;
+    perform pg_temp.nxq_validate_paid_capability_guards();
   exception when others then
     if sqlerrm like 'NXQ_PAID_GUARD_RESULT:%:NXQ_END' then
       raise exception '%', sqlerrm;

@@ -136,6 +136,9 @@ check("Transactional paid-capability validation retains the exact staging confir
 check("Transactional validation uses a forced rollback sentinel and sanitized booleans only",
   paidGuardValidationSql.includes("do $nxq_paid_guard_wrapper$") &&
   paidGuardValidationSql.includes("execute $nxq_paid_guard_statement$") &&
+  paidGuardValidationSql.includes("create function pg_temp.nxq_validate_paid_capability_guards()") &&
+  paidGuardValidationSql.includes("perform pg_temp.nxq_validate_paid_capability_guards()") &&
+  !paidGuardValidationSql.includes("execute $nxq_paid_guard_statement$\ndo ") &&
   paidGuardValidationSql.includes("raise exception 'NXQ_PAID_GUARD_RESULT:%:NXQ_END'") &&
   paidGuardValidationSql.includes("raise exception 'NXQ_PAID_GUARD_FAILURE:database-sqlstate-%:NXQ_END'") &&
   paidGuardValidationSql.includes("lower(sqlstate)") &&
