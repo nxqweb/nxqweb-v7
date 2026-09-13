@@ -134,9 +134,10 @@ check("Transactional paid-capability validation retains the exact staging confir
   !mutationConfirmationStep.includes("inputs.action != 'validate_paid_capability_guards'") &&
   mutationConfirmationStep.includes('inputs.confirmation }}\" != \"APPLY-NXQ-SUPABASE-STAGING\"'));
 check("Transactional validation uses a forced rollback sentinel and sanitized booleans only",
-  paidGuardValidationSql.includes("raise exception 'NXQ_PAID_GUARD_RESULT:%'") &&
+  paidGuardValidationSql.includes("raise exception 'NXQ_PAID_GUARD_RESULT:%:NXQ_END'") &&
   paidGuardValidationSql.includes("encode(convert_to(checks::text, 'UTF8'), 'base64')") &&
   paidGuardValidationRunner.includes("NXQ_PAID_GUARD_RESULT:") &&
+  paidGuardValidationRunner.includes(":NXQ_END") &&
   paidGuardValidationRunner.includes("rollback-sentinel-missing") &&
   paidGuardValidationChecks.every((name) =>
     paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)));

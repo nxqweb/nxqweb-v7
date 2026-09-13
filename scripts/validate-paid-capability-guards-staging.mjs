@@ -53,9 +53,12 @@ function rollbackSentinel(text) {
   }
 
   for (const candidate of candidates) {
-    const encoded = /NXQ_PAID_GUARD_RESULT:((?:[A-Za-z0-9+/=]+(?:\r?\n)?)+)/
-      .exec(candidate)?.[1]
-      .replaceAll(/\s/g, "");
+    // The SQL emits one unwrapped Base64 token followed by an explicit
+    // non-Base64 terminator. Requiring both boundaries prevents a following
+    // database diagnostic line (for example CONTEXT) from being consumed as
+    // part of the encoded result.
+    const encoded = /NXQ_PAID_GUARD_RESULT:([A-Za-z0-9+/]+={0,2}):NXQ_END/
+      .exec(candidate)?.[1];
     if (encoded) return encoded;
   }
   return null;

@@ -327,7 +327,7 @@ begin
 
   -- A final controlled error is the rollback mechanism. The runner accepts
   -- only this marker and reports the decoded boolean classifications.
-  raise exception 'NXQ_PAID_GUARD_RESULT:%',
+  raise exception 'NXQ_PAID_GUARD_RESULT:%:NXQ_END',
     replace(encode(convert_to(checks::text, 'UTF8'), 'base64'), E'\n', '');
 end;
 $nxq_paid_guard_validation$;
