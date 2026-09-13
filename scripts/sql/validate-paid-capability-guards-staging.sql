@@ -35,6 +35,7 @@ declare
   reservation_entries integer;
   resource_status text;
   resource_result jsonb;
+  active_location_count integer;
   location_rejected boolean := false;
   resource_rejected boolean := false;
   spent_before_margin integer;
@@ -229,11 +230,10 @@ begin
   exception when others then
     location_rejected := lower(sqlerrm) like '%location limit reached%';
   end;
-  if location_rejected and (
-    select count(*) = 1
-    from public.client_locations
-    where client_id = client_one and status <> 'closed'
-  ) then
+  select count(*) into active_location_count
+  from public.client_locations
+  where client_id = client_one and status <> 'closed';
+  if location_rejected and active_location_count = 1 then
     checks := jsonb_set(checks, '{business_location_limits}', 'true');
   end;
 
@@ -323,17 +323,17 @@ begin
     true
   );
   storage_path := client_one::text || '/synthetic/fixture.txt';
-  execute 'select auth.role(), auth.uid()'
-    into synthetic_role, synthetic_uid;
+  select auth.role(), auth.uid()
+  into synthetic_role, synthetic_uid;
   if synthetic_role = 'authenticated' and synthetic_uid = user_one then
     begin
-      execute 'select public.nxq_authorize_storage_upload($1, $2, $3, $4)'
-        into result
-        using 'client-files', storage_path, 128::bigint, 'text/plain';
+      result := public.nxq_authorize_storage_upload(
+        'client-files', storage_path, 128::bigint, 'text/plain'
+      );
       ticket_id := (result->>'ticket_id')::uuid;
-      execute 'select public.nxq_storage_upload_ticket_valid($1, $2)'
-        into storage_ticket_valid
-        using 'client-files', storage_path;
+      storage_ticket_valid := public.nxq_storage_upload_ticket_valid(
+        'client-files', storage_path
+      );
     exception when others then
       ticket_id := null;
       storage_ticket_valid := false;
@@ -352,12 +352,11 @@ begin
       jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
       true
     );
-    execute 'select auth.role(), auth.uid()'
-      into synthetic_role, synthetic_uid;
+    select auth.role(), auth.uid()
+    into synthetic_role, synthetic_uid;
     if synthetic_role = 'authenticated' and synthetic_uid = user_two then
       begin
-        execute 'select public.nxq_cancel_storage_upload_ticket($1)'
-          using ticket_id;
+        perform public.nxq_cancel_storage_upload_ticket(ticket_id);
       exception when others then
         tenant_denied := lower(sqlerrm) like '%not found%';
       end;
@@ -374,12 +373,11 @@ begin
       jsonb_build_object('role', 'authenticated', 'sub', user_one)::text,
       true
     );
-    execute 'select auth.role(), auth.uid()'
-      into synthetic_role, synthetic_uid;
+    select auth.role(), auth.uid()
+    into synthetic_role, synthetic_uid;
     if synthetic_role = 'authenticated' and synthetic_uid = user_one then
       begin
-        execute 'select public.nxq_cancel_storage_upload_ticket($1)'
-          using ticket_id;
+        perform public.nxq_cancel_storage_upload_ticket(ticket_id);
       exception when others then
         null;
       end;

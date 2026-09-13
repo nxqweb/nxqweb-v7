@@ -149,17 +149,20 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
 check("Transactional validation proves location and resource denials from isolated state",
   paidGuardValidationSql.includes("location_rejected := lower(sqlerrm) like '%location limit reached%'") &&
+  paidGuardValidationSql.includes("select count(*) into active_location_count") &&
+  paidGuardValidationSql.includes("location_rejected and active_location_count = 1") &&
   paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&
   paidGuardValidationSql.includes("'synthetic-resource-limit:api_requests'"));
 check("Transactional storage validation refreshes identity and isolates every cleanup phase",
-  paidGuardValidationSql.includes("execute 'select auth.role(), auth.uid()'") &&
+  paidGuardValidationSql.includes("select auth.role(), auth.uid()") &&
   paidGuardValidationSql.includes("synthetic_uid = user_one") &&
   paidGuardValidationSql.includes("synthetic_uid = user_two") &&
-  paidGuardValidationSql.includes("execute 'select public.nxq_authorize_storage_upload($1, $2, $3, $4)'") &&
-  paidGuardValidationSql.includes("execute 'select public.nxq_storage_upload_ticket_valid($1, $2)'") &&
-  paidGuardValidationSql.includes("execute 'select public.nxq_cancel_storage_upload_ticket($1)'") &&
+  paidGuardValidationSql.includes("result := public.nxq_authorize_storage_upload(") &&
+  paidGuardValidationSql.includes("storage_ticket_valid := public.nxq_storage_upload_ticket_valid(") &&
+  paidGuardValidationSql.includes("perform public.nxq_cancel_storage_upload_ticket(ticket_id)") &&
+  !paidGuardValidationSql.includes("execute 'select public.nxq_") &&
   paidGuardValidationSql.includes("tenant_denied := lower(sqlerrm) like '%not found%'") &&
   paidGuardValidationSql.includes("name = storage_path"));
 check("Transactional validation isolates supported non-dispatching client fixtures and state-based idempotency",
