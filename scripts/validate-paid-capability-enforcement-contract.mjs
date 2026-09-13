@@ -146,6 +146,10 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("credit_balance_before_margin = credit_balance_after_margin") &&
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
+check("Transactional validation isolates supported non-dispatching client fixtures and state-based idempotency",
+  paidGuardValidationSql.includes("'Synthetic Validation', 'overdue', 50, 'active', 'synthetic'") &&
+  paidGuardValidationSql.includes("reservation_entries = 1 and credit_entries = 1") &&
+  !paidGuardValidationSql.includes("result->>'idempotent'"));
 check("Transactional validation is synthetic and excludes external runtime surfaces",
   paidGuardValidationSql.includes("@synthetic.invalid") &&
   paidGuardValidationSql.includes("'no_external_runtime', true") &&

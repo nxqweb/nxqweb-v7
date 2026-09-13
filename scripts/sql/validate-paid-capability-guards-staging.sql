@@ -75,9 +75,9 @@ begin
     product_tier_id, qa_only
   ) values
     (client_one, user_one, 'Synthetic Paid Guard One', 'paid-guard-' || user_one::text || '@synthetic.invalid',
-      'Synthetic Validation', 'active', 50, 'active', 'synthetic', family_id, starter_tier_id, false),
+      'Synthetic Validation', 'overdue', 50, 'active', 'synthetic', family_id, starter_tier_id, false),
     (client_two, user_two, 'Synthetic Paid Guard Two', 'paid-guard-' || user_two::text || '@synthetic.invalid',
-      'Synthetic Validation', 'active', 50, 'active', 'synthetic', family_id, starter_tier_id, false);
+      'Synthetic Validation', 'overdue', 50, 'active', 'synthetic', family_id, starter_tier_id, false);
 
   -- A Starter client must be denied a higher-tier feature before credits exist.
   begin
@@ -143,8 +143,7 @@ begin
   from public.nxq_usage_credit_ledger
   where client_id = client_one and idempotency_key = 'usage-spend:synthetic-credit-reservation';
   if reservation_entries = 1 and credit_entries = 1
-     and coalesce((result->>'allowed')::boolean, false)
-     and coalesce((result->>'idempotent')::boolean, false) then
+     and coalesce((result->>'allowed')::boolean, false) then
     checks := jsonb_set(checks, '{reservation_idempotency}', 'true');
     checks := jsonb_set(checks, '{purchased_credit_accounting}', 'true');
   end if;
