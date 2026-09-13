@@ -1,3 +1,11 @@
+-- Execute the complete synthetic validator as one dynamic statement inside a
+-- caught subtransaction. If that statement cannot compile or exits
+-- unexpectedly, PostgreSQL rolls back the entire statement before this outer
+-- wrapper emits only its SQLSTATE classification.
+do $nxq_paid_guard_wrapper$
+begin
+  begin
+    execute $nxq_paid_guard_statement$
 do $nxq_paid_guard_validation$
 declare
   family_id uuid;
@@ -414,3 +422,13 @@ begin
     replace(encode(convert_to(checks::text, 'UTF8'), 'base64'), E'\n', '');
 end;
 $nxq_paid_guard_validation$;
+$nxq_paid_guard_statement$;
+  exception when others then
+    if sqlerrm like 'NXQ_PAID_GUARD_RESULT:%:NXQ_END' then
+      raise exception '%', sqlerrm;
+    end if;
+    raise exception 'NXQ_PAID_GUARD_FAILURE:database-sqlstate-%:NXQ_END',
+      lower(sqlstate);
+  end;
+end;
+$nxq_paid_guard_wrapper$;

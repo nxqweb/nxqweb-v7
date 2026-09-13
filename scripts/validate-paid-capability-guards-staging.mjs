@@ -42,7 +42,7 @@ function responseStrings(value) {
   return [];
 }
 
-function rollbackSentinel(text) {
+function responseCandidates(text) {
   let candidates = [text];
   try {
     // Prefer decoded JSON strings so escaped base64 line breaks are restored
@@ -52,6 +52,10 @@ function rollbackSentinel(text) {
     // A non-JSON management response is still eligible for the exact marker.
   }
 
+  return candidates;
+}
+
+function rollbackSentinel(candidates) {
   for (const candidate of candidates) {
     // The SQL emits one unwrapped Base64 token followed by an explicit
     // non-Base64 terminator. Requiring both boundaries prevents a following
@@ -64,7 +68,24 @@ function rollbackSentinel(text) {
   return null;
 }
 
-const sentinel = rollbackSentinel(responseText);
+function failureSentinel(candidates) {
+  for (const candidate of candidates) {
+    const classification = /NXQ_PAID_GUARD_FAILURE:([a-z0-9-]+):NXQ_END/
+      .exec(candidate)?.[1];
+    if (classification) return classification;
+  }
+  return null;
+}
+
+const candidates = responseCandidates(responseText);
+const sentinel = rollbackSentinel(candidates);
+const failure = failureSentinel(candidates);
+
+if (!response.ok && failure) {
+  console.error(`FAIL ${failure}`);
+  console.log("PASS fixture-cleanup-by-rollback");
+  process.exit(1);
+}
 
 if (response.ok || !sentinel) {
   console.error(response.ok
