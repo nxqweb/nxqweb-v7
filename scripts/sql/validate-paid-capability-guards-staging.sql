@@ -34,6 +34,17 @@ declare
   credit_balance_after_margin integer;
   reservation_entries integer;
   resource_status text;
+  resource_result jsonb;
+  location_rejected boolean := false;
+  resource_rejected boolean := false;
+  spent_before_margin integer;
+  hard_ceiling_before_margin integer;
+  margin_test_cost integer;
+  synthetic_role text;
+  synthetic_uid uuid;
+  storage_path text;
+  storage_ticket_valid boolean := false;
+  tenant_denied boolean := false;
 begin
   -- Keep all fixture work inside a subtransaction. An unexpected assertion or
   -- schema-compatibility error rolls back that phase before the outer block
@@ -216,31 +227,73 @@ begin
     insert into public.client_locations(client_id, location_code, display_name, seo_slug)
     values(client_one, 'synthetic-extra', 'Synthetic Extra', 'synthetic-extra');
   exception when others then
-    if sqlerrm like '%location limit reached%' then
-      checks := jsonb_set(checks, '{business_location_limits}', 'true');
-    end if;
+    location_rejected := lower(sqlerrm) like '%location limit reached%';
+  end;
+  if location_rejected and (
+    select count(*) = 1
+    from public.client_locations
+    where client_id = client_one and status <> 'closed'
+  ) then
+    checks := jsonb_set(checks, '{business_location_limits}', 'true');
   end;
 
   update public.nxq_client_resource_policies
   set monthly_limit = 1
   where client_id = client_one and resource_key = 'api_requests';
+  resource_result := public.nxq_reserve_client_resource(
+    client_one, 'api_requests', 2,
+    'synthetic-resource-policy-probe', '{}'::jsonb
+  );
   begin
     perform public.nxq_authorize_paid_capability(
       client_one, 'managed_website', jsonb_build_object('api_requests', 2), 0,
       'synthetic-resource-limit', '{}'::jsonb
     );
   exception when others then
-    if sqlerrm like '%resource limit%' then
-      checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');
-    end if;
+    resource_rejected := lower(sqlerrm) like '%resource limit%';
+  end;
+  if resource_rejected
+     and not coalesce((resource_result->>'allowed')::boolean, true)
+     and resource_result->>'reason' = 'monthly_limit_reached'
+     and not exists(
+       select 1 from public.nxq_client_resource_reservations
+       where client_id = client_one and resource_key = 'api_requests'
+         and idempotency_key in (
+           'synthetic-resource-policy-probe',
+           'synthetic-resource-limit:api_requests'
+         )
+     ) then
+    checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');
   end;
 
   -- Credits may fund usage above the included budget, but never cross the
   -- subscription's hard economic ceiling required by the minimum margin.
   select coalesce(sum(amount_cents), 0)::integer into credit_balance_before_margin
   from public.nxq_usage_credit_ledger where client_id = client_one;
+  select
+    coalesce(sum(coalesce(reservation.actual_provider_cost_cents,
+      reservation.estimated_provider_cost_cents)), 0)::integer,
+    floor(client.monthly_price * 100 *
+      ((100 - policy.minimum_margin_percent) / 100))::integer
+  into spent_before_margin, hard_ceiling_before_margin
+  from public.clients client
+  join public.product_families family on family.id = client.product_family_id
+  join public.product_family_tiers tier
+    on tier.id = client.product_tier_id
+   and tier.product_family_id = family.id
+  join public.nxq_tier_economic_policies policy
+    on policy.product_family_slug = family.slug
+   and policy.tier_key = tier.tier_key
+  left join public.nxq_economic_usage_reservations reservation
+    on reservation.client_id = client.id
+   and reservation.status <> 'released'
+   and reservation.occurred_at >= date_trunc('month', now())
+   and reservation.occurred_at < date_trunc('month', now()) + interval '1 month'
+  where client.id = client_one
+  group by client.monthly_price, policy.minimum_margin_percent;
+  margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1);
   result := public.nxq_reserve_economic_usage(
-    client_one, 201, 'synthetic-margin-rejection',
+    client_one, margin_test_cost, 'synthetic-margin-rejection',
     'provider_cost_cents', '{}'::jsonb
   );
   select coalesce(sum(amount_cents), 0)::integer into credit_balance_after_margin
@@ -269,55 +322,88 @@ begin
     jsonb_build_object('role', 'authenticated', 'sub', user_one)::text,
     true
   );
-  result := public.nxq_authorize_storage_upload(
-    'client-files', client_one::text || '/synthetic/fixture.txt', 128, 'text/plain'
-  );
-  ticket_id := (result->>'ticket_id')::uuid;
-  if ticket_id is not null
-     and public.nxq_storage_upload_ticket_valid(
-       'client-files', client_one::text || '/synthetic/fixture.txt'
-     ) then
+  storage_path := client_one::text || '/synthetic/fixture.txt';
+  execute 'select auth.role(), auth.uid()'
+    into synthetic_role, synthetic_uid;
+  if synthetic_role = 'authenticated' and synthetic_uid = user_one then
+    begin
+      execute 'select public.nxq_authorize_storage_upload($1, $2, $3, $4)'
+        into result
+        using 'client-files', storage_path, 128::bigint, 'text/plain';
+      ticket_id := (result->>'ticket_id')::uuid;
+      execute 'select public.nxq_storage_upload_ticket_valid($1, $2)'
+        into storage_ticket_valid
+        using 'client-files', storage_path;
+    exception when others then
+      ticket_id := null;
+      storage_ticket_valid := false;
+    end;
+  else
+    checks := jsonb_set(checks, '{synthetic_fixtures_only}', 'false');
+  end if;
+  if ticket_id is not null and storage_ticket_valid then
     checks := jsonb_set(checks, '{storage_quota_authorization}', 'true');
   end if;
 
-  perform set_config('request.jwt.claim.sub', user_two::text, true);
-  perform set_config(
-    'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
-    true
-  );
-  begin
-    perform public.nxq_cancel_storage_upload_ticket(ticket_id);
-  exception when others then
-    if sqlerrm like '%not found%' then
-      checks := jsonb_set(checks, '{tenant_isolation}', 'true');
-    end if;
-  end;
-
-  perform set_config('request.jwt.claim.sub', user_one::text, true);
-  perform set_config(
-    'request.jwt.claims',
-    jsonb_build_object('role', 'authenticated', 'sub', user_one)::text,
-    true
-  );
-  perform public.nxq_cancel_storage_upload_ticket(ticket_id);
-  select status into resource_status
-  from public.nxq_client_resource_reservations
-  where client_id = client_one and resource_key = 'storage_bytes'
-    and idempotency_key = (
-      select resource_idempotency_key
-      from public.nxq_storage_upload_tickets where id = ticket_id
+  if ticket_id is not null then
+    perform set_config('request.jwt.claim.sub', user_two::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
+      true
     );
-    if resource_status = 'released'
-       and (select status = 'cancelled'
-         from public.nxq_storage_upload_tickets where id = ticket_id)
-       and not exists(
-         select 1 from storage.objects
-         where bucket_id = 'client-files'
-           and name = client_one::text || '/synthetic/fixture.txt'
-       ) then
-      checks := jsonb_set(checks, '{storage_reservation_cleanup}', 'true');
+    execute 'select auth.role(), auth.uid()'
+      into synthetic_role, synthetic_uid;
+    if synthetic_role = 'authenticated' and synthetic_uid = user_two then
+      begin
+        execute 'select public.nxq_cancel_storage_upload_ticket($1)'
+          using ticket_id;
+      exception when others then
+        tenant_denied := lower(sqlerrm) like '%not found%';
+      end;
+      if tenant_denied then
+        checks := jsonb_set(checks, '{tenant_isolation}', 'true');
+      end if;
+    else
+      checks := jsonb_set(checks, '{synthetic_fixtures_only}', 'false');
     end if;
+
+    perform set_config('request.jwt.claim.sub', user_one::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_one)::text,
+      true
+    );
+    execute 'select auth.role(), auth.uid()'
+      into synthetic_role, synthetic_uid;
+    if synthetic_role = 'authenticated' and synthetic_uid = user_one then
+      begin
+        execute 'select public.nxq_cancel_storage_upload_ticket($1)'
+          using ticket_id;
+      exception when others then
+        null;
+      end;
+      select status into resource_status
+      from public.nxq_client_resource_reservations
+      where client_id = client_one and resource_key = 'storage_bytes'
+        and idempotency_key = (
+          select resource_idempotency_key
+          from public.nxq_storage_upload_tickets where id = ticket_id
+        );
+      if resource_status = 'released'
+         and (select status = 'cancelled'
+           from public.nxq_storage_upload_tickets where id = ticket_id)
+         and not exists(
+           select 1 from storage.objects
+           where bucket_id = 'client-files'
+             and name = storage_path
+         ) then
+        checks := jsonb_set(checks, '{storage_reservation_cleanup}', 'true');
+      end if;
+    else
+      checks := jsonb_set(checks, '{synthetic_fixtures_only}', 'false');
+    end if;
+  end if;
   exception when others then
     -- The subtransaction has already discarded every synthetic fixture and
     -- reservation. False checks remain false and are the only reported detail.

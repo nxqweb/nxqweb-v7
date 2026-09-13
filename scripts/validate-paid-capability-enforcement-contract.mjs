@@ -143,9 +143,25 @@ check("Transactional validation uses a forced rollback sentinel and sanitized bo
     paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)));
 check("Transactional validation proves margin rejection has no economic side effects",
   paidGuardValidationSql.includes("result->>'reason' = 'minimum_margin_ceiling_exceeded'") &&
+  paidGuardValidationSql.includes("margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1)") &&
   paidGuardValidationSql.includes("credit_balance_before_margin = credit_balance_after_margin") &&
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
+check("Transactional validation proves location and resource denials from isolated state",
+  paidGuardValidationSql.includes("location_rejected := lower(sqlerrm) like '%location limit reached%'") &&
+  paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
+  paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
+  paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&
+  paidGuardValidationSql.includes("'synthetic-resource-limit:api_requests'"));
+check("Transactional storage validation refreshes identity and isolates every cleanup phase",
+  paidGuardValidationSql.includes("execute 'select auth.role(), auth.uid()'") &&
+  paidGuardValidationSql.includes("synthetic_uid = user_one") &&
+  paidGuardValidationSql.includes("synthetic_uid = user_two") &&
+  paidGuardValidationSql.includes("execute 'select public.nxq_authorize_storage_upload($1, $2, $3, $4)'") &&
+  paidGuardValidationSql.includes("execute 'select public.nxq_storage_upload_ticket_valid($1, $2)'") &&
+  paidGuardValidationSql.includes("execute 'select public.nxq_cancel_storage_upload_ticket($1)'") &&
+  paidGuardValidationSql.includes("tenant_denied := lower(sqlerrm) like '%not found%'") &&
+  paidGuardValidationSql.includes("name = storage_path"));
 check("Transactional validation isolates supported non-dispatching client fixtures and state-based idempotency",
   paidGuardValidationSql.includes("'Synthetic Validation', 'overdue', 50, 'active', 'synthetic'") &&
   paidGuardValidationSql.includes("reservation_entries = 1 and credit_entries = 1") &&
