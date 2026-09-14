@@ -248,7 +248,7 @@ begin
   where client_id = client_one and status <> 'closed';
   if location_rejected and active_location_count = 1 then
     checks := jsonb_set(checks, '{business_location_limits}', 'true');
-  end;
+  end if;
 
   update public.nxq_client_resource_policies
   set monthly_limit = 1
@@ -277,7 +277,7 @@ begin
          )
      ) then
     checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');
-  end;
+  end if;
 
   -- Credits may fund usage above the included budget, but never cross the
   -- subscription's hard economic ceiling required by the minimum margin.

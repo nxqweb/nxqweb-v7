@@ -160,11 +160,12 @@ check("Transactional validation proves margin rejection has no economic side eff
 check("Transactional validation proves location and resource denials from isolated state",
   paidGuardValidationSql.includes("location_rejected := lower(sqlerrm) like '%location limit reached%'") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
-  paidGuardValidationSql.includes("location_rejected and active_location_count = 1") &&
+  paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n    checks := jsonb_set(checks, '{business_location_limits}', 'true');\n  end if;") &&
   paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&
-  paidGuardValidationSql.includes("'synthetic-resource-limit:api_requests'"));
+  paidGuardValidationSql.includes("'synthetic-resource-limit:api_requests'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');\n  end if;"));
 check("Transactional storage validation refreshes identity and isolates every cleanup phase",
   paidGuardValidationSql.includes("select auth.role(), auth.uid()") &&
   paidGuardValidationSql.includes("synthetic_uid = user_one") &&
