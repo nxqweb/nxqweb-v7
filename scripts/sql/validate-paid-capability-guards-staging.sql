@@ -30,10 +30,22 @@ declare
     'business_page_limits', false,
     'business_location_limits', false,
     'location_identity_established', false,
+    'location_client_visible', false,
+    'location_lifecycle_eligible', false,
+    'location_business_tier_compatible', false,
+    'location_billing_eligible', false,
+    'location_zero_existing', false,
     'location_first_created', false,
     'location_second_denied', false,
     'location_denial_classified', false,
     'location_active_count_one', false,
+    'location_first_failure_authentication', false,
+    'location_first_failure_client_not_found', false,
+    'location_first_failure_lifecycle', false,
+    'location_first_failure_tier', false,
+    'location_first_failure_subscription', false,
+    'location_first_failure_input_validation', false,
+    'location_first_failure_downstream_schema_write', false,
     'resource_limit_rejection', false,
     'economic_margin_rejection', false,
     'reservation_idempotency', false,
@@ -264,6 +276,46 @@ begin
       raise exception 'Synthetic location identity was not established.';
     end if;
     checks := jsonb_set(checks, '{location_identity_established}', 'true');
+
+    if exists(
+      select 1 from public.clients where id = client_two and auth_user_id = user_two
+    ) then
+      checks := jsonb_set(checks, '{location_client_visible}', 'true');
+    end if;
+    if exists(
+      select 1 from public.clients
+      where id = client_two and not qa_only and pipeline_stopped_at is null
+        and status::text in ('approved', 'active')
+    ) then
+      checks := jsonb_set(checks, '{location_lifecycle_eligible}', 'true');
+    end if;
+    if exists(
+      select 1
+      from public.clients client
+      join public.product_families family
+        on family.id = client.product_family_id and family.is_active
+      join public.product_family_tiers tier
+        on tier.id = client.product_tier_id
+       and tier.product_family_id = family.id
+       and tier.is_active
+      where client.id = client_two
+        and family.slug = 'business' and tier.tier_key = 'starter'
+    ) then
+      checks := jsonb_set(checks, '{location_business_tier_compatible}', 'true');
+    end if;
+    if exists(
+      select 1 from public.clients
+      where id = client_two and billing_status::text in ('active', 'past_due')
+    ) then
+      checks := jsonb_set(checks, '{location_billing_eligible}', 'true');
+    end if;
+    if not exists(
+      select 1 from public.client_locations
+      where client_id = client_two and status <> 'closed'
+    ) then
+      checks := jsonb_set(checks, '{location_zero_existing}', 'true');
+    end if;
+
     begin
       result := public.current_client_create_location(
         'Synthetic Primary', 'Synthetic City', 'CA',
@@ -274,6 +326,28 @@ begin
       end if;
     exception when others then
       result := null;
+      if lower(sqlerrm) like '%authenticated client access required%' then
+        checks := jsonb_set(checks, '{location_first_failure_authentication}', 'true');
+      elsif lower(sqlerrm) like '%client account was not found%' then
+        checks := jsonb_set(checks, '{location_first_failure_client_not_found}', 'true');
+      elsif lower(sqlerrm) like '%client lifecycle does not allow location changes%' then
+        checks := jsonb_set(checks, '{location_first_failure_lifecycle}', 'true');
+      elsif lower(sqlerrm) like '%active business tier is required%' then
+        checks := jsonb_set(checks, '{location_first_failure_tier}', 'true');
+      elsif lower(sqlerrm) like '%current subscription does not permit location creation%' then
+        checks := jsonb_set(checks, '{location_first_failure_subscription}', 'true');
+      elsif lower(sqlerrm) like any(array[
+        '%location name, city, and state/region are required%',
+        '%postal code is too long%',
+        '%phone number contains unsupported characters%',
+        '%email address is invalid%',
+        '%service area is too long%',
+        '%location supports at most 30 services%'
+      ]) then
+        checks := jsonb_set(checks, '{location_first_failure_input_validation}', 'true');
+      else
+        checks := jsonb_set(checks, '{location_first_failure_downstream_schema_write}', 'true');
+      end if;
     end;
     begin
       perform public.current_client_create_location(
@@ -295,6 +369,11 @@ begin
       checks := jsonb_set(checks, '{location_active_count_one}', 'true');
     end if;
     if checks->>'location_identity_established' = 'true'
+       and checks->>'location_client_visible' = 'true'
+       and checks->>'location_lifecycle_eligible' = 'true'
+       and checks->>'location_business_tier_compatible' = 'true'
+       and checks->>'location_billing_eligible' = 'true'
+       and checks->>'location_zero_existing' = 'true'
        and checks->>'location_first_created' = 'true'
        and checks->>'location_second_denied' = 'true'
        and checks->>'location_denial_classified' = 'true'

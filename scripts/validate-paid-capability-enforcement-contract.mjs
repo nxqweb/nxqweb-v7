@@ -122,6 +122,11 @@ const paidGuardValidationChecks = [
   "business_page_limits",
   "business_location_limits",
   "location_identity_established",
+  "location_client_visible",
+  "location_lifecycle_eligible",
+  "location_business_tier_compatible",
+  "location_billing_eligible",
+  "location_zero_existing",
   "location_first_created",
   "location_second_denied",
   "location_denial_classified",
@@ -137,6 +142,15 @@ const paidGuardValidationChecks = [
   "synthetic_fixtures_only",
   "no_external_runtime",
   "rollback_forced",
+];
+const paidGuardLocationDiagnosticChecks = [
+  "location_first_failure_authentication",
+  "location_first_failure_client_not_found",
+  "location_first_failure_lifecycle",
+  "location_first_failure_tier",
+  "location_first_failure_subscription",
+  "location_first_failure_input_validation",
+  "location_first_failure_downstream_schema_write",
 ];
 check("Transactional paid-capability validation is an explicit isolated action",
   stagingWorkflow.includes("          - validate_paid_capability_guards") &&
@@ -163,7 +177,10 @@ check("Transactional validation uses a forced rollback sentinel and sanitized bo
   !paidGuardValidationRunner.includes("console.error(responseText)") &&
   paidGuardValidationRunner.includes("rollback-sentinel-missing") &&
   paidGuardValidationChecks.every((name) =>
-    paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)));
+    paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)) &&
+  paidGuardLocationDiagnosticChecks.every((name) =>
+    paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)) &&
+  paidGuardValidationRunner.includes('typeof result[name] === "boolean"'));
 check("Transactional validation proves margin rejection has no economic side effects",
   paidGuardValidationSql.includes("result->>'reason' = 'minimum_margin_ceiling_exceeded'") &&
   paidGuardValidationSql.includes("margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1)") &&
@@ -180,6 +197,11 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("jsonb_build_object('role', 'authenticated', 'sub', user_two)::text") &&
   paidGuardValidationSql.includes("synthetic_role <> 'authenticated' or synthetic_uid <> user_two") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_identity_established}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_client_visible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_lifecycle_eligible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_business_tier_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_billing_eligible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_zero_existing}', 'true')") &&
   paidGuardValidationSql.includes("coalesce((result->>'ok')::boolean, false)") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_created}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_second_denied}', 'true')") &&
@@ -189,6 +211,11 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_active_count_one}', 'true')") &&
   paidGuardValidationSql.includes("checks->>'location_identity_established' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_client_visible' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_lifecycle_eligible' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_business_tier_compatible' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_billing_eligible' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_zero_existing' = 'true'") &&
   paidGuardValidationSql.includes("checks->>'location_first_created' = 'true'") &&
   paidGuardValidationSql.includes("checks->>'location_second_denied' = 'true'") &&
   paidGuardValidationSql.includes("checks->>'location_denial_classified' = 'true'") &&
@@ -197,6 +224,14 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("where client_id = client_two and status <> 'closed'") &&
   paidGuardValidationSql.includes("if exists(select 1 from public.projects where client_id = client_two) then") &&
   paidGuardValidationSql.includes("active-client SEO queue trigger inert") &&
+  paidGuardValidationSql.includes("lower(sqlerrm) like '%authenticated client access required%'") &&
+  paidGuardValidationSql.includes("lower(sqlerrm) like '%client account was not found%'") &&
+  paidGuardValidationSql.includes("lower(sqlerrm) like '%client lifecycle does not allow location changes%'") &&
+  paidGuardValidationSql.includes("lower(sqlerrm) like '%active business tier is required%'") &&
+  paidGuardValidationSql.includes("lower(sqlerrm) like '%current subscription does not permit location creation%'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_failure_downstream_schema_write}', 'true')") &&
+  paidGuardValidationRunner.includes("for (const diagnostic of diagnosticChecks)") &&
+  !paidGuardValidationRunner.includes("console.log(responseText)") &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'service_role', 'sub', user_one)::text") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&

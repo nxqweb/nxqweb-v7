@@ -111,6 +111,11 @@ const expectedChecks = [
   "business_page_limits",
   "business_location_limits",
   "location_identity_established",
+  "location_client_visible",
+  "location_lifecycle_eligible",
+  "location_business_tier_compatible",
+  "location_billing_eligible",
+  "location_zero_existing",
   "location_first_created",
   "location_second_denied",
   "location_denial_classified",
@@ -128,11 +133,25 @@ const expectedChecks = [
   "rollback_forced",
 ];
 
+const diagnosticChecks = [
+  "location_first_failure_authentication",
+  "location_first_failure_client_not_found",
+  "location_first_failure_lifecycle",
+  "location_first_failure_tier",
+  "location_first_failure_subscription",
+  "location_first_failure_input_validation",
+  "location_first_failure_downstream_schema_write",
+];
+
 const exactShape = result && typeof result === "object"
   && !Array.isArray(result)
-  && Object.keys(result).sort().join("\n") === [...expectedChecks].sort().join("\n");
+  && Object.keys(result).sort().join("\n")
+    === [...expectedChecks, ...diagnosticChecks].sort().join("\n");
+const booleanOnly = exactShape
+  && [...expectedChecks, ...diagnosticChecks]
+    .every((name) => typeof result[name] === "boolean");
 
-if (!exactShape) {
+if (!booleanOnly) {
   console.error("FAIL sanitized-result-shape");
   process.exit(1);
 }
@@ -142,6 +161,12 @@ for (const check of expectedChecks) {
   const passed = result[check] === true;
   console.log(`${passed ? "PASS" : "FAIL"} ${check.replaceAll("_", "-")}`);
   if (!passed) failed += 1;
+}
+
+for (const diagnostic of diagnosticChecks) {
+  if (result[diagnostic] === true) {
+    console.log(`FAIL ${diagnostic.replaceAll("_", "-")}`);
+  }
 }
 
 console.log(`${expectedChecks.length - failed}/${expectedChecks.length} paid-capability staging checks passed.`);
