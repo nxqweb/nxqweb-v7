@@ -35,6 +35,9 @@ declare
     'location_business_tier_compatible', false,
     'location_billing_eligible', false,
     'location_zero_existing', false,
+    'location_schema_client_locations_columns', false,
+    'location_entitlement_trigger_phase_compatible', false,
+    'location_queue_trigger_phase_compatible', false,
     'location_insert_trigger_probe', false,
     'location_audit_write_probe', false,
     'location_result_construction_probe', false,
@@ -329,6 +332,100 @@ begin
       where client_id = client_two and status <> 'closed'
     ) then
       checks := jsonb_set(checks, '{location_zero_existing}', 'true');
+    end if;
+
+    -- Compare only allowlisted schema facts. These probes return booleans and
+    -- never expose catalog rows, definitions, identifiers, or error text.
+    if not exists(
+      select 1
+      from unnest(array[
+        'id', 'client_id', 'location_code', 'display_name', 'is_primary',
+        'status', 'address_line1', 'address_line2', 'city', 'state_region',
+        'postal_code', 'country_code', 'phone', 'email', 'service_area',
+        'timezone', 'latitude', 'longitude', 'seo_slug', 'seo_title',
+        'seo_description', 'structured_data', 'created_at', 'updated_at'
+      ]::text[]) as required(column_name)
+      where not exists(
+        select 1
+        from pg_catalog.pg_attribute attribute
+        where attribute.attrelid = to_regclass('public.client_locations')
+          and attribute.attname = required.column_name
+          and attribute.attnum > 0
+          and not attribute.attisdropped
+      )
+    ) then
+      checks := jsonb_set(checks, '{location_schema_client_locations_columns}', 'true');
+    end if;
+
+    if to_regprocedure('public.nxq_enforce_location_entitlement()') is not null
+       and exists(
+         select 1 from pg_catalog.pg_trigger
+         where tgrelid = to_regclass('public.client_locations')
+           and tgname = 'nxq_enforce_location_entitlement'
+           and not tgisinternal
+       )
+       and not exists(
+         select 1
+         from (
+           values
+             ('public.clients', 'id'),
+             ('public.clients', 'status'),
+             ('public.clients', 'billing_status'),
+             ('public.clients', 'pipeline_stopped_at'),
+             ('public.clients', 'product_family_id'),
+             ('public.clients', 'product_tier_id'),
+             ('public.product_families', 'id'),
+             ('public.product_families', 'slug'),
+             ('public.product_families', 'is_active'),
+             ('public.product_family_tiers', 'id'),
+             ('public.product_family_tiers', 'product_family_id'),
+             ('public.product_family_tiers', 'tier_key'),
+             ('public.product_family_tiers', 'is_active'),
+             ('public.nxq_tier_entitlements', 'product_family_slug'),
+             ('public.nxq_tier_entitlements', 'tier_key'),
+             ('public.nxq_tier_entitlements', 'feature_key'),
+             ('public.nxq_tier_entitlements', 'enabled'),
+             ('public.nxq_tier_entitlements', 'limits')
+         ) as required(relation_name, column_name)
+         where not exists(
+           select 1
+           from pg_catalog.pg_attribute attribute
+           where attribute.attrelid = to_regclass(required.relation_name)
+             and attribute.attname = required.column_name
+             and attribute.attnum > 0
+             and not attribute.attisdropped
+         )
+       ) then
+      checks := jsonb_set(checks, '{location_entitlement_trigger_phase_compatible}', 'true');
+    end if;
+
+    if to_regprocedure('public.queue_location_seo_refresh()') is not null
+       and exists(
+         select 1 from pg_catalog.pg_trigger
+         where tgrelid = to_regclass('public.client_locations')
+           and tgname = 'queue_location_seo_refresh_from_location'
+           and not tgisinternal
+       )
+       and not exists(
+         select 1
+         from (
+           values
+             ('public.clients', 'id'),
+             ('public.clients', 'status'),
+             ('public.projects', 'id'),
+             ('public.projects', 'client_id'),
+             ('public.projects', 'created_at')
+         ) as required(relation_name, column_name)
+         where not exists(
+           select 1
+           from pg_catalog.pg_attribute attribute
+           where attribute.attrelid = to_regclass(required.relation_name)
+             and attribute.attname = required.column_name
+             and attribute.attnum > 0
+             and not attribute.attisdropped
+         )
+       ) then
+      checks := jsonb_set(checks, '{location_queue_trigger_phase_compatible}', 'true');
     end if;
 
     -- Isolate the three downstream write stages without bypassing the
