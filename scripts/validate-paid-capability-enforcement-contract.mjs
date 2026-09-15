@@ -6,6 +6,7 @@ const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 const migration = read("supabase/migrations/246_enforce_paid_capability_boundaries.sql");
 const economicCeilingMigration = read("supabase/migrations/247_enforce_economic_hard_ceiling.sql");
+const tenantSafeMutationMigration = read("supabase/migrations/185_tenant_safe_client_mutations.sql");
 const stagingWorkflow = read(".github/workflows/manual-supabase-stage.yml").replaceAll("\r\n", "\n");
 const checks = [];
 const check = (name, passed) => checks.push([name, Boolean(passed)]);
@@ -49,7 +50,14 @@ check("Economic hard-ceiling migration preserves service-role and billing bounda
 check("Platform-funded Growth and Sales work defaults closed", migration.includes("nxq_platform_cost_settings") && migration.includes("emergency_stop boolean not null default true") && migration.includes("monthly_limit_cents integer not null default 0"));
 check("Automatic policy seeding is owner or service only", migration.includes("Only an owner or protected service may seed resource policies") && migration.includes("update of product_family_id,product_tier_id,monthly_price,qa_only,status"));
 check("Enterprise minimum is enforced on activation and price changes", migration.includes("Enterprise monthly price must be at least $150") && migration.includes("update of product_tier_id,monthly_price,status"));
-check("Business page and location limits are authoritative", read("supabase/functions/prepare-build-plan/index.ts").includes("limits?.core_pages") && migration.includes("nxq_enforce_location_entitlement"));
+check("Business page and location limits are authoritative",
+  read("supabase/functions/prepare-build-plan/index.ts").includes("limits?.core_pages") &&
+  migration.includes("nxq_enforce_location_entitlement") &&
+  migration.includes("Current plan location limit reached (%)") &&
+  tenantSafeMutationMigration.includes("create or replace function public.current_client_create_location(") &&
+  tenantSafeMutationMigration.includes("client_row.status::text not in ('approved','active')") &&
+  tenantSafeMutationMigration.includes("location_limit:=case when tier_key_value='enterprise' then 100 else 1 end") &&
+  tenantSafeMutationMigration.includes("Current plan location limit reached (%). Request Enterprise for multi-location support."));
 check("Storage tickets reserve, consume, cancel, and expire", ["nxq_authorize_storage_upload", "nxq_complete_storage_upload_ticket", "nxq_cancel_storage_upload_ticket", "nxq_storage_upload_ticket_valid", "'consumed','cancelled','expired'", "set status='expired'", "reservation.status='reserved'"].every((token) => migration.includes(token)));
 check("Storage insert and update bypasses are closed", migration.includes("nxq_ticketed_paid_storage_insert") && migration.includes("nxq_ticketed_paid_storage_update"));
 check("Automation, maintenance, Commerce, and notification transitions are guarded", ["nxq_guard_external_job_transition", "nxq_guard_maintenance_transition", "nxq_guard_storefront_transition", "nxq_guard_notification_transition"].every((token) => migration.includes(token)));
@@ -158,12 +166,13 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
 check("Transactional validation proves location and resource denials from isolated state",
-  paidGuardValidationSql.includes("perform public.current_client_create_location(") &&
-  (paidGuardValidationSql.match(/perform public\.current_client_create_location\(/g) || []).length === 2 &&
-  paidGuardValidationSql.includes("location_rejected := lower(sqlerrm) like '%location limit reached%'") &&
+  (paidGuardValidationSql.match(/insert into public\.client_locations \(/g) || []).length === 2 &&
+  paidGuardValidationSql.includes("location_rejected := sqlstate = 'P0001'") &&
+  paidGuardValidationSql.includes("and lower(sqlerrm) like '%location limit reached%'") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
   paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n      checks := jsonb_set(checks, '{business_location_limits}', 'true');\n    end if;") &&
-  paidGuardValidationSql.includes("where client_id = client_two and status <> 'closed'") &&
+  paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
+  paidGuardValidationSql.includes("keeps the unrelated active-client SEO queue trigger inert") &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'service_role', 'sub', user_one)::text") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&

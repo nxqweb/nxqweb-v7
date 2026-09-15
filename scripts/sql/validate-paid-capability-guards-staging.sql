@@ -235,45 +235,40 @@ begin
     checks := jsonb_set(checks, '{business_page_limits}', 'true');
   end if;
 
-  -- Exercise the same authenticated RPC used by the client portal. A separate
-  -- active synthetic client keeps this phase independent from the overdue
-  -- economic fixture without creating an approved-client automation bootstrap.
+  -- Exercise the canonical BEFORE INSERT entitlement trigger on the overdue
+  -- synthetic client. The overdue lifecycle is permitted by the entitlement
+  -- contract and keeps the unrelated active-client SEO queue trigger inert.
+  -- The focused static contract separately proves that the portal RPC retains
+  -- its own fail-closed standard-tier limit before reaching this trigger.
   begin
-    perform set_config('request.jwt.claim.role', 'authenticated', true);
-    perform set_config('request.jwt.claim.sub', user_two::text, true);
-    perform set_config(
-      'request.jwt.claims',
-      jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
-      true
-    );
-    perform public.current_client_create_location(
-      'Synthetic Primary', 'Synthetic City', 'CA', null, null, null, null,
-      array[]::text[]
+    insert into public.client_locations (
+      client_id, location_code, display_name, is_primary, status,
+      city, state_region, seo_slug
+    ) values (
+      client_one, 'SYNTHETIC-PRIMARY', 'Synthetic Primary', true, 'active',
+      'Synthetic City', 'CA', 'synthetic-primary'
     );
     begin
-      perform public.current_client_create_location(
-        'Synthetic Extra', 'Synthetic City', 'CA', null, null, null, null,
-        array[]::text[]
+      insert into public.client_locations (
+        client_id, location_code, display_name, is_primary, status,
+        city, state_region, seo_slug
+      ) values (
+        client_one, 'SYNTHETIC-EXTRA', 'Synthetic Extra', false, 'active',
+        'Synthetic City', 'CA', 'synthetic-extra'
       );
     exception when others then
-      location_rejected := lower(sqlerrm) like '%location limit reached%';
+      location_rejected := sqlstate = 'P0001'
+        and lower(sqlerrm) like '%location limit reached%';
     end;
     select count(*) into active_location_count
     from public.client_locations
-    where client_id = client_two and status <> 'closed';
+    where client_id = client_one and status <> 'closed';
     if location_rejected and active_location_count = 1 then
       checks := jsonb_set(checks, '{business_location_limits}', 'true');
     end if;
   exception when others then
     null;
   end;
-  perform set_config('request.jwt.claim.role', 'service_role', true);
-  perform set_config('request.jwt.claim.sub', user_one::text, true);
-  perform set_config(
-    'request.jwt.claims',
-    jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
-    true
-  );
 
   -- Keep the resource denial independently rollback-safe so it cannot mask the
   -- economic and storage phases when a staging schema differs unexpectedly.
