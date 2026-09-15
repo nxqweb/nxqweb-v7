@@ -166,7 +166,11 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
 check("Transactional validation proves location and resource denials from isolated state",
-  (paidGuardValidationSql.match(/insert into public\.client_locations \(/g) || []).length === 2 &&
+  (paidGuardValidationSql.match(/public\.current_client_create_location\(/g) || []).length === 2 &&
+  !paidGuardValidationSql.includes("insert into public.client_locations (") &&
+  paidGuardValidationSql.includes("jsonb_build_object('role', 'authenticated', 'sub', user_two)::text") &&
+  paidGuardValidationSql.includes("synthetic_role <> 'authenticated' or synthetic_uid <> user_two") &&
+  paidGuardValidationSql.includes("coalesce((result->>'ok')::boolean, false)") &&
   paidGuardValidationSql.includes("location_rejected := sqlstate = 'P0001'") &&
   paidGuardValidationSql.includes("and lower(sqlerrm) like '%location limit reached%'") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&

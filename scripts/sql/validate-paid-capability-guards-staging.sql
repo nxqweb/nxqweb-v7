@@ -235,31 +235,36 @@ begin
     checks := jsonb_set(checks, '{business_page_limits}', 'true');
   end if;
 
-  -- Exercise the canonical BEFORE INSERT entitlement trigger on the untouched
-  -- second synthetic client. Keeping this client separate from the billing and
+  -- Exercise the same authenticated RPC used by the client portal. The first
+  -- call must create one location and reach the canonical BEFORE INSERT
+  -- entitlement trigger; the second must be rejected by the RPC's matching
+  -- standard-tier limit. Keeping this client separate from the billing and
   -- economic phases prevents their state transitions from influencing the
   -- location result. The explicit no-project assertion keeps the unrelated
   -- active-client SEO queue trigger inert.
-  -- The focused static contract separately proves that the portal RPC retains
-  -- its own fail-closed standard-tier limit before reaching this trigger.
   begin
     if exists(select 1 from public.projects where client_id = client_two) then
       raise exception 'Synthetic location client unexpectedly has a project.';
     end if;
-    insert into public.client_locations (
-      client_id, location_code, display_name, is_primary, status,
-      city, state_region, seo_slug
-    ) values (
-      client_two, 'SYNTHETIC-PRIMARY', 'Synthetic Primary', true, 'active',
-      'Synthetic City', 'CA', 'synthetic-primary'
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    perform set_config('request.jwt.claim.sub', user_two::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
+      true
+    );
+    select auth.role(), auth.uid() into synthetic_role, synthetic_uid;
+    if synthetic_role <> 'authenticated' or synthetic_uid <> user_two then
+      raise exception 'Synthetic location identity was not established.';
+    end if;
+    result := public.current_client_create_location(
+      'Synthetic Primary', 'Synthetic City', 'CA',
+      null, null, null, null, array[]::text[]
     );
     begin
-      insert into public.client_locations (
-        client_id, location_code, display_name, is_primary, status,
-        city, state_region, seo_slug
-      ) values (
-        client_two, 'SYNTHETIC-EXTRA', 'Synthetic Extra', false, 'active',
-        'Synthetic City', 'CA', 'synthetic-extra'
+      perform public.current_client_create_location(
+        'Synthetic Extra', 'Synthetic City', 'CA',
+        null, null, null, null, array[]::text[]
       );
     exception when others then
       location_rejected := sqlstate = 'P0001'
@@ -268,12 +273,20 @@ begin
     select count(*) into active_location_count
     from public.client_locations
     where client_id = client_two and status <> 'closed';
-    if location_rejected and active_location_count = 1 then
+    if coalesce((result->>'ok')::boolean, false)
+       and location_rejected and active_location_count = 1 then
       checks := jsonb_set(checks, '{business_location_limits}', 'true');
     end if;
   exception when others then
     null;
   end;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', user_one::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
+    true
+  );
 
   -- Keep the resource denial independently rollback-safe so it cannot mask the
   -- economic and storage phases when a staging schema differs unexpectedly.
