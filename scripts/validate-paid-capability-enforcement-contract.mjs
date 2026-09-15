@@ -171,8 +171,9 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("and lower(sqlerrm) like '%location limit reached%'") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
   paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n      checks := jsonb_set(checks, '{business_location_limits}', 'true');\n    end if;") &&
-  paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
-  paidGuardValidationSql.includes("keeps the unrelated active-client SEO queue trigger inert") &&
+  paidGuardValidationSql.includes("where client_id = client_two and status <> 'closed'") &&
+  paidGuardValidationSql.includes("if exists(select 1 from public.projects where client_id = client_two) then") &&
+  paidGuardValidationSql.includes("active-client SEO queue trigger inert") &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'service_role', 'sub', user_one)::text") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&

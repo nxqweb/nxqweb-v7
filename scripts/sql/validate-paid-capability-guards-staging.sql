@@ -235,17 +235,22 @@ begin
     checks := jsonb_set(checks, '{business_page_limits}', 'true');
   end if;
 
-  -- Exercise the canonical BEFORE INSERT entitlement trigger on the overdue
-  -- synthetic client. The overdue lifecycle is permitted by the entitlement
-  -- contract and keeps the unrelated active-client SEO queue trigger inert.
+  -- Exercise the canonical BEFORE INSERT entitlement trigger on the untouched
+  -- second synthetic client. Keeping this client separate from the billing and
+  -- economic phases prevents their state transitions from influencing the
+  -- location result. The explicit no-project assertion keeps the unrelated
+  -- active-client SEO queue trigger inert.
   -- The focused static contract separately proves that the portal RPC retains
   -- its own fail-closed standard-tier limit before reaching this trigger.
   begin
+    if exists(select 1 from public.projects where client_id = client_two) then
+      raise exception 'Synthetic location client unexpectedly has a project.';
+    end if;
     insert into public.client_locations (
       client_id, location_code, display_name, is_primary, status,
       city, state_region, seo_slug
     ) values (
-      client_one, 'SYNTHETIC-PRIMARY', 'Synthetic Primary', true, 'active',
+      client_two, 'SYNTHETIC-PRIMARY', 'Synthetic Primary', true, 'active',
       'Synthetic City', 'CA', 'synthetic-primary'
     );
     begin
@@ -253,7 +258,7 @@ begin
         client_id, location_code, display_name, is_primary, status,
         city, state_region, seo_slug
       ) values (
-        client_one, 'SYNTHETIC-EXTRA', 'Synthetic Extra', false, 'active',
+        client_two, 'SYNTHETIC-EXTRA', 'Synthetic Extra', false, 'active',
         'Synthetic City', 'CA', 'synthetic-extra'
       );
     exception when others then
@@ -262,7 +267,7 @@ begin
     end;
     select count(*) into active_location_count
     from public.client_locations
-    where client_id = client_one and status <> 'closed';
+    where client_id = client_two and status <> 'closed';
     if location_rejected and active_location_count = 1 then
       checks := jsonb_set(checks, '{business_location_limits}', 'true');
     end if;
