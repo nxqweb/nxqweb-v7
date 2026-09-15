@@ -35,6 +35,9 @@ declare
     'location_business_tier_compatible', false,
     'location_billing_eligible', false,
     'location_zero_existing', false,
+    'location_insert_trigger_probe', false,
+    'location_audit_write_probe', false,
+    'location_result_construction_probe', false,
     'location_first_created', false,
     'location_second_denied', false,
     'location_denial_classified', false,
@@ -46,6 +49,11 @@ declare
     'location_first_failure_subscription', false,
     'location_first_failure_input_validation', false,
     'location_first_failure_downstream_schema_write', false,
+    'location_failure_integrity_constraint', false,
+    'location_failure_permission', false,
+    'location_failure_missing_schema_object', false,
+    'location_failure_trigger_rejection', false,
+    'location_failure_unknown_downstream', false,
     'resource_limit_rejection', false,
     'economic_margin_rejection', false,
     'reservation_idempotency', false,
@@ -73,6 +81,9 @@ declare
   margin_test_cost integer;
   synthetic_role text;
   synthetic_uid uuid;
+  location_probe public.client_locations%rowtype;
+  location_probe_result jsonb;
+  location_probe_audit_id uuid;
   storage_path text;
   storage_ticket_valid boolean := false;
   tenant_denied boolean := false;
@@ -316,6 +327,86 @@ begin
       checks := jsonb_set(checks, '{location_zero_existing}', 'true');
     end if;
 
+    -- Isolate the three downstream write stages without bypassing the
+    -- canonical entitlement trigger. Successful probe rows are deleted before
+    -- the client RPC runs, and the outer controlled exception still rolls the
+    -- complete synthetic transaction back.
+    begin
+      insert into public.client_locations(
+        client_id, location_code, display_name, is_primary, status, city,
+        state_region, seo_slug, seo_title, seo_description
+      ) values(
+        client_two, 'SYNTHETIC-PROBE', 'Synthetic Probe', true, 'active',
+        'Synthetic City', 'CA', 'synthetic-probe',
+        'Synthetic Probe | Synthetic City, CA',
+        'Synthetic location write-path probe.'
+      ) returning * into location_probe;
+      checks := jsonb_set(checks, '{location_insert_trigger_probe}', 'true');
+
+      begin
+        insert into public.automation_audit_log(
+          client_id, event_type, actor_type, details
+        ) values(
+          client_two, 'synthetic_location_write_probe', 'client',
+          jsonb_build_object('synthetic', true, 'service_count', 0)
+        ) returning id into location_probe_audit_id;
+        checks := jsonb_set(checks, '{location_audit_write_probe}', 'true');
+      exception when others then
+        if left(sqlstate, 2) = '23' then
+          checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
+        elsif sqlstate = '42501' then
+          checks := jsonb_set(checks, '{location_failure_permission}', 'true');
+        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        elsif sqlstate = 'P0001' then
+          checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
+        else
+          checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true');
+        end if;
+      end;
+
+      begin
+        location_probe_result := jsonb_build_object(
+          'ok', true,
+          'location', to_jsonb(location_probe),
+          'service_count', 0
+        );
+        if coalesce((location_probe_result->>'ok')::boolean, false)
+           and jsonb_typeof(location_probe_result->'location') = 'object' then
+          checks := jsonb_set(checks, '{location_result_construction_probe}', 'true');
+        end if;
+      exception when others then
+        if left(sqlstate, 2) = '23' then
+          checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
+        elsif sqlstate = '42501' then
+          checks := jsonb_set(checks, '{location_failure_permission}', 'true');
+        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        elsif sqlstate = 'P0001' then
+          checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
+        else
+          checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true');
+        end if;
+      end;
+
+      if location_probe_audit_id is not null then
+        delete from public.automation_audit_log where id = location_probe_audit_id;
+      end if;
+      delete from public.client_locations where id = location_probe.id;
+    exception when others then
+      if left(sqlstate, 2) = '23' then
+        checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
+      elsif sqlstate = '42501' then
+        checks := jsonb_set(checks, '{location_failure_permission}', 'true');
+      elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+      elsif sqlstate = 'P0001' then
+        checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
+      else
+        checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true');
+      end if;
+    end;
+
     begin
       result := public.current_client_create_location(
         'Synthetic Primary', 'Synthetic City', 'CA',
@@ -347,6 +438,17 @@ begin
         checks := jsonb_set(checks, '{location_first_failure_input_validation}', 'true');
       else
         checks := jsonb_set(checks, '{location_first_failure_downstream_schema_write}', 'true');
+        if left(sqlstate, 2) = '23' then
+          checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
+        elsif sqlstate = '42501' then
+          checks := jsonb_set(checks, '{location_failure_permission}', 'true');
+        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        elsif sqlstate = 'P0001' then
+          checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
+        else
+          checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true');
+        end if;
       end if;
     end;
     begin

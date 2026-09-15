@@ -127,6 +127,9 @@ const paidGuardValidationChecks = [
   "location_business_tier_compatible",
   "location_billing_eligible",
   "location_zero_existing",
+  "location_insert_trigger_probe",
+  "location_audit_write_probe",
+  "location_result_construction_probe",
   "location_first_created",
   "location_second_denied",
   "location_denial_classified",
@@ -151,6 +154,11 @@ const paidGuardLocationDiagnosticChecks = [
   "location_first_failure_subscription",
   "location_first_failure_input_validation",
   "location_first_failure_downstream_schema_write",
+  "location_failure_integrity_constraint",
+  "location_failure_permission",
+  "location_failure_missing_schema_object",
+  "location_failure_trigger_rejection",
+  "location_failure_unknown_downstream",
 ];
 check("Transactional paid-capability validation is an explicit isolated action",
   stagingWorkflow.includes("          - validate_paid_capability_guards") &&
@@ -193,7 +201,7 @@ const paidGuardLocationPhase = paidGuardValidationSql.slice(
 );
 check("Transactional validation proves location and resource denials from isolated state",
   (paidGuardValidationSql.match(/public\.current_client_create_location\(/g) || []).length === 2 &&
-  !paidGuardValidationSql.includes("insert into public.client_locations (") &&
+  (paidGuardValidationSql.match(/insert into public\.client_locations\(/g) || []).length === 1 &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'authenticated', 'sub', user_two)::text") &&
   paidGuardValidationSql.includes("synthetic_role <> 'authenticated' or synthetic_uid <> user_two") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_identity_established}', 'true')") &&
@@ -202,6 +210,14 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_business_tier_compatible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_billing_eligible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_zero_existing}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_insert_trigger_probe}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_audit_write_probe}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_result_construction_probe}', 'true')") &&
+  paidGuardValidationSql.includes("insert into public.client_locations(") &&
+  paidGuardValidationSql.includes("insert into public.automation_audit_log(") &&
+  paidGuardValidationSql.includes("delete from public.automation_audit_log where id = location_probe_audit_id") &&
+  paidGuardValidationSql.includes("delete from public.client_locations where id = location_probe.id") &&
+  paidGuardValidationSql.includes("'location', to_jsonb(location_probe)") &&
   paidGuardValidationSql.includes("coalesce((result->>'ok')::boolean, false)") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_created}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_second_denied}', 'true')") &&
@@ -230,6 +246,11 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("lower(sqlerrm) like '%active business tier is required%'") &&
   paidGuardValidationSql.includes("lower(sqlerrm) like '%current subscription does not permit location creation%'") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_failure_downstream_schema_write}', 'true')") &&
+  paidGuardValidationSql.includes("left(sqlstate, 2) = '23'") &&
+  paidGuardValidationSql.includes("sqlstate = '42501'") &&
+  paidGuardValidationSql.includes("sqlstate = any(array['42703', '42883', '42P01', '42704'])") &&
+  paidGuardValidationSql.includes("sqlstate = 'P0001'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true')") &&
   paidGuardValidationRunner.includes("for (const diagnostic of diagnosticChecks)") &&
   !paidGuardValidationRunner.includes("console.log(responseText)") &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'service_role', 'sub', user_one)::text") &&

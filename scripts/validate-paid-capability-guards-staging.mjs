@@ -116,6 +116,9 @@ const expectedChecks = [
   "location_business_tier_compatible",
   "location_billing_eligible",
   "location_zero_existing",
+  "location_insert_trigger_probe",
+  "location_audit_write_probe",
+  "location_result_construction_probe",
   "location_first_created",
   "location_second_denied",
   "location_denial_classified",
@@ -141,6 +144,11 @@ const diagnosticChecks = [
   "location_first_failure_subscription",
   "location_first_failure_input_validation",
   "location_first_failure_downstream_schema_write",
+  "location_failure_integrity_constraint",
+  "location_failure_permission",
+  "location_failure_missing_schema_object",
+  "location_failure_trigger_rejection",
+  "location_failure_unknown_downstream",
 ];
 
 const exactShape = result && typeof result === "object"
