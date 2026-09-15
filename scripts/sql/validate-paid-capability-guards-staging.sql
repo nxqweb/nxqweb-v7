@@ -29,6 +29,11 @@ declare
     'purchased_credit_accounting', false,
     'business_page_limits', false,
     'business_location_limits', false,
+    'location_identity_established', false,
+    'location_first_created', false,
+    'location_second_denied', false,
+    'location_denial_classified', false,
+    'location_active_count_one', false,
     'resource_limit_rejection', false,
     'economic_margin_rejection', false,
     'reservation_idempotency', false,
@@ -235,13 +240,14 @@ begin
     checks := jsonb_set(checks, '{business_page_limits}', 'true');
   end if;
 
-  -- Exercise the same authenticated RPC used by the client portal. The first
-  -- call must create one location and reach the canonical BEFORE INSERT
-  -- entitlement trigger; the second must be rejected by the RPC's matching
-  -- standard-tier limit. Keeping this client separate from the billing and
-  -- economic phases prevents their state transitions from influencing the
-  -- location result. The explicit no-project assertion keeps the unrelated
-  -- active-client SEO queue trigger inert.
+  -- Exercise the same authenticated RPC used by the client portal. Each
+  -- location checkpoint is reported as a boolean-only classification so a
+  -- fixture or schema mismatch cannot be hidden behind one silent phase
+  -- failure. The overall guard passes only when every checkpoint proves the
+  -- canonical standard-tier denial. Keeping this client separate from the
+  -- billing and economic phases prevents their state transitions from
+  -- influencing the location result. The explicit no-project assertion keeps
+  -- the unrelated active-client SEO queue trigger inert.
   begin
     if exists(select 1 from public.projects where client_id = client_two) then
       raise exception 'Synthetic location client unexpectedly has a project.';
@@ -257,28 +263,46 @@ begin
     if synthetic_role <> 'authenticated' or synthetic_uid <> user_two then
       raise exception 'Synthetic location identity was not established.';
     end if;
-    result := public.current_client_create_location(
-      'Synthetic Primary', 'Synthetic City', 'CA',
-      null, null, null, null, array[]::text[]
-    );
+    checks := jsonb_set(checks, '{location_identity_established}', 'true');
+    begin
+      result := public.current_client_create_location(
+        'Synthetic Primary', 'Synthetic City', 'CA',
+        null, null, null, null, array[]::text[]
+      );
+      if coalesce((result->>'ok')::boolean, false) then
+        checks := jsonb_set(checks, '{location_first_created}', 'true');
+      end if;
+    exception when others then
+      result := null;
+    end;
     begin
       perform public.current_client_create_location(
         'Synthetic Extra', 'Synthetic City', 'CA',
         null, null, null, null, array[]::text[]
       );
     exception when others then
+      checks := jsonb_set(checks, '{location_second_denied}', 'true');
       location_rejected := sqlstate = 'P0001'
         and lower(sqlerrm) like '%location limit reached%';
+      if location_rejected then
+        checks := jsonb_set(checks, '{location_denial_classified}', 'true');
+      end if;
     end;
     select count(*) into active_location_count
     from public.client_locations
     where client_id = client_two and status <> 'closed';
-    if coalesce((result->>'ok')::boolean, false)
-       and location_rejected and active_location_count = 1 then
+    if active_location_count = 1 then
+      checks := jsonb_set(checks, '{location_active_count_one}', 'true');
+    end if;
+    if checks->>'location_identity_established' = 'true'
+       and checks->>'location_first_created' = 'true'
+       and checks->>'location_second_denied' = 'true'
+       and checks->>'location_denial_classified' = 'true'
+       and checks->>'location_active_count_one' = 'true' then
       checks := jsonb_set(checks, '{business_location_limits}', 'true');
     end if;
   exception when others then
-    null;
+    checks := jsonb_set(checks, '{business_location_limits}', 'false');
   end;
   perform set_config('request.jwt.claim.role', 'service_role', true);
   perform set_config('request.jwt.claim.sub', user_one::text, true);

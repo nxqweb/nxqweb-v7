@@ -121,6 +121,11 @@ const paidGuardValidationChecks = [
   "purchased_credit_accounting",
   "business_page_limits",
   "business_location_limits",
+  "location_identity_established",
+  "location_first_created",
+  "location_second_denied",
+  "location_denial_classified",
+  "location_active_count_one",
   "resource_limit_rejection",
   "economic_margin_rejection",
   "reservation_idempotency",
@@ -165,16 +170,30 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("credit_balance_before_margin = credit_balance_after_margin") &&
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
+const paidGuardLocationPhase = paidGuardValidationSql.slice(
+  paidGuardValidationSql.indexOf("-- Exercise the same authenticated RPC used by the client portal."),
+  paidGuardValidationSql.indexOf("-- Keep the resource denial independently rollback-safe"),
+);
 check("Transactional validation proves location and resource denials from isolated state",
   (paidGuardValidationSql.match(/public\.current_client_create_location\(/g) || []).length === 2 &&
   !paidGuardValidationSql.includes("insert into public.client_locations (") &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'authenticated', 'sub', user_two)::text") &&
   paidGuardValidationSql.includes("synthetic_role <> 'authenticated' or synthetic_uid <> user_two") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_identity_established}', 'true')") &&
   paidGuardValidationSql.includes("coalesce((result->>'ok')::boolean, false)") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_created}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_second_denied}', 'true')") &&
   paidGuardValidationSql.includes("location_rejected := sqlstate = 'P0001'") &&
   paidGuardValidationSql.includes("and lower(sqlerrm) like '%location limit reached%'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_denial_classified}', 'true')") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
-  paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n      checks := jsonb_set(checks, '{business_location_limits}', 'true');\n    end if;") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_active_count_one}', 'true')") &&
+  paidGuardValidationSql.includes("checks->>'location_identity_established' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_first_created' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_second_denied' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_denial_classified' = 'true'") &&
+  paidGuardValidationSql.includes("checks->>'location_active_count_one' = 'true'") &&
+  !paidGuardLocationPhase.includes("exception when others then\n    null;") &&
   paidGuardValidationSql.includes("where client_id = client_two and status <> 'closed'") &&
   paidGuardValidationSql.includes("if exists(select 1 from public.projects where client_id = client_two) then") &&
   paidGuardValidationSql.includes("active-client SEO queue trigger inert") &&
