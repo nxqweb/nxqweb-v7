@@ -157,6 +157,10 @@ const paidGuardLocationDiagnosticChecks = [
   "location_failure_integrity_constraint",
   "location_failure_permission",
   "location_failure_missing_schema_object",
+  "location_failure_undefined_column",
+  "location_failure_undefined_function",
+  "location_failure_undefined_table",
+  "location_failure_undefined_object",
   "location_failure_trigger_rejection",
   "location_failure_unknown_downstream",
 ];
@@ -248,7 +252,14 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_first_failure_downstream_schema_write}', 'true')") &&
   paidGuardValidationSql.includes("left(sqlstate, 2) = '23'") &&
   paidGuardValidationSql.includes("sqlstate = '42501'") &&
-  paidGuardValidationSql.includes("sqlstate = any(array['42703', '42883', '42P01', '42704'])") &&
+  paidGuardValidationSql.includes("sqlstate = '42703'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true')") &&
+  paidGuardValidationSql.includes("sqlstate = '42883'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true')") &&
+  paidGuardValidationSql.includes("sqlstate = '42P01'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true')") &&
+  paidGuardValidationSql.includes("sqlstate = '42704'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true')") &&
   paidGuardValidationSql.includes("sqlstate = 'P0001'") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true')") &&
   paidGuardValidationRunner.includes("for (const diagnostic of diagnosticChecks)") &&

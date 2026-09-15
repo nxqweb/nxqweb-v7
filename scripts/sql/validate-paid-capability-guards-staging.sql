@@ -52,6 +52,10 @@ declare
     'location_failure_integrity_constraint', false,
     'location_failure_permission', false,
     'location_failure_missing_schema_object', false,
+    'location_failure_undefined_column', false,
+    'location_failure_undefined_function', false,
+    'location_failure_undefined_table', false,
+    'location_failure_undefined_object', false,
     'location_failure_trigger_rejection', false,
     'location_failure_unknown_downstream', false,
     'resource_limit_rejection', false,
@@ -356,8 +360,18 @@ begin
           checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
         elsif sqlstate = '42501' then
           checks := jsonb_set(checks, '{location_failure_permission}', 'true');
-        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+        elsif sqlstate = '42703' then
           checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true');
+        elsif sqlstate = '42883' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true');
+        elsif sqlstate = '42P01' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true');
+        elsif sqlstate = '42704' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true');
         elsif sqlstate = 'P0001' then
           checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
         else
@@ -380,8 +394,18 @@ begin
           checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
         elsif sqlstate = '42501' then
           checks := jsonb_set(checks, '{location_failure_permission}', 'true');
-        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+        elsif sqlstate = '42703' then
           checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true');
+        elsif sqlstate = '42883' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true');
+        elsif sqlstate = '42P01' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true');
+        elsif sqlstate = '42704' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true');
         elsif sqlstate = 'P0001' then
           checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
         else
@@ -398,8 +422,18 @@ begin
         checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
       elsif sqlstate = '42501' then
         checks := jsonb_set(checks, '{location_failure_permission}', 'true');
-      elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+      elsif sqlstate = '42703' then
         checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true');
+      elsif sqlstate = '42883' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true');
+      elsif sqlstate = '42P01' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true');
+      elsif sqlstate = '42704' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true');
       elsif sqlstate = 'P0001' then
         checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
       else
@@ -442,8 +476,18 @@ begin
           checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
         elsif sqlstate = '42501' then
           checks := jsonb_set(checks, '{location_failure_permission}', 'true');
-        elsif sqlstate = any(array['42703', '42883', '42P01', '42704']) then
+        elsif sqlstate = '42703' then
           checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true');
+        elsif sqlstate = '42883' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true');
+        elsif sqlstate = '42P01' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true');
+        elsif sqlstate = '42704' then
+          checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+          checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true');
         elsif sqlstate = 'P0001' then
           checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
         else

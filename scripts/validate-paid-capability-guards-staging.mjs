@@ -147,6 +147,10 @@ const diagnosticChecks = [
   "location_failure_integrity_constraint",
   "location_failure_permission",
   "location_failure_missing_schema_object",
+  "location_failure_undefined_column",
+  "location_failure_undefined_function",
+  "location_failure_undefined_table",
+  "location_failure_undefined_object",
   "location_failure_trigger_rejection",
   "location_failure_unknown_downstream",
 ];
