@@ -158,14 +158,17 @@ check("Transactional validation proves margin rejection has no economic side eff
   paidGuardValidationSql.includes("idempotency_key = 'synthetic-margin-rejection'") &&
   paidGuardValidationSql.includes("idempotency_key = 'usage-spend:synthetic-margin-rejection'"));
 check("Transactional validation proves location and resource denials from isolated state",
+  paidGuardValidationSql.includes("perform public.current_client_create_location(") &&
+  (paidGuardValidationSql.match(/perform public\.current_client_create_location\(/g) || []).length === 2 &&
   paidGuardValidationSql.includes("location_rejected := lower(sqlerrm) like '%location limit reached%'") &&
   paidGuardValidationSql.includes("select count(*) into active_location_count") &&
-  paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n    checks := jsonb_set(checks, '{business_location_limits}', 'true');\n  end if;") &&
-  paidGuardValidationSql.includes("where client_id = client_one and status <> 'closed'") &&
+  paidGuardValidationSql.includes("location_rejected and active_location_count = 1 then\n      checks := jsonb_set(checks, '{business_location_limits}', 'true');\n    end if;") &&
+  paidGuardValidationSql.includes("where client_id = client_two and status <> 'closed'") &&
+  paidGuardValidationSql.includes("jsonb_build_object('role', 'service_role', 'sub', user_one)::text") &&
   paidGuardValidationSql.includes("resource_result->>'reason' = 'monthly_limit_reached'") &&
   paidGuardValidationSql.includes("'synthetic-resource-policy-probe'") &&
   paidGuardValidationSql.includes("'synthetic-resource-limit:api_requests'") &&
-  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');\n  end if;"));
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');\n    end if;\n  exception when others then\n    null;\n  end;"));
 check("Transactional storage validation refreshes identity and isolates every cleanup phase",
   paidGuardValidationSql.includes("select auth.role(), auth.uid()") &&
   paidGuardValidationSql.includes("synthetic_uid = user_one") &&
@@ -178,6 +181,8 @@ check("Transactional storage validation refreshes identity and isolates every cl
   paidGuardValidationSql.includes("name = storage_path"));
 check("Transactional validation isolates supported non-dispatching client fixtures and state-based idempotency",
   paidGuardValidationSql.includes("'Synthetic Validation', 'overdue', 50, 'active', 'synthetic'") &&
+  paidGuardValidationSql.includes("'Synthetic Validation', 'active', 50, 'active', 'synthetic'") &&
+  !paidGuardValidationSql.includes("'Synthetic Validation', 'approved'") &&
   paidGuardValidationSql.includes("reservation_entries = 1 and credit_entries = 1") &&
   !paidGuardValidationSql.includes("result->>'idempotent'"));
 check("Transactional validation is synthetic and excludes external runtime surfaces",

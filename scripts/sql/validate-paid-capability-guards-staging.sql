@@ -102,7 +102,7 @@ begin
     (client_one, user_one, 'Synthetic Paid Guard One', 'paid-guard-' || user_one::text || '@synthetic.invalid',
       'Synthetic Validation', 'overdue', 50, 'active', 'synthetic', family_id, starter_tier_id, false),
     (client_two, user_two, 'Synthetic Paid Guard Two', 'paid-guard-' || user_two::text || '@synthetic.invalid',
-      'Synthetic Validation', 'overdue', 50, 'active', 'synthetic', family_id, starter_tier_id, false);
+      'Synthetic Validation', 'active', 50, 'active', 'synthetic', family_id, starter_tier_id, false);
 
   -- A Starter client must be denied a higher-tier feature before credits exist.
   begin
@@ -235,97 +235,132 @@ begin
     checks := jsonb_set(checks, '{business_page_limits}', 'true');
   end if;
 
-  insert into public.client_locations(client_id, location_code, display_name, seo_slug)
-  values(client_one, 'synthetic-primary', 'Synthetic Primary', 'synthetic-primary');
+  -- Exercise the same authenticated RPC used by the client portal. A separate
+  -- active synthetic client keeps this phase independent from the overdue
+  -- economic fixture without creating an approved-client automation bootstrap.
   begin
-    insert into public.client_locations(client_id, location_code, display_name, seo_slug)
-    values(client_one, 'synthetic-extra', 'Synthetic Extra', 'synthetic-extra');
-  exception when others then
-    location_rejected := lower(sqlerrm) like '%location limit reached%';
-  end;
-  select count(*) into active_location_count
-  from public.client_locations
-  where client_id = client_one and status <> 'closed';
-  if location_rejected and active_location_count = 1 then
-    checks := jsonb_set(checks, '{business_location_limits}', 'true');
-  end if;
-
-  update public.nxq_client_resource_policies
-  set monthly_limit = 1
-  where client_id = client_one and resource_key = 'api_requests';
-  resource_result := public.nxq_reserve_client_resource(
-    client_one, 'api_requests', 2,
-    'synthetic-resource-policy-probe', '{}'::jsonb
-  );
-  begin
-    perform public.nxq_authorize_paid_capability(
-      client_one, 'managed_website', jsonb_build_object('api_requests', 2), 0,
-      'synthetic-resource-limit', '{}'::jsonb
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    perform set_config('request.jwt.claim.sub', user_two::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
+      true
     );
+    perform public.current_client_create_location(
+      'Synthetic Primary', 'Synthetic City', 'CA', null, null, null, null,
+      array[]::text[]
+    );
+    begin
+      perform public.current_client_create_location(
+        'Synthetic Extra', 'Synthetic City', 'CA', null, null, null, null,
+        array[]::text[]
+      );
+    exception when others then
+      location_rejected := lower(sqlerrm) like '%location limit reached%';
+    end;
+    select count(*) into active_location_count
+    from public.client_locations
+    where client_id = client_two and status <> 'closed';
+    if location_rejected and active_location_count = 1 then
+      checks := jsonb_set(checks, '{business_location_limits}', 'true');
+    end if;
   exception when others then
-    resource_rejected := lower(sqlerrm) like '%resource limit%';
+    null;
   end;
-  if resource_rejected
-     and not coalesce((resource_result->>'allowed')::boolean, true)
-     and resource_result->>'reason' = 'monthly_limit_reached'
-     and not exists(
-       select 1 from public.nxq_client_resource_reservations
-       where client_id = client_one and resource_key = 'api_requests'
-         and idempotency_key in (
-           'synthetic-resource-policy-probe',
-           'synthetic-resource-limit:api_requests'
-         )
-     ) then
-    checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');
-  end if;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', user_one::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
+    true
+  );
+
+  -- Keep the resource denial independently rollback-safe so it cannot mask the
+  -- economic and storage phases when a staging schema differs unexpectedly.
+  begin
+    update public.nxq_client_resource_policies
+    set monthly_limit = 1
+    where client_id = client_one and resource_key = 'api_requests';
+    resource_result := public.nxq_reserve_client_resource(
+      client_one, 'api_requests', 2,
+      'synthetic-resource-policy-probe', '{}'::jsonb
+    );
+    begin
+      perform public.nxq_authorize_paid_capability(
+        client_one, 'managed_website', jsonb_build_object('api_requests', 2), 0,
+        'synthetic-resource-limit', '{}'::jsonb
+      );
+    exception when others then
+      resource_rejected := lower(sqlerrm) like '%resource limit%';
+    end;
+    if resource_rejected
+       and not coalesce((resource_result->>'allowed')::boolean, true)
+       and resource_result->>'reason' = 'monthly_limit_reached'
+       and not exists(
+         select 1 from public.nxq_client_resource_reservations
+         where client_id = client_one and resource_key = 'api_requests'
+           and idempotency_key in (
+             'synthetic-resource-policy-probe',
+             'synthetic-resource-limit:api_requests'
+           )
+       ) then
+      checks := jsonb_set(checks, '{resource_limit_rejection}', 'true');
+    end if;
+  exception when others then
+    null;
+  end;
 
   -- Credits may fund usage above the included budget, but never cross the
   -- subscription's hard economic ceiling required by the minimum margin.
-  select coalesce(sum(amount_cents), 0)::integer into credit_balance_before_margin
-  from public.nxq_usage_credit_ledger where client_id = client_one;
-  select
-    coalesce(sum(coalesce(reservation.actual_provider_cost_cents,
-      reservation.estimated_provider_cost_cents)), 0)::integer,
-    floor(client.monthly_price * 100 *
-      ((100 - policy.minimum_margin_percent) / 100))::integer
-  into spent_before_margin, hard_ceiling_before_margin
-  from public.clients client
-  join public.product_families family on family.id = client.product_family_id
-  join public.product_family_tiers tier
-    on tier.id = client.product_tier_id
-   and tier.product_family_id = family.id
-  join public.nxq_tier_economic_policies policy
-    on policy.product_family_slug = family.slug
-   and policy.tier_key = tier.tier_key
-  left join public.nxq_economic_usage_reservations reservation
-    on reservation.client_id = client.id
-   and reservation.status <> 'released'
-   and reservation.occurred_at >= date_trunc('month', now())
-   and reservation.occurred_at < date_trunc('month', now()) + interval '1 month'
-  where client.id = client_one
-  group by client.monthly_price, policy.minimum_margin_percent;
-  margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1);
-  result := public.nxq_reserve_economic_usage(
-    client_one, margin_test_cost, 'synthetic-margin-rejection',
-    'provider_cost_cents', '{}'::jsonb
-  );
-  select coalesce(sum(amount_cents), 0)::integer into credit_balance_after_margin
-  from public.nxq_usage_credit_ledger where client_id = client_one;
-  if not coalesce((result->>'allowed')::boolean, true)
-     and result->>'reason' = 'minimum_margin_ceiling_exceeded'
-     and credit_balance_before_margin = credit_balance_after_margin
-     and not exists(
-       select 1 from public.nxq_economic_usage_reservations
-       where client_id = client_one
-         and idempotency_key = 'synthetic-margin-rejection'
-     )
-     and not exists(
-       select 1 from public.nxq_usage_credit_ledger
-       where client_id = client_one
-         and idempotency_key = 'usage-spend:synthetic-margin-rejection'
-     ) then
-    checks := jsonb_set(checks, '{economic_margin_rejection}', 'true');
-  end if;
+  begin
+    select coalesce(sum(amount_cents), 0)::integer into credit_balance_before_margin
+    from public.nxq_usage_credit_ledger where client_id = client_one;
+    select
+      coalesce(sum(coalesce(reservation.actual_provider_cost_cents,
+        reservation.estimated_provider_cost_cents)), 0)::integer,
+      floor(client.monthly_price * 100 *
+        ((100 - policy.minimum_margin_percent) / 100))::integer
+    into spent_before_margin, hard_ceiling_before_margin
+    from public.clients client
+    join public.product_families family on family.id = client.product_family_id
+    join public.product_family_tiers tier
+      on tier.id = client.product_tier_id
+     and tier.product_family_id = family.id
+    join public.nxq_tier_economic_policies policy
+      on policy.product_family_slug = family.slug
+     and policy.tier_key = tier.tier_key
+    left join public.nxq_economic_usage_reservations reservation
+      on reservation.client_id = client.id
+     and reservation.status <> 'released'
+     and reservation.occurred_at >= date_trunc('month', now())
+     and reservation.occurred_at < date_trunc('month', now()) + interval '1 month'
+    where client.id = client_one
+    group by client.monthly_price, policy.minimum_margin_percent;
+    margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1);
+    result := public.nxq_reserve_economic_usage(
+      client_one, margin_test_cost, 'synthetic-margin-rejection',
+      'provider_cost_cents', '{}'::jsonb
+    );
+    select coalesce(sum(amount_cents), 0)::integer into credit_balance_after_margin
+    from public.nxq_usage_credit_ledger where client_id = client_one;
+    if not coalesce((result->>'allowed')::boolean, true)
+       and result->>'reason' = 'minimum_margin_ceiling_exceeded'
+       and credit_balance_before_margin = credit_balance_after_margin
+       and not exists(
+         select 1 from public.nxq_economic_usage_reservations
+         where client_id = client_one
+           and idempotency_key = 'synthetic-margin-rejection'
+       )
+       and not exists(
+         select 1 from public.nxq_usage_credit_ledger
+         where client_id = client_one
+           and idempotency_key = 'usage-spend:synthetic-margin-rejection'
+       ) then
+      checks := jsonb_set(checks, '{economic_margin_rejection}', 'true');
+    end if;
+  exception when others then
+    null;
+  end;
 
   -- Storage authorization is exact-client, quota-reserved, and releasable.
   perform set_config('request.jwt.claim.role', 'authenticated', true);
