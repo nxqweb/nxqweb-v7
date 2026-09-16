@@ -201,6 +201,13 @@ check("Transactional validation uses a forced rollback sentinel and sanitized bo
   paidGuardLocationDiagnosticChecks.every((name) =>
     paidGuardValidationSql.includes(`'${name}'`) && paidGuardValidationRunner.includes(`\"${name}\"`)) &&
   paidGuardValidationRunner.includes('typeof result[name] === "boolean"'));
+check("Transactional validation initializes its complete boolean shape below PostgreSQL's argument limit",
+  paidGuardValidationSql.includes("select jsonb_object_agg(check_name, false)") &&
+  paidGuardValidationSql.includes("'synthetic_fixtures_only', 'no_external_runtime', 'rollback_forced'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{synthetic_fixtures_only}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{no_external_runtime}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{rollback_forced}', 'true')") &&
+  !paidGuardValidationSql.includes("checks jsonb := jsonb_build_object("));
 check("Transactional validation proves margin rejection has no economic side effects",
   paidGuardValidationSql.includes("result->>'reason' = 'minimum_margin_ceiling_exceeded'") &&
   paidGuardValidationSql.includes("margin_test_cost := greatest(hard_ceiling_before_margin - spent_before_margin + 1, 1)") &&
@@ -316,7 +323,7 @@ check("Transactional validation isolates supported non-dispatching client fixtur
   !paidGuardValidationSql.includes("result->>'idempotent'"));
 check("Transactional validation is synthetic and excludes external runtime surfaces",
   paidGuardValidationSql.includes("@synthetic.invalid") &&
-  paidGuardValidationSql.includes("'no_external_runtime', true") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{no_external_runtime}', 'true')") &&
   !paidGuardValidationSql.includes("http") &&
   !paidGuardValidationSql.includes("netlify") &&
   !paidGuardValidationSql.includes("storage.objects(") &&

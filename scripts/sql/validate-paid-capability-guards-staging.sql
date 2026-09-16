@@ -129,63 +129,7 @@ declare
   client_two uuid := gen_random_uuid();
   ticket_id uuid;
   result jsonb;
-  checks jsonb := jsonb_build_object(
-    'tier_denial', false,
-    'credits_usage_only', false,
-    'billing_state_denial', false,
-    'included_usage_accounting', false,
-    'purchased_credit_accounting', false,
-    'business_page_limits', false,
-    'business_location_limits', false,
-    'location_identity_established', false,
-    'location_client_visible', false,
-    'location_lifecycle_eligible', false,
-    'location_business_tier_compatible', false,
-    'location_billing_eligible', false,
-    'location_zero_existing', false,
-    'location_schema_client_locations_columns', false,
-    'location_entitlement_trigger_phase_compatible', false,
-    'location_queue_trigger_phase_compatible', false,
-    'location_queue_enqueue_function_compatible', false,
-    'location_queue_automation_jobs_base_columns_compatible', false,
-    'location_queue_execution_target_column_compatible', false,
-    'location_queue_execution_target_trigger_compatible', false,
-    'location_queue_enqueue_runtime_probe', false,
-    'location_insert_trigger_probe', false,
-    'location_audit_write_probe', false,
-    'location_result_construction_probe', false,
-    'location_first_created', false,
-    'location_second_denied', false,
-    'location_denial_classified', false,
-    'location_active_count_one', false,
-    'location_first_failure_authentication', false,
-    'location_first_failure_client_not_found', false,
-    'location_first_failure_lifecycle', false,
-    'location_first_failure_tier', false,
-    'location_first_failure_subscription', false,
-    'location_first_failure_input_validation', false,
-    'location_first_failure_downstream_schema_write', false,
-    'location_failure_integrity_constraint', false,
-    'location_failure_permission', false,
-    'location_failure_missing_schema_object', false,
-    'location_failure_undefined_column', false,
-    'location_failure_undefined_function', false,
-    'location_failure_undefined_table', false,
-    'location_failure_undefined_object', false,
-    'location_failure_trigger_rejection', false,
-    'location_failure_unknown_downstream', false,
-    'resource_limit_rejection', false,
-    'economic_margin_rejection', false,
-    'reservation_idempotency', false,
-    'reservation_release', false,
-    'reservation_reconciliation', false,
-    'storage_quota_authorization', false,
-    'storage_reservation_cleanup', false,
-    'tenant_isolation', false,
-    'synthetic_fixtures_only', true,
-    'no_external_runtime', true,
-    'rollback_forced', true
-  );
+  checks jsonb;
   credit_entries integer;
   credit_balance integer;
   credit_balance_before_margin integer;
@@ -208,6 +152,49 @@ declare
   storage_ticket_valid boolean := false;
   tenant_denied boolean := false;
 begin
+  -- Keep the complete, fixed result shape without exceeding PostgreSQL's
+  -- 100-argument limit for a single jsonb_build_object call.
+  select jsonb_object_agg(check_name, false)
+  into checks
+  from unnest(array[
+    'tier_denial', 'credits_usage_only', 'billing_state_denial',
+    'included_usage_accounting', 'purchased_credit_accounting',
+    'business_page_limits', 'business_location_limits',
+    'location_identity_established', 'location_client_visible',
+    'location_lifecycle_eligible', 'location_business_tier_compatible',
+    'location_billing_eligible', 'location_zero_existing',
+    'location_schema_client_locations_columns',
+    'location_entitlement_trigger_phase_compatible',
+    'location_queue_trigger_phase_compatible',
+    'location_queue_enqueue_function_compatible',
+    'location_queue_automation_jobs_base_columns_compatible',
+    'location_queue_execution_target_column_compatible',
+    'location_queue_execution_target_trigger_compatible',
+    'location_queue_enqueue_runtime_probe', 'location_insert_trigger_probe',
+    'location_audit_write_probe', 'location_result_construction_probe',
+    'location_first_created', 'location_second_denied',
+    'location_denial_classified', 'location_active_count_one',
+    'location_first_failure_authentication',
+    'location_first_failure_client_not_found',
+    'location_first_failure_lifecycle', 'location_first_failure_tier',
+    'location_first_failure_subscription',
+    'location_first_failure_input_validation',
+    'location_first_failure_downstream_schema_write',
+    'location_failure_integrity_constraint', 'location_failure_permission',
+    'location_failure_missing_schema_object',
+    'location_failure_undefined_column', 'location_failure_undefined_function',
+    'location_failure_undefined_table', 'location_failure_undefined_object',
+    'location_failure_trigger_rejection', 'location_failure_unknown_downstream',
+    'resource_limit_rejection', 'economic_margin_rejection',
+    'reservation_idempotency', 'reservation_release',
+    'reservation_reconciliation', 'storage_quota_authorization',
+    'storage_reservation_cleanup', 'tenant_isolation',
+    'synthetic_fixtures_only', 'no_external_runtime', 'rollback_forced'
+  ]::text[]) as check_name;
+  checks := jsonb_set(checks, '{synthetic_fixtures_only}', 'true');
+  checks := jsonb_set(checks, '{no_external_runtime}', 'true');
+  checks := jsonb_set(checks, '{rollback_forced}', 'true');
+
   -- Keep all fixture work inside a subtransaction. An unexpected assertion or
   -- schema-compatibility error rolls back that phase before the outer block
   -- emits the same sanitized result marker used by successful executions.
