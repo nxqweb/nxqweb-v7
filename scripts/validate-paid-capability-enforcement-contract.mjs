@@ -231,15 +231,17 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("tgname = 'queue_location_seo_refresh_from_location'") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_trigger_phase_compatible}', 'true')") &&
   paidGuardValidationSql.includes("('public.projects', 'created_at')") &&
+  paidGuardValidationSql.includes("create function pg_temp.nxq_probe_location_queue_dependency(") &&
   paidGuardValidationSql.includes("to_regprocedure('public.enqueue_automation_job(uuid,uuid,text,text,jsonb,timestamptz,integer)') is not null") &&
-  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_enqueue_function_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("probe_checks := jsonb_set(probe_checks, '{location_queue_enqueue_function_compatible}', 'true')") &&
   paidGuardValidationSql.includes("location_queue_automation_jobs_base_columns_compatible") &&
   paidGuardValidationSql.includes("'execution_target'") &&
-  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_execution_target_column_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("probe_checks := jsonb_set(probe_checks, '{location_queue_execution_target_column_compatible}', 'true')") &&
   paidGuardValidationSql.includes("to_regprocedure('public.classify_automation_execution_target()') is not null") &&
-  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_execution_target_trigger_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("probe_checks := jsonb_set(probe_checks, '{location_queue_execution_target_trigger_compatible}', 'true')") &&
   paidGuardValidationSql.includes("'synthetic-location-queue-dependency'") &&
-  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_enqueue_runtime_probe}', 'true')") &&
+  paidGuardValidationSql.includes("probe_checks := jsonb_set(probe_checks, '{location_queue_enqueue_runtime_probe}', 'true')") &&
+  paidGuardValidationSql.includes("checks := checks || pg_temp.nxq_probe_location_queue_dependency(client_two, user_one)") &&
   paidGuardValidationSql.includes("attribute.attrelid = to_regclass(required.relation_name)") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_insert_trigger_probe}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_audit_write_probe}', 'true')") &&
