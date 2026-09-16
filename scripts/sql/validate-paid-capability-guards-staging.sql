@@ -38,6 +38,11 @@ declare
     'location_schema_client_locations_columns', false,
     'location_entitlement_trigger_phase_compatible', false,
     'location_queue_trigger_phase_compatible', false,
+    'location_queue_enqueue_function_compatible', false,
+    'location_queue_automation_jobs_base_columns_compatible', false,
+    'location_queue_execution_target_column_compatible', false,
+    'location_queue_execution_target_trigger_compatible', false,
+    'location_queue_enqueue_runtime_probe', false,
     'location_insert_trigger_probe', false,
     'location_audit_write_probe', false,
     'location_result_construction_probe', false,
@@ -91,6 +96,7 @@ declare
   location_probe public.client_locations%rowtype;
   location_probe_result jsonb;
   location_probe_audit_id uuid;
+  location_queue_probe_job_id uuid;
   storage_path text;
   storage_ticket_valid boolean := false;
   tenant_denied boolean := false;
@@ -427,6 +433,106 @@ begin
        ) then
       checks := jsonb_set(checks, '{location_queue_trigger_phase_compatible}', 'true');
     end if;
+
+    -- The location trigger calls the durable queue only when a project exists.
+    -- Probe that downstream dependency separately with a synthetic queue item,
+    -- while the surrounding transaction guarantees rollback. Each catalog test
+    -- reports an allowlisted boolean only; it never returns a schema detail.
+    if to_regprocedure('public.enqueue_automation_job(uuid,uuid,text,text,jsonb,timestamptz,integer)') is not null then
+      checks := jsonb_set(checks, '{location_queue_enqueue_function_compatible}', 'true');
+    end if;
+
+    if not exists(
+      select 1
+      from unnest(array[
+        'id', 'client_id', 'project_id', 'job_type', 'status', 'priority',
+        'run_after', 'attempts', 'max_attempts', 'idempotency_key', 'payload',
+        'result', 'last_error', 'locked_at', 'locked_by', 'completed_at',
+        'created_at', 'updated_at'
+      ]::text[]) as required(column_name)
+      where not exists(
+        select 1
+        from pg_catalog.pg_attribute attribute
+        where attribute.attrelid = to_regclass('public.automation_jobs')
+          and attribute.attname = required.column_name
+          and attribute.attnum > 0
+          and not attribute.attisdropped
+      )
+    ) then
+      checks := jsonb_set(checks, '{location_queue_automation_jobs_base_columns_compatible}', 'true');
+    end if;
+
+    if exists(
+      select 1
+      from pg_catalog.pg_attribute attribute
+      where attribute.attrelid = to_regclass('public.automation_jobs')
+        and attribute.attname = 'execution_target'
+        and attribute.attnum > 0
+        and not attribute.attisdropped
+    ) then
+      checks := jsonb_set(checks, '{location_queue_execution_target_column_compatible}', 'true');
+    end if;
+
+    if to_regprocedure('public.classify_automation_execution_target()') is not null
+       and exists(
+         select 1 from pg_catalog.pg_trigger
+         where tgrelid = to_regclass('public.automation_jobs')
+           and tgname = 'classify_automation_execution_target'
+           and not tgisinternal
+       ) then
+      checks := jsonb_set(checks, '{location_queue_execution_target_trigger_compatible}', 'true');
+    end if;
+
+    begin
+      perform set_config('request.jwt.claim.role', 'service_role', true);
+      perform set_config('request.jwt.claim.sub', user_one::text, true);
+      perform set_config(
+        'request.jwt.claims',
+        jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
+        true
+      );
+      location_queue_probe_job_id := public.enqueue_automation_job(
+        client_two,
+        null,
+        'website_location_seo_refresh',
+        'synthetic-location-queue-dependency',
+        jsonb_build_object('execution_target', 'edge', 'requires_external_worker', true),
+        now() + interval '2 minutes',
+        55
+      );
+      if location_queue_probe_job_id is not null then
+        checks := jsonb_set(checks, '{location_queue_enqueue_runtime_probe}', 'true');
+      end if;
+    exception when others then
+      if left(sqlstate, 2) = '23' then
+        checks := jsonb_set(checks, '{location_failure_integrity_constraint}', 'true');
+      elsif sqlstate = '42501' then
+        checks := jsonb_set(checks, '{location_failure_permission}', 'true');
+      elsif sqlstate = '42703' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_column}', 'true');
+      elsif sqlstate = '42883' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_function}', 'true');
+      elsif sqlstate = '42P01' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_table}', 'true');
+      elsif sqlstate = '42704' then
+        checks := jsonb_set(checks, '{location_failure_missing_schema_object}', 'true');
+        checks := jsonb_set(checks, '{location_failure_undefined_object}', 'true');
+      elsif sqlstate = 'P0001' then
+        checks := jsonb_set(checks, '{location_failure_trigger_rejection}', 'true');
+      else
+        checks := jsonb_set(checks, '{location_failure_unknown_downstream}', 'true');
+      end if;
+    end;
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    perform set_config('request.jwt.claim.sub', user_two::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_two)::text,
+      true
+    );
 
     -- Isolate the three downstream write stages without bypassing the
     -- canonical entitlement trigger. Successful probe rows are deleted before

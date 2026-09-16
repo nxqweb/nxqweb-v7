@@ -130,6 +130,11 @@ const paidGuardValidationChecks = [
   "location_schema_client_locations_columns",
   "location_entitlement_trigger_phase_compatible",
   "location_queue_trigger_phase_compatible",
+  "location_queue_enqueue_function_compatible",
+  "location_queue_automation_jobs_base_columns_compatible",
+  "location_queue_execution_target_column_compatible",
+  "location_queue_execution_target_trigger_compatible",
+  "location_queue_enqueue_runtime_probe",
   "location_insert_trigger_probe",
   "location_audit_write_probe",
   "location_result_construction_probe",
@@ -226,6 +231,15 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("tgname = 'queue_location_seo_refresh_from_location'") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_trigger_phase_compatible}', 'true')") &&
   paidGuardValidationSql.includes("('public.projects', 'created_at')") &&
+  paidGuardValidationSql.includes("to_regprocedure('public.enqueue_automation_job(uuid,uuid,text,text,jsonb,timestamptz,integer)') is not null") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_enqueue_function_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("location_queue_automation_jobs_base_columns_compatible") &&
+  paidGuardValidationSql.includes("'execution_target'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_execution_target_column_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("to_regprocedure('public.classify_automation_execution_target()') is not null") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_execution_target_trigger_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("'synthetic-location-queue-dependency'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_queue_enqueue_runtime_probe}', 'true')") &&
   paidGuardValidationSql.includes("attribute.attrelid = to_regclass(required.relation_name)") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_insert_trigger_probe}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_audit_write_probe}', 'true')") &&
