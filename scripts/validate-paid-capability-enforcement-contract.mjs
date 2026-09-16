@@ -128,6 +128,11 @@ const paidGuardValidationChecks = [
   "location_billing_eligible",
   "location_zero_existing",
   "location_schema_client_locations_columns",
+  "location_trigger_set_expected",
+  "location_no_unexpected_user_triggers",
+  "location_no_user_rules",
+  "location_column_defaults_generated_compatible",
+  "location_constraints_compatible",
   "location_entitlement_trigger_phase_compatible",
   "location_queue_trigger_phase_compatible",
   "location_queue_enqueue_function_compatible",
@@ -231,6 +236,14 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_zero_existing}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_schema_client_locations_columns}', 'true')") &&
   paidGuardValidationSql.includes("'structured_data', 'created_at', 'updated_at'") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_trigger_set_expected}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_no_unexpected_user_triggers}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_no_user_rules}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_column_defaults_generated_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_constraints_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("from pg_catalog.pg_rewrite rewrite") &&
+  paidGuardValidationSql.includes("attribute.attgenerated <> ''") &&
+  paidGuardValidationSql.includes("from pg_catalog.pg_constraint constraint_row") &&
   paidGuardValidationSql.includes("to_regprocedure('public.nxq_enforce_location_entitlement()') is not null") &&
   paidGuardValidationSql.includes("tgname = 'nxq_enforce_location_entitlement'") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_entitlement_trigger_phase_compatible}', 'true')") &&

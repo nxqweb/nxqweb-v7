@@ -164,6 +164,10 @@ begin
     'location_lifecycle_eligible', 'location_business_tier_compatible',
     'location_billing_eligible', 'location_zero_existing',
     'location_schema_client_locations_columns',
+    'location_trigger_set_expected',
+    'location_no_unexpected_user_triggers', 'location_no_user_rules',
+    'location_column_defaults_generated_compatible',
+    'location_constraints_compatible',
     'location_entitlement_trigger_phase_compatible',
     'location_queue_trigger_phase_compatible',
     'location_queue_enqueue_function_compatible',
@@ -455,6 +459,78 @@ begin
       )
     ) then
       checks := jsonb_set(checks, '{location_schema_client_locations_columns}', 'true');
+    end if;
+
+    -- Report only boolean compatibility for every remaining insert-time
+    -- database surface. Catalog rows and object definitions stay private.
+    if (
+      select count(*) = 2
+         and bool_and(tgname in (
+           'nxq_enforce_location_entitlement',
+           'queue_location_seo_refresh_from_location'
+         ))
+      from pg_catalog.pg_trigger
+      where tgrelid = to_regclass('public.client_locations')
+        and not tgisinternal
+    ) then
+      checks := jsonb_set(checks, '{location_trigger_set_expected}', 'true');
+    end if;
+
+    if not exists(
+      select 1
+      from pg_catalog.pg_trigger
+      where tgrelid = to_regclass('public.client_locations')
+        and not tgisinternal
+        and tgname not in (
+          'nxq_enforce_location_entitlement',
+          'queue_location_seo_refresh_from_location'
+        )
+    ) then
+      checks := jsonb_set(checks, '{location_no_unexpected_user_triggers}', 'true');
+    end if;
+
+    if not exists(
+      select 1
+      from pg_catalog.pg_rewrite rewrite
+      where rewrite.ev_class = to_regclass('public.client_locations')
+        and rewrite.rulename <> '_RETURN'
+    ) then
+      checks := jsonb_set(checks, '{location_no_user_rules}', 'true');
+    end if;
+
+    if not exists(
+      select 1
+      from pg_catalog.pg_attribute attribute
+      where attribute.attrelid = to_regclass('public.client_locations')
+        and attribute.attnum > 0
+        and not attribute.attisdropped
+        and attribute.attgenerated <> ''
+    )
+       and not exists(
+         select 1
+         from unnest(array[
+           'id', 'country_code', 'structured_data', 'created_at', 'updated_at'
+         ]::text[]) as required(column_name)
+         where not exists(
+           select 1
+           from pg_catalog.pg_attribute attribute
+           where attribute.attrelid = to_regclass('public.client_locations')
+             and attribute.attname = required.column_name
+             and attribute.attnum > 0
+             and not attribute.attisdropped
+             and attribute.atthasdef
+         )
+       ) then
+      checks := jsonb_set(checks, '{location_column_defaults_generated_compatible}', 'true');
+    end if;
+
+    if (
+      select count(*) = 6
+      from pg_catalog.pg_constraint constraint_row
+      where constraint_row.conrelid = to_regclass('public.client_locations')
+        and constraint_row.contype in ('p', 'u', 'f', 'c')
+    ) then
+      checks := jsonb_set(checks, '{location_constraints_compatible}', 'true');
     end if;
 
     if to_regprocedure('public.nxq_enforce_location_entitlement()') is not null
