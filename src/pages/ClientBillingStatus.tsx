@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, Snowflake } from "lucide-react";
+import { appConfig } from "../lib/appConfig";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientBillingRow = {
@@ -38,7 +39,7 @@ export function ClientBillingStatus() {
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Billing status is unavailable because Supabase is not configured.");
+      setError("Billing status is temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -60,7 +61,7 @@ export function ClientBillingStatus() {
       .maybeSingle();
 
     if (result.error || !result.data) {
-      setError(result.error?.message || "No client billing profile was found.");
+      setError("Billing status could not be loaded right now.");
       setLoading(false);
       return;
     }
@@ -128,15 +129,15 @@ export function ClientBillingStatus() {
             <Clock3 size={22} />
             <div>
               <h1>Billing status</h1>
-              <p className="subtle">Review your current manual billing state and account timing.</p>
+              <p className="subtle">Review your current billing state and account timing.</p>
             </div>
           </div>
 
           <a className="icon-btn" href="/client"><ArrowLeft size={16} /> Client portal</a>
         </div>
 
-        {error ? <div className="notice-card error">{error}</div> : null}
-        {loading ? <div className="empty-state">Loading billing status...</div> : null}
+        {error ? <div className="notice-card error" role="alert">{error}</div> : null}
+        {loading ? <div className="empty-state" role="status">Loading billing status...</div> : null}
 
         {!loading && client ? (
           <>
@@ -161,7 +162,7 @@ export function ClientBillingStatus() {
                 <article className="settings-card">
                   <span>Monthly plan</span>
                   <strong>{formatMoney(Number(client.monthly_price || 0))}</strong>
-                  <p>Manual monthly tracking amount.</p>
+                  <p>Current monthly plan amount.</p>
                 </article>
                 <article className="settings-card">
                   <span>Provider</span>
@@ -181,7 +182,7 @@ export function ClientBillingStatus() {
                 <article className="settings-card">
                   <span>Next due date</span>
                   <strong>{formatDate(client.billing_due_at)}</strong>
-                  <p>May remain unset while billing is handled manually.</p>
+                  <p>May remain unset until billing is fully configured.</p>
                 </article>
               </div>
             </section>
@@ -191,7 +192,7 @@ export function ClientBillingStatus() {
                 <MessageCircle size={20} />
                 <div>
                   <h2>Need help?</h2>
-                  <p className="subtle">Message support from the Client Portal or email websitedesignercontact@protonmail.com.</p>
+                  <p className="subtle">Message support from the Client Portal or email {appConfig.supportEmail}.</p>
                 </div>
               </div>
               <a className="wide-btn" href="/client">Open Client Portal support</a>

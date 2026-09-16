@@ -39,7 +39,7 @@ export const manualPaymentProvider: PaymentProvider = {
 
 export const paypalPaymentProvider: PaymentProvider = {
   name: "paypal",
-  label: "PayPal",
+  label: "PayPal (legacy)",
   isConfigured: false,
   async activateSubscription() {
     return {
@@ -47,7 +47,7 @@ export const paypalPaymentProvider: PaymentProvider = {
       provider: "paypal",
       status: "pending",
       message:
-        "PayPal is not connected yet. Add PayPal API keys later to enable automatic subscription activation.",
+        "PayPal is retained only for legacy records. New online billing is prepared for Stripe.",
     };
   },
 };
@@ -62,7 +62,7 @@ export const stripePaymentProvider: PaymentProvider = {
       provider: "stripe",
       status: "pending",
       message:
-        "Stripe is not connected yet. Add Stripe API keys later to enable automatic subscription activation.",
+        "Stripe is safely disabled. Add Stripe keys, price IDs, a verified webhook, and explicit owner activation later.",
     };
   },
 };

@@ -40,7 +40,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
 
       const ownerResult = await supabase
         .from("owner_users")
-        .select("id, role")
+        .select("id")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 

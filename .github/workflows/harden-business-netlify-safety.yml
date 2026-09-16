@@ -1,0 +1,56 @@
+name: Harden Business Netlify Safety
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - scripts/patch-business-netlify-provisioning-safety.py
+      - .github/workflows/harden-business-netlify-safety.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply Netlify provisioning safety patch
+        run: python scripts/patch-business-netlify-provisioning-safety.py
+      - name: Verify provider reconciliation and no early production build
+        run: |
+          INFRA=supabase/functions/provision-project-infrastructure/index.ts
+          BUILD=supabase/functions/build-business-website/index.ts
+          grep -q 'sites?name=' "$INFRA"
+          grep -q 'stop_builds: true' "$INFRA"
+          grep -q 'production_build_started: false' "$INFRA"
+          if grep -q 'triggerBaselineBuild' "$INFRA"; then exit 1; fi
+          if grep -q 'builds?branch=main' "$INFRA"; then exit 1; fi
+          grep -q 'activatePreviewBuilds' "$BUILD"
+          grep -q 'allowed_branches: \[branch\]' "$BUILD"
+          grep -q 'branch === "main"' "$BUILD"
+      - name: Typecheck Edge functions
+        run: node scripts/check-edge-functions.mjs
+      - name: Lint zero warnings
+        run: npm run lint -- --max-warnings=0
+      - name: Commit hardened workers
+        run: |
+          FILES='supabase/functions/provision-project-infrastructure/index.ts supabase/functions/build-business-website/index.ts'
+          if git diff --quiet -- $FILES; then
+            echo 'No worker changes required.'
+            exit 0
+          fi
+          git config user.name 'nxqweb'
+          git config user.email 'NXQweb@protonmail.com'
+          git add $FILES
+          git commit -m 'fix: reconcile Netlify before preview-only activation'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

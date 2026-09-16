@@ -1,0 +1,84 @@
+name: NXQ Provision Worker Cleanup
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+    paths:
+      - .github/workflows/one-shot-provision-worker-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out safe branch
+        uses: actions/checkout@v4
+        with:
+          ref: safe/commerce-live-storefront
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply provisioning worker typing cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('supabase/functions/provision-storefront/index.ts')
+          text = path.read_text()
+
+          marker = 'import { SignJWT, importPKCS8 } from "npm:jose@6";\n'
+          types = '''\n\ntype ProviderMetadata = {\n  github_full_name?: string;\n  netlify_build_triggered_at?: string;\n  [key: string]: unknown;\n};\n\ntype ProvisioningJob = {\n  id: string;\n  client_id: string;\n  storefront_id: string;\n  repository_name?: string | null;\n  repository_owner?: string | null;\n  repository_url?: string | null;\n  netlify_site_id?: string | null;\n  launch_approved_at?: string | null;\n  provider_metadata?: ProviderMetadata | null;\n  [key: string]: unknown;\n};\n\ntype SupabaseAdminClient = ReturnType<typeof createClient>;\n'''
+          if 'type ProvisioningJob =' not in text:
+              if marker not in text:
+                  raise SystemExit('Import marker not found; refusing ambiguous edit.')
+              text = text.replace(marker, marker + types, 1)
+
+          replacements = {
+              'function normalizeClaimedJob(value: unknown): any | null {': 'function normalizeClaimedJob(value: unknown): ProvisioningJob | null {',
+              'const job = normalized as Record<string, unknown>;': 'const job = normalized as ProvisioningJob;',
+              '  admin: any,\n  job: any,': '  admin: SupabaseAdminClient,\n  job: ProvisioningJob,',
+              'async function ensureRepository(job: any, businessName: string) {': 'async function ensureRepository(job: ProvisioningJob, businessName: string) {',
+              'throw new Error(`Provider request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);': 'throw new Error(`Provider request timed out after ${Math.round(timeoutMs / 1000)} seconds.`, { cause: error });',
+              'Array.isArray(existing) ? existing.map((item: any) => item?.key).filter(Boolean) : [],': 'Array.isArray(existing)\n      ? existing\n          .map((item: unknown) => {\n            if (!item || typeof item !== "object" || !("key" in item)) return "";\n            const key = (item as Record<string, unknown>).key;\n            return typeof key === "string" ? key : "";\n          })\n          .filter(Boolean)\n      : [],',
+              '  let job: any | null = null;': '  let job: ProvisioningJob | null;',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Expected source fragment not found: {old[:80]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint provisioning worker
+        run: npx eslint supabase/functions/provision-storefront/index.ts
+
+      - name: Verify production build
+        run: npm run build
+
+      - name: Verify diff
+        run: git diff --check && git diff -- supabase/functions/provision-storefront/index.ts
+
+      - name: Commit worker cleanup
+        shell: bash
+        run: |
+          if git diff --quiet -- supabase/functions/provision-storefront/index.ts; then
+            echo "No worker changes to commit."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/provision-storefront/index.ts
+          git commit -m "fix: type and harden storefront provisioning worker"
+          git push origin HEAD:safe/commerce-live-storefront

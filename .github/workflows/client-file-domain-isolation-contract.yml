@@ -1,0 +1,36 @@
+name: Client File Domain Isolation Contract
+
+on:
+  push:
+    branches:
+      - main
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - "src/pages/ClientFiles.tsx"
+      - "src/pages/ClientDomainStatus.tsx"
+      - "supabase/functions/secure-client-file-access/index.ts"
+      - "supabase/migrations/220_tenant_safe_file_domain_read_models.sql"
+      - "scripts/validate-client-file-domain-isolation-contract.mjs"
+      - ".github/workflows/client-file-domain-isolation-contract.yml"
+  pull_request:
+    paths:
+      - "src/pages/ClientFiles.tsx"
+      - "src/pages/ClientDomainStatus.tsx"
+      - "supabase/functions/secure-client-file-access/index.ts"
+      - "supabase/migrations/220_tenant_safe_file_domain_read_models.sql"
+      - "scripts/validate-client-file-domain-isolation-contract.mjs"
+      - ".github/workflows/client-file-domain-isolation-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate tenant-isolated bounded read paths
+        run: node scripts/validate-client-file-domain-isolation-contract.mjs

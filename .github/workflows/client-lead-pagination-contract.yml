@@ -1,0 +1,36 @@
+name: Client Lead Pagination Contract
+
+on:
+  push:
+    branches: [safe/checkpoint-autonomy-wave35-sales]
+    paths:
+      - 'src/pages/ClientBusinessLeads.tsx'
+      - 'supabase/migrations/219_tenant_paginated_business_leads.sql'
+      - 'scripts/validate-client-lead-pagination-contract.mjs'
+      - 'scripts/validate-tenant-isolation-contract.mjs'
+      - '.github/workflows/client-lead-pagination-contract.yml'
+  pull_request:
+    paths:
+      - 'src/pages/ClientBusinessLeads.tsx'
+      - 'supabase/migrations/219_tenant_paginated_business_leads.sql'
+      - 'scripts/validate-client-lead-pagination-contract.mjs'
+      - 'scripts/validate-tenant-isolation-contract.mjs'
+
+jobs:
+  lead-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate tenant lead pagination
+        run: node scripts/validate-client-lead-pagination-contract.mjs
+      - name: Validate existing tenant isolation contract
+        run: node scripts/validate-tenant-isolation-contract.mjs
+      - name: Production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0

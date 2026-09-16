@@ -22,7 +22,7 @@ export function OwnerCommerceReviews() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner review load only
 
   async function load() {
     setLoading(true);

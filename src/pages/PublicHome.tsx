@@ -1,34 +1,173 @@
+import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   ArrowRight,
-  Bot,
+  BarChart3,
+  Building2,
   CheckCircle2,
   Crown,
   Gem,
+  MousePointerClick,
+  Search,
   ShieldCheck,
   Sparkles,
+  WandSparkles,
 } from "lucide-react";
 import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSelector";
+import { productTiers } from "../lib/productCatalog";
+
+const comparisonRows = [
+  { label: "Premium managed website", starter: "Included", growth: "Included", intelligence: "Included", enterprise: "Included" },
+  { label: "Local SEO foundation", starter: "Basic", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
+  { label: "Lead + conversion focus", starter: "Core", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
+  { label: "Behavior analytics", starter: "—", growth: "Core analytics", intelligence: "Click + scroll", enterprise: "Custom" },
+  { label: "Ongoing optimization", starter: "Maintenance", growth: "Monthly", intelligence: "Priority cycle", enterprise: "Custom cadence" },
+  { label: "Multi-location scale", starter: "—", growth: "—", intelligence: "—", enterprise: "Available" },
+];
+
+type StoryStage = "build" | "found" | "leads" | "analytics" | "improve";
+
+const storyStages: Array<{
+  key: StoryStage;
+  eyebrow: string;
+  title: string;
+  body: string;
+  signal: string;
+  detail: string;
+}> = [
+  {
+    key: "build",
+    eyebrow: "01 · Build",
+    title: "Start with a site that already feels premium.",
+    body: "NXQ-Web turns the business setup into a polished, responsive website structure instead of handing the owner a blank builder.",
+    signal: "Launch foundation",
+    detail: "Pages, brand direction, calls to action, and client controls stay connected to the same project.",
+  },
+  {
+    key: "found",
+    eyebrow: "02 · Get found",
+    title: "Structure the site around how customers actually search.",
+    body: "Growth-focused plans organize service pages, local coverage, and SEO opportunities around the business instead of treating search visibility as an afterthought.",
+    signal: "Search visibility",
+    detail: "Service-area structure and content opportunities become part of the managed website cycle.",
+  },
+  {
+    key: "leads",
+    eyebrow: "03 · Convert",
+    title: "Turn visits into clear next actions.",
+    body: "The site is designed around calls, forms, estimate requests, and stronger customer paths so attention has somewhere useful to go.",
+    signal: "Lead flow",
+    detail: "Lead capture and conversion-focused layouts stay tied to the website instead of living in a disconnected tool.",
+  },
+  {
+    key: "analytics",
+    eyebrow: "04 · Understand",
+    title: "See what the website is actually doing.",
+    body: "Higher tiers add progressively deeper reporting and behavior insight so decisions can be based on evidence instead of guesses.",
+    signal: "Performance signals",
+    detail: "Advanced tracking remains tier- and consent-gated rather than being silently enabled for every client.",
+  },
+  {
+    key: "improve",
+    eyebrow: "05 · Improve",
+    title: "Keep the website moving after launch.",
+    body: "NXQ-Web is designed around ongoing care: maintenance, content improvements, SEO opportunities, and higher-tier optimization cycles.",
+    signal: "Ongoing care",
+    detail: "The website stays part of an active managed system instead of becoming a forgotten one-time project.",
+  },
+];
 
 export function PublicHome() {
+  const interactionRootRef = useRef<HTMLElement | null>(null);
+  const [storyStage, setStoryStage] = useState<StoryStage>("build");
+
+  useEffect(() => {
+    const root = interactionRootRef.current;
+    if (!root) return;
+    const interactionRoot = root;
+
+    const finePointer = window.matchMedia("(pointer: fine)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!finePointer.matches || reducedMotion.matches) return;
+
+    let frame = 0;
+
+    function updatePointer(event: PointerEvent) {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const rect = interactionRoot.getBoundingClientRect();
+        const localX = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+        const localY = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+        const xRatio = rect.width > 0 ? localX / rect.width : 0.5;
+        const yRatio = rect.height > 0 ? localY / rect.height : 0.25;
+        const tiltX = (0.5 - yRatio) * 5;
+        const tiltY = (xRatio - 0.5) * 8;
+
+        interactionRoot.style.setProperty("--lux-pointer-x", `${(xRatio * 100).toFixed(2)}%`);
+        interactionRoot.style.setProperty("--lux-pointer-y", `${(yRatio * 100).toFixed(2)}%`);
+        interactionRoot.style.setProperty("--lux-tilt-x", `${tiltX.toFixed(2)}deg`);
+        interactionRoot.style.setProperty("--lux-tilt-y", `${tiltY.toFixed(2)}deg`);
+        interactionRoot.dataset.pointerActive = "true";
+      });
+    }
+
+    function resetPointer() {
+      window.cancelAnimationFrame(frame);
+      interactionRoot.style.setProperty("--lux-pointer-x", "50%");
+      interactionRoot.style.setProperty("--lux-pointer-y", "24%");
+      interactionRoot.style.setProperty("--lux-tilt-x", "0deg");
+      interactionRoot.style.setProperty("--lux-tilt-y", "-4deg");
+      delete interactionRoot.dataset.pointerActive;
+    }
+
+    interactionRoot.addEventListener("pointermove", updatePointer);
+    interactionRoot.addEventListener("pointerleave", resetPointer);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      interactionRoot.removeEventListener("pointermove", updatePointer);
+      interactionRoot.removeEventListener("pointerleave", resetPointer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const storyItems = Array.from(document.querySelectorAll<HTMLElement>("[data-story-stage]"));
+    if (storyItems.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        const nextStage = visible?.target.getAttribute("data-story-stage") as StoryStage | null;
+        if (nextStage) setStoryStage(nextStage);
+      },
+      { rootMargin: "-28% 0px -46% 0px", threshold: [0.2, 0.45, 0.7] }
+    );
+
+    storyItems.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
+
+  const activeStory = storyStages.find((stage) => stage.key === storyStage) || storyStages[0];
+
   return (
-    <main className="lux-home">
+    <main ref={interactionRootRef} className="lux-home lux-interactive-home">
       <section className="lux-page">
         <header className="lux-nav lux-card">
           <a className="lux-brand" href="/">
             <div className="lux-logo">N</div>
             <div>
-              <strong>NXQ</strong>
-              <span>web systems</span>
+              <strong>NXQX</strong>
+              <span>NXQ-Web</span>
             </div>
           </a>
 
           <nav className="lux-links" aria-label="Main navigation">
-            <a href="/">Home</a>
+            <a href="#systems">Systems</a>
             <a href="#pricing">Pricing</a>
             <a href="#process">Process</a>
-            <a className="lux-nav-portal" href="/portal">
-              Portal
-            </a>
+            <a className="lux-nav-portal" href="/portal">Client portal</a>
           </nav>
         </header>
 
@@ -36,219 +175,273 @@ export function PublicHome() {
           <div className="lux-hero-copy">
             <div className="lux-tag">
               <Crown size={16} />
-              premium website systems
+              premium managed website systems
             </div>
 
             <h1>
-              Websites that make small businesses feel
-              <span> expensive.</span>
+              Your website should work
+              <span>as hard as your business.</span>
             </h1>
 
             <p>
-              NXQ Web builds premium monthly websites with client portals,
-              guided project controls, managed workflows, and clean systems that
-              help businesses look sharper, move faster, and stay organized.
+              NXQ-Web builds, manages, improves, and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates, growth work, and ongoing care stay connected in one managed system.
             </p>
 
             <div className="lux-actions">
-              <a className="lux-btn lux-btn-primary" href="/portal">
-                Client Portal
+              <a className="lux-btn lux-btn-primary" href="/portal/signup?family=business&tier=growth">
+                Build my website
                 <ArrowRight size={18} />
               </a>
+              <a className="lux-btn lux-btn-secondary" href="#systems">See how NXQ works</a>
+            </div>
 
-              <a className="lux-btn lux-btn-secondary" href="#pricing">
-                View pricing
-              </a>
+            <div className="lux-hero-proof" aria-label="NXQ-Web service principles">
+              <span><ShieldCheck size={15} /> Managed after launch</span>
+              <span><Activity size={15} /> Built to keep improving</span>
+              <span><CheckCircle2 size={15} /> Owner-reviewed where it matters</span>
             </div>
           </div>
 
-          <aside className="lux-card lux-preview" aria-label="NXQ preview">
+          <aside className="lux-card lux-preview lux-pointer-depth" aria-label="NXQ-Web system preview">
             <div className="lux-browser">
-              <div className="lux-dots">
-                <span />
-                <span />
-                <span />
+              <div className="lux-browser-topline">
+                <div className="lux-dots"><span /><span /><span /></div>
+                <span>NXQ-Web live workspace</span>
               </div>
 
               <div className="lux-inner-panel">
-                <small>live system preview</small>
-                <h2>Client portal, project approvals, and managed website workflow in one place.</h2>
+                <small>managed website system</small>
+                <h2>Build. Grow. Convert. Maintain.</h2>
                 <p>
-                  Clear cards, gold edges, secure client access, project approvals,
-                  project updates, messages, and launch tracking.
+                  One premium website operation that keeps intake, approvals, content, leads, optimization, and maintenance organized around the same client workspace.
                 </p>
 
                 <div className="lux-mini-grid">
-                  <div>Client Portal</div>
-                  <div>Project Review</div>
-                  <div>Website Workflow</div>
+                  <div><Gem size={17} /> Premium build</div>
+                  <div><Search size={17} /> Growth system</div>
+                  <div><MousePointerClick size={17} /> Conversion focus</div>
+                </div>
+
+                <div className="lux-preview-status">
+                  <span>Website health</span>
+                  <strong>Managed</strong>
+                  <div><i /><i /><i /><i /></div>
                 </div>
               </div>
             </div>
           </aside>
         </section>
 
-        <section className="lux-section" id="services">
+        <section className="lux-trust-strip lux-card" aria-label="What NXQ-Web manages">
+          <span>Premium design</span>
+          <span>Hosting + SSL</span>
+          <span>Client portal</span>
+          <span>SEO foundation</span>
+          <span>Lead capture</span>
+          <span>Ongoing care</span>
+        </section>
+
+        <section className="lux-section" id="systems">
           <div className="lux-section-head">
-            <span>What NXQ Web delivers</span>
-            <h2>Premium websites backed by a cleaner project system.</h2>
+            <span>One system. Your website operation.</span>
+            <h2>A premium site is only the beginning.</h2>
+            <p>
+              NXQ-Web is designed around the full lifecycle: getting your business online, helping customers find it, turning attention into leads, and keeping the site current instead of letting it age in place.
+            </p>
           </div>
 
-          <div className="lux-grid">
+          <div className="lux-grid lux-lifecycle-grid">
             <article className="lux-card lux-service">
+              <div className="lux-step-number">01</div>
               <Gem size={26} />
-              <h3>Premium websites</h3>
-              <p>
-                Clean, cinematic, mobile-ready websites designed to make small
-                businesses look high-trust and professional.
-              </p>
+              <h3>Build</h3>
+              <p>Premium responsive presentation, secure client access, clear structure, and a managed setup process.</p>
             </article>
-
             <article className="lux-card lux-service">
-              <Bot size={26} />
-              <h3>Managed project workflow</h3>
-              <p>
-                Setup details, update requests, and important project steps stay organized through a guided workflow.
-              </p>
+              <div className="lux-step-number">02</div>
+              <Search size={26} />
+              <h3>Get found</h3>
+              <p>SEO foundations, service-area structure, stronger pages, and ongoing content opportunities.</p>
             </article>
-
             <article className="lux-card lux-service">
-              <ShieldCheck size={26} />
-              <h3>Reviewed project steps</h3>
-              <p>
-                Important steps like project approval, launch readiness, account changes,
-                and major updates stay reviewed before they move forward.
-              </p>
+              <div className="lux-step-number">03</div>
+              <MousePointerClick size={26} />
+              <h3>Convert</h3>
+              <p>Lead capture, stronger calls to action, conversion-focused layouts, and clearer customer paths.</p>
+            </article>
+            <article className="lux-card lux-service">
+              <div className="lux-step-number">04</div>
+              <Activity size={26} />
+              <h3>Improve</h3>
+              <p>Higher tiers add behavior insights, performance review, and an ongoing optimization cycle.</p>
             </article>
           </div>
+
+          <div className="lux-story-shell" aria-label="NXQ-Web managed website lifecycle demonstration">
+            <div className="lux-story-sticky lux-card" aria-live="polite">
+              <div className="lux-browser-topline">
+                <div className="lux-dots"><span /><span /><span /></div>
+                <span>Live system story</span>
+              </div>
+              <div className="lux-story-preview" data-active-story={storyStage}>
+                <span className="lux-kicker">{activeStory.eyebrow}</span>
+                <h3>{activeStory.title}</h3>
+                <p>{activeStory.body}</p>
+                <div className="lux-story-signal">
+                  <span>{activeStory.signal}</span>
+                  <strong>{activeStory.detail}</strong>
+                </div>
+                <div className="lux-story-progress" aria-label="Lifecycle progress">
+                  {storyStages.map((stage) => (
+                    <i className={stage.key === storyStage ? "active" : ""} key={stage.key} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="lux-story-steps">
+              {storyStages.map((stage) => (
+                <article
+                  className={`lux-card lux-story-step ${stage.key === storyStage ? "active" : ""}`}
+                  data-story-stage={stage.key}
+                  key={stage.key}
+                >
+                  <span>{stage.eyebrow}</span>
+                  <h3>{stage.title}</h3>
+                  <p>{stage.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="lux-section">
+          <ProductFamilySignupSelector />
         </section>
 
         <section className="lux-section" id="pricing">
           <div className="lux-section-head">
             <span>Pricing</span>
-            <h2>Premium websites. Smarter monthly plans.</h2>
+            <h2>Pick where you want your business to go.</h2>
             <p>
-              Choose the NXQ website system your business needs, then select the monthly tier that fits your goals.
+              Every tier keeps the managed foundation. Higher tiers add stronger visibility, measurement, and ongoing optimization instead of random feature clutter.
             </p>
           </div>
 
-          <ProductFamilySignupSelector />
-
           <div className="lux-grid lux-pricing-grid">
-            <article className="lux-card lux-price">
-              <span className="lux-plan-badge">Best Entry</span>
-              <h3>Starter</h3>
-              <p>
-                Premium website essentials for small businesses that need to look
-                trusted, professional, and ready for customers online.
-              </p>
-              <strong>$50/mo</strong>
-              <ul className="lux-plan-list">
-                <li>Premium 1–3 page website</li>
-                <li>Mobile-responsive design</li>
-                <li>Basic SEO setup</li>
-                <li>Contact form</li>
-                <li>Simple client portal access</li>
-                <li>Manual update requests</li>
-              </ul>
-              <small>Best for new businesses, solo owners, and simple local services.</small>
-            </article>
+            {productTiers.map((tier) => {
+              const featured = tier.key === "growth";
+              return (
+                <article className={`lux-card lux-price ${featured ? "lux-featured" : ""}`} key={tier.key}>
+                  <span className="lux-plan-badge">{tier.badge}</span>
+                  <h3>{tier.name}</h3>
+                  <p>{tier.description}</p>
+                  <strong>{tier.priceLabel}</strong>
+                  <ul className="lux-plan-list">
+                    {tier.features.map((feature) => <li key={feature}>{feature}</li>)}
+                  </ul>
+                  <small>{tier.outcome}</small>
+                  <a
+                    className={`lux-btn ${featured ? "lux-btn-primary" : "lux-btn-secondary"}`}
+                    href={`/portal/signup?family=business&tier=${encodeURIComponent(tier.key)}`}
+                  >
+                    Choose {tier.name}
+                    <ArrowRight size={17} />
+                  </a>
+                </article>
+              );
+            })}
+          </div>
 
-            <article className="lux-card lux-price lux-featured">
-              <span className="lux-plan-badge">Most Popular</span>
-              <h3>Growth</h3>
-              <p>
-                A stronger SEO-focused website system for businesses that want
-                more visibility, better structure, and more leads.
-              </p>
-              <strong>$100/mo</strong>
-              <ul className="lux-plan-list">
-                <li>Everything in Starter</li>
-                <li>Up to 5 core pages</li>
-                <li>Service-area SEO sections</li>
-                <li>Monthly website/content improvements</li>
-                <li>Review and testimonial sections</li>
-                <li>SEO and content suggestions</li>
-              </ul>
-              <small>Best for contractors, tree services, cleaning companies, and local teams.</small>
-            </article>
+          <div className="lux-card lux-comparison-wrap">
+            <div className="lux-comparison-head">
+              <div>
+                <span className="lux-kicker">Compare the outcome</span>
+                <h3>See what changes as NXQ-Web takes on more of the growth work.</h3>
+              </div>
+              <a className="lux-btn lux-btn-secondary" href="/plans">Open full plans</a>
+            </div>
 
-            <article className="lux-card lux-price">
-              <span className="lux-plan-badge">Most Advanced</span>
-              <h3>Intelligence</h3>
-              <p>
-                Advanced website optimization with behavior insights, monthly improvement recommendations, and conversion-focused planning.
-              </p>
-              <strong>$150/mo</strong>
-              <ul className="lux-plan-list">
-                <li>Everything in Growth</li>
-                <li>Click and scroll insights</li>
-                <li>Page interaction review</li>
-                <li>Monthly website performance review</li>
-                <li>Layout improvement suggestions</li>
-                <li>Conversion-focused optimization notes</li>
-              </ul>
-              <small>Best for businesses serious about leads, growth, and long-term performance.</small>
-            </article>
+            <div className="lux-comparison-table" role="table" aria-label="NXQ-Web tier comparison">
+              <div className="lux-comparison-row lux-comparison-labels" role="row">
+                <strong role="columnheader">Capability</strong>
+                <strong role="columnheader">Starter</strong>
+                <strong role="columnheader">Growth</strong>
+                <strong role="columnheader">Intelligence</strong>
+                <strong role="columnheader">Enterprise</strong>
+              </div>
+              {comparisonRows.map((row) => (
+                <div className="lux-comparison-row" role="row" key={row.label}>
+                  <span role="cell">{row.label}</span>
+                  <span role="cell">{row.starter}</span>
+                  <span role="cell">{row.growth}</span>
+                  <span role="cell">{row.intelligence}</span>
+                  <span role="cell">{row.enterprise}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-            <article className="lux-card lux-price">
-              <span className="lux-plan-badge">Custom</span>
-              <h3>Enterprise</h3>
-              <p>
-                Custom website systems for larger companies, multi-location
-                businesses, and teams that need advanced workflows.
-              </p>
-              <strong>Custom</strong>
-              <ul className="lux-plan-list">
-                <li>Multi-location SEO</li>
-                <li>Location-specific pages</li>
-                <li>Advanced reporting</li>
-                <li>Custom review workflows</li>
-                <li>Priority project support</li>
-                <li>Custom integrations later</li>
-              </ul>
-              <small>Best for regional service companies, forestry teams, and larger operations.</small>
+        <section className="lux-section" id="process">
+          <div className="lux-section-head">
+            <span>How NXQ-Web works</span>
+            <h2>Simple for the client. Controlled behind the scenes.</h2>
+            <p>The client gets a clean guided experience while project approval and higher-impact decisions stay protected.</p>
+          </div>
+
+          <div className="lux-process-track">
+            <article className="lux-card lux-process-step">
+              <span>01</span>
+              <Building2 size={23} />
+              <h3>Choose</h3>
+              <p>Select the website family and service tier that match the business.</p>
+            </article>
+            <article className="lux-card lux-process-step">
+              <span>02</span>
+              <WandSparkles size={23} />
+              <h3>Tell us what matters</h3>
+              <p>Complete a project form that changes based on the selected family and tier.</p>
+            </article>
+            <article className="lux-card lux-process-step">
+              <span>03</span>
+              <ShieldCheck size={23} />
+              <h3>Review</h3>
+              <p>NXQ reviews the setup before protected build automation can move forward.</p>
+            </article>
+            <article className="lux-card lux-process-step">
+              <span>04</span>
+              <Sparkles size={23} />
+              <h3>Build + launch</h3>
+              <p>Approved projects move through the managed website workflow and ongoing care path.</p>
             </article>
           </div>
         </section>
-        <section className="lux-card lux-process" id="process">
-          <div>
-            <span className="lux-kicker">Process</span>
-            <h2>From website request to launch, with a clean managed process.</h2>
-          </div>
 
-          <div className="lux-checks">
-            <div>
-              <CheckCircle2 size={18} />
-              Client enters portal
-            </div>
-            <div>
-              <CheckCircle2 size={18} />
-              Setup details are organized
-            </div>
-            <div>
-              <CheckCircle2 size={18} />
-              Key project steps are reviewed
-            </div>
-            <div>
-              <CheckCircle2 size={18} />
-              Website moves cleanly toward launch
-            </div>
+        <section className="lux-card lux-value-panel">
+          <div className="lux-value-copy">
+            <span className="lux-kicker">Why managed beats DIY</span>
+            <h2>Your time should go into the business, not babysitting a website builder.</h2>
+            <p>
+              DIY tools can help create pages. NXQ-Web is designed around the work that comes after that too: structure, client intake, updates, SEO, lead flow, monitoring, reports, and ongoing improvements.
+            </p>
+          </div>
+          <div className="lux-value-grid">
+            <div><Gem size={20} /><strong>Premium presentation</strong><span>Built to feel intentional instead of template-random.</span></div>
+            <div><BarChart3 size={20} /><strong>Growth visibility</strong><span>Higher tiers add deeper insight and optimization.</span></div>
+            <div><ShieldCheck size={20} /><strong>Managed control</strong><span>High-impact steps stay reviewed before moving forward.</span></div>
+            <div><Activity size={20} /><strong>Ongoing care</strong><span>The website remains part of an active system after launch.</span></div>
           </div>
         </section>
 
         <section className="lux-card lux-final">
           <div>
             <Sparkles size={26} />
-            <h2>Ready to access your website project?</h2>
-            <p>
-              Clients can enter the NXQ Web portal to message NXQ, review project
-              updates, and manage website content.
-            </p>
+            <h2>Stop treating your website like a one-time project.</h2>
+            <p>Choose the system and tier that fit your business. NXQ-Web keeps the website, project workflow, updates, and growth work connected after launch.</p>
           </div>
-
-          <a className="lux-btn lux-btn-primary" href="/portal">
-            Open portal
+          <a className="lux-btn lux-btn-primary" href="/portal/signup?family=business&tier=growth">
+            Start with NXQ-Business
             <ArrowRight size={18} />
           </a>
         </section>

@@ -80,7 +80,7 @@ export function PublicCommerceCheckout() {
   const [customerNote, setCustomerNote] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
 
-  useEffect(() => { void loadCheckout(); }, []);
+  useEffect(() => { void loadCheckout(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial checkout bootstrap only
 
   async function loadCheckout() {
     setLoading(true);

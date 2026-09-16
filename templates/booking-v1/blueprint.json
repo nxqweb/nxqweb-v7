@@ -1,0 +1,47 @@
+{
+  "schema_version": "nxq-booking-blueprint-v1",
+  "family": "booking",
+  "lifecycle_status": "schema_design",
+  "source_branch_prefix": "safe/family/booking",
+  "public_launch_enabled": false,
+  "confirmation_mode": "request_only",
+  "routes": [
+    "/booking",
+    "/booking/request",
+    "/client/booking",
+    "/client/booking/services",
+    "/client/booking/availability",
+    "/client/booking/requests"
+  ],
+  "entities": [
+    "booking_workspaces",
+    "booking_service_definitions",
+    "booking_staff_profiles",
+    "booking_availability_rules",
+    "booking_appointment_requests"
+  ],
+  "invariants": [
+    "A denied build creates zero infrastructure",
+    "No appointment is auto-confirmed without a protected provider and atomic availability lock",
+    "Every booking row is tenant-bound by workspace, client, and project",
+    "Timezone is explicit at workspace and request boundaries",
+    "Retries use a tenant-scoped idempotency key",
+    "A preview is never production authority",
+    "Business and Commerce workers are never reused"
+  ],
+  "non_goals": [
+    "Public booking intake in this scaffold",
+    "Payment collection",
+    "Calendar provider credentials in the browser",
+    "Production publishing"
+  ],
+  "release_gates": {
+    "distinct_template_reviewed": false,
+    "protected_worker_implemented": false,
+    "tenant_safe_intake_rpc_implemented": false,
+    "provider_adapter_verified": false,
+    "required_disposable_external_runs": 10,
+    "security_gate_passed": false,
+    "accessibility_gate_passed": false
+  }
+}

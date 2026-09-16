@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+# NXQ generates per-client sitemap/location pages during deployment.

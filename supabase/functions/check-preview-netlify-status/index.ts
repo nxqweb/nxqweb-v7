@@ -1,10 +1,23 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -38,6 +51,7 @@ Deno.serve(async (request) => {
     global: { headers: { Authorization: authorization } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -65,7 +79,7 @@ Deno.serve(async (request) => {
   const requestResult = await supabase
     .from("preview_deployment_requests")
     .select(
-      "id, deployment_config_id, source_branch, execution_status, execution_deployment_id, execution_started_at, netlify_build_id, preview_deploy_id, preview_url"
+      "id, deployment_config_id, project_id, client_id, source_branch, execution_status, execution_deployment_id, execution_started_at, netlify_build_id, preview_deploy_id, preview_url"
     )
     .eq("id", body.request_id)
     .maybeSingle();
@@ -98,8 +112,20 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Status tracking blocked because the recorded branch is production-capable." }, 409);
   }
 
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: previewRequest.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 2 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `preview-status:${previewRequest.id}:${crypto.randomUUID()}`,
+    target_metadata: { preview_request_id: previewRequest.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Preview status checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
+
   const headers = { Authorization: `Bearer ${netlifyToken}` };
-  const buildResponse = await fetch(
+  const buildResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/builds/${encodeURIComponent(previewRequest.netlify_build_id)}`,
     { headers }
   );
@@ -142,7 +168,7 @@ Deno.serve(async (request) => {
     });
   }
 
-  const deployResponse = await fetch(
+  const deployResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(configResult.data.netlify_site_id)}/deploys/${encodeURIComponent(deployId)}`,
     { headers }
   );

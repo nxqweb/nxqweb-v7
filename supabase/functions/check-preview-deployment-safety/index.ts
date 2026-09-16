@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +28,19 @@ function staticCheck(ok: boolean, passMessage: string, failMessage: string): Saf
     status: ok ? "pass" : "fail",
     message: ok ? passMessage : failMessage,
   };
+}
+
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 12_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider verification request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 Deno.serve(async (request) => {
@@ -64,6 +77,7 @@ Deno.serve(async (request) => {
       autoRefreshToken: false,
     },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const accessToken = authorization.replace(/^Bearer\s+/i, "");
   const userResult = await supabase.auth.getUser(accessToken);
@@ -131,6 +145,17 @@ Deno.serve(async (request) => {
   const config = configResult.data;
   const sourceBranch = previewRequest.source_branch.trim();
   const productionBranch = (config.production_branch || "main").trim();
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: previewRequest.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `preview-safety:${previewRequest.id}:${crypto.randomUUID()}`,
+    target_metadata: { preview_request_id: previewRequest.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Preview safety checks are blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
 
   const checks: Record<string, SafetyCheck> = {
     owner_approval: staticCheck(
@@ -195,7 +220,7 @@ Deno.serve(async (request) => {
         "User-Agent": "NXQ-Web-Preview-Safety-Guard",
       };
 
-      const branchResponse = await fetch(
+      const branchResponse = await timedFetch(
         `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(sourceBranch)}`,
         { headers: githubHeaders }
       );
@@ -213,7 +238,7 @@ Deno.serve(async (request) => {
           };
 
       if (previewRequest.requested_commit_sha) {
-        const commitResponse = await fetch(
+        const commitResponse = await timedFetch(
           `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/commits/${encodeURIComponent(previewRequest.requested_commit_sha)}`,
           { headers: githubHeaders }
         );
@@ -247,7 +272,7 @@ Deno.serve(async (request) => {
         message: "NXQ_NETLIFY_VERIFY_TOKEN is not configured.",
       };
     } else {
-      const siteResponse = await fetch(
+      const siteResponse = await timedFetch(
         `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
         {
           headers: {

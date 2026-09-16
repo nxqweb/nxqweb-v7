@@ -17,6 +17,7 @@ type CommerceIntakeSummary = {
 
 function formatStatus(value: string | undefined) { return (value || "setup_pending").replaceAll("_", " "); }
 function formatSource(value: string | null | undefined) { return (value || "account data").replaceAll("_", " "); }
+function metric(value: number | undefined) { return typeof value === "number" ? value : "—"; }
 
 export function ClientCommerceDashboard() {
   const [catalog, setCatalog] = useState<CatalogSummary | null>(null);
@@ -27,34 +28,76 @@ export function ClientCommerceDashboard() {
   useEffect(() => { void loadDashboard(); }, []);
 
   async function loadDashboard() {
-    setLoading(true); setError("");
-    if (!isSupabaseConfigured || !supabase) { setError("Commerce is unavailable because Supabase is not configured."); setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    setCatalog(null);
+    setIntake(null);
+
+    if (!isSupabaseConfigured || !supabase) {
+      setError("NXQ-Commerce is temporarily unavailable. Please try again later.");
+      setLoading(false);
+      return;
+    }
+
     const sessionResult = await supabase.auth.getSession();
-    if (!sessionResult.data.session) { window.location.replace("/portal/login"); return; }
+    if (sessionResult.error) {
+      setError("Your Commerce session could not be verified. Please refresh or sign in again.");
+      setLoading(false);
+      return;
+    }
+    if (!sessionResult.data.session) {
+      window.location.replace("/portal/login");
+      return;
+    }
+
     const ensureResult = await supabase.rpc("ensure_my_commerce_onboarding");
-    if (ensureResult.error) { setError(`Commerce onboarding could not be prepared: ${ensureResult.error.message}`); setLoading(false); return; }
+    if (ensureResult.error) {
+      setError("NXQ-Commerce setup could not be verified right now. Please try again shortly.");
+      setLoading(false);
+      return;
+    }
+
     const ensureData = ensureResult.data as { provisioned?: boolean; reason?: string } | null;
-    if (ensureData?.provisioned === false && ensureData.reason === "not_commerce") { setError("This client account is not currently approved for NXQ Commerce."); setLoading(false); return; }
-    const [catalogResult, intakeResult] = await Promise.all([supabase.rpc("get_my_commerce_catalog"), supabase.rpc("get_my_commerce_intake")]);
-    if (catalogResult.error) setError(`Commerce dashboard failed to load: ${catalogResult.error.message}`);
-    else if (intakeResult.error) setError(`Commerce setup status failed to load: ${intakeResult.error.message}`);
-    else { setCatalog((catalogResult.data as CatalogSummary) || null); setIntake((intakeResult.data as CommerceIntakeSummary) || null); }
+    if (ensureData?.provisioned === false && ensureData.reason === "not_commerce") {
+      setError("This client account is not currently approved for NXQ-Commerce.");
+      setLoading(false);
+      return;
+    }
+    if (ensureData?.provisioned === false) {
+      setError("NXQ-Commerce is not ready for this account yet. No storefront changes were made.");
+      setLoading(false);
+      return;
+    }
+
+    const [catalogResult, intakeResult] = await Promise.all([
+      supabase.rpc("get_my_commerce_catalog"),
+      supabase.rpc("get_my_commerce_intake"),
+    ]);
+
+    if (catalogResult.error || intakeResult.error) {
+      setError("Some Commerce workspace data could not be verified right now. No storefront or inventory changes were made.");
+      setLoading(false);
+      return;
+    }
+
+    setCatalog((catalogResult.data as CatalogSummary) || null);
+    setIntake((intakeResult.data as CommerceIntakeSummary) || null);
     setLoading(false);
   }
 
-  const summary = catalog?.summary || {};
+  const summary = catalog?.summary;
   const setupNeedsAttention = !intake || ["draft", "needs_more_info"].includes(intake.status || "draft");
   const checkoutHref = catalog?.storefront?.store_slug ? `/store/checkout?store=${encodeURIComponent(catalog.storefront.store_slug)}` : "";
 
   return (
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
-      <div className="panel-title panel-title-row"><div className="panel-title"><ShoppingBag size={22} /><div><h1>NXQ Commerce</h1><p className="subtle">Manage products, categories, inventory, storefront setup, and future orders from one protected workspace.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Back to portal</a></div>
-      {error ? <div className="auth-error">{error}</div> : null}
-      {loading ? <div className="empty-state">Loading Commerce...</div> : null}
+      <div className="panel-title panel-title-row"><div className="panel-title"><ShoppingBag size={22} /><div><h1>NXQ-Commerce</h1><p className="subtle">Manage products, categories, inventory, storefront setup, and future orders from one protected workspace.</p></div></div><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Back to portal</a></div>
+      {error ? <div className="auth-error" role="alert">{error}</div> : null}
+      {loading ? <div className="empty-state" role="status">Loading Commerce...</div> : null}
       {!loading && !error ? <>
         {setupNeedsAttention ? <section className="panel panel-wide"><div className="panel-title"><ClipboardList size={20} /><div><h2>Commerce setup required</h2><p className="subtle">Finish the storefront setup before NXQ prepares the build and migration plan.</p></div></div>{intake?.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {formatSource(intake.detected_site_source)}.</p></div> : null}<a className="wide-btn" href="/client/commerce/setup">Complete Commerce setup</a></section> : null}
-        <section className="panel panel-wide"><div className="panel-title"><ShoppingBag size={20} /><div><h2>{catalog?.storefront?.store_name || "Commerce storefront"}</h2><p className="subtle">Storefront status: {formatStatus(catalog?.storefront?.status)}</p></div></div><div className="settings-grid"><article className="settings-card"><span>Total products</span><strong>{summary.products || 0}</strong><p>All product drafts and future published products.</p></article><article className="settings-card"><span>Draft products</span><strong>{summary.draft_products || 0}</strong><p>Products still being prepared for review.</p></article><article className="settings-card"><span>Low stock</span><strong>{summary.low_stock_variants || 0}</strong><p>Variants at or below their low-stock threshold.</p></article><article className="settings-card"><span>Out of stock</span><strong>{summary.out_of_stock_variants || 0}</strong><p>Variants with no currently available inventory.</p></article></div></section>
+        <section className="panel panel-wide"><div className="panel-title"><ShoppingBag size={20} /><div><h2>{catalog?.storefront?.store_name || "Commerce storefront"}</h2><p className="subtle">Storefront status: {formatStatus(catalog?.storefront?.status)}</p></div></div><div className="settings-grid"><article className="settings-card"><span>Total products</span><strong>{metric(summary?.products)}</strong><p>All product drafts and future published products.</p></article><article className="settings-card"><span>Draft products</span><strong>{metric(summary?.draft_products)}</strong><p>Products still being prepared for review.</p></article><article className="settings-card"><span>Low stock</span><strong>{metric(summary?.low_stock_variants)}</strong><p>Variants at or below their low-stock threshold.</p></article><article className="settings-card"><span>Out of stock</span><strong>{metric(summary?.out_of_stock_variants)}</strong><p>Variants with no currently available inventory.</p></article></div></section>
         {checkoutHref ? <section className="panel panel-wide"><div className="panel-title"><ShieldCheck size={20} /><div><h2>Protected checkout test</h2><p className="subtle">Test the customer cart, automatic server pricing, order creation, and inventory reservation. No real payment or customer contact occurs.</p></div></div><a className="wide-btn" href={checkoutHref}><ShieldCheck size={17} /> Open protected checkout</a></section> : null}
         <div className="owner-detail-grid">
           <section className="panel"><div className="panel-title"><PackagePlus size={20} /><div><h2>Products</h2><p className="subtle">Add product facts, variants, prices, and stock.</p></div></div><a className="wide-btn" href="/client/commerce/products">Open product manager</a></section>

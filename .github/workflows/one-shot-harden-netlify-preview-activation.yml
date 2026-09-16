@@ -1,0 +1,60 @@
+name: Harden Netlify Preview Activation
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-harden-netlify-preview-activation.yml
+      - scripts/patch-netlify-preview-activation.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Patch Netlify preview activation
+        run: node scripts/patch-netlify-preview-activation.mjs
+
+      - name: Verify activation assertions
+        run: |
+          grep -F 'allowed_branches: [branch]' supabase/functions/build-business-website/index.ts
+          grep -F 'stop_builds: false' supabase/functions/build-business-website/index.ts
+          if grep -F '...buildSettings' supabase/functions/build-business-website/index.ts; then
+            echo 'Legacy build_settings spread remains.'
+            exit 1
+          fi
+
+      - name: Typecheck Business website worker
+        run: npx deno check supabase/functions/build-business-website/index.ts
+
+      - name: Lint with zero warnings
+        run: npm run lint -- --max-warnings=0
+
+      - name: Commit hardened worker
+        run: |
+          if git diff --quiet -- supabase/functions/build-business-website/index.ts; then
+            echo 'No worker changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/functions/build-business-website/index.ts
+          git commit -m 'fix: stop replaying Netlify env settings during preview activation'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

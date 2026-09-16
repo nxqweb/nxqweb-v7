@@ -1,0 +1,59 @@
+name: NXQ Business Preview Deferral V2
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-business-preview-deferral-v2.yml
+      - scripts/patch-business-preview-deferral-v2.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply type-safe preview deferral patch
+        run: python scripts/patch-business-preview-deferral-v2.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate migration integrity
+        run: npm run test:migrations
+      - name: Type-check Edge functions
+        run: npm run test:edge
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Verify transient wait handling
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'defer_external_automation_job' supabase/functions/build-business-website/index.ts
+          grep -q '"deferred" in result && result.deferred === true' supabase/functions/build-business-website/index.ts
+          ! grep -q 'if (!deploy) throw new Error("Netlify preview is still building.")' supabase/functions/build-business-website/index.ts
+          grep -q 'attempts = greatest(attempts - 1, 0)' supabase/migrations/201_transient_external_job_deferral.sql
+          git diff --check
+      - name: Commit Business preview deferral
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=supabase/functions/build-business-website/index.ts
+          if git diff --quiet -- "$target"; then
+            echo "No Business preview deferral change required."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add "$target"
+          git commit -m "fix: defer normal Business preview waits"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

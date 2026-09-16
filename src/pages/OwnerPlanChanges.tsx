@@ -179,7 +179,7 @@ export function OwnerPlanChanges() {
       return {
         ...row,
         clientName: clientMap.get(row.client_id)?.business_name || "Unknown client",
-        currentFamilyName: currentFamily?.name || "NXQ Business",
+        currentFamilyName: currentFamily?.name || "NXQ-Business",
         currentTierName: currentTier?.name || "Starter",
         requestedFamilyName: requestedFamily?.name || "Unknown family",
         requestedTierName: requestedTier?.name || "Unknown tier",

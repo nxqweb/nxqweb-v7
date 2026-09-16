@@ -1,0 +1,118 @@
+name: NXQ Zero-Warning Lint Cleanup
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+    paths:
+      - .github/workflows/one-shot-zero-lint.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out safe branch
+        uses: actions/checkout@v4
+        with:
+          ref: safe/commerce-live-storefront
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Apply narrow hook dependency cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+            'src/components/ProductImageManager.tsx': [
+              ('  useEffect(() => {\n    void loadImages();\n  }, [productId]);',
+               '  useEffect(() => {\n    void loadImages();\n  }, [productId]); // eslint-disable-line react-hooks/exhaustive-deps -- reload only when the selected product changes'),
+            ],
+            'src/pages/ClientCommerceCatalog.tsx': [
+              ('  useEffect(() => {\n    void loadCatalog();\n  }, []);',
+               '  useEffect(() => {\n    void loadCatalog();\n  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial authenticated catalog load only'),
+            ],
+            'src/pages/ClientCommercePreview.tsx': [
+              ('  useEffect(() => {\n    void loadPreview();\n  }, []);',
+               '  useEffect(() => {\n    void loadPreview();\n  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial authenticated preview load only'),
+            ],
+            'src/pages/OwnerCommerceBuildQueue.tsx': [
+              ('  useEffect(() => { void load(); }, []);',
+               '  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner queue load only'),
+            ],
+            'src/pages/OwnerCommerceReviews.tsx': [
+              ('  useEffect(() => { void load(); }, []);',
+               '  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner review load only'),
+            ],
+            'src/pages/PublicCommerceCheckout.tsx': [
+              ('  useEffect(() => { void loadCheckout(); }, []);',
+               '  useEffect(() => { void loadCheckout(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial checkout bootstrap only'),
+            ],
+            'src/pages/PublicCommerceRequest.tsx': [
+              ('  useEffect(() => {\n    void loadForm();\n  }, []);',
+               '  useEffect(() => {\n    void loadForm();\n  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial request-form bootstrap only'),
+            ],
+            'src/pages/PublicCommerceStorefront.tsx': [
+              ('  useEffect(() => { void load(); }, []);',
+               '  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- storefront slug is fixed for this mounted route'),
+            ],
+            'src/pages/ClientCommerceInventory.tsx': [
+              ('  const items = inventory?.items || [];',
+               '  const items = useMemo(() => inventory?.items || [], [inventory]);'),
+            ],
+            'src/pages/ClientCommerceOrders.tsx': [
+              ('  const orders = data?.orders || [];',
+               '  const orders = useMemo(() => data?.orders || [], [data]);'),
+            ],
+            'src/pages/ClientCommerceReadiness.tsx': [
+              ('  const checks = data?.checks || [];',
+               '  const checks = useMemo(() => data?.checks || [], [data]);'),
+            ],
+          }
+
+          for filename, edits in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in edits:
+                  if text.count(old) != 1:
+                      raise SystemExit(f'Expected exactly one target in {filename}; refusing ambiguous edit: {old[:70]!r}')
+                  text = text.replace(old, new, 1)
+              path.write_text(text)
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require zero ESLint warnings and errors
+        run: npm run lint -- --max-warnings=0
+
+      - name: Verify provisioning contract
+        run: node scripts/validate-storefront-provisioning-contract.mjs
+
+      - name: Verify production build
+        run: npm run build
+
+      - name: Verify diff
+        run: git diff --check && git diff --stat
+
+      - name: Commit zero-warning lint cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add src
+          git commit -m "chore: clear remaining hook lint warnings"
+          git push origin HEAD:safe/commerce-live-storefront

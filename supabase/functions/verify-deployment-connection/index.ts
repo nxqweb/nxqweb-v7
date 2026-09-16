@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +22,37 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+async function timedFetch(input: string, init: RequestInit = {}, timeoutMs = 10_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function validatedPublicHttpsUrl(value: string) {
+  const parsed = new URL(value);
+  const hostname = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  const blockedSuffixes = [".localhost", ".local", ".internal", ".home", ".lan"];
+  const ipv4Literal = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+  const ipv6Literal = hostname.includes(":");
+  if (
+    parsed.protocol !== "https:" ||
+    Boolean(parsed.username || parsed.password) ||
+    (parsed.port !== "" && parsed.port !== "443") ||
+    !hostname.includes(".") ||
+    hostname === "localhost" ||
+    ipv4Literal ||
+    ipv6Literal ||
+    blockedSuffixes.some((suffix) => hostname.endsWith(suffix))
+  ) {
+    throw new Error("Production URL must use a public HTTPS hostname without credentials or a custom port.");
+  }
+  return parsed.toString();
+}
+
 async function checkProductionUrl(url: string | null): Promise<CheckResult> {
   if (!url) {
     return {
@@ -32,24 +63,19 @@ async function checkProductionUrl(url: string | null): Promise<CheckResult> {
   }
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
+    const safeUrl = validatedPublicHttpsUrl(url);
 
-    let response = await fetch(url, {
+    let response = await timedFetch(safeUrl, {
       method: "HEAD",
-      redirect: "follow",
-      signal: controller.signal,
+      redirect: "error",
     });
 
     if (response.status === 405) {
-      response = await fetch(url, {
+      response = await timedFetch(safeUrl, {
         method: "GET",
-        redirect: "follow",
-        signal: controller.signal,
+        redirect: "error",
       });
     }
-
-    clearTimeout(timeout);
 
     if (response.ok) {
       return {
@@ -107,6 +133,7 @@ Deno.serve(async (request) => {
       autoRefreshToken: false,
     },
   });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const userResult = await supabase.auth.getUser(authorization.replace(/^Bearer\s+/i, ""));
 
@@ -152,6 +179,18 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Deployment configuration not found." }, 404);
   }
 
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: configResult.data.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 3 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `deployment-connection:${configResult.data.id}:${crypto.randomUUID()}`,
+    target_metadata: { deployment_config_id: configResult.data.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Deployment verification is blocked by subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
+
   const config = configResult.data;
 
   let githubRepository: CheckResult = {
@@ -177,7 +216,7 @@ Deno.serve(async (request) => {
       githubHeaders.Authorization = `Bearer ${githubToken}`;
     }
 
-    const repositoryResponse = await fetch(
+    const repositoryResponse = await timedFetch(
       `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}`,
       { headers: githubHeaders }
     );
@@ -197,7 +236,7 @@ Deno.serve(async (request) => {
         };
 
     if (repositoryResponse.ok && config.production_branch) {
-      const branchResponse = await fetch(
+      const branchResponse = await timedFetch(
         `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(config.production_branch)}`,
         { headers: githubHeaders }
       );
@@ -236,7 +275,7 @@ Deno.serve(async (request) => {
         message: "NXQ_NETLIFY_VERIFY_TOKEN is not configured in Supabase secrets.",
       };
     } else {
-      const siteResponse = await fetch(
+      const siteResponse = await timedFetch(
         `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
         {
           headers: {

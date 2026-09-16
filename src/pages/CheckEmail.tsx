@@ -5,7 +5,7 @@ export function CheckEmail() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/">
-          NXQ Web
+          NXQ-Web
         </a>
 
         <div className="auth-card">
@@ -16,7 +16,7 @@ export function CheckEmail() {
 
           <p className="hero-copy">
             We sent a verification link to your email. After verification, you
-            will be able to access your NXQ Web client portal.
+            will be able to access your NXQ-Web client portal.
           </p>
 
           <div className="auth-actions">

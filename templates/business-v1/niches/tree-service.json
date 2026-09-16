@@ -1,0 +1,53 @@
+{
+  "schema_version": "nxq-business-niche-pack-v1",
+  "niche_key": "tree-service",
+  "label": "Tree Service",
+  "business_type": "Tree service company",
+  "primary_cta": "Request an Estimate",
+  "secondary_cta": "View Tree Services",
+  "recommended_pages": [
+    "Home",
+    "About",
+    "Services",
+    "Tree Removal",
+    "Tree Trimming",
+    "Stump Grinding",
+    "Emergency Storm Cleanup",
+    "Gallery",
+    "Reviews",
+    "Contact"
+  ],
+  "service_prompts": [
+    "Tree removal",
+    "Tree trimming and pruning",
+    "Stump grinding",
+    "Emergency storm cleanup",
+    "Tree health or risk assessment only when the business actually offers it"
+  ],
+  "conversion_paths": [
+    "Phone call",
+    "Estimate request form",
+    "Emergency service request"
+  ],
+  "seo_structure": {
+    "service_area_pages": true,
+    "local_business_schema": true,
+    "service_schema": true,
+    "faq_schema_when_supported_by_verified_content": true
+  },
+  "trust_modules": [
+    "Verified reviews",
+    "Approved project photos",
+    "Verified certifications or licenses",
+    "Verified insurance or warranty statements",
+    "Years in business only when supplied by the client"
+  ],
+  "content_rules": [
+    "Never invent certifications, licenses, insurance, years in business, review counts, emergency availability, or guarantees.",
+    "Only publish service areas explicitly approved by the client.",
+    "Use supplied project photos and testimonials only after ownership or permission is confirmed.",
+    "Do not imply arborist credentials unless they are verified in intake evidence."
+  ],
+  "demo_only": true,
+  "launch_enabled": false
+}

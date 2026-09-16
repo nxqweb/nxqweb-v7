@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { appConfig } from "../lib/appConfig";
 
 export function PortalLogin() {
   const [email, setEmail] = useState("");
@@ -18,7 +19,7 @@ export function PortalLogin() {
     setErrorMessage("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setErrorMessage("Supabase is not configured yet. Check .env.local.");
+      setErrorMessage("Portal access is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -42,19 +43,19 @@ export function PortalLogin() {
 
     const ownerResult = await supabase
       .from("owner_users")
-      .select("id, role")
+      .select("id")
       .eq("auth_user_id", data.user.id)
       .maybeSingle();
 
     if (ownerResult.error) {
       setIsSubmitting(false);
       await supabase.auth.signOut();
-      setErrorMessage(`Owner access check failed: ${ownerResult.error.message}`);
+      setErrorMessage("We could not verify portal access right now. Please try again.");
       return;
     }
 
     if (ownerResult.data) {
-      setStatusMessage("Owner account verified. Opening Owner APS...");
+      setStatusMessage("Owner account verified. Opening the Owner Portal...");
       window.location.href = "/owner";
       return;
     }
@@ -69,7 +70,7 @@ export function PortalLogin() {
 
     if (clientResult.error) {
       await supabase.auth.signOut();
-      setErrorMessage(`Client access check failed: ${clientResult.error.message}`);
+      setErrorMessage("We could not verify client access right now. Please try again.");
       return;
     }
 
@@ -81,7 +82,7 @@ export function PortalLogin() {
 
     await supabase.auth.signOut();
     setErrorMessage(
-      "This login exists, but it is not linked to an NXQ owner or client profile yet."
+      `This login exists, but it is not linked to a ${appConfig.companyName} owner or client profile yet.`
     );
   }
 
@@ -89,7 +90,7 @@ export function PortalLogin() {
     <main className="nxq-page">
       <section className="portal-shell portal-auth-shell">
         <a className="badge" href="/portal">
-          NXQ Web Portal
+          {appConfig.productName} Portal
         </a>
 
         <form className="auth-card" onSubmit={handleLogin}>
@@ -99,17 +100,18 @@ export function PortalLogin() {
           </div>
 
           <p className="subtle">
-            Use your NXQ Web email and password. Owner accounts open Owner APS;
-            client accounts open the Client Portal.
+            Everyone uses this same portal login. Owner accounts open the Owner
+            Portal, and client accounts open their own Client Portal.
           </p>
 
-          {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
-          {statusMessage ? <div className="auth-success">{statusMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <label className="auth-label" htmlFor="email">
             Email
           </label>
           <input
+            autoComplete="email"
             className="auth-input"
             id="email"
             onChange={(event) => setEmail(event.target.value)}
@@ -122,6 +124,7 @@ export function PortalLogin() {
             Password
           </label>
           <input
+            autoComplete="current-password"
             className="auth-input"
             id="password"
             onChange={(event) => setPassword(event.target.value)}

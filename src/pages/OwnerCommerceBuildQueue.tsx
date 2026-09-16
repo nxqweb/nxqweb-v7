@@ -71,7 +71,7 @@ export function OwnerCommerceBuildQueue() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner queue load only
 
   async function load() {
     setLoading(true);
@@ -214,7 +214,7 @@ export function OwnerCommerceBuildQueue() {
                 <div className="settings-card"><strong>{human(buildPlan.layout_style)}</strong><span className="subtle">Layout</span></div>
               </div>
 
-              <div className="auth-success">Separate storefront code must live in its own repository. NXQ Web remains the control plane only.</div>
+              <div className="auth-success">Separate storefront code must live in its own repository. NXQ-Web remains the control plane only.</div>
 
               <div className="owner-detail-grid">
                 <label><strong>Repository owner</strong><input value={draft.repository_owner} onChange={(event) => setDrafts((current) => ({ ...current, [job.id]: { ...draft, repository_owner: event.target.value } }))} placeholder="Example: nxqweb" /></label>

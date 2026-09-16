@@ -1,0 +1,49 @@
+name: One-shot Client Canonical Journey Stage
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-client-canonical-journey-stage.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply canonical journey stage patch
+        run: node scripts/patch-client-canonical-journey-stage.mjs
+      - name: Verify one canonical client-facing stage source
+        shell: bash
+        run: |
+          grep -q 'current_client_launch_journey' src/pages/ClientPortal.tsx
+          grep -q 'projectStageLabel' src/pages/ClientPortal.tsx
+          grep -q 'data-canonical-journey-stage={projectStage}' src/pages/ClientPortal.tsx
+          ! grep -q 'projectStage === "planning"' src/pages/ClientPortal.tsx
+          ! grep -q 'projectStage === "building"' src/pages/ClientPortal.tsx
+          ! grep -q 'projectStage === "live"' src/pages/ClientPortal.tsx
+      - name: Production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit canonical client journey stage
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add src/pages/ClientPortal.tsx
+          git diff --cached --quiet && { echo "No Client Portal stage changes to commit."; exit 1; }
+          git commit -m "fix: unify client-facing project stage with launch journey"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

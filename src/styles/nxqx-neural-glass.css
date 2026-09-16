@@ -1,0 +1,594 @@
+/* NXQX Neural Glass visual system.
+   Public-facing override only: replaces the nature/gold atmosphere with a neutral
+   graphite technology canvas, animated metallic edges, and asymmetric system modules. */
+
+@property --nxq-edge-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+
+.lux-home {
+  --lux-gold: #d9b75f;
+  --lux-gold-soft: rgba(217, 183, 95, .18);
+  --nxq-platinum: #d9dee6;
+  --nxq-diamond: #ffffff;
+  --nxq-graphite: #090a0d;
+  --nxq-panel: rgba(12, 14, 18, .58);
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, .055), transparent 24%),
+    radial-gradient(circle at 80% 18%, rgba(217, 183, 95, .055), transparent 24%),
+    radial-gradient(circle at 52% 72%, rgba(187, 198, 218, .045), transparent 30%),
+    linear-gradient(180deg, #050608 0%, #090a0e 48%, #040507 100%) !important;
+}
+
+.lux-home::before,
+.lux-home::after {
+  background: none !important;
+  filter: none !important;
+  opacity: 1;
+  animation: none;
+}
+
+/* Original NXQX neural-lattice field. No imagery, no nature texture. */
+.lux-home::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.032) 1px, transparent 1px),
+    linear-gradient(118deg, transparent 0 47%, rgba(217,183,95,.055) 49%, transparent 51% 100%),
+    linear-gradient(62deg, transparent 0 47%, rgba(218,225,235,.045) 49%, transparent 51% 100%) !important;
+  background-size: 84px 84px, 84px 84px, 260px 260px, 320px 320px !important;
+  mask-image: radial-gradient(circle at 50% 30%, black 0 42%, transparent 84%);
+  opacity: .72;
+}
+
+.lux-home::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,.09) 0 1px, transparent 2px),
+    radial-gradient(circle at 35% 34%, rgba(217,183,95,.11) 0 1px, transparent 2px),
+    radial-gradient(circle at 68% 42%, rgba(215,222,232,.09) 0 1px, transparent 2px),
+    radial-gradient(circle at 22% 72%, rgba(255,255,255,.075) 0 1px, transparent 2px),
+    radial-gradient(circle at 80% 78%, rgba(217,183,95,.08) 0 1px, transparent 2px) !important;
+  background-size: 220px 220px, 300px 300px, 260px 260px, 340px 340px, 380px 380px !important;
+  animation: nxq-neural-drift 22s linear infinite;
+  opacity: .8;
+}
+
+.lux-page {
+  position: relative;
+  z-index: 1;
+}
+
+.lux-interactive-home .lux-page::before {
+  background:
+    radial-gradient(circle 520px at var(--lux-pointer-x) var(--lux-pointer-y), rgba(255,255,255,.075), transparent 66%),
+    radial-gradient(circle 360px at var(--lux-pointer-x) var(--lux-pointer-y), rgba(217,183,95,.055), transparent 72%) !important;
+}
+
+/* Metallic glass: mostly graphite, with a moving gold -> platinum -> diamond perimeter. */
+.lux-home .lux-card {
+  --nxq-edge-angle: 0deg;
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(145deg, rgba(15,17,22,.79), rgba(6,7,10,.72)) padding-box,
+    conic-gradient(
+      from var(--nxq-edge-angle),
+      rgba(217,183,95,.16),
+      rgba(225,230,238,.72) 16%,
+      rgba(255,255,255,.95) 22%,
+      rgba(160,168,180,.16) 34%,
+      rgba(217,183,95,.55) 52%,
+      rgba(255,255,255,.85) 70%,
+      rgba(153,161,174,.16) 84%,
+      rgba(217,183,95,.16)
+    ) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.07),
+    inset 0 -1px 0 rgba(255,255,255,.018),
+    0 24px 70px rgba(0,0,0,.34) !important;
+  backdrop-filter: blur(24px) saturate(112%);
+  animation: nxq-metal-edge 12s linear infinite;
+}
+
+.lux-home .lux-card:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.10),
+    0 28px 90px rgba(0,0,0,.42),
+    0 0 34px rgba(217,183,95,.06) !important;
+}
+
+.lux-nav {
+  border-radius: 26px 12px 26px 12px;
+  background:
+    linear-gradient(120deg, rgba(14,16,21,.83), rgba(7,8,11,.70)) padding-box,
+    conic-gradient(from var(--nxq-edge-angle), rgba(217,183,95,.28), rgba(255,255,255,.74), rgba(135,143,156,.16), rgba(217,183,95,.34)) border-box !important;
+}
+
+/* NXQX neural core mark: original pulsing circuit emblem built from CSS. */
+.lux-logo {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  overflow: visible;
+  border: 1px solid rgba(255,255,255,.36);
+  border-radius: 18px 7px 18px 7px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,.18), transparent 32%),
+    linear-gradient(145deg, rgba(25,27,34,.98), rgba(5,6,8,.98));
+  box-shadow: 0 0 34px rgba(217,183,95,.10), inset 0 0 22px rgba(255,255,255,.035);
+  isolation: isolate;
+}
+
+.lux-logo::before,
+.lux-logo::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 14px 5px 14px 5px;
+  pointer-events: none;
+}
+
+.lux-logo::before {
+  border: 1px solid rgba(217,183,95,.68);
+  background:
+    linear-gradient(90deg, transparent 46%, rgba(255,255,255,.85) 48% 52%, transparent 54%),
+    linear-gradient(0deg, transparent 46%, rgba(217,183,95,.82) 48% 52%, transparent 54%);
+  opacity: .72;
+  animation: nxq-core-turn 8s linear infinite;
+}
+
+.lux-logo::after {
+  inset: -8px;
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: 0 0 0 0 rgba(217,183,95,.20);
+  animation: nxq-core-pulse 2.8s ease-out infinite;
+}
+
+.lux-brand strong {
+  background: linear-gradient(100deg, #f3f4f6 0%, #d2b568 38%, #ffffff 64%, #aeb5c0 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: nxq-metal-text 8s linear infinite;
+}
+
+.lux-brand span,
+.lux-links a,
+.lux-browser-topline,
+.lux-hero-proof span,
+.lux-trust-strip span,
+.lux-section-head p,
+.lux-story-step p,
+.lux-price > p,
+.lux-plan-list li,
+.lux-final p {
+  color: #aeb3bc;
+}
+
+.lux-nav-portal,
+.lux-hero-proof span,
+.lux-preview-status,
+.lux-story-signal,
+.lux-comparison-table,
+.lux-value-grid > div {
+  border-color: rgba(208,214,224,.14) !important;
+  background: rgba(255,255,255,.022) !important;
+}
+
+.lux-tag,
+.lux-kicker,
+.lux-section-head > span,
+.lux-inner-panel small,
+.lux-story-signal span,
+.lux-story-step > span,
+.lux-comparison-labels strong,
+.lux-step-number {
+  color: #d7dde6;
+}
+
+.lux-hero {
+  min-height: 82vh;
+  grid-template-columns: minmax(0, 1.02fr) minmax(380px, .98fr);
+  gap: clamp(38px, 6vw, 76px);
+  padding-top: clamp(72px, 9vw, 116px);
+}
+
+.lux-hero-copy {
+  max-width: 690px;
+}
+
+.lux-hero h1 {
+  max-width: 720px;
+  font-size: clamp(3.15rem, 6vw, 6rem);
+  line-height: .91;
+  letter-spacing: -.066em;
+}
+
+.lux-hero h1 span {
+  background: linear-gradient(105deg, #d9b75f 0%, #f8f8fb 34%, #b8bec8 55%, #ffffff 73%, #c6a453 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: nxq-metal-text 9s linear infinite;
+}
+
+.lux-hero-copy > p {
+  color: #b8bdc5;
+  max-width: 640px;
+}
+
+.lux-btn-primary {
+  color: #090a0d;
+  background: linear-gradient(110deg, #c8a64f 0%, #f4f5f7 38%, #ffffff 51%, #aeb5c0 66%, #d2af56 100%);
+  background-size: 220% 100%;
+  box-shadow: 0 14px 42px rgba(0,0,0,.36), 0 0 24px rgba(217,183,95,.08);
+  animation: nxq-metal-text 8s linear infinite;
+}
+
+.lux-btn-secondary {
+  border-color: rgba(214,220,230,.16);
+  background: rgba(255,255,255,.03);
+}
+
+/* System preview becomes a floating technology core instead of a conventional rectangle. */
+.lux-preview {
+  border-radius: 42px 12px 42px 12px;
+  padding: 12px;
+  transform: perspective(1100px) rotateY(-3deg) rotateX(1.5deg);
+}
+
+.lux-browser {
+  border-radius: 34px 8px 34px 8px;
+  min-height: 438px;
+  background:
+    radial-gradient(circle at 72% 22%, rgba(255,255,255,.055), transparent 25%),
+    radial-gradient(circle at 28% 78%, rgba(217,183,95,.04), transparent 26%),
+    linear-gradient(150deg, rgba(20,22,28,.97), rgba(6,7,10,.95));
+}
+
+.lux-browser::after {
+  inset: auto -12% -30% 16%;
+  background: radial-gradient(circle, rgba(231,235,242,.09), transparent 66%);
+}
+
+.lux-dots span {
+  background: linear-gradient(135deg, #d9b75f, #ffffff 52%, #9ca4b0);
+}
+
+.lux-mini-grid {
+  grid-template-columns: 1.25fr .85fr .9fr;
+}
+
+.lux-mini-grid div {
+  border-color: rgba(216,222,231,.13);
+  background: rgba(255,255,255,.025);
+  border-radius: 18px 5px 18px 5px;
+}
+
+.lux-mini-grid div:nth-child(2) {
+  transform: translateY(12px);
+}
+
+.lux-mini-grid div:nth-child(3) {
+  transform: translateY(-7px);
+}
+
+.lux-preview-status i {
+  background: linear-gradient(90deg, #caa84e, #ffffff 46%, #aeb5c0);
+  box-shadow: 0 0 12px rgba(255,255,255,.12);
+}
+
+.lux-trust-strip {
+  border-radius: 9px 28px 9px 28px;
+}
+
+.lux-trust-strip span::before {
+  background: linear-gradient(135deg, #d9b75f, #fff, #9ea6b3);
+  box-shadow: 0 0 10px rgba(255,255,255,.2);
+}
+
+/* Asymmetric bento modules: avoids the repeated square-card look. */
+.lux-lifecycle-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(176px, auto);
+  gap: 14px;
+}
+
+.lux-lifecycle-grid .lux-service:nth-child(1) {
+  grid-column: span 5;
+  grid-row: span 2;
+  border-radius: 36px 9px 36px 9px;
+}
+
+.lux-lifecycle-grid .lux-service:nth-child(2) {
+  grid-column: span 3;
+  border-radius: 9px 30px 9px 30px;
+}
+
+.lux-lifecycle-grid .lux-service:nth-child(3) {
+  grid-column: span 4;
+  border-radius: 30px 9px 30px 9px;
+}
+
+.lux-lifecycle-grid .lux-service:nth-child(4) {
+  grid-column: 6 / span 7;
+  border-radius: 9px 36px 9px 36px;
+}
+
+.lux-service svg,
+.lux-process-step svg,
+.lux-value-grid svg,
+.lux-checks svg,
+.lux-final svg,
+.lux-hero-proof svg,
+.lux-mini-grid svg {
+  color: #d9dfe8;
+}
+
+.lux-service:hover,
+.lux-story-step.active,
+.lux-process-step:hover {
+  border-color: transparent !important;
+  background:
+    linear-gradient(145deg, rgba(19,21,27,.88), rgba(7,8,11,.78)) padding-box,
+    conic-gradient(from var(--nxq-edge-angle), rgba(217,183,95,.42), rgba(255,255,255,.9), rgba(158,166,180,.24), rgba(217,183,95,.45)) border-box !important;
+}
+
+.lux-story-shell {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+}
+
+.lux-story-sticky {
+  border-radius: 44px 12px 44px 12px;
+}
+
+.lux-story-sticky::before {
+  background: radial-gradient(circle, rgba(224,230,238,.10), transparent 70%);
+}
+
+.lux-story-step {
+  min-height: 48vh;
+}
+
+.lux-story-step:nth-child(odd) {
+  border-radius: 34px 8px 34px 8px;
+}
+
+.lux-story-step:nth-child(even) {
+  border-radius: 8px 34px 8px 34px;
+}
+
+.lux-story-progress i.active {
+  background: linear-gradient(90deg, #caa84e, #ffffff 48%, #aeb5c0);
+  box-shadow: 0 0 18px rgba(255,255,255,.16);
+}
+
+/* Product family selector becomes a true bento family map. */
+.lux-family-shell {
+  border-radius: 44px 12px 44px 12px;
+}
+
+.lux-family-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  gap: 14px;
+}
+
+.lux-family-card {
+  min-height: 220px;
+  grid-column: span 4;
+  border-radius: 28px 8px 28px 8px;
+}
+
+.lux-family-card.featured {
+  min-height: 330px;
+  grid-column: span 5;
+  grid-row: span 2;
+  border-radius: 42px 10px 42px 10px;
+  background:
+    linear-gradient(150deg, rgba(21,23,29,.88), rgba(7,8,11,.76)) padding-box,
+    conic-gradient(from var(--nxq-edge-angle), rgba(217,183,95,.42), rgba(255,255,255,.9), rgba(154,162,175,.22), rgba(217,183,95,.42)) border-box !important;
+}
+
+.lux-family-card:nth-child(2),
+.lux-family-card:nth-child(5) {
+  grid-column: span 3;
+  border-radius: 8px 30px 8px 30px;
+}
+
+.lux-family-card:nth-child(3),
+.lux-family-card:nth-child(4) {
+  grid-column: span 4;
+}
+
+.lux-family-card:nth-child(n+6) {
+  grid-column: span 3;
+  min-height: 190px;
+}
+
+.lux-family-card.muted {
+  opacity: .58;
+  filter: saturate(.65);
+}
+
+.lux-plan-badge {
+  border-color: rgba(214,220,230,.20);
+  color: #e1e5eb;
+  background: rgba(255,255,255,.035);
+}
+
+.lux-pricing-grid {
+  gap: 14px;
+}
+
+.lux-price {
+  border-radius: 34px 9px 34px 9px;
+}
+
+.lux-price:nth-child(even) {
+  border-radius: 9px 34px 9px 34px;
+}
+
+.lux-price.lux-featured {
+  transform: translateY(-8px);
+  background:
+    linear-gradient(150deg, rgba(22,24,30,.88), rgba(7,8,11,.78)) padding-box,
+    conic-gradient(from var(--nxq-edge-angle), rgba(217,183,95,.54), rgba(255,255,255,.95), rgba(148,156,169,.25), rgba(217,183,95,.54)) border-box !important;
+  box-shadow: 0 34px 90px rgba(0,0,0,.44) !important;
+}
+
+.lux-price > strong {
+  color: #f4f5f7;
+  background: linear-gradient(105deg, #c9a951, #ffffff 45%, #adb5c1 72%, #d8b65d);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: nxq-metal-text 9s linear infinite;
+}
+
+.lux-plan-list li::before {
+  background: linear-gradient(135deg, #c9a951, #fff, #aab2be);
+  box-shadow: 0 0 10px rgba(255,255,255,.18);
+}
+
+.lux-comparison-labels {
+  background: rgba(255,255,255,.025) !important;
+}
+
+.lux-process,
+.lux-final,
+.lux-value-panel,
+.lux-comparison-wrap {
+  border-radius: 42px 10px 42px 10px;
+}
+
+.lux-value-grid > div:nth-child(1),
+.lux-value-grid > div:nth-child(4) {
+  border-radius: 28px 8px 28px 8px;
+}
+
+.lux-value-grid > div:nth-child(2),
+.lux-value-grid > div:nth-child(3) {
+  border-radius: 8px 28px 8px 28px;
+}
+
+@keyframes nxq-metal-edge {
+  to { --nxq-edge-angle: 360deg; }
+}
+
+@keyframes nxq-metal-text {
+  from { background-position: 0% 50%; }
+  to { background-position: 220% 50%; }
+}
+
+@keyframes nxq-core-turn {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nxq-core-pulse {
+  0% { transform: scale(.88); opacity: 0; box-shadow: 0 0 0 0 rgba(217,183,95,.22); }
+  20% { opacity: .9; }
+  100% { transform: scale(1.38); opacity: 0; box-shadow: 0 0 0 16px rgba(217,183,95,0); }
+}
+
+@keyframes nxq-neural-drift {
+  from { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-20px, 14px, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+
+@media (max-width: 980px) {
+  .lux-lifecycle-grid,
+  .lux-family-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lux-lifecycle-grid .lux-service,
+  .lux-family-card,
+  .lux-family-card.featured,
+  .lux-family-card:nth-child(n) {
+    grid-column: auto;
+    grid-row: auto;
+    min-height: 220px;
+  }
+
+  .lux-hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .lux-home::before {
+    background-size: 62px 62px, 62px 62px, 210px 210px, 250px 250px !important;
+    opacity: .48;
+  }
+
+  .lux-home::after {
+    opacity: .5;
+  }
+
+  .lux-hero h1 {
+    font-size: clamp(2.7rem, 14vw, 4.4rem);
+  }
+
+  .lux-lifecycle-grid,
+  .lux-family-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lux-mini-grid div:nth-child(2),
+  .lux-mini-grid div:nth-child(3),
+  .lux-price.lux-featured {
+    transform: none;
+  }
+
+  .lux-card,
+  .lux-nav,
+  .lux-preview,
+  .lux-browser,
+  .lux-family-shell,
+  .lux-family-card,
+  .lux-family-card.featured,
+  .lux-price,
+  .lux-process,
+  .lux-final,
+  .lux-value-panel,
+  .lux-comparison-wrap,
+  .lux-story-sticky,
+  .lux-story-step {
+    border-radius: 24px 8px 24px 8px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lux-home .lux-card,
+  .lux-home::after,
+  .lux-logo::before,
+  .lux-logo::after,
+  .lux-brand strong,
+  .lux-hero h1 span,
+  .lux-btn-primary,
+  .lux-price > strong {
+    animation: none !important;
+  }
+}
