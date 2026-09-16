@@ -170,6 +170,8 @@ begin
     'location_primary_key_constraint_compatible',
     'location_foreign_key_constraint_compatible',
     'location_unique_constraints_compatible',
+    'location_location_code_check_constraint_compatible',
+    'location_seo_slug_check_constraint_compatible',
     'location_check_constraints_compatible',
     'location_constraints_compatible',
     'location_entitlement_trigger_phase_compatible',
@@ -618,11 +620,53 @@ begin
     end if;
 
     if (
-      select count(*) = 2
+      select count(*) = 1
+         and bool_and(
+           constraint_row.conkey = array[(
+             select attribute.attnum
+             from pg_catalog.pg_attribute attribute
+             where attribute.attrelid = to_regclass('public.client_locations')
+               and attribute.attname = 'location_code'
+               and attribute.attnum > 0
+               and not attribute.attisdropped
+           )]::smallint[]
+           and regexp_replace(
+             pg_catalog.pg_get_expr(constraint_row.conbin, constraint_row.conrelid),
+             '[[:space:]]+', '', 'g'
+           ) = '((length(location_code)>=1)AND(length(location_code)<=40))'
+         )
       from pg_catalog.pg_constraint constraint_row
       where constraint_row.conrelid = to_regclass('public.client_locations')
         and constraint_row.contype = 'c'
     ) then
+      checks := jsonb_set(checks, '{location_location_code_check_constraint_compatible}', 'true');
+    end if;
+
+    if (
+      select count(*) = 1
+         and bool_and(
+           constraint_row.conkey = array[(
+             select attribute.attnum
+             from pg_catalog.pg_attribute attribute
+             where attribute.attrelid = to_regclass('public.client_locations')
+               and attribute.attname = 'seo_slug'
+               and attribute.attnum > 0
+               and not attribute.attisdropped
+           )]::smallint[]
+           and regexp_replace(
+             pg_catalog.pg_get_expr(constraint_row.conbin, constraint_row.conrelid),
+             '[[:space:]]+', '', 'g'
+           ) = '((length(seo_slug)>=1)AND(length(seo_slug)<=100))'
+         )
+      from pg_catalog.pg_constraint constraint_row
+      where constraint_row.conrelid = to_regclass('public.client_locations')
+        and constraint_row.contype = 'c'
+    ) then
+      checks := jsonb_set(checks, '{location_seo_slug_check_constraint_compatible}', 'true');
+    end if;
+
+    if coalesce((checks->>'location_location_code_check_constraint_compatible')::boolean, false)
+       and coalesce((checks->>'location_seo_slug_check_constraint_compatible')::boolean, false) then
       checks := jsonb_set(checks, '{location_check_constraints_compatible}', 'true');
     end if;
 

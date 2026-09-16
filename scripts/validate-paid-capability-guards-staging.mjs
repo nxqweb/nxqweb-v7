@@ -124,6 +124,8 @@ const expectedChecks = [
   "location_primary_key_constraint_compatible",
   "location_foreign_key_constraint_compatible",
   "location_unique_constraints_compatible",
+  "location_location_code_check_constraint_compatible",
+  "location_seo_slug_check_constraint_compatible",
   "location_check_constraints_compatible",
   "location_constraints_compatible",
   "location_entitlement_trigger_phase_compatible",

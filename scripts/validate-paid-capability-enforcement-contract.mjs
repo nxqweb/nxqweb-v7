@@ -135,6 +135,8 @@ const paidGuardValidationChecks = [
   "location_primary_key_constraint_compatible",
   "location_foreign_key_constraint_compatible",
   "location_unique_constraints_compatible",
+  "location_location_code_check_constraint_compatible",
+  "location_seo_slug_check_constraint_compatible",
   "location_check_constraints_compatible",
   "location_constraints_compatible",
   "location_entitlement_trigger_phase_compatible",
@@ -247,6 +249,8 @@ check("Transactional validation proves location and resource denials from isolat
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_primary_key_constraint_compatible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_foreign_key_constraint_compatible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_unique_constraints_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_location_code_check_constraint_compatible}', 'true')") &&
+  paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_seo_slug_check_constraint_compatible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_check_constraints_compatible}', 'true')") &&
   paidGuardValidationSql.includes("checks := jsonb_set(checks, '{location_constraints_compatible}', 'true')") &&
   paidGuardValidationSql.includes("from pg_catalog.pg_rewrite rewrite") &&
