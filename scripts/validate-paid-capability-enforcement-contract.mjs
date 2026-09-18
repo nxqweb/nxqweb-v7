@@ -385,7 +385,6 @@ const directGuard = new Map([
   ["check-preview-netlify-status", "nxq_authorize_paid_capability"],
   ["check-production-launch-audit", "nxq_authorize_paid_capability"],
   ["check-production-netlify-status", "nxq_authorize_paid_capability"],
-  ["check-provider-health", "nxq_reserve_platform_usage"],
   ["discover-sales-prospects", "nxq_reserve_platform_usage"],
   ["draft-sales-outreach-ai", "nxq_reserve_platform_usage"],
   ["execute-preview-netlify-build", "nxq_authorize_preview_execution"],
@@ -408,12 +407,22 @@ const claimedGuard = new Map([
   ["run-website-maintenance", "claim_next_website_maintenance_task"],
   ["scan-client-file", "claim_next_client_file_security_scan"],
 ]);
+const controlPlaneInfrastructure = new Set(["check-provider-health"]);
 const adapterGuard = new Set(["generate-business-build-plan", "malware-scan-provider-adapter", "notification-provider-adapter", "provider-health-adapter"]);
 const stagingOnly = new Set(["run-staging-evidence-suite"]);
-const classified = new Set([...directGuard.keys(), ...claimedGuard.keys(), ...adapterGuard, ...stagingOnly]);
+const classified = new Set([...directGuard.keys(), ...claimedGuard.keys(), ...controlPlaneInfrastructure, ...adapterGuard, ...stagingOnly]);
 check("Every fetch-capable Edge function has a reviewed enforcement class", fetchFunctions.every((name) => classified.has(name)) && [...classified].every((name) => fetchFunctions.includes(name)));
 for (const [name, token] of directGuard) check(`${name} has a direct economic guard`, read(`supabase/functions/${name}/index.ts`).includes(token));
 for (const [name, token] of claimedGuard) check(`${name} enters through a guarded claim`, read(`supabase/functions/${name}/index.ts`).includes(token));
+for (const name of controlPlaneInfrastructure) {
+  const source = read(`supabase/functions/${name}/index.ts`);
+  check(`${name} is bounded control-plane infrastructure`,
+    source.includes("x-nxq-worker-token") &&
+    source.includes(".limit(25)") &&
+    source.includes('health_check_mode === "activity_evidence"') &&
+    !source.includes("nxq_reserve_platform_usage") &&
+    !source.includes("nxq_finalize_platform_usage"));
+}
 for (const name of adapterGuard) {
   const source = read(`supabase/functions/${name}/index.ts`);
   check(`${name} requires a protected adapter token`, source.includes("constantTimeEqual") && source.includes("Authorization"));
