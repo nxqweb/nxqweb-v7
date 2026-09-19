@@ -21,6 +21,7 @@ on:
           - deploy_functions
           - deploy_paid_capability_guards
           - deploy_provider_readiness
+          - deploy_provider_health_only
           - configure_internal_provider_adapters
           - sync_staging_worker_token
           - sync_staging_runtime_guards
@@ -338,6 +339,16 @@ jobs:
               npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
             fi
           done
+
+      - name: Deploy provider-health function only
+        if: inputs.action == 'deploy_provider_health_only'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Deploying scoped provider-health function with source-level authentication: check-provider-health"
+          npx --no-install supabase functions deploy check-provider-health \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --no-verify-jwt
 
       - name: Deploy Commerce reference-upload function only
         if: inputs.action == 'deploy_commerce_reference_upload'
