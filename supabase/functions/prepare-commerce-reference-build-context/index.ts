@@ -3,6 +3,7 @@ import {
   CommerceReferenceContextError,
   createCommerceReferenceBuildContext,
 } from "../_shared/commerce-reference-build-context.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 const headers = { "Content-Type": "application/json", "Cache-Control": "no-store" };
 
@@ -14,19 +15,6 @@ function requiredSecret(name: string) {
   const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`Missing protected secret: ${name}`);
   return value;
-}
-
-async function constantTimeEqual(left: string, right: string) {
-  const encoder = new TextEncoder();
-  const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(left)),
-    crypto.subtle.digest("SHA-256", encoder.encode(right)),
-  ]);
-  const leftBytes = new Uint8Array(leftHash);
-  const rightBytes = new Uint8Array(rightHash);
-  let difference = leftBytes.length ^ rightBytes.length;
-  for (let index = 0; index < leftBytes.length; index += 1) difference |= leftBytes[index] ^ rightBytes[index];
-  return difference === 0;
 }
 
 Deno.serve(async (request) => {

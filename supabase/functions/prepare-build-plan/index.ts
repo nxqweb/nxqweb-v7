@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertGroundedMarketingClaims } from "../_shared/ai-grounding.mjs";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type AutomationJob = {
   id: string;
@@ -348,7 +349,7 @@ Deno.serve(async (request) => {
   const adapterConfigured = Boolean(adapterUrl && adapterToken);
 
   const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
-  let authorized = Boolean(internalToken && suppliedInternalToken && suppliedInternalToken === internalToken);
+  let authorized = Boolean(internalToken && suppliedInternalToken && await constantTimeEqual(suppliedInternalToken, internalToken));
   if (!authorized && authorization) {
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
     const user = await caller.auth.getUser();

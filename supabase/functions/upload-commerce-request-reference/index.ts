@@ -3,6 +3,7 @@ import {
   CommerceReferenceContextError,
   createCommerceReferenceBuildContext,
 } from "../_shared/commerce-reference-build-context.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type UploadAuthorization = {
   client_id?: string;
@@ -142,13 +143,6 @@ async function sha256Hex(value: string) {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function constantTimeEqual(left: string, right: string) {
-  const [leftHash, rightHash] = await Promise.all([sha256Hex(left), sha256Hex(right)]);
-  let difference = leftHash.length ^ rightHash.length;
-  for (let index = 0; index < leftHash.length; index += 1) difference |= leftHash.charCodeAt(index) ^ rightHash.charCodeAt(index);
-  return difference === 0;
 }
 
 function classifyPrivateStorageFailurePhase(error: unknown): SmokeFailurePhase | null {

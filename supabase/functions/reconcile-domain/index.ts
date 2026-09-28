@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type JsonRecord = Record<string, unknown>;
 type AutomationJob = {
@@ -76,7 +77,7 @@ Deno.serve(async (request) => {
   const authorization = request.headers.get("Authorization") || "";
 
   const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
-  let authorized = Boolean(internalToken && suppliedInternalToken && suppliedInternalToken === internalToken);
+  let authorized = Boolean(internalToken && suppliedInternalToken && await constantTimeEqual(suppliedInternalToken, internalToken));
 
   if (!authorized && authorization) {
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });

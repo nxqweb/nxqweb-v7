@@ -3,6 +3,7 @@ import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { normalizeGithubPrivateKey } from "../_shared/github-private-key.ts";
 import { requirePublicHttpsUrl, validatedRedirectTarget } from "../_shared/outbound-security.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type JsonRecord = Record<string, unknown>;
 type MaintenanceTask = {
@@ -320,7 +321,7 @@ Deno.serve(async (request) => {
   const supabaseUrl = requiredSecret("SUPABASE_URL");
   const internalToken = Deno.env.get("NXQ_AUTOMATION_WORKER_TOKEN")?.trim() || "";
   const suppliedToken = request.headers.get("x-nxq-worker-token")?.trim() || "";
-  if (!internalToken || suppliedToken !== internalToken) return response({ error: "Trusted automation access required." }, 403);
+  if (!internalToken || !(await constantTimeEqual(suppliedToken, internalToken))) return response({ error: "Trusted automation access required." }, 403);
 
   const admin = createClient(supabaseUrl, serviceRole, { auth: { persistSession: false } });
   const requestBody = await request.json().catch(() => ({})) as JsonRecord;
