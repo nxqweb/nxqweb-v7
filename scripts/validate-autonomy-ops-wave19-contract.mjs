@@ -14,7 +14,7 @@ const checks = [
   ["Runtime requires SHA-256 intake identity", adapter.includes('/^[a-f0-9]{64}$/') && adapter.includes("request_fingerprint")],
   ["Runtime independently matches service and page allowlists", adapter.includes("AI contract allowlists do not match the sanitized intake") && adapter.includes("sameStrings")],
   ["Runtime independently enforces NXQ theme allowlist", adapter.includes("allowedThemeKeys") && adapter.includes("outside the NXQ allowlist")],
-  ["Provider endpoint is restricted to public credential-free HTTPS", adapter.includes("credential-free public HTTPS endpoint") && adapter.includes("privateIpv4") && adapter.includes("privateIpv6")],
+  ["Provider endpoint is restricted to public credential-free HTTPS", adapter.includes('import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts"') && adapter.includes("requirePublicHttpsUrl(selected.urlRaw")],
   ["Runtime supports Responses and compatible chat protocols", adapter.includes('openai_responses') && adapter.includes('openai_chat_completions') && adapter.includes("providerProtocol")],
   ["Responses calls use strict Structured Outputs", adapter.includes('text: { format: { type: \"json_schema\"') && adapter.includes("strict: true")],
   ["Provider storage is explicitly disabled", adapter.includes("store: false")],

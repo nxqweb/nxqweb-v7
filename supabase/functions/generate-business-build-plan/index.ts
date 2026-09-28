@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type JsonRecord = Record<string, unknown>;
 type ProviderProtocol = "openai_responses" | "openai_chat_completions";
@@ -103,19 +104,6 @@ function runtimeEnvironment() {
 
 function isNonProductionEnvironment() {
   return nonProductionEnvironments.has(runtimeEnvironment());
-}
-
-function validatePublicHttpsUrl(rawUrl: string, label: string) {
-  let url: URL;
-  try { url = new URL(rawUrl); }
-  catch { throw new Error(`${label} must be a valid URL.`); }
-  const host = url.hostname.toLowerCase();
-  const privateIpv4 = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
-  const privateIpv6 = host === "::1" || host === "[::1]" || /^\[(?:fc|fd|fe[89ab])/i.test(host);
-  if (url.protocol !== "https:" || url.username || url.password || host === "localhost" || privateIpv4 || privateIpv6) {
-    throw new Error(`${label} must be a credential-free public HTTPS endpoint.`);
-  }
-  return url.toString();
 }
 
 function configured(urlRaw: string, token: string, model: string) {
@@ -508,7 +496,7 @@ Deno.serve(async (request) => {
       throw new Error("Local AI adapter is forbidden outside non-production environments.");
     }
     protocol = providerProtocol(selected.protocolRaw);
-    providerUrl = validatePublicHttpsUrl(selected.urlRaw, selected.route === "local_adapter" ? "Local AI adapter URL" : "AI model provider URL");
+    providerUrl = requirePublicHttpsUrl(selected.urlRaw, selected.route === "local_adapter" ? "Local AI adapter URL" : "AI model provider URL").toString();
     text(selected.model, "AI model provider model", 1, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "AI model provider configuration is invalid.";
