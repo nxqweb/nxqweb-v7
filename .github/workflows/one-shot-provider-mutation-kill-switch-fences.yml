@@ -2,6 +2,8 @@ name: NXQ One-Shot Provider Mutation Kill-Switch Fences
 
 on:
   push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
     paths:
       - '.github/workflows/one-shot-provider-mutation-kill-switch-fences.yml'
 

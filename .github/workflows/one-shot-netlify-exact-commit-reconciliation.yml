@@ -2,6 +2,8 @@ name: NXQ One-Shot Netlify Exact-Commit Reconciliation
 
 on:
   push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
     paths:
       - '.github/workflows/one-shot-netlify-exact-commit-reconciliation.yml'
 
