@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, CircleHelp, ExternalLink, RotateCcw } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const tutorialSteps = [
   {
@@ -60,6 +61,13 @@ export function ClientCommerceTutorial() {
   const [completed, setCompleted] = useState(() => window.localStorage.getItem(storageKey) === "true");
   const step = tutorialSteps[stepIndex];
   const progress = useMemo(() => Math.round(((stepIndex + 1) / tutorialSteps.length) * 100), [stepIndex]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    void supabase.auth.getSession().then((sessionResult) => {
+      if (!sessionResult.data.session) window.location.replace("/portal/login");
+    });
+  }, []);
 
   function finishTutorial() {
     window.localStorage.setItem(storageKey, "true");

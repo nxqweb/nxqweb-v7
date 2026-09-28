@@ -9,7 +9,7 @@ type Dashboard = { profile?: { referral_code?: string; status?: string }; progra
 export function ClientRewards() {
   const [data,setData]=useState<Dashboard>({}); const [code,setCode]=useState(""); const [statement,setStatement]=useState("");
   const [error,setError]=useState(""); const [notice,setNotice]=useState(""); const [busy,setBusy]=useState(false);
-  const load=useCallback(async()=>{ if(!isSupabaseConfigured||!supabase){setError("Supabase is not configured yet.");return;} setBusy(true);setError("");const result=await supabase.rpc("nxq_referral_dashboard");setBusy(false);if(result.error){setError(result.error.message);return;}setData((result.data||{}) as Dashboard);},[]);
+  const load=useCallback(async()=>{ if(!isSupabaseConfigured||!supabase){setError("Supabase is not configured yet.");return;} const sessionResult=await supabase.auth.getSession(); if(!sessionResult.data.session){window.location.replace("/portal/login");return;} setBusy(true);setError("");const result=await supabase.rpc("nxq_referral_dashboard");setBusy(false);if(result.error){setError(result.error.message);return;}setData((result.data||{}) as Dashboard);},[]);
   useEffect(()=>{void load();},[load]);
   async function call(name:string,args:Record<string,unknown>,message:string){if(!supabase)return;setBusy(true);setError("");setNotice("");const result=await supabase.rpc(name,args);setBusy(false);if(result.error){setError(result.error.message);return;}setNotice(message);await load();}
   const program=data.program||{}; const balances=data.balances||{};

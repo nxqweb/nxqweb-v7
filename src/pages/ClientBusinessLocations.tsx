@@ -29,6 +29,11 @@ export function ClientBusinessLocations() {
       setLoading(false);
       return;
     }
+    const sessionResult = await supabase.auth.getSession();
+    if (!sessionResult.data.session) {
+      window.location.replace("/portal/login");
+      return;
+    }
     const result = await supabase.rpc("current_client_locations");
     if (result.error) {
       setError("Locations could not be verified right now. No location data was changed.");

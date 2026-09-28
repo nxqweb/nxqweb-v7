@@ -15,6 +15,8 @@ export function ClientBusinessReports(){
     setLoading(true);
     setError("");
     if(!isSupabaseConfigured||!supabase){if(active){setError("Reports are temporarily unavailable. No report or recommendation data was changed.");setLoading(false);}return;}
+    const sessionResult=await supabase.auth.getSession();
+    if(!sessionResult.data.session){window.location.replace("/portal/login");return;}
     const [r,i]=await Promise.all([
       supabase.from("client_monthly_business_reports").select("*").order("report_month",{ascending:false}).limit(24),
       supabase.from("client_improvement_recommendations").select("id,category,priority,title,summary,status,auto_safe,created_at").order("created_at",{ascending:false}).limit(100)

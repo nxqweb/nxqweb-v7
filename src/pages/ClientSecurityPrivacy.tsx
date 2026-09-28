@@ -21,6 +21,12 @@ export function ClientSecurityPrivacy() {
       return;
     }
 
+    const sessionResult = await supabase.auth.getSession();
+    if (!sessionResult.data.session) {
+      window.location.replace("/portal/login");
+      return;
+    }
+
     const [eventResult, credentialResult, consentResult, requestResult] = await Promise.all([
       supabase.from("account_security_events").select("id,event_type,severity,trusted,device_reference,created_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("nxq_trusted_credentials").select("id,credential_type,display_name,assurance_level,status,last_used_at,created_at").order("created_at", { ascending: false }),

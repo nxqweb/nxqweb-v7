@@ -48,6 +48,12 @@ export function ClientBusinessLeads() {
       return;
     }
 
+    const sessionResult = await supabase.auth.getSession();
+    if (!sessionResult.data.session) {
+      window.location.replace("/portal/login");
+      return;
+    }
+
     const result = await supabase.rpc("current_client_leads_page", {
       target_view: view,
       page_limit: PAGE_SIZE,
