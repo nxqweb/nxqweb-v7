@@ -56,7 +56,7 @@ const everyGatewayBoundaryMatchesManifest = edgeFunctionManifest.every((item) =>
   configuredJwtBoundary(item.name) === item.verifyJwt
 );
 const commerceSourceGuardsArePreserved =
-  edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging"') &&
+  edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase() !== "staging"') &&
   edge.includes('secret("NXQ_AUTOMATION_WORKER_TOKEN")') &&
   edge.includes('req.headers.get("x-nxq-worker-token")') &&
   edge.includes("constantTimeEqual(suppliedToken, configuredToken)") &&
@@ -256,7 +256,7 @@ const assertions = [
   [workflow.includes("--output \"$result_file\"") && workflow.includes("--write-out '%{http_code}'") && !workflow.includes("curl --fail-with-body --silent --show-error \\\n            --request POST \\\n            --header \"Content-Type: application/json\" \\\n            --header \"x-nxq-worker-token: $NXQ_AUTOMATION_WORKER_TOKEN\" \\\n            --data '{\"mode\":\"staging_ai_handoff_smoke_test\"}'"), "AI-handoff smoke captures non-success bodies privately for sanitized classification"],
   [workflow.includes("staging_ai_handoff_smoke_test") && workflow.includes('"multimodal_context_verified"') && workflow.includes('"short_lived_access_verified"'), "AI-handoff action requires positive multimodal and bounded-access evidence"],
   [workflow.includes('result.signed_urls_persisted !== false') && workflow.includes('result.provider_invoked !== false') && workflow.includes('result.netlify_calls !== 0'), "AI-handoff action rejects persisted URLs, provider invocation, or Netlify calls"],
-  [edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging"') && edge.includes("qa_only: true"), "smoke fixture is staging-only and marked QA-only"],
+  [edge.includes('secret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase() !== "staging"') && edge.includes("qa_only: true"), "smoke fixture is staging-only and marked QA-only"],
   [edge.includes("createCommerceReferenceBuildContext") && edge.includes("error.status === 423") && edge.includes("error.status === 403"), "smoke mode proves quarantine and cross-tenant context denial"],
   [edge.includes('status: "clean"') && edge.includes('quarantine_status: "released"') && edge.includes('provider_invoked: false'), "AI-handoff smoke simulates a QA-only clean release without a provider"],
   [edge.includes('context.task === "enrich_commerce_request_from_references_v1"') && edge.includes('imageParts.length === 1'), "AI-handoff smoke proves the released image enters the request-specific multimodal context"],

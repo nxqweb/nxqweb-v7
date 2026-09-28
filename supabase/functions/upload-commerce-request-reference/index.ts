@@ -288,7 +288,7 @@ async function uploadReference(
 }
 
 async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = false) {
-  if (secret("NXQ_RUNTIME_ENVIRONMENT") !== "staging") {
+  if (secret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase() !== "staging") {
     throw new CommerceReferenceContextError("Commerce reference smoke testing is restricted to staging.", 403);
   }
 
