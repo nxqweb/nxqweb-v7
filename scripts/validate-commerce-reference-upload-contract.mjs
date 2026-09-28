@@ -5,6 +5,7 @@ import { commerceReferenceRemoteAuthResults } from "./audit-commerce-reference-r
 import { classifyCommerceReferenceSmokeRejection } from "./classify-commerce-reference-smoke-rejection.mjs";
 import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
 import { serializeDotenvValue, writeRuntimeGuardsEnv } from "./write-supabase-runtime-guards-env.mjs";
+import { workflowStep as sharedWorkflowStep } from "./workflow-step-helper.mjs";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const migration = read("supabase/migrations/240_protected_commerce_reference_uploads.sql");
@@ -18,13 +19,7 @@ const config = read("supabase/config.toml");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
 const remoteAuthAudit = read("scripts/audit-commerce-reference-remote-auth.mjs");
 
-function workflowStep(name) {
-  const marker = `      - name: ${name}`;
-  const start = workflow.indexOf(marker);
-  if (start < 0) return "";
-  const end = workflow.indexOf("\n      - name:", start + marker.length);
-  return workflow.slice(start, end < 0 ? workflow.length : end);
-}
+const workflowStep = (name) => sharedWorkflowStep(workflow, name);
 
 function configuredJwtBoundary(name) {
   const marker = `[functions.${name}]\n`;

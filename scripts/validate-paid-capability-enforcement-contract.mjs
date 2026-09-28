@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { edgeFunctionManifest } from "./edge-function-manifest.mjs";
+import { workflowStep as sharedWorkflowStep } from "./workflow-step-helper.mjs";
 
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
@@ -11,13 +12,7 @@ const stagingWorkflow = read(".github/workflows/manual-supabase-stage.yml").repl
 const checks = [];
 const check = (name, passed) => checks.push([name, Boolean(passed)]);
 
-function workflowStep(name) {
-  const marker = `      - name: ${name}`;
-  const start = stagingWorkflow.indexOf(marker);
-  if (start < 0) return "";
-  const end = stagingWorkflow.indexOf("\n      - name:", start + marker.length);
-  return stagingWorkflow.slice(start, end < 0 ? stagingWorkflow.length : end);
-}
+const workflowStep = (name) => sharedWorkflowStep(stagingWorkflow, name);
 
 function functionArray(step, variableName) {
   const pattern = new RegExp(`${variableName}=\\(\\n([\\s\\S]*?)\\n\\s*\\)`);
