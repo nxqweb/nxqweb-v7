@@ -184,7 +184,7 @@ const diagnosticCasesAreExact =
   ) === "unclassified-protected-rejection";
 
 const storagePhaseMarker = 'onPrivateStorageUploaded?.();';
-const storageSuccessMarker = 'if (uploaded.error) throw new Error("Private reference image upload failed.");';
+const storageSuccessMarker = 'if (uploaded.error) {';
 const databaseRegistrationMarker = 'const registered = await admin.rpc("register_commerce_request_reference_upload"';
 const smokeDiagnosticSplitIsOrdered =
   edge.includes(storageSuccessMarker) &&
@@ -224,7 +224,7 @@ const assertions = [
   [mutationConfirmationStep.includes("APPLY-NXQ-SUPABASE-STAGING") && !mutationConfirmationStep.includes("audit_commerce_reference_remote_auth"), "read-only Commerce remote-auth audit still requires the guarded staging confirmation"],
   [workflow.includes('metadata_file="$RUNNER_TEMP/nxq-commerce-reference-remote-functions.json"') && workflow.includes("trap 'rm -f \"$metadata_file\"' EXIT") && !workflow.includes('cat "$metadata_file"'), "remote-auth metadata remains private and is always removed"],
   [workflow.includes('functions list \\\n            --project-ref "$SUPABASE_PROJECT_REF" \\\n            --output-format json > "$metadata_file"') && workflow.includes('node scripts/audit-commerce-reference-remote-auth.mjs "$metadata_file"'), "remote-auth action reads only Supabase function metadata through the sanitized auditor"],
-  [remoteAuthAudit.includes('console.log(`${result.passed ? "PASS" : "FAIL"}: ${result.name} remote gateway JWT bypass`);') && remoteAuthAudit.includes('console.log(`${passed ? "PASS" : "FAIL"}: Commerce remote authentication audit`);') && (remoteAuthAudit.match(/console\.log/g) || []).length === 2 && !remoteAuthAudit.includes("JSON.stringify") && !remoteAuthAudit.includes("console.log(metadata)"), "remote-auth auditor emits only sanitized pass or fail statements"],
+  [remoteAuthAudit.includes('console.log(`${result.passed ? "PASS" : "FAIL"}: ${result.name} remote gateway JWT bypass`);') && remoteAuthAudit.includes('console.log(`${remoteAuthPassed ? "PASS" : "FAIL"}: Commerce remote authentication audit`);') && (remoteAuthAudit.match(/console\.log/g) || []).length === 2 && !remoteAuthAudit.includes("JSON.stringify") && !remoteAuthAudit.includes("console.log(metadata)"), "remote-auth auditor emits only sanitized pass or fail statements"],
   [remoteAuthAuditAcceptsOnlyExactDisabledBoundaries, "remote-auth auditor requires one exact disabled-JWT record for each Commerce function and fails closed"],
   [workflow.includes("- smoke_commerce_reference_upload") && workflow.includes("inputs.action == 'smoke_commerce_reference_upload'"), "manual staging exposes one exact Commerce reference smoke action"],
   [workflow.includes("staging_smoke_test") && workflow.includes("upload-commerce-request-reference") && !workflow.includes("smoke_commerce_reference_upload &&"), "smoke action invokes only the scoped upload function"],
@@ -241,7 +241,7 @@ const assertions = [
   [edge.includes('headers["X-NXQ-Function-Reached"] = "commerce-reference-upload"'), "Commerce responses expose one constant non-sensitive source-reached marker"],
   [edge.includes('"X-NXQ-Rejection-Source"') && edge.includes('"worker-token-guard"') && edge.includes('"runtime-environment-guard"'), "Commerce source guards emit only constant non-sensitive rejection markers"],
   [edge.includes('headers["X-NXQ-Smoke-Phase"] = smokePhase') && edge.includes('headers["X-NXQ-Smoke-Cleanup"] = smokeCleanup'), "Commerce smoke failures emit only whitelisted phase and cleanup markers"],
-  [edge.includes('let failurePhase: SmokeFailurePhase = "fixture-client-creation"') && ["fixture-request-creation", "fixture-ticket-creation", "fixture-private-storage-upload", "fixture-database-registration"].every((phase) => edge.includes(`failurePhase = "${phase}"`)), "Commerce smoke fixture setup exposes only five constant diagnostic subphases"],
+  [edge.includes('let failurePhase: SmokeFailurePhase = "fixture-client-creation"') && ["fixture-request-creation", "fixture-ticket-creation", "fixture-database-registration"].every((phase) => edge.includes(`failurePhase = "${phase}"`)) && edge.includes('onPrivateStorageFailure?.("fixture-private-storage-upload")'), "Commerce smoke fixture setup reports each fixture and storage-upload subphase through constant markers"],
   [smokeDiagnosticSplitIsOrdered, "Commerce smoke advances from private storage upload to database registration only after private storage succeeds"],
   [edge.includes('"Commerce reference smoke failed."') && edge.includes("error instanceof CommerceReferenceSmokeDiagnosticError"), "Commerce smoke diagnostics replace internal error details with one constant response body"],
   [workflow.includes('headers_file="$RUNNER_TEMP/nxq-commerce-reference-ai-handoff-smoke.headers"') && workflow.includes('--dump-header "$headers_file"') && workflow.includes('node scripts/classify-commerce-reference-smoke-rejection.mjs "$headers_file" "$http_status"'), "AI-handoff smoke privately captures response metadata for guarded classification"],
