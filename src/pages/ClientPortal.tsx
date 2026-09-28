@@ -362,7 +362,7 @@ export function ClientPortal() {
       const session = sessionResult.data.session;
 
       if (!session) {
-        window.location.href = "/portal/login";
+        window.location.replace("/portal/login");
         return;
       }
 
