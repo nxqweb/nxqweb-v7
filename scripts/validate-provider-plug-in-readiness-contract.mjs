@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { runtimeSecretProfiles } from "./edge-function-manifest.mjs";
 
 const read = (file) => fs.readFileSync(file, "utf8").replaceAll("\r\n", "\n");
 const setup = read("src/lib/providerSetup.ts");
@@ -7,16 +8,12 @@ const handoff = read("docs/NXQ_RUNTIME_HANDOFF.md");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
 const manifest = read("scripts/edge-function-manifest.mjs");
 
-const internalSecretNames = [
-  "NXQ_NOTIFICATION_ADAPTER_URL",
-  "NXQ_NOTIFICATION_ADAPTER_TOKEN",
-  "NXQ_MALWARE_SCAN_ADAPTER_URL",
-  "NXQ_MALWARE_SCAN_ADAPTER_TOKEN",
-  "NXQ_PROVIDER_HEALTH_ADAPTER_URL",
-  "NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN",
-  "NXQ_BUILD_PLAN_AI_ADAPTER_URL",
-  "NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN",
-];
+// The four generated adapter URL/token pairs this file checks for, sourced from
+// the shared manifest profile. NXQ_AUTOMATION_SOURCE_REF is excluded: it's part
+// of that profile for an unrelated reason (shared with several other runtime
+// profiles) and isn't one of the four generated secrets this checklist covers.
+const internalSecretNames = runtimeSecretProfiles["business-internal-provider-adapters"]
+  .filter((name) => name !== "NXQ_AUTOMATION_SOURCE_REF");
 const externalSecretNames = [
   "NXQ_RESEND_API_KEY",
   "NXQ_NOTIFICATION_FROM_EMAIL",

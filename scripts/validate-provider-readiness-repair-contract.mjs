@@ -11,6 +11,7 @@ const migration = read("supabase/migrations/238_truthful_provider_readiness_adap
 const manifest = read("scripts/edge-function-manifest.mjs");
 const config = read("supabase/config.toml");
 const workflow = read(".github/workflows/manual-supabase-stage.yml");
+const upstreamProviderSecretNames = ["NXQ_RESEND_API_KEY", "NXQ_NOTIFICATION_FROM_EMAIL", "NXQ_CLOUDMERSIVE_API_KEY"];
 
 const checks = [
   ["Notification adapter uses constant-time protected authentication", notificationAdapter.includes("NXQ_NOTIFICATION_ADAPTER_TOKEN") && notificationAdapter.includes("constantTimeEqual") && notificationAdapter.includes("Authorization")],
@@ -27,14 +28,14 @@ const checks = [
   ["Successful malware activity owns malware health", scanner.includes("recordMalwareProviderHealth") && scanner.includes('recordMalwareProviderHealth(admin, "healthy", null)') && scanner.includes('recordMalwareProviderHealth(admin, "error", message)')],
   ["Generic health checks preserve worker-owned activity evidence", providerHealth.includes('connection.config?.health_check_mode === "activity_evidence"') && providerHealth.includes("activity_evidence_connections_skipped")],
   ["Final provider-health heartbeat preserves adapter configuration", providerHealth.includes("adapter_configured: true") && providerHealth.includes("checked,") && providerHealth.includes("activity_evidence_connections_skipped")],
-  ["Runtime bootstrap requires upstream provider secret names", ["NXQ_RESEND_API_KEY","NXQ_NOTIFICATION_FROM_EMAIL","NXQ_CLOUDMERSIVE_API_KEY"].every((name) => bootstrap.includes(name))],
+  ["Runtime bootstrap requires upstream provider secret names", upstreamProviderSecretNames.every((name) => bootstrap.includes(name))],
   ["Readiness requires recent successful notification activity", migration.includes("notification_last_success") && migration.includes("successful_delivery_required") && migration.includes("evidence_freshness_days',30")],
   ["Readiness requires a recent released Cloudmersive clean scan", migration.includes("clean_scan_last_success") && migration.includes("status='clean'") && migration.includes("quarantine_status='released'") && migration.includes("provider_reference like 'cloudmersive:%'")],
   ["Activity-owned AI providers cannot be degraded by the generic checker", migration.includes("'change_classifier_ai','business_build_plan_ai'") && migration.includes("'health_check_mode','activity_evidence'")],
   ["New adapters are included in the deployment manifest and JWT config", ["malware-scan-provider-adapter","notification-provider-adapter"].every((name) => manifest.includes(`entry("${name}", false`) && config.includes(`[functions.${name}]\nverify_jwt = false`))],
   ["Manual staging has one exact provider-readiness deployment action", workflow.includes("- deploy_provider_readiness") && ["bootstrap-runtime-vault","check-provider-health","dispatch-notifications","malware-scan-provider-adapter","notification-provider-adapter","scan-client-file"].every((name) => workflow.includes(name)) && workflow.includes("if: inputs.action == 'deploy_provider_readiness'")],
   ["Scoped provider deployment contains no Netlify or production operation", /name: Deploy provider-readiness functions only[\s\S]*?name: Run zero-Netlify staging evidence suite/.test(workflow) && !/name: Deploy provider-readiness functions only[\s\S]*?name: Run zero-Netlify staging evidence suite/.exec(workflow)?.[0].includes("api.netlify.com") && !/name: Deploy provider-readiness functions only[\s\S]*?name: Run zero-Netlify staging evidence suite/.exec(workflow)?.[0].includes("production-netlify")],
-  ["Launch profiles include the real upstream provider names", ["NXQ_RESEND_API_KEY","NXQ_NOTIFICATION_FROM_EMAIL","NXQ_CLOUDMERSIVE_API_KEY"].every((name) => manifest.includes(name))],
+  ["Launch profiles include the real upstream provider names", upstreamProviderSecretNames.every((name) => manifest.includes(name))],
   ["Repair migration records no secret values or production mutation", migration.includes("secret_values_logged',false") && migration.includes("production_changed',false")],
 ];
 
