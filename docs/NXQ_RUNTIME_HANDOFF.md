@@ -7,12 +7,9 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (Multi-Location self-serve add-on)
-  — the prior recorded HEAD was `d9c4a65` — "docs: record file-security
-  notification migration (third staged migration)". See the commit this
-  handoff update lands in for the exact SHA.
-- **Working tree:** clean once this session's commit lands; pushed to
-  `origin`.
+- **HEAD:** `899f02d` — "Add Multi-Location self-serve add-on (staged,
+  unapplied)" (prior recorded HEAD was `d9c4a65`).
+- **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
