@@ -7,8 +7,8 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `8424e3f` — "feat: draft migration to notify client on new
-  Commerce request (staged, not applied)"
+- **HEAD:** `e90ceff` — "docs: record Commerce flow audit and second
+  staged notification migration"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
@@ -496,6 +496,47 @@ state. Update this file, not a new one, at every handoff.
   point), the Commerce reference-upload contract validator, all 23
   downstream validators, the failure simulator (23/23), and the 10-run
   lifecycle simulation. Fixed/staged in `8424e3f`.
+- At the user's request, extended the audit into the **sales/outreach
+  flow** (`discover-sales-prospects`, `draft-sales-outreach-ai`,
+  `OwnerGrowthCenter.tsx`, `OwnerSalesPipeline.tsx`, migration 230's
+  Client Finder schema). Several good negative results plus one real,
+  different-in-kind finding:
+  - **Replies are intentionally owner-driven, not a gap**:
+    `owner_record_sales_reply()` requires an authenticated owner to call
+    it manually; no automated reply-classification Edge function exists
+    anywhere. This matches the system's "review only" / owner-in-the-loop
+    design — there is no missing "notify the owner" step because the
+    owner is always the one triggering this path after reading their own
+    mailbox externally.
+  - **`emergency_stop` not being checked anywhere is not a bug**: there
+    is no outreach-*sending* Edge function at all yet — only discovery
+    and drafting exist as real functions. The full delivery-safety schema
+    (bounce/complaint tracking, suppression, emergency stop) is built in
+    advance for a feature `docs/GROWTH_AND_OUTREACH_LAUNCH_RUNBOOK.md`
+    explicitly documents as pending ("External email delivery: Off...
+    Required before enabling: OAuth mailbox, unsubscribe handling, DNS
+    authentication, and owner decision"). Nothing to enforce yet because
+    nothing sends yet — confirmed intentional, not investigated further.
+  - **Real finding, different in kind from the notification gaps**:
+    `draft-sales-outreach-ai` is a fully built, tested Edge Function
+    (same owner-JWT auth pattern as the browser-invoked functions
+    audited earlier) that is **never called from anywhere in `src/`**.
+    The actual shipped `OwnerSalesPipeline.tsx` drafts messages with a
+    local, deterministic `outreachTemplate()` function and a plain
+    `owner_create_sales_outreach_draft` RPC — it never reaches the AI
+    drafting function at all. `docs/GROWTH_AND_OUTREACH_LAUNCH_RUNBOOK.md`
+    describes both "deterministic zero-key drafting" and "optional
+    model-assisted drafting" as existing capabilities; only the
+    deterministic path is actually wired into the UI. Same
+    built-but-disconnected pattern as the capability-rules finding
+    earlier this session, but for a product feature rather than a safety
+    rule — wiring it in would mean adding a new UI flow (an "AI draft"
+    option) to `OwnerSalesPipeline.tsx`, not a one-line backend insert,
+    so this is more of a product decision than the notification fixes.
+    Asked the user; chose to log it rather than touch the UI now. No
+    code changed for this finding — logged here for a future, more
+    deliberate product decision about whether/how to surface AI-assisted
+    drafting in the Sales Pipeline UI.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
