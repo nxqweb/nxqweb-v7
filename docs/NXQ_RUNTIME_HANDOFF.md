@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `6ffc1ee` — "fix: remove dead client-side payment activation
-  stub"
+- **HEAD:** `5a06296` — "fix: resolve dev-only browserslist/baseline-browser-mapping
+  vulnerabilities"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `6ffc1ee` — see "Confirmed blockers/risks" for why stale tracking refs
+  `5a06296` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -149,6 +149,27 @@ state. Update this file, not a new one, at every handoff.
   `6ffc1ee`. No other unreferenced files found in either scan. Full
   release gate re-run after deletion: same clean stop at
   `validate-paid-capability-guards-staging.mjs`, nothing else regressed.
+- Checked outstanding TODO/FIXME/HACK markers (none found), Edge function
+  manifest coverage (already 44/44 confirmed by
+  `check-runtime-stage-readiness.mjs`), and `console.error` usage in Edge
+  functions (14 occurrences, all legitimate last-resort operational
+  logging of `.message` strings when a DB write itself fails — no secrets,
+  no defect). Checked whether any "planned" product family in
+  `productCatalog.ts` is secretly fully built like Multi-Location was
+  (Booking, Commerce, Menu, Property, Multi-Location, Membership all
+  `planned`; Enterprise Systems `private`) — Commerce has substantial code
+  but that's Commerce-as-a-module-inside-NXQ-Business, not a
+  signup-ready standalone family; flipping any status to `available` is a
+  real business/product decision, not a code defect, so left untouched.
+- Ran `npm audit` (including dev dependencies, which the release gate's
+  `--omit=dev` check doesn't cover) and found 2 real dev-only
+  vulnerabilities (1 moderate, 1 high) in the `browserslist`/
+  `baseline-browser-mapping` chain used only by build tooling, never
+  shipped to users. Ran `npm audit fix` (no `--force`) — only
+  `package-lock.json` changed, `package.json` untouched, no direct
+  dependency added/removed/downgraded. `npm audit` now reports 0
+  vulnerabilities. Verified with a clean build, clean lint, and a full
+  release-gate re-run (same expected stop point). Fixed in `5a06296`.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
