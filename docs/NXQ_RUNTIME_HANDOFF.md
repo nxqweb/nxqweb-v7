@@ -7,12 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `66f1d3b` — "chore: remove unused clsx dependency"
+- **HEAD:** `e33ef28` — "fix: close SSRF gap in prepare-build-plan AI adapter
+  URL validation"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `66f1d3b` — see "Confirmed blockers/risks" for why stale tracking refs
+  `e33ef28` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -178,6 +179,45 @@ state. Update this file, not a new one, at every handoff.
   All `devDependencies` checked too (eslint, vite, typescript, deno,
   supabase CLI, etc. — all used via config/scripts, not direct imports;
   `jose` actively used in 8 Edge functions) — nothing else unused found.
+- Checked `scripts/` for orphaned automation files not called by
+  `package.json`, `run-release-gate.mjs`, or any workflow. Two initial
+  hits (`remote-launch-architecture-contract.mjs`,
+  `workflow-step-helper.mjs`) were false positives — both are shared
+  modules imported by other scripts, confirmed with a repo-wide grep, not
+  actually orphaned. No real orphans found. Also checked
+  `templates/booking-v1/blueprint.json` (looked unreferenced at a glance)
+  — it's a real, validator-tracked scaffold for the "planned" Booking
+  family, not dead code.
+- Verified the tier pricing model against the server-enforced economics:
+  provider cost is capped at `(monthly_price − 40) × 100` cents
+  (migration 229, line 359), so NXQ is guaranteed at least $40 gross
+  margin per client on every tier — including Starter at $50/mo — before
+  any referral credit is applied. Confirmed the Enterprise resource-policy
+  row's `provider_cost_cents:11000` matches the formula exactly at
+  $150/mo. No inconsistency found; this is sound by design.
+- Audited every outbound `fetch` call across all 44 Edge functions for the
+  same SSRF risk class as the earlier `generate-business-build-plan` fix
+  (a config-supplied URL feeding an outbound request without the shared
+  guard). Found and fixed a real gap:
+  `supabase/functions/prepare-build-plan/index.ts` had its own weaker,
+  hand-rolled `validateAdapterUrl` instead of the shared
+  `requirePublicHttpsUrl` — missing cloud-metadata hostname blocks
+  (`metadata.google.internal`, etc.), the `100.64.0.0/10` and
+  `198.18.0.0/15` private ranges, `0.0.0.0`, IPv4-mapped IPv6, and
+  `.internal`/`.local`/`.home`/`.lan` suffixes that the shared guard
+  already covers. `NXQ_BUILD_PLAN_AI_ADAPTER_URL` is config-supplied and
+  feeds directly into `fetch`, the same risk shape as the prior fix.
+  Replaced the local implementation with the shared guard. This broke
+  `validate-autonomy-ops-wave18-contract.mjs`, which hardcoded literal
+  markers from the old regex implementation — updated that check to
+  verify the shared guard is imported and used instead (a tightening,
+  not a weakening, of the check). Every other outbound fetch in
+  `supabase/functions/` was checked and uses either a hardcoded trusted
+  host (`api.github.com`, `api.netlify.com`) or the project's own
+  self-referential Supabase URL — no other gap found. Fixed in
+  `e33ef28`, verified with lint, Deno type-check (44/44), the full
+  release gate (same expected stop point), all 23 downstream validators,
+  the failure simulator (23/23), and the 10-run lifecycle simulation.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
