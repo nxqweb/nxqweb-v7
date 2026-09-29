@@ -64,6 +64,9 @@ export function PublicPlans() {
             <Clock3 size={24} />
             <h2>More NXQ-Web systems are on the way.</h2>
             <p>Planned families stay visible so you can see what is coming, but signup stays closed until each experience is ready for clients.</p>
+            <p>
+              Coming next: NXQ-Booking, NXQ-Commerce, NXQ-Menu, NXQ-Property, NXQ-Multi-Location, NXQ-Membership, and NXQ-Enterprise.
+            </p>
           </div>
           <a className="lux-btn lux-btn-primary" href="/portal/signup?family=business&tier=growth">Start NXQ-Business <ArrowRight size={16} /></a>
         </section>
