@@ -264,6 +264,35 @@ state. Update this file, not a new one, at every handoff.
   type-check (44/44), lint, the full release gate (same expected stop
   point), all 23 downstream validators, the failure simulator (23/23),
   and the 10-run lifecycle simulation.
+- Ran a schema-level version of the same "pattern applied inconsistently"
+  audit: checked every migration for a table created without RLS ever
+  enabled anywhere (none found — clean), then checked every RLS-enabled
+  table for whether it ever got an actual policy. Most "RLS enabled, zero
+  policies" hits are the correct, deliberate lockdown pattern for
+  internal/ops-only tables (`nxq_scale_modes`, `nxq_netlify_budget_settings`,
+  `staging_readiness_evidence_runs`, etc. — service-role-only by design,
+  not a bug). One stood out as different: **`commerce_cart_items`**
+  (migration 036) was granted `select, insert, update, delete` to the
+  `authenticated` role but never got an RLS policy, and — unlike the ops
+  tables — is never referenced anywhere in `src/` or
+  `supabase/functions/`. Traced the real checkout flow (migration 090
+  `protected_commerce_checkout` onward): it takes cart contents as a
+  stateless request payload directly into the checkout RPC, never
+  persisting to a cart table at all. `commerce_cart_items` is leftover
+  schema from an earlier design, superseded before this branch's current
+  checkout flow existed.
+  - **Not a security hole**: RLS enabled with no policies fails closed by
+    default in Postgres — the `GRANT` alone gives no actual access without
+    a matching policy, so this has effectively zero live exposure.
+  - **Not touched**: fixing this means a new migration (drop or
+    RLS-lock the table), which is a hard stop-and-ask gate. Asked the
+    user; recommended logging it rather than drafting a migration given
+    it's inert — approved. No migration was written or drafted.
+  - **Action for later**: if/when a maintenance pass touches Commerce
+    schema, consider a migration to drop `commerce_cart_items` (or add
+    the missing policies if it turns out something still expects it to
+    work) — needs explicit review and the normal guarded staging apply,
+    not an autonomous change.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -414,21 +443,24 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `npm run test:release` can actually run to completion. This is a
    decision point, not an autonomous task — do not proceed past it without
    an explicit answer.
-2. Audit `docs/LAUNCH_HARDENING_CHECKLIST.md` against current contract
-   validator coverage to confirm no row has silently regressed since
-   2026-08-16, and correct any other stale claims found. Four real
-   discrepancies were found and fixed by simply reading the code this
-   session (Multi-Location status, the brand-contract check, the
-   zero-key/Stripe checks, and my own handoff-doc regression) — treat
-   every older doc claim as unverified until re-checked against current
-   source, not as ground truth.
-3. With the entire credential-independent release gate now green (see
-   "Completed work" above), the next real leverage is external: decide
-   with the user whether to pursue staging-credential setup (task #1) or
-   continue hardening/auditing code in the meantime. Absent a new signal,
-   default to task #2 in a loop — the codebase has repeatedly turned out to
-   have small, real drift between docs/tests and source that only surfaces
-   by actually running things and reading the code, not by assuming green.
+2. Consider drafting (only with explicit user approval, never
+   autonomously) a migration to drop or properly lock down
+   `commerce_cart_items` — orphaned schema found this session: granted to
+   `authenticated` but no RLS policy ever written, unreferenced anywhere
+   in `src/` or `supabase/functions/`, superseded by the stateless
+   cart-payload checkout flow since migration 090. Not urgent (fails
+   closed, no live exposure) but worth cleaning up in a future reviewed
+   migration pass.
+3. Keep applying the audit technique that found three real security fixes
+   this session (SSRF gap, redirect-bypass SSRF gap, timing-attack gap):
+   pick an established safe pattern already used correctly somewhere in
+   the codebase, then grep every place that pattern *should* apply and
+   check it actually does. `docs/LAUNCH_HARDENING_CHECKLIST.md` was
+   already audited this session and held up clean; the productive
+   direction now is auditing code patterns (auth checks, secret handling,
+   RLS coverage), not re-reading docs that already checked out. Treat any
+   remaining older doc claim as unverified until re-checked against
+   current source, not as ground truth.
 
 ## Resume instruction for the next Claude session
 
