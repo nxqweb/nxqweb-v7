@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertGroundedMarketingClaims } from "../_shared/ai-grounding.mjs";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
 type AutomationJob = {
   id: string;
@@ -164,14 +165,7 @@ function aiTextList(value: unknown, label: string, minItems: number, maxItems: n
 }
 
 function validateAdapterUrl(rawUrl: string) {
-  const url = new URL(rawUrl);
-  const host = url.hostname.toLowerCase();
-  const privateIpv4 = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
-  const privateIpv6 = host === "::1" || host === "[::1]" || /^\[(?:fc|fd|fe[89ab])/i.test(host);
-  if (url.protocol !== "https:" || url.username || url.password || host === "localhost" || privateIpv4 || privateIpv6) {
-    throw new Error("AI build-plan adapter URL must be a credential-free public HTTPS endpoint.");
-  }
-  return url.toString();
+  return requirePublicHttpsUrl(rawUrl, "AI build-plan adapter URL").toString();
 }
 
 function canonicalLookup(values: string[]) {

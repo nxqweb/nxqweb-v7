@@ -53,7 +53,7 @@ catch { supportedClaimsAccepted = false; }
 
 const checks = [
   ["Build-plan worker uses dedicated provider-neutral adapter secrets", worker.includes("NXQ_BUILD_PLAN_AI_ADAPTER_URL") && worker.includes("NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN")],
-  ["Adapter endpoint is restricted to credential-free public HTTPS", worker.includes("credential-free public HTTPS endpoint") && worker.includes('url.protocol !== "https:"') && worker.includes("privateIpv4")],
+  ["Adapter endpoint is restricted to credential-free public HTTPS", worker.includes('import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts"') && worker.includes("requirePublicHttpsUrl(rawUrl,") && worker.includes('"AI build-plan adapter URL"')],
   ["Adapter timeout and response size are bounded", worker.includes("controller.abort(), 25_000") && worker.includes("64_000")],
   ["AI request carries a SHA-256 intake fingerprint", worker.includes('crypto.subtle.digest("SHA-256"') && worker.includes("request_fingerprint: requestFingerprint")],
   ["Adapter must echo the exact request fingerprint", worker.includes("result.request_fingerprint !== requestFingerprint")],
