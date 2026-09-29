@@ -516,6 +516,7 @@ Deno.serve(async (request) => {
     try {
       providerResponse = await fetch(providerUrl, {
         method: "POST",
+        redirect: "error",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${selected.token}` },
         body: JSON.stringify(providerPayload(protocol, selected.model, parsedRequest)),
         signal: controller.signal,

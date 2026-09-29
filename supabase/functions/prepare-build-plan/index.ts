@@ -280,6 +280,7 @@ async function requestAiStrategy(adapterUrl: string, adapterToken: string, reque
   try {
     const res = await fetch(endpoint, {
       method: "POST",
+      redirect: "error",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${adapterToken}` },
       body: JSON.stringify({
         task: "enrich_business_build_plan_v1",
