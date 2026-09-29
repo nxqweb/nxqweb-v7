@@ -7,8 +7,8 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `ed7000c` — "docs: record sales/outreach flow audit (mostly
-  negative results, one logged finding)"
+- **HEAD:** `7181138` — "docs: record billing notification gap, user
+  deferring the decision"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
@@ -568,6 +568,42 @@ state. Update this file, not a new one, at every handoff.
     rather than have it drafted now. **No migration written, no code
     changed for this finding.**
 
+## Owner operations / launch readiness audit (continued at user's request)
+
+- Confirmed the `freeze_review_owner_attention` side of the billing gap
+  above from the owner's perspective too: it is at least *discoverable*
+  — `OwnerBillingLifecycle.tsx` shows a live "Human freeze decisions"
+  count for clients in `freeze_review` status — but nothing pushes the
+  owner toward it either; same underlying gap as above, not a separate
+  decision, so not re-asked.
+- Checked `OwnerLaunchReadiness.tsx`: it is a thin display layer over a
+  real, evidence-backed `launch_readiness_checks` table and
+  `qa_lifecycle_runs`, not hardcoded or stale. Consistent with the many
+  "readiness"/"evidence" validators already confirmed passing this
+  session. No issue found.
+- **Real, separate finding**: traced every read of `automation_escalations`
+  across the entire migration history (`grep -rn "from public\.automation_escalations"`)
+  and found that **no owner-facing function or page ever surfaces
+  billing escalations** (`billing_processor_not_connected`,
+  `billing_payment_failed`, `billing_retry_exhausted` — all written by
+  migration 100). `owner_exception_center()` (the function behind
+  `OwnerExceptionCenter.tsx`) only reads `automation_jobs` and
+  `website_maintenance_alerts`, never `automation_escalations`. The one
+  function that does read `automation_escalations`
+  (`owner_runtime_dispatch_incidents()`, migration 200) filters
+  specifically to `escalation_type = 'internal_edge_dispatch_network_unreachable'`
+  — an unrelated dispatch-watchdog concern. Every other read of
+  `automation_escalations` in the codebase is an idempotency
+  existence-check inside the same function that just wrote the row, not
+  a display read. This is distinct from the client-notification gap
+  above: this is about whether the **owner** ever sees these alerts at
+  all in their own operational tooling, not about client communication.
+  Asked the user (separate decision from the billing-notification one,
+  since it's a different fix target — Owner Exception Center coverage,
+  not customer-facing wording); chose to log it rather than draft a
+  migration now. **No migration written, no code changed for this
+  finding.**
+
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
 The prior handoff entry described the 2026-08-16 audit (migration 222,
@@ -710,13 +746,14 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
 
 ## Next highest-priority safe tasks
 
-1. **Decide the billing-notification gap** (see above): payment
-   succeeded/failed, past-due reminders, and processor-connection-
-   required events are logged but never delivered to the client through
-   any channel. The user chose to decide the exact wording/scope
-   themselves rather than have a migration drafted now — this is the
-   single highest-value known follow-up, but it is explicitly the
-   user's to bring back when ready, not something to draft speculatively.
+1. **Decide the two billing follow-ups** (see "Owner operations / launch
+   readiness audit" section above): (a) payment succeeded/failed,
+   past-due, and processor-connection-required events never reach the
+   client through any channel, and (b) billing escalations never reach
+   the owner through `OwnerExceptionCenter.tsx` or any other owner
+   tooling either. Both are the user's to bring back when ready, not
+   something to draft speculatively — they chose to decide the exact
+   scope/wording themselves for both.
 2. **Review and, if approved, apply both staged migrations**
    (`248_notify_client_on_website_setup_denial.sql` and
    `249_notify_client_on_commerce_customer_request.sql`) through the
