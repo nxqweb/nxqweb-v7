@@ -7,8 +7,8 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `cbbf303` — "Fix migration 251 trigger conflict with
-  forward-only migration 252" (prior recorded HEAD was `6a2446f`).
+- **HEAD:** `7283f4d` — "docs: record disposable-Postgres proof of the
+  migration 252 trigger fix" (prior recorded HEAD was `6a2446f`).
 - **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
