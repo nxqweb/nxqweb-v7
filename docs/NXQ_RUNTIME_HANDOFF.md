@@ -7,10 +7,10 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `b85310a` — "fix: complete CORS sweep, add missing
-  Allow-Methods to provision-storefront" (prior recorded HEAD was
-  `f7e7ccf`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (client notification list) —
+  prior recorded HEAD was `b331b96`.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -251,15 +251,45 @@ Also verified locally: `check-migration-integrity.mjs` (220 files),
 `validate-*.mjs` scripts, `simulate-autonomy-failures.mjs` (23/23),
 `test:lifecycle` (21/21 + 10/10), `npm run build`.
 
-**New systemic gap flagged, not fixed here**: no page in the entire app
-renders `notification_deliveries` content in-app, for any notification
-type or recipient. Every "working" notification found in this and the
-prior audit (preview-ready, production-published, domain-reconciliation,
-now these 3 billing events) is correctly recorded and dispatched
-(marked delivered, or actually sent once an external provider exists)
-but invisible to a client using only the web portal today. Building an
-actual in-app notification feed is a real frontend feature, not a
-routine fix — flagged for your decision, not built speculatively.
+**Client notification-center gap — partially closed this session.** You
+chose to build the minimal read-only version now. Before implementing,
+verified: `notification_deliveries` grants `authenticated` SELECT-only
+(migration 133) — no UPDATE/INSERT/DELETE at all, regardless of RLS
+policy shape — and there is **no "seen"/"read" tracking column anywhere
+in the schema**. So "list your notifications" fits normal source-code
+scope (zero migration needed, same RLS the client already has), but
+"mark as seen" does not — it needs a new column plus a narrow RPC
+(matching this codebase's established pattern of RPC-gated writes, not
+direct table grants), which is a real migration decision.
+
+Also found and correctly handled a real security-scoping detail: the
+`client_read_own_notifications` RLS policy only checks `client_id`
+ownership, **not** `recipient_kind` — so a naive client-side query would
+also have surfaced owner-facing rows about that same client (e.g. the
+`freeze_review_owner_attention` notification from migration 253, written
+in owner-oriented language). The implementation explicitly filters
+`recipient_kind = 'client'` in the query itself, not just relying on RLS.
+
+**Implemented**: `src/pages/ClientNotificationPreferences.tsx` (the
+existing `/client/notifications` page, previously preferences-only) now
+also shows a "Recent notifications" read-only list, newest first, scoped
+to the client's own `client_id` and `recipient_kind = 'client'`. New
+focused validator:
+`scripts/validate-client-notification-center-contract.mjs` (8/8,
+auto-discovered by `run-release-gate.mjs`) — asserts the scoping/filter,
+that no owner-only columns are requested, that no write call exists
+against the table from this page, and that the underlying migration 133
+RLS/grant remain exactly as verified. All local checks re-run clean; no
+migration touched, no Supabase connection, no deploy.
+
+**Still deferred, needs your decision if you want it**: "mark as
+seen"/unread-count/bell-icon — the fuller notification-center feature —
+requires a migration (new column + RPC) and is flagged here, not
+drafted. The owner side of this same underlying gap was separately
+closed in `OwnerBillingLifecycle.tsx` for billing events specifically
+(see "`billing_notification_events` fix — implemented" above); this
+client-side list is the general-purpose equivalent, not limited to
+billing.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
