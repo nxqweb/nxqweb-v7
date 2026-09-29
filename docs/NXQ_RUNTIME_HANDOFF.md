@@ -7,15 +7,48 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `c36568d2c293f523cfe9ecf65794fe49ccc25942` — "fix: close SSRF gap
-  in generate-business-build-plan provider URL check"
-- **Working tree:** clean, fast-forwarded from `origin`, no divergence.
+- **HEAD:** `e9a6fda` — "fix: list all NXQ-* product family names on public
+  plans page"
+- **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
-  (`afbbc5f` → `c36568d`) — see "Confirmed blockers/risks" for why stale
+  (`afbbc5f` → `c36568d`), then one further local commit
+  (`a94cc2e` → `e9a6fda`) — see "Confirmed blockers/risks" for why stale
   tracking refs must always be refreshed before trusting a reported HEAD.
 
-## Completed work since the prior handoff entry (2026-08-16)
+## Completed work since the prior handoff entry (2026-09-29, this session)
+
+- Added `CLAUDE.md` and canonicalized this handoff document
+  (`a94cc2e`).
+- Ran `npm ci && npm run test:release` for the first time this session
+  against a real HEAD. Found and fixed a genuine pre-existing bug:
+  `validate-nxqx-brand-contract.mjs`'s "public plan cards use NXQ-* names"
+  check was failing because `src/pages/PublicPlans.tsx` only contained the
+  literal string `NXQ-Business`; the other seven family names render only
+  dynamically through `ProductFamilySignupSelector`/`productCatalog.ts`.
+  Added a "Coming next: …" line listing all eight names as visible static
+  copy. Fixed in `e9a6fda`. Traced to a Sept 3 2026 import commit
+  (`aab89f1`) — likely broken since that import, not a recent regression.
+- Re-ran the full release gate after the fix: it now progresses past the
+  brand contract cleanly and 8+ validator suites (hundreds of sub-checks,
+  including tenant isolation, paid-capability enforcement, maintenance/
+  recovery, growth/outreach, mega-autonomy, Netlify budget, NXQ identity)
+  pass. It stops at `validate-paid-capability-guards-staging.mjs`, which
+  requires live `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` to query the
+  staging database directly and fails closed without them by design. This
+  container has no staging credentials — correctly so, per the
+  external-service stop-and-ask gate in `CLAUDE.md`. No attempt was made to
+  source or fabricate credentials to get past it.
+- **Not yet exercised this session:** everything after that validator in
+  `scripts/run-release-gate.mjs` — remaining `validate-*.mjs` files,
+  `check-runtime-stage-readiness.mjs`, `check-migration-integrity.mjs`,
+  `simulate-autonomy-failures.mjs`, lifecycle/security/accessibility/edge
+  tests, lint, `npm audit`, build, routes, and bundle-budget check. These
+  are unverified against current HEAD until the credential-gated check is
+  either supplied credentials (external-service decision, not autonomous)
+  or the gate is otherwise addressed.
+
+## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
 The prior handoff entry described the 2026-08-16 audit (migration 222,
 classifier runtime v3). Since then, `safe/checkpoint-autonomy-wave35-sales`
@@ -73,16 +106,30 @@ stop-and-ask gate as any other schema change), not as greenfield work.
 
 ## Checks run this session
 
-- Git-state verification only: `git remote -v`, `git status --short
-  --branch`, `git rev-parse HEAD`, `git rev-parse origin/<branch>`,
+- Git-state verification: `git remote -v`, `git status --short --branch`,
+  `git rev-parse HEAD`, `git rev-parse origin/<branch>`,
   `git ls-remote origin refs/heads/<branch>`, `git log --oneline
   --decorate`, followed by `git fetch` + `git merge --ff-only`.
-- **Not run this session:** `npm ci` / `npm run test:release` (no
-  `node_modules` present in this container, and no task requested it). The
-  2026-08-16 entry's "67 contract validators / 189 migrations / 276
-  SECURITY DEFINER functions / 35 Edge functions green" claim has **not**
-  been independently re-verified against the current HEAD. Treat it as
-  historical, not current, until re-run.
+- `npm ci` — clean install, 171 packages, 2 pre-existing `npm audit`
+  findings (1 moderate, 1 high) not yet triaged.
+- `npm run test:release` (full local release gate) — run twice:
+  1. First run: failed at `validate-nxqx-brand-contract.mjs`
+     ("public plan cards use NXQ-* names"), 13/14 in that suite. All
+     validators before it in alphabetical order passed in full.
+  2. After the `e9a6fda` fix: that suite now passes 14/14, and the gate
+     progresses through at least 8 more validator suites (Netlify budget,
+     NXQ identity, mega-autonomy, maintenance/recovery, growth/outreach,
+     launch-hardening, paid-capability enforcement, tenant isolation, and
+     others) before stopping at `validate-paid-capability-guards-staging.mjs`
+     — a live-Supabase-credential check that fails closed by design without
+     `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`, which this container
+     does not have.
+- The 2026-08-16 entry's "67 contract validators / 189 migrations / 276
+  SECURITY DEFINER functions / 35 Edge functions green" claim is still
+  **not fully re-verified** — only the portion of the gate before the
+  credential-gated validator has been confirmed green at current HEAD.
+  Lint, `npm audit --audit-level=high`, `npm run build`, and the bundle
+  budget check have not run this session.
 
 ## Current product decisions and hard rules in force
 
@@ -134,25 +181,33 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
   because a local `origin/<branch>` ref was stale; the real remote tip was
   `c36568d`. Always `git fetch` and compare against `git ls-remote` before
   reporting a checkpoint as verified.
-- **Full local release gate not re-run against current HEAD** (see Checks
-  run above) — do not assume it is green without running
-  `npm ci && npm run test:release` first.
+- **Full local release gate cannot complete in this container without
+  staging Supabase credentials.** `validate-paid-capability-guards-staging.mjs`
+  fails closed on missing `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`
+  by design (see Checks run above). Supplying those is an external-service
+  action requiring an explicit decision, not something to do autonomously.
+  Whether the gate is fully green beyond that point remains unverified.
 
 ## Next 3 highest-priority safe tasks
 
-1. Run `npm ci && npm run test:release` against HEAD `c36568d` to obtain a
-   current, real pass/fail baseline (this is a local check, not a
-   deployment — inside allowed autonomous scope) and update this document
-   with the exact result.
-2. Review the recent Business-location and paid-capability-guard commit
-   streak for any remaining classification gaps the validators still flag,
-   and continue the same incremental hardening pattern already established
-   in the last ~15 commits.
+1. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
+   the staging project may be provided (as container env vars, never
+   pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`
+   and the remainder of `npm run test:release` can actually run to
+   completion. This is a decision point, not an autonomous task — do not
+   proceed past it without an explicit answer.
+2. Independently of #1: run the individual local-only checks that do not
+   need staging credentials and are not gated by the failing validator —
+   e.g. `npm run lint -- --max-warnings=0`, `npm run build`,
+   `npm run test:security`, `npm run test:accessibility`,
+   `npm run test:edge`, `node scripts/check-migration-integrity.mjs` — by
+   invoking them directly rather than through `test:release`, to get real
+   signal on the rest of the gate while the credential question is open.
 3. Audit `docs/LAUNCH_HARDENING_CHECKLIST.md` against current contract
    validator coverage to confirm no row has silently regressed since
    2026-08-16, and correct any other stale claims found (the Multi-Location
-   correction above suggests other entries in older docs may also need a
-   fresh read-the-code pass before being repeated).
+   correction and the brand-contract bug both show older docs/assumptions
+   need a fresh read-the-code pass before being repeated).
 
 ## Resume instruction for the next Claude session
 
