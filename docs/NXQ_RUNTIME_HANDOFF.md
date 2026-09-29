@@ -7,21 +7,22 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `817af07` — "fix: notify client when a data-subject privacy
-  request completes"
+- **HEAD:** `a3442df` — "feat: draft migration to notify client on file
+  scan completion (staged, not applied)"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `817af07` — see "Confirmed blockers/risks" for why stale tracking refs
+  `a3442df` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
-- **Two new, unapplied migrations in the tree** — both pass local
-  migration integrity and every other local check, but **neither has
-  been applied to any database** (no staging credentials in this
-  container, and applying is always a separate guarded action anyway).
-  Review both before the next `apply_all` staging run:
+- **Three new, unapplied migrations in the tree** — all pass local
+  migration integrity and every other local check, but **none has been
+  applied to any database** (no staging credentials in this container,
+  and applying is always a separate guarded action anyway). Review all
+  three before the next `apply_all` staging run:
   - `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
   - `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`
+  - `supabase/migrations/250_notify_client_on_file_scan_completion.sql`
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -627,6 +628,35 @@ state. Update this file, not a new one, at every handoff.
   identity-verification check specifically), and the 10-run lifecycle
   simulation.
 
+## File security / malware scanning audit (continued at user's request)
+
+- Found the seventh instance of the notification-gap class, plus a third
+  confirmation of the systemic owner-escalation-visibility gap:
+  `complete_client_file_security_scan()` (migration 144) flips a scanned
+  file's `quarantine_status` to `released` or `quarantined` and, for
+  suspicious/infected results, writes a `client_file_security_alert` row
+  to `automation_escalations` — but never told the client their own
+  upload was released or quarantined. Checked whether the owner-facing
+  escalation actually reaches anyone: confirmed it hits the exact same
+  dead-end already found for billing escalations (no owner-facing
+  function or page reads that escalation type either — this is now the
+  third confirmed instance of that systemic gap, after billing and this
+  one). This lives in a database function, a stop-and-ask gate; asked
+  the user covering both angles (client notification + the recurring
+  owner-visibility problem); approved to draft a migration for the
+  client-notification fix only, explicitly leaving the broader owner-
+  visibility problem as the same already-logged item rather than
+  re-solving it piecemeal per table. Wrote
+  `supabase/migrations/250_notify_client_on_file_scan_completion.sql`:
+  re-defines the function identically to migration 144 except for one
+  `notification_deliveries` insert (`client_file_released` or
+  `client_file_quarantined` depending on outcome). **Not applied to any
+  database** — staged in the repo for review only. Verified everything
+  checkable without a live database: migration integrity (217
+  migrations), the full release gate (same expected stop point), all 23
+  downstream validators, the failure simulator (23/23), and the 10-run
+  lifecycle simulation. Fixed/staged in `a3442df`.
+
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
 The prior handoff entry described the 2026-08-16 audit (migration 222,
@@ -777,14 +807,16 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    tooling either. Both are the user's to bring back when ready, not
    something to draft speculatively — they chose to decide the exact
    scope/wording themselves for both.
-2. **Review and, if approved, apply both staged migrations**
-   (`248_notify_client_on_website_setup_denial.sql` and
-   `249_notify_client_on_commerce_customer_request.sql`) through the
-   normal guarded staging workflow (`validate_prelaunch` / `apply_all`
-   with the exact confirmation phrase). Both are currently only staged
-   in the repo, not applied anywhere. Once applied, denied clients and
-   Commerce clients receiving new customer requests will get in-app
-   notifications they don't currently receive.
+2. **Review and, if approved, apply all three staged migrations**
+   (`248_notify_client_on_website_setup_denial.sql`,
+   `249_notify_client_on_commerce_customer_request.sql`, and
+   `250_notify_client_on_file_scan_completion.sql`) through the normal
+   guarded staging workflow (`validate_prelaunch` / `apply_all` with the
+   exact confirmation phrase). All three are currently only staged in
+   the repo, not applied anywhere. Once applied, denied clients,
+   Commerce clients receiving new customer requests, and clients
+   uploading files will get in-app notifications they don't currently
+   receive.
 3. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
