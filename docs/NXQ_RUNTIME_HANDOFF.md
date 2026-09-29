@@ -7,10 +7,9 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (migration 252 trigger-conflict
-  fix) — prior recorded HEAD was `6a2446f`.
-- **Working tree:** clean once this session's commit lands; pushed to
-  `origin`.
+- **HEAD:** `cbbf303` — "Fix migration 251 trigger conflict with
+  forward-only migration 252" (prior recorded HEAD was `6a2446f`).
+- **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
