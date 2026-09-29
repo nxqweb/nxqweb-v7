@@ -37,6 +37,39 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 }
 
+type LocationAddonClientRow = {
+  client_id: string;
+  business_name: string;
+  tier_key: string | null;
+  base_price_cents: number;
+  enabled_units: number;
+  addon_amount_cents: number;
+  internal_total_cents: number;
+  active_location_count: number;
+  effective_cap: number;
+};
+
+type LocationOverEntitlementRow = {
+  client_id: string;
+  business_name: string;
+  tier_key: string | null;
+  active_location_count: number;
+  effective_cap: number;
+};
+
+type LocationAddonEventRow = {
+  client_id: string;
+  business_name: string;
+  event_type: "enabled" | "cancelled";
+  resulting_enabled_units: number;
+  billing_live_at_event: boolean;
+  occurred_at: string;
+};
+
+function formatCentsMoney(cents: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+}
+
 function graceLabel(value: string | null) {
   if (!value) return "Grace clock unavailable";
   const elapsedDays = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000));
@@ -52,6 +85,9 @@ export function OwnerBillingLifecycle() {
   const [workingClientId, setWorkingClientId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [addonClients, setAddonClients] = useState<LocationAddonClientRow[]>([]);
+  const [overEntitlement, setOverEntitlement] = useState<LocationOverEntitlementRow[]>([]);
+  const [addonEvents, setAddonEvents] = useState<LocationAddonEventRow[]>([]);
 
   async function loadClients() {
     setLoading(true);
@@ -77,6 +113,19 @@ export function OwnerBillingLifecycle() {
     }
 
     setClients((result.data || []) as ClientRow[]);
+
+    const addonResult = await supabase.rpc("owner_location_addon_overview");
+    if (!addonResult.error && addonResult.data) {
+      const data = addonResult.data as {
+        clients?: LocationAddonClientRow[];
+        over_entitlement?: LocationOverEntitlementRow[];
+        recent_events?: LocationAddonEventRow[];
+      };
+      setAddonClients(data.clients || []);
+      setOverEntitlement(data.over_entitlement || []);
+      setAddonEvents(data.recent_events || []);
+    }
+
     setLoading(false);
   }
 
@@ -270,6 +319,80 @@ export function OwnerBillingLifecycle() {
             ))}
           </div>
         </section>
+
+        {overEntitlement.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title">
+              <Snowflake size={20} />
+              <div>
+                <h2>Over entitlement</h2>
+                <p className="subtle">These accounts have more active locations than their plan allows (e.g. a downgrade left them over cap). NXQ never closes a location automatically -- this is visibility only.</p>
+              </div>
+            </div>
+            <div className="owner-message-list">
+              {overEntitlement.map((row) => (
+                <article className="owner-message-card" key={row.client_id}>
+                  <div className="owner-message-top">
+                    <strong>{row.business_name}</strong>
+                    <span>{row.tier_key || "unknown"}</span>
+                  </div>
+                  <p>{row.active_location_count} active locations, plan allows {row.effective_cap}.</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {addonClients.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title">
+              <CheckCircle2 size={20} />
+              <div>
+                <h2>Location add-ons</h2>
+                <p className="subtle">Self-serve location add-ons, base plan, and internal total per client. These are not charges -- while billing is off, nothing here is billed.</p>
+              </div>
+            </div>
+            <div className="owner-message-list">
+              {addonClients.map((row) => (
+                <article className="owner-message-card" key={row.client_id}>
+                  <div className="owner-message-top">
+                    <strong>{row.business_name}</strong>
+                    <span>{row.tier_key || "unknown"}</span>
+                  </div>
+                  <p>
+                    Base {formatCentsMoney(row.base_price_cents)} + Add-ons {formatCentsMoney(row.addon_amount_cents)} ({row.enabled_units} unit{row.enabled_units === 1 ? "" : "s"}) = Internal total {formatCentsMoney(row.internal_total_cents)}
+                  </p>
+                  <small>{row.active_location_count} of {row.effective_cap} locations in use.</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {addonEvents.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title">
+              <Clock3 size={20} />
+              <div>
+                <h2>Recent location add-on activity</h2>
+                <p className="subtle">Last {addonEvents.length} self-serve enable/cancel events, most recent first.</p>
+              </div>
+            </div>
+            <div className="owner-message-list">
+              {addonEvents.map((event, index) => (
+                <article className="owner-message-card" key={`${event.client_id}-${event.occurred_at}-${index}`}>
+                  <div className="owner-message-top">
+                    <strong>{event.business_name}</strong>
+                    <span>{event.event_type}</span>
+                  </div>
+                  <small>
+                    Now {event.resulting_enabled_units} unit{event.resulting_enabled_units === 1 ? "" : "s"} · {formatDate(event.occurred_at)}{event.billing_live_at_event ? " · billing was live at this event" : ""}
+                  </small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section className="panel panel-wide">
           <div className="panel-title">

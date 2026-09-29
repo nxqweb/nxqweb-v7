@@ -7,22 +7,28 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `d9c4a65` — "docs: record file-security notification migration
-  (third staged migration)"
-- **Working tree:** clean, pushed to `origin`, no divergence.
+- **HEAD:** pending this session's commit (Multi-Location self-serve add-on)
+  — the prior recorded HEAD was `d9c4a65` — "docs: record file-security
+  notification migration (third staged migration)". See the commit this
+  handoff update lands in for the exact SHA.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
   `a3442df` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
-- **Three new, unapplied migrations in the tree** — all pass local
+- **Four new, unapplied migrations in the tree** — all pass local
   migration integrity and every other local check, but **none has been
   applied to any database** (no staging credentials in this container,
   and applying is always a separate guarded action anyway). Review all
-  three before the next `apply_all` staging run:
+  four before the next `apply_all` staging run:
   - `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
   - `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`
   - `supabase/migrations/250_notify_client_on_file_scan_completion.sql`
+  - `supabase/migrations/251_multi_location_self_serve_addon.sql` (new
+    this session — Multi-Location self-serve add-on; see "Multi-Location
+    self-serve add-on — implemented" below)
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -756,6 +762,80 @@ hardening. Any future change to it should be treated as modifying existing
 guarded infrastructure (subject to the same migration/external-service
 stop-and-ask gate as any other schema change), not as greenfield work.
 
+## Multi-Location self-serve add-on — implemented
+
+Built per a three-round-revised, explicitly user-approved plan ("ok
+continue"). Rules implemented exactly as decided: Starter gets one
+location; Growth and Intelligence can self-serve add extra locations at
+$10/month each up to 10 total; Enterprise already includes multi-location
+(cap 100) and is required above 10. Billing is off system-wide, so no
+charge, no external connection, and no touch to `clients.monthly_price` or
+`billing_subscriptions.amount` anywhere in this feature.
+
+- **`supabase/migrations/251_multi_location_self_serve_addon.sql`** (staged,
+  **not applied to any database**):
+  - `client_location_addons` (one row per client, `enabled_units` 0-9,
+    `unit_price_cents` fixed 1000) and `client_location_addon_events`
+    (append-only enable/cancel audit trail) — both RLS-enabled,
+    `authenticated` gets SELECT only, writes only via the RPCs below.
+  - `enforce_client_location_limit()` — a `BEFORE INSERT OR UPDATE` trigger
+    on `client_locations`, authoritative regardless of entry path. Closes a
+    real gap found this session: `client_locations` grants direct
+    insert/update/delete to `authenticated` with an RLS policy that checks
+    ownership only, never quantity — a raw table write could previously
+    bypass `current_client_create_location()`'s tier cap. The trigger only
+    re-checks on inserts, reopens of a closed location, or client_id
+    reassignment (not routine edits), using the existing
+    `pg_advisory_xact_lock(hashtextextended(...))` convention keyed per
+    client to stay safe under concurrent requests.
+  - `current_client_create_location()` — same as migration 185 except the
+    cap formula now adds enabled add-on units for Growth/Intelligence.
+  - `current_client_close_location()` — new; there was no self-serve "close
+    a location" capability before this. Never deletes, only sets
+    `status='closed'`. Refuses to close the primary location while other
+    active locations exist.
+  - `current_client_enable_location_addon()` — self-serve, instant, no
+    owner approval, one code path. Returns base/add-on/internal-total as
+    plain numbers for display only; message text never says "purchased"
+    and states the add-on has no charge until NXQ turns on live billing.
+  - `current_client_cancel_location_addon()` — one code path only (the
+    live-billing period-end branch was explicitly deferred by the user to
+    the future reviewed billing-activation work, not built here untested).
+    Cancels immediately, but refuses if the client's current active
+    location count would exceed the new, lower cap — the client must close
+    a location first. Never auto-closes or deletes a location.
+  - `current_client_locations()` — extended (locations array and its
+    `status <> 'closed'` filter unchanged from migration 132) to also
+    return `tier_key`, `active_location_count`, `effective_cap`,
+    `over_entitlement`, `enabled_addon_units`, `can_enable_addon`,
+    `can_cancel_addon`, and the base/add-on/total cent amounts.
+  - `owner_location_addon_overview()` — new owner-only RPC giving genuine
+    visibility (not a repeat of the `automation_escalations`/
+    `automation_audit_log` write-only pattern already found and logged
+    elsewhere this session): per-client base/add-on/total, a live-computed
+    `over_entitlement` list (catches Starter downgrades and any other path
+    to being over cap — computed fresh every call, not a stored flag), and
+    the most recent 50 enable/cancel events.
+- **Frontend** (all read/write through the RPCs above, no direct table
+  writes):
+  - `src/pages/ClientBusinessLocations.tsx` — new "Location plan" panel
+    showing active/cap counts, an over-entitlement warning banner, and
+    base/add-on/internal-total amounts with an explicit "nothing is charged
+    while billing is off" note; enable/cancel add-on buttons gated by the
+    RPC-returned `can_enable_addon`/`can_cancel_addon`; a "Close location"
+    button on every non-primary location.
+  - `src/pages/ClientBillingStatus.tsx` — new "Location add-ons" section
+    (shown only when at least one unit is enabled) showing base plan,
+    add-on amount, and internal total as separate line items, explicitly
+    labeled "not yet part of your billed amount."
+  - `src/pages/OwnerBillingLifecycle.tsx` — new "Over entitlement",
+    "Location add-ons", and "Recent location add-on activity" sections
+    reading `owner_location_addon_overview()`.
+- **Explicitly deferred, per user instruction:** folding the add-on amount
+  into `billing_subscriptions.amount` (or any other real billing field) is
+  a separate, explicitly reviewed activation/reconciliation step for
+  whenever live billing turns on — nothing in this migration bridges to it.
+
 ## Checks run this session
 
 - Git-state verification: `git remote -v`, `git status --short --branch`,
@@ -853,16 +933,19 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `automation_escalations` audit"). The cleanest fix for (b) is
    extending `owner_exception_center()` to read `automation_escalations`
    generically rather than one-off per escalation_type.
-2. **Review and, if approved, apply all three staged migrations**
+2. **Review and, if approved, apply all four staged migrations**
    (`248_notify_client_on_website_setup_denial.sql`,
-   `249_notify_client_on_commerce_customer_request.sql`, and
-   `250_notify_client_on_file_scan_completion.sql`) through the normal
+   `249_notify_client_on_commerce_customer_request.sql`,
+   `250_notify_client_on_file_scan_completion.sql`, and
+   `251_multi_location_self_serve_addon.sql`) through the normal
    guarded staging workflow (`validate_prelaunch` / `apply_all` with the
-   exact confirmation phrase). All three are currently only staged in
-   the repo, not applied anywhere. Once applied, denied clients,
+   exact confirmation phrase). All four are currently only staged in
+   the repo, not applied anywhere. Once applied: denied clients,
    Commerce clients receiving new customer requests, and clients
    uploading files will get in-app notifications they don't currently
-   receive.
+   receive; and Growth/Intelligence clients will be able to self-serve
+   enable/cancel Multi-Location add-ons (see "Multi-Location self-serve
+   add-on — implemented" above).
 3. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,

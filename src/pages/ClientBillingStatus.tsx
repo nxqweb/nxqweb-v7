@@ -13,6 +13,18 @@ type ClientBillingRow = {
   monthly_price: number;
 };
 
+type LocationAddonSummary = {
+  enabled_addon_units: number;
+  unit_price_cents: number;
+  base_price_cents: number;
+  addon_amount_cents: number;
+  internal_total_cents: number;
+};
+
+function formatCentsMoney(cents: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+}
+
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
 }
@@ -31,6 +43,7 @@ function formatDate(value: string | null) {
 
 export function ClientBillingStatus() {
   const [client, setClient] = useState<ClientBillingRow | null>(null);
+  const [addonSummary, setAddonSummary] = useState<LocationAddonSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,6 +80,19 @@ export function ClientBillingStatus() {
     }
 
     setClient(result.data as ClientBillingRow);
+
+    const locationsResult = await supabase.rpc("current_client_locations");
+    if (!locationsResult.error && locationsResult.data) {
+      const data = locationsResult.data as LocationAddonSummary;
+      setAddonSummary({
+        enabled_addon_units: data.enabled_addon_units,
+        unit_price_cents: data.unit_price_cents,
+        base_price_cents: data.base_price_cents,
+        addon_amount_cents: data.addon_amount_cents,
+        internal_total_cents: data.internal_total_cents,
+      });
+    }
+
     setLoading(false);
   }
 
@@ -186,6 +212,35 @@ export function ClientBillingStatus() {
                 </article>
               </div>
             </section>
+
+            {addonSummary && addonSummary.enabled_addon_units > 0 ? (
+              <section className="panel panel-wide">
+                <h2>Location add-ons</h2>
+                <p className="subtle">
+                  {addonSummary.enabled_addon_units} extra location{addonSummary.enabled_addon_units === 1 ? "" : "s"} at {formatCentsMoney(addonSummary.unit_price_cents)}/mo each.
+                </p>
+                <div className="settings-grid">
+                  <article className="settings-card">
+                    <span>Base plan</span>
+                    <strong>{formatCentsMoney(addonSummary.base_price_cents)}</strong>
+                    <p>Your current monthly plan amount.</p>
+                  </article>
+                  <article className="settings-card">
+                    <span>Location add-ons</span>
+                    <strong>{formatCentsMoney(addonSummary.addon_amount_cents)}</strong>
+                    <p>Not yet part of your billed amount.</p>
+                  </article>
+                  <article className="settings-card">
+                    <span>Internal total</span>
+                    <strong>{formatCentsMoney(addonSummary.internal_total_cents)}</strong>
+                    <p>For your reference only.</p>
+                  </article>
+                </div>
+                <p className="subtle">
+                  This add-on amount is not yet part of your billed amount. While NXQ billing is off, nothing here is charged. It will only be added to your actual bill once NXQ turns on live billing, as a separate, reviewed step.
+                </p>
+              </section>
+            ) : null}
 
             <section className="panel panel-wide">
               <div className="panel-title">
