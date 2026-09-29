@@ -7,15 +7,14 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `5f6adc5` — "docs: record full round of release-gate fixes and
-  remaining local checks"
+- **HEAD:** `f2b18e4` — "feat: wire capability classification rules into
+  change-request pipeline"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
-  (`afbbc5f` → `c36568d`), then five further local commits
-  (`a94cc2e`, `e9a6fda`, `0bebd56`, `d2c17e6`, `859f200`, `5f6adc5`) — see
-  "Confirmed blockers/risks" for why stale tracking refs must always be
-  refreshed before trusting a reported HEAD.
+  (`afbbc5f` → `c36568d`), then several further local commits ending at
+  `f2b18e4` — see "Confirmed blockers/risks" for why stale tracking refs
+  must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -99,6 +98,44 @@ state. Update this file, not a new one, at every handoff.
   (28/28), growth/outreach (16/16), and staging readiness evidence (12/12)
   contracts all pass, and migration 231 (client-owned domain policy)
   exists in the tree. No edits to that file were needed.
+- Audited `docs/NXQ_CAPABILITY_ROADMAP.md` (the AI-safety policy for what
+  features the AI may promise clients) and found a real implementation
+  gap, not a doc-staleness issue: `src/ai/capabilityRules.ts` fully
+  implemented the roadmap's classification rules (9 rules, decision/risk
+  ranking, the exact car-customizer/ecommerce/restricted-workflow
+  examples from the doc) but was never imported anywhere in the app —
+  dead code next to a doc describing it as live policy. Confirmed via
+  `grep -rln "classifyCapabilityRequest|capabilityRules"` across
+  `src/` and `supabase/functions/` before touching anything. Asked the
+  user how to handle it (wire it in vs. log and move on); approved to
+  wire it in. Fixed in `f2b18e4`:
+  - Moved the rules to `supabase/functions/_shared/capability-rules.ts`
+    (the only place anything currently reads it from — Edge Functions,
+    not the frontend, since Deno and Vite don't share a module root
+    here). `src/ai/` no longer exists.
+  - `supabase/functions/classify-business-change-request/index.ts` now
+    runs `classifyCapabilityRequest(title + description)` as a
+    deterministic pre-filter before its existing deterministic-patch/AI
+    branching. Any decision other than `approved_standard` (full
+    checkout, vehicle/3D configurators, inventory/external sync,
+    restricted legal/medical/financial workflows) is forced to
+    `owner_review` immediately, bypassing the AI provider call entirely
+    for those categories, with the matched rule name and decision
+    recorded in `automation_plan` evidence for audit.
+  - This is additive-only by construction: none of the existing rule
+    keywords overlap with ordinary contact/service-list edits, so normal
+    change requests are provably unaffected. Verified with a direct call
+    (`node --input-type=module -e '...'`) showing a car-customizer
+    request now returns `custom_quote_required` while a normal
+    contact/testimonial request still returns `approved_standard`.
+  - Re-ran the entire credential-independent release gate after this
+    change (lint, `test:edge` — 44/44 Deno type-check — all 23
+    downstream validators, `simulate-autonomy-failures.mjs` 23/23,
+    `test:lifecycle` 21/21 + 10/10) — all still green, nothing regressed.
+  - **This has not been deployed anywhere.** It is a local source change
+    in the repo only; it takes effect on staging only after the normal
+    guarded `manual-supabase-stage.yml` deployment action, which remains
+    a separate explicit gate.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
