@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `7181138` — "docs: record billing notification gap, user
-  deferring the decision"
+- **HEAD:** `817af07` — "fix: notify client when a data-subject privacy
+  request completes"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `8424e3f` — see "Confirmed blockers/risks" for why stale tracking refs
+  `817af07` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 - **Two new, unapplied migrations in the tree** — both pass local
   migration integrity and every other local check, but **neither has
@@ -603,6 +603,29 @@ state. Update this file, not a new one, at every handoff.
   not customer-facing wording); chose to log it rather than draft a
   migration now. **No migration written, no code changed for this
   finding.**
+
+## Privacy/GDPR flow audit (continued at user's request)
+
+- Found and fixed the sixth instance of the notification-gap class:
+  `process-data-subject-request` moves export requests to `ready`,
+  consent-withdrawal/restriction requests to `completed`, and correction
+  requests to a needs-more-info `ready` state, but never told the client
+  any of it happened. Unlike the deny/Commerce-request/billing gaps,
+  this one lives entirely in application code (an Edge Function), not a
+  database function — no migration needed, so no stop-and-ask gate,
+  matching the same autonomy scope as the preview-ready/production-
+  published/domain-connection fixes made earlier. Added a
+  `notification_deliveries` insert after the status update, guarded to
+  only fire when the request has a `client_id` (data-subject requests
+  scoped to a broader NXQ account with no Business client relationship
+  have no existing client-scoped notification path — out of scope here,
+  not fixed). Message varies by `request_type`. Fixed in `817af07`,
+  verified with Deno type-check (44/44), lint, the full release gate
+  (same expected stop point), every validator referencing
+  `process-data-subject-request` by name, all 23 downstream validators,
+  the failure simulator (23/23, including the privacy-deletion
+  identity-verification check specifically), and the 10-run lifecycle
+  simulation.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
