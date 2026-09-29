@@ -7,14 +7,15 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `e9a6fda` — "fix: list all NXQ-* product family names on public
-  plans page"
+- **HEAD:** `859f200` — "fix: correct stale file-access check spacing and
+  add Stripe link safety copy"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
-  (`afbbc5f` → `c36568d`), then one further local commit
-  (`a94cc2e` → `e9a6fda`) — see "Confirmed blockers/risks" for why stale
-  tracking refs must always be refreshed before trusting a reported HEAD.
+  (`afbbc5f` → `c36568d`), then four further local commits
+  (`a94cc2e`, `e9a6fda`, `0bebd56`, `d2c17e6`, `859f200`) — see "Confirmed
+  blockers/risks" for why stale tracking refs must always be refreshed
+  before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -39,14 +40,49 @@ state. Update this file, not a new one, at every handoff.
   container has no staging credentials — correctly so, per the
   external-service stop-and-ask gate in `CLAUDE.md`. No attempt was made to
   source or fabricate credentials to get past it.
-- **Not yet exercised this session:** everything after that validator in
-  `scripts/run-release-gate.mjs` — remaining `validate-*.mjs` files,
-  `check-runtime-stage-readiness.mjs`, `check-migration-integrity.mjs`,
-  `simulate-autonomy-failures.mjs`, lifecycle/security/accessibility/edge
-  tests, lint, `npm audit`, build, routes, and bundle-budget check. These
-  are unverified against current HEAD until the credential-gated check is
-  either supplied credentials (external-service decision, not autonomous)
-  or the gate is otherwise addressed.
+- Manually ran every remaining `validate-*.mjs` file that alphabetically
+  follows the credential-gated one (23 files) directly, since
+  `run-release-gate.mjs` cannot reach them while that check fails closed.
+  Found and fixed three more real issues, all local-only (no staging
+  credentials involved):
+  - `validate-provider-plug-in-readiness-contract.mjs`: **a regression
+    I introduced** in this same session — my first canonicalization pass
+    compressed this file's one-time-setup/plug-in/future-hookup sections
+    into a pointer to other docs, but the validator requires this file to
+    literally contain the `## Future one-session provider hookup` heading
+    and all twelve secret names. Restored the full original sections
+    verbatim. Fixed in `d2c17e6`. Lesson: this file is a load-bearing
+    contract target, not free-form prose — do not compress its required
+    sections without checking which validators read it first
+    (`grep -rn "NXQ_RUNTIME_HANDOFF" scripts/`).
+  - `validate-zero-key-staging-contract.mjs`: a stale exact-spacing literal
+    match against `src/pages/ClientFiles.tsx` (`||` with no surrounding
+    spaces) that no longer matched the file's ESLint-formatted spacing. The
+    guarded quarantine/scan-status logic itself was already correct on
+    both client and owner sides — updated the check's expected string, not
+    the security logic. Fixed in `859f200`.
+  - `validate-stripe-readiness-contract.mjs`: `ClientCommerceLiveStore.tsx`
+    had generic "protected credential" copy but not the literal
+    `https://buy.stripe.com/` example format or the phrase "Stripe secret
+    key" the check requires. This touches a Stripe-labeled file, so I
+    stopped and asked before editing per the payments gate; approved as
+    copy-only (no payment/billing logic changed). Fixed in `859f200`.
+- Manually ran every credential-independent script the gate would
+  otherwise reach after the failing validator: `npm run lint --
+  --max-warnings=0`, `node scripts/check-migration-integrity.mjs`,
+  `npm run test:security`, `npm run test:accessibility`, `npm run
+  test:edge`, `npm run build`, `node scripts/check-production-bundle-budget.mjs`,
+  `npm run test:routes`, `npm audit --omit=dev --audit-level=high`. All
+  passed (0 high/critical prod vulnerabilities; 214 migrations valid; 44
+  Edge functions type-check; 19/19 accessibility; 17/17 security; build
+  and all 16 route smoke checks green).
+- **Still not exercised this session:** `npm run test:lifecycle` (10-run
+  simulation, not yet run for time), `scripts/simulate-autonomy-failures.mjs`,
+  `scripts/check-runtime-stage-readiness.mjs`, and the one credential-gated
+  validator itself (`validate-paid-capability-guards-staging.mjs`) plus
+  `npm run test:staging-evidence`. Everything else in
+  `scripts/run-release-gate.mjs`, run individually rather than through the
+  chained script, is now confirmed green at HEAD `859f200`.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -192,22 +228,23 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
 
 1. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
-   pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`
-   and the remainder of `npm run test:release` can actually run to
-   completion. This is a decision point, not an autonomous task — do not
-   proceed past it without an explicit answer.
-2. Independently of #1: run the individual local-only checks that do not
-   need staging credentials and are not gated by the failing validator —
-   e.g. `npm run lint -- --max-warnings=0`, `npm run build`,
-   `npm run test:security`, `npm run test:accessibility`,
-   `npm run test:edge`, `node scripts/check-migration-integrity.mjs` — by
-   invoking them directly rather than through `test:release`, to get real
-   signal on the rest of the gate while the credential question is open.
+   pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
+   `npm run test:staging-evidence`, and the remainder of
+   `npm run test:release` can actually run to completion. This is a
+   decision point, not an autonomous task — do not proceed past it without
+   an explicit answer.
+2. Run `npm run test:lifecycle` (10-run deterministic simulation),
+   `node scripts/simulate-autonomy-failures.mjs`, and
+   `node scripts/check-runtime-stage-readiness.mjs` — the remaining
+   credential-independent pieces of the release gate not yet exercised
+   this session — and record the exact result.
 3. Audit `docs/LAUNCH_HARDENING_CHECKLIST.md` against current contract
    validator coverage to confirm no row has silently regressed since
-   2026-08-16, and correct any other stale claims found (the Multi-Location
-   correction and the brand-contract bug both show older docs/assumptions
-   need a fresh read-the-code pass before being repeated).
+   2026-08-16, and correct any other stale claims found. Three real
+   discrepancies were found and fixed by simply reading the code this
+   session (Multi-Location status, the brand-contract check, the
+   zero-key/Stripe checks) — treat every older doc claim as unverified
+   until re-checked against current source, not as ground truth.
 
 ## Resume instruction for the next Claude session
 
