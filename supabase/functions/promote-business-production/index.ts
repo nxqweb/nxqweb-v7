@@ -470,6 +470,18 @@ async function processProductionCheck(admin: AdminClient, job: AutomationJob) {
     },
   });
 
+  await admin.from("notification_deliveries").insert({
+    client_id: job.client_id,
+    project_id: job.project_id,
+    channel: "in_app",
+    recipient_kind: "client",
+    template_key: "business_production_published",
+    subject: "Your website is live",
+    body: `Your website has been published and is now live at ${deploy.url}.`,
+    priority: "high",
+    metadata: { production_url: deploy.url, commit_sha: expectedCommit, run_id: runId },
+  });
+
   return {
     run_id: runId,
     production_url: deploy.url,
