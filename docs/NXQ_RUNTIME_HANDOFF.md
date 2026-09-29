@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `f2b18e4` — "feat: wire capability classification rules into
-  change-request pipeline"
+- **HEAD:** `6ffc1ee` — "fix: remove dead client-side payment activation
+  stub"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `f2b18e4` — see "Confirmed blockers/risks" for why stale tracking refs
+  `6ffc1ee` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -136,6 +136,19 @@ state. Update this file, not a new one, at every handoff.
     in the repo only; it takes effect on staging only after the normal
     guarded `manual-supabase-stage.yml` deployment action, which remains
     a separate explicit gate.
+- Scanned `src/` and `supabase/functions/_shared/` for other files
+  referenced nowhere else (the same pattern that found the capability-rules
+  gap). Found one more: `src/services/paymentProviders.ts`, a client-side
+  "activate subscription" stub from the same Sept 3 import commit,
+  unreferenced anywhere. Unlike the capability rules, this one should
+  **not** be wired in — its shape would require a Stripe secret key in the
+  browser, which directly violates the project's own no-secrets-in-browser
+  rule, and it's superseded by the real server-side implementation
+  (`supabase/functions/ingest-stripe-webhook` + migration 227). Asked the
+  user since it's payments-adjacent; approved to delete. Removed in
+  `6ffc1ee`. No other unreferenced files found in either scan. Full
+  release gate re-run after deletion: same clean stop at
+  `validate-paid-capability-guards-staging.mjs`, nothing else regressed.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
