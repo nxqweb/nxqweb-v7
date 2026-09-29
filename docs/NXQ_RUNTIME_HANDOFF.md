@@ -7,10 +7,10 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (CORS sweep completion) —
-  prior recorded HEAD was `f7e7ccf`.
-- **Working tree:** clean once this session's commit lands; pushed to
-  `origin`.
+- **HEAD:** `b85310a` — "fix: complete CORS sweep, add missing
+  Allow-Methods to provision-storefront" (prior recorded HEAD was
+  `f7e7ccf`).
+- **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
