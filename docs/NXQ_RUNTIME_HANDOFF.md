@@ -7,13 +7,12 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `5a06296` — "fix: resolve dev-only browserslist/baseline-browser-mapping
-  vulnerabilities"
+- **HEAD:** `66f1d3b` — "chore: remove unused clsx dependency"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `5a06296` — see "Confirmed blockers/risks" for why stale tracking refs
+  `66f1d3b` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -170,6 +169,15 @@ state. Update this file, not a new one, at every handoff.
   dependency added/removed/downgraded. `npm audit` now reports 0
   vulnerabilities. Verified with a clean build, clean lint, and a full
   release-gate re-run (same expected stop point). Fixed in `5a06296`.
+- Checked all `dependencies` and `devDependencies` in `package.json` for
+  usage anywhere in the codebase. Found `clsx` listed but never imported
+  anywhere. Confirmed with the user before removing (dependency removal is
+  a confirm-first action) — approved. `npm uninstall clsx`; only
+  `package.json`/`package-lock.json` changed. Verified clean build, lint,
+  and full release gate (same expected stop point). Fixed in `66f1d3b`.
+  All `devDependencies` checked too (eslint, vite, typescript, deno,
+  supabase CLI, etc. — all used via config/scripts, not direct imports;
+  `jose` actively used in 8 Edge functions) — nothing else unused found.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
