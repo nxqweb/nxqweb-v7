@@ -7,14 +7,20 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `a75c1e8` — "fix: notify client when their website preview
-  is ready for review"
+- **HEAD:** `6812458` — "feat: draft migration to notify client on
+  website setup denial (staged, not applied)"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `a75c1e8` — see "Confirmed blockers/risks" for why stale tracking refs
+  `6812458` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
+- **New, unapplied migration in the tree:**
+  `supabase/migrations/248_notify_client_on_website_setup_denial.sql`.
+  Passes local migration integrity and every other local check, but has
+  **not been applied to any database** — this container has no staging
+  credentials, and applying migrations is always a separate guarded
+  action regardless. Review it before the next `apply_all` staging run.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -400,6 +406,30 @@ state. Update this file, not a new one, at every handoff.
   script with an idempotency guard that refuses to re-apply an already-
   present change) — not a bug, and not part of `run-release-gate.mjs`
   (only `validate-*.mjs` files run there).
+- Continued the audit to the owner-decision stage and found the third and
+  highest-priority instance of the same gap: `deny_website_setup()`
+  (migration 183) hard-stops a client's pipeline on denial but never
+  notifies the client at all — no trigger on `owner_approval_requests`
+  covers denial either (the only one, migration 109's
+  `owner_approval_queue_storefront_provisioning`, only fires on the
+  `accepted` path). A denied client currently has no way to learn their
+  pipeline stopped except by manually checking their portal — arguably
+  the most important of the three gaps, since it's a rejection notice.
+  Unlike the two already-fixed gaps, closing this means changing a
+  database function body, which only happens through a new migration —
+  a hard stop-and-ask gate even though the fix itself is simple. Asked
+  the user; approved to draft a migration for review rather than fix
+  silently or just log it. Wrote
+  `supabase/migrations/248_notify_client_on_website_setup_denial.sql`:
+  re-defines `deny_website_setup()` identically to migration 183 except
+  for one `notification_deliveries` insert on the newly-denied path only
+  (never on the idempotent already-denied replay), using the same
+  established pattern. **Not applied to any database** — staged in the
+  repo for review only. Verified everything checkable without a live
+  database: migration integrity (215 migrations), the full release gate
+  (same expected stop point), all 23 downstream validators, the failure
+  simulator (23/23, including 9/9 denial-hard-stop checks specifically),
+  and the 10-run lifecycle simulation. Fixed/staged in `6812458`.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -543,31 +573,33 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
 
 ## Next 3 highest-priority safe tasks
 
-1. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
+1. **Review and, if approved, apply**
+   `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
+   through the normal guarded staging workflow (`validate_prelaunch` /
+   `apply_all` with the exact confirmation phrase). It is currently only
+   staged in the repo, not applied anywhere. Once applied, denied clients
+   will get an in-app notification they don't currently receive.
+2. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
    `npm run test:staging-evidence`, and the remainder of
    `npm run test:release` can actually run to completion. This is a
    decision point, not an autonomous task — do not proceed past it without
    an explicit answer.
-2. Consider drafting (only with explicit user approval, never
+3. Consider drafting (only with explicit user approval, never
    autonomously) a migration to drop or properly lock down
    `commerce_cart_items` — orphaned schema found this session: granted to
    `authenticated` but no RLS policy ever written, unreferenced anywhere
    in `src/` or `supabase/functions/`, superseded by the stateless
    cart-payload checkout flow since migration 090. Not urgent (fails
    closed, no live exposure) but worth cleaning up in a future reviewed
-   migration pass.
-3. Keep applying the audit technique that found three real security fixes
-   this session (SSRF gap, redirect-bypass SSRF gap, timing-attack gap):
-   pick an established safe pattern already used correctly somewhere in
-   the codebase, then grep every place that pattern *should* apply and
-   check it actually does. `docs/LAUNCH_HARDENING_CHECKLIST.md` was
-   already audited this session and held up clean; the productive
-   direction now is auditing code patterns (auth checks, secret handling,
-   RLS coverage), not re-reading docs that already checked out. Treat any
-   remaining older doc claim as unverified until re-checked against
-   current source, not as ground truth.
+   migration pass. Keep applying the audit technique that found five real
+   fixes this session (2 SSRF gaps, a timing-attack gap across 10
+   functions, a CORS bug, and 3 missing client notifications across the
+   launch flow): pick an established safe pattern already used correctly
+   somewhere in the codebase, then check every place that pattern
+   *should* apply. Treat any remaining older doc claim as unverified
+   until re-checked against current source, not as ground truth.
 
 ## Resume instruction for the next Claude session
 
