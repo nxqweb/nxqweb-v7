@@ -7,20 +7,21 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `f4b9c40` — "fix: notify client on domain connection success
-  and DNS action-required"
+- **HEAD:** `8424e3f` — "feat: draft migration to notify client on new
+  Commerce request (staged, not applied)"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `f4b9c40` — see "Confirmed blockers/risks" for why stale tracking refs
+  `8424e3f` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
-- **New, unapplied migration in the tree:**
-  `supabase/migrations/248_notify_client_on_website_setup_denial.sql`.
-  Passes local migration integrity and every other local check, but has
-  **not been applied to any database** — this container has no staging
-  credentials, and applying migrations is always a separate guarded
-  action regardless. Review it before the next `apply_all` staging run.
+- **Two new, unapplied migrations in the tree** — both pass local
+  migration integrity and every other local check, but **neither has
+  been applied to any database** (no staging credentials in this
+  container, and applying is always a separate guarded action anyway).
+  Review both before the next `apply_all` staging run:
+  - `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
+  - `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -459,6 +460,42 @@ state. Update this file, not a new one, at every handoff.
   skipping an external notification as an intentional design choice for
   this pre-approval iterative flow. Good negative result — not every
   "no notification_deliveries insert" hit is a bug.
+- Checked billing and maintenance escalation before moving to Commerce.
+  Both are already correct, no gap: billing payment failures already
+  call `record_billing_notification()` for the client on every failed
+  attempt (migration 100); maintenance/uptime/SSL issues correctly
+  escalate only to the *owner* internally (`automation_escalations`) —
+  the client shouldn't be alarmed by routine infrastructure monitoring
+  NXQ is supposed to absorb transparently. The "client isn't told about
+  important things" pattern does not extend into these two areas.
+- At the user's request, extended the audit into the **Commerce flow**.
+  Found the fourth-class instance of the same notification gap:
+  `submit_public_commerce_customer_request()` (migration 242's version)
+  — the real "customer requests a custom order" form on a Commerce
+  storefront — creates a genuine `commerce_customer_requests` row but
+  never notifies the client, unlike the exactly parallel Business event
+  (`ingest-business-lead` already sends `new_lead`/`urgent_new_lead`
+  notifications). Before fixing anything, also checked
+  `create_public_protected_commerce_checkout` (migrations 090/091) for
+  the same gap and confirmed it is **intentionally excluded, not a bug**:
+  it is an explicit test/protected checkout path (`is_test: true`,
+  `payment_provider: 'protected_test'`,
+  `metadata.no_customer_contact: true`, "no real payment was charged and
+  no customer was contacted") — real Commerce purchases go through
+  external Stripe Payment Links, not this RPC, so there is no real order
+  event being silently missed there. Asked the user about the genuine
+  gap (same migration stop-and-ask gate as `deny_website_setup`);
+  approved to draft a migration for review. Wrote
+  `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`:
+  re-defines the function identically except for one
+  `notification_deliveries` insert (`template_key:
+  "new_commerce_request"`) on the successful-submission path. **Not
+  applied to any database** — staged in the repo for review only.
+  Verified everything checkable without a live database: migration
+  integrity (216 migrations), the full release gate (same expected stop
+  point), the Commerce reference-upload contract validator, all 23
+  downstream validators, the failure simulator (23/23), and the 10-run
+  lifecycle simulation. Fixed/staged in `8424e3f`.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -602,12 +639,14 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
 
 ## Next 3 highest-priority safe tasks
 
-1. **Review and, if approved, apply**
-   `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
-   through the normal guarded staging workflow (`validate_prelaunch` /
-   `apply_all` with the exact confirmation phrase). It is currently only
-   staged in the repo, not applied anywhere. Once applied, denied clients
-   will get an in-app notification they don't currently receive.
+1. **Review and, if approved, apply both staged migrations**
+   (`248_notify_client_on_website_setup_denial.sql` and
+   `249_notify_client_on_commerce_customer_request.sql`) through the
+   normal guarded staging workflow (`validate_prelaunch` / `apply_all`
+   with the exact confirmation phrase). Both are currently only staged
+   in the repo, not applied anywhere. Once applied, denied clients and
+   Commerce clients receiving new customer requests will get in-app
+   notifications they don't currently receive.
 2. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
