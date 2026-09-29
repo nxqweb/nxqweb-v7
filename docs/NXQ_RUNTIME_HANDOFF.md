@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `e33ef28` — "fix: close SSRF gap in prepare-build-plan AI adapter
-  URL validation"
+- **HEAD:** `faab445` — "fix: close timing-attack gap in 10 internal
+  worker-token checks"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `e33ef28` — see "Confirmed blockers/risks" for why stale tracking refs
+  `faab445` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -216,6 +216,27 @@ state. Update this file, not a new one, at every handoff.
   host (`api.github.com`, `api.netlify.com`) or the project's own
   self-referential Supabase URL — no other gap found. Fixed in
   `e33ef28`, verified with lint, Deno type-check (44/44), the full
+  release gate (same expected stop point), all 23 downstream validators,
+  the failure simulator (23/23), and the 10-run lifecycle simulation.
+- Followed up on the same "audit every function for this bug class"
+  pattern for the worker-token timing-attack fix a prior commit
+  (`b7bd71d`) had started but not finished: that commit fixed 6 functions
+  comparing `NXQ_AUTOMATION_WORKER_TOKEN` with plain `===`/`!==` instead
+  of a constant-time comparison, but a full grep across all 44 Edge
+  functions found 10 more with the identical gap:
+  `apply-business-change-request`, `build-business-location-pages`,
+  `build-business-seo-artifacts`, `check-provider-health`,
+  `classify-business-change-request`, `dispatch-notifications`,
+  `process-data-subject-request`, `run-backup-restore-drill`,
+  `run-staging-evidence-suite`, `scan-client-file`. A plain string
+  comparison leaks timing information proportional to how many leading
+  characters match, theoretically letting an attacker recover a valid
+  internal automation token byte-by-byte. Switched all 10 to the shared
+  `constantTimeEqual`. (`provision-storefront` was correctly excluded —
+  it already has its own equivalent timing-safe helper under a different
+  name, `protectedTokenMatches`, not a vulnerability.) Fixed in
+  `faab445`, verified with a direct sanity call on `constantTimeEqual`
+  (match/mismatch/empty-string), Deno type-check (44/44), lint, the full
   release gate (same expected stop point), all 23 downstream validators,
   the failure simulator (23/23), and the 10-run lifecycle simulation.
 
