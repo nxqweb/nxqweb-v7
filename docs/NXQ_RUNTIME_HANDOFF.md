@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `cb46ddb` — "fix: block redirect-based SSRF bypass in AI
-  build-plan adapter calls"
+- **HEAD:** `731ce8d` — "fix: add missing CORS handling to
+  discover-sales-prospects"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `cb46ddb` — see "Confirmed blockers/risks" for why stale tracking refs
+  `731ce8d` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -293,6 +293,20 @@ state. Update this file, not a new one, at every handoff.
     the missing policies if it turns out something still expects it to
     work) — needs explicit review and the normal guarded staging apply,
     not an autonomous change.
+- Checked a different consistency angle: every Edge function the frontend
+  calls directly via `supabase.functions.invoke` (17 total, found by
+  grepping `src/` for that call). Since these are genuine cross-origin
+  browser calls, each needs its own CORS handling (`OPTIONS` preflight +
+  `Access-Control-Allow-*` headers) — Supabase's platform does not add
+  this automatically. 16 of 17 had it; `discover-sales-prospects` had
+  none at all. This isn't a security gap, it's a **functional bug**: the
+  Owner Portal's "fictional discovery" button (`OwnerGrowthCenter.tsx`)
+  would have its request blocked by the browser's own CORS preflight and
+  could not have worked as shipped. Added the same `corsHeaders`/`OPTIONS`
+  pattern already used consistently in the other 16 functions. Fixed in
+  `731ce8d`, verified with Deno type-check (44/44), lint, the full
+  release gate (same expected stop point), all 23 downstream validators,
+  the failure simulator (23/23), and the 10-run lifecycle simulation.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
