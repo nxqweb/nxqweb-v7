@@ -90,6 +90,15 @@ state. Update this file, not a new one, at every handoff.
   at `validate-paid-capability-guards-staging.mjs`). The only pieces left
   unverified are that one validator and `npm run test:staging-evidence`,
   both of which need real `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`.
+- Audited every claim in `docs/LAUNCH_HARDENING_CHECKLIST.md` against
+  current code and validators (unlike the other docs checked earlier this
+  session, this one held up — no false claims found). Verified: Turnstile
+  server-side verification is real (`supabase/functions/ingest-business-lead/index.ts`,
+  confirmed by `validate-business-generated-site-quality.mjs` 27/27),
+  recovery/readiness (18/18), provider health (24/24), tenant isolation
+  (28/28), growth/outreach (16/16), and staging readiness evidence (12/12)
+  contracts all pass, and migration 231 (client-owned domain policy)
+  exists in the tree. No edits to that file were needed.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
