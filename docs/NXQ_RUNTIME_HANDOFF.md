@@ -7,10 +7,10 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (client notification list) —
-  prior recorded HEAD was `b331b96`.
-- **Working tree:** clean once this session's commit lands; pushed to
-  `origin`.
+- **HEAD:** `4147bb6` — "docs: record client notification-list
+  verification and implementation" (prior recorded HEAD was `b331b96`;
+  the code itself is commit `f1fae0c`, one before this doc update).
+- **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
