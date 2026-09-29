@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `51aced5` — "fix: notify client when their production
-  website goes live"
+- **HEAD:** `a75c1e8` — "fix: notify client when their website preview
+  is ready for review"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `51aced5` — see "Confirmed blockers/risks" for why stale tracking refs
+  `a75c1e8` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -378,6 +378,28 @@ state. Update this file, not a new one, at every handoff.
     trace above surfaced anything wrong with how maintenance picks up a
     newly-published site (`bootstrap_live_website_maintenance` RPC runs
     unconditionally right before the notification fix above).
+- Continued the same audit one stage earlier and found the identical gap:
+  `build-business-website`'s `processPreviewCheck` updates a run to
+  `status: "preview_ready"` / `current_step: "client_review"` — a state
+  that explicitly means "the client needs to act" — but never notified
+  the client either, for the same reason (no trigger on
+  `website_automation_runs` beyond an `updated_at` touch). Arguably more
+  important than the production-launch gap, since preview review is an
+  action-required step, not just an FYI. Fixed the same way: a
+  `notification_deliveries` insert (`template_key:
+  "business_preview_ready"`) right after the existing `updateStep` call,
+  placed after the deferred-retry early return so it fires exactly once
+  per successful preview completion (a later rebuilt preview would
+  correctly notify again). Fixed in `a75c1e8`, verified identically:
+  Deno type-check (44/44), lint, the full release gate (same expected
+  stop point), every validator referencing `build-business-website` by
+  name, all 23 downstream validators, the failure simulator (23/23), and
+  the 10-run lifecycle simulation. Also confirmed
+  `scripts/patch-provider-capacity-preview.mjs` throwing when run
+  directly is expected, deliberate behavior (a one-time code-patch
+  script with an idempotency guard that refuses to re-apply an already-
+  present change) — not a bug, and not part of `run-release-gate.mjs`
+  (only `validate-*.mjs` files run there).
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
