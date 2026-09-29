@@ -7,8 +7,9 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (migration 254 RLS fix) —
-  prior recorded HEAD was `7483695`; the code itself is commit `1859cd3`.
+- **HEAD:** `54300bc` — "docs: block applying 253 without 254, document
+  interrupted-run scenario" (prior recorded HEAD was `7483695`; the code
+  itself is commit `1859cd3`).
 - **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
