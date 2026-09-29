@@ -891,22 +891,52 @@ rather than amending unapplied 251 in place.
   Six new named checks were added; `scripts/validate-paid-capability-enforcement-contract.mjs`'s
   exact-count assertion on `current_client_create_location(` calls in
   that SQL file was updated from 2 to 5 to match.
-- **What this proves vs. what still needs a real database**: everything
-  above was verified by static reasoning (reading both trigger bodies)
-  and by every local, credential-free check passing (migration integrity,
-  `test:edge`, eslint, `tsc --noEmit`, the full `test:release` gate up to
-  its credential-gated stop, all 23 downstream `validate-*.mjs` scripts,
-  `simulate-autonomy-failures.mjs`, `test:lifecycle`, `test:security`,
-  `test:accessibility`, `npm run build`). **None of that actually executes
-  this new SQL test** — `validate-paid-capability-guards-staging.mjs`
-  fails closed on missing staging credentials in this container, exactly
-  as before. The new scenario, the trigger-narrowing logic, and the fix
-  itself have only been proven correct by inspection, not by running
-  Postgres. This still needs either a disposable local Postgres
-  (`supabase db push` against a throwaway project/branch, then run this
-  SQL directly) or a guarded staging run of `validate_prelaunch`/`apply_all`
-  before anyone should trust that 251+252 behave as designed. See "Next
-  highest-priority safe tasks" below.
+- **Update — proven against a real, disposable Postgres (not staging).**
+  This container has no Docker daemon, so the full `supabase start` stack
+  (Postgres + Auth + Storage) isn't available here — but it does have a
+  native Postgres 16 install (`service postgresql`, normally stopped).
+  Started it, created a throwaway database
+  (`nxq_scoped_trigger_test`), built a minimal hand-written schema (just
+  the tables the fix touches: `clients`, `product_families`,
+  `product_family_tiers`, `nxq_tier_entitlements`, `client_locations`,
+  `client_location_addons`, `client_location_addon_events`,
+  `automation_audit_log`, `nxq_provider_connections`), stubbed
+  `auth.uid()`/`auth.role()` with the same GUC-based semantics Supabase
+  uses, and loaded the **exact, unmodified function bodies** from
+  migrations 251 and 252 (`current_client_create_location()`,
+  `current_client_enable_location_addon()`,
+  `nxq_enforce_location_entitlement()`, `enforce_client_location_limit()`
+  plus both triggers) — copied, not retyped. Ran the actual scenario:
+  - A Growth-tier client's first location succeeds; a second with **zero**
+    add-on units is denied (`Current plan location limit reached (1).`).
+  - The same client enables one add-on unit (`ok:true, enabled_units:1`),
+    then a second location **succeeds** — this is the exact bug 252 fixes,
+    now confirmed at runtime, not just by inspection.
+  - `active_location_count = 2` afterward.
+  - Regression checks: a Starter client is still capped at 1 regardless of
+    add-ons; a client with `billing_status = 'cancelled'` is still denied
+    with `Current subscription does not permit location creation.`
+    (proves the billing guard from migration 246 survived the fix
+    unweakened); a client with `pipeline_stopped_at` set is still denied
+    by the RPC's own lifecycle check; exactly two triggers
+    (`nxq_enforce_location_entitlement`, `enforce_client_location_limit`)
+    exist on `client_locations` afterward, matching the updated staging
+    allow-list. All nine assertions passed exactly as designed. The
+    throwaway database was dropped and the Postgres service stopped again
+    afterward (left exactly as found).
+  - **What this does and doesn't prove**: this is strong evidence the
+    trigger logic itself is correct — the actual function bodies ran, not
+    a reimplementation. It does **not** prove RLS/grants (no policies were
+    created in this minimal schema), does not exercise the real
+    `auth`/`storage` schemas or GoTrue-issued JWTs, does not prove
+    `supabase db push` applies 251→252 cleanly against the full 219-file
+    migration history, and does not run
+    `validate-paid-capability-guards-staging.mjs` itself (still blocked on
+    missing staging credentials in this container, unchanged). A guarded
+    staging run (or a Docker-capable environment able to run
+    `supabase start`) is still the right final gate before ever applying
+    251+252 to a real project. See "Next highest-priority safe tasks"
+    below.
 
 ## Checks run this session
 
@@ -1016,15 +1046,16 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `automation_escalations` audit"). The cleanest fix for (b) is
    extending `owner_exception_center()` to read `automation_escalations`
    generically rather than one-off per escalation_type.
-2. **Before applying anything: prove migration 252's fix against a real
-   Postgres instance** — a disposable local Postgres or a throwaway
-   Supabase branch/project, running `supabase db push` through at least
-   252, then executing `scripts/sql/validate-paid-capability-guards-staging.sql`'s
-   new `location_addon_*` scenario directly (or via
-   `validate-paid-capability-guards-staging.mjs` against that disposable
-   instance). Nothing this session ran can actually execute that SQL —
-   see "Migration 252 — trigger-conflict fix" above for exactly what's
-   proven vs. unproven.
+2. **Get the full guard SQL actually running, in a Docker-capable
+   environment.** A scoped, disposable-Postgres test (this session, native
+   `service postgresql`, no Docker available here) already confirmed the
+   251/252 trigger logic itself behaves correctly at runtime — see
+   "Migration 252 — trigger-conflict fix" above. What's still missing is
+   running the *real* `scripts/sql/validate-paid-capability-guards-staging.sql`
+   scenario (with real RLS, real `auth`/`storage` schemas, the full
+   219-migration history applied via `supabase db push`) — that needs
+   either a Docker-capable environment to run `supabase start` locally, or
+   a throwaway Supabase branch/project, or a guarded staging run.
 3. **Review and, if approved, apply all five staged migrations**
    (`248_notify_client_on_website_setup_denial.sql`,
    `249_notify_client_on_commerce_customer_request.sql`,
