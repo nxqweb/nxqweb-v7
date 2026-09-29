@@ -7,13 +7,10 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** pending this session's commit (final release audit + CORS
-  fix) — prior recorded HEAD was `262df9b` (the doc's own self-reference
-  gap from last round: a commit can't record its own SHA before it
-  exists; fixed properly this time with a follow-up commit once the SHA
-  is known).
-- **Working tree:** clean once this session's commits land; pushed to
-  `origin`.
+- **HEAD:** `b79a4ea` — "docs: record final release-focused audit and
+  CORS fix" (prior recorded HEAD was `262df9b`; the CORS fix itself is
+  commit `9d4b4eb`, one before this doc update).
+- **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
