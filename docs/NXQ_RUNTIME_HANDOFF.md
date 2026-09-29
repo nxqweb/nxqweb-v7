@@ -100,9 +100,10 @@ action outside this session.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `440cbe7` — "Implement Plan 1: renumber the RLS-fix and
-  billing-writer migrations" (prior recorded HEAD was `48a6c46`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (canonical staging preflight
+  plan) — prior recorded HEAD was `3ec2c45`.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -367,6 +368,88 @@ history is not a substitute for that check.
   through the same credential-gated stop), `test:security`,
   `test:accessibility`, `test:lifecycle`, `simulate-autonomy-failures.mjs`,
   `npm run build` — see "Checks run this session" for exact counts.
+
+## Canonical staging preflight plan (read-only — survives a new chat)
+
+Produced on request, before any staging connection. This is the plan to
+follow the next time someone (a future session or you directly) is ready
+to move migrations 248–254 toward a real apply. Nothing in this section
+has been executed — no staging connection, no migration applied, no
+deploy, as of this writing.
+
+**Step 0 — branch/HEAD/tree.** `git fetch origin
+safe/checkpoint-autonomy-wave35-sales`, then `git rev-parse HEAD` must
+match `git rev-parse origin/safe/checkpoint-autonomy-wave35-sales`
+exactly, and `git status --short` must be clean, before doing anything
+else. Do not trust a cached ref.
+
+**Step 1 — the exact migration set and order**, confirmed against
+`check-migration-integrity.mjs`'s file count (221):
+
+| # | File | Note |
+|---|------|------|
+| 248 | `notify_client_on_website_setup_denial.sql` | independent |
+| 249 | `notify_client_on_commerce_customer_request.sql` | independent |
+| 250 | `notify_client_on_file_scan_completion.sql` | independent |
+| 251 | `multi_location_self_serve_addon.sql` | needs 252 with it |
+| 252 | `fix_location_addon_trigger_conflict.sql` | fixes 251 |
+| 253 | `restrict_client_notification_recipient_kind.sql` | must land before 254 |
+| 254 | `deliver_billing_notification_events.sql` | needs 253 already applied |
+
+**Step 2 — check what's already applied, before anything else.** Use
+this repo's existing `validate_prelaunch` action in
+`.github/workflows/manual-supabase-stage.yml` — it already does exactly
+this, read-only, with **no mutation-confirmation phrase required**:
+`supabase link` → `supabase db push --dry-run --linked` (diffs local
+migration files against the real `supabase_migrations.schema_migrations`
+table on the linked project) → the `business-prelaunch` readiness
+profile check (`check-runtime-stage-readiness-readonly.mjs
+--profile=business-prelaunch`). Also request `supabase migration list
+--linked` output specifically — it gives an explicit local-vs-remote
+table, the clearest possible confirmation that none of 248–254 (under
+either their current or, for 253/254, original pre-swap numbers) already
+show as applied on the real target project. **Do not assume from this
+repo's own history that none are applied** — only this live query
+settles it.
+
+**Step 3 — dry-run.** `supabase db push --dry-run --linked` (part of
+`validate_prelaunch`) must show exactly 248→254 as the pending set, in
+that order, nothing else unexpected pending or already applied.
+
+**Step 4 — failure/recovery.** If the dry-run or a later real push is
+interrupted mid-sequence: treat it as an active incident per "Local-file
+ordering fix" above — re-run to completion immediately, or pause
+whatever schedules `advance_automatic_billing_lifecycle()`/
+`queue_due_billing_attempts()` until `supabase migration list --linked`
+confirms 253 (and everything numbered before it) landed. Never leave a
+partial apply for later.
+
+**Step 5 — security.** Confirm the workflow's own gates fire correctly:
+`npm run test:runtime-stage` (deployment manifest/auth-boundary check)
+and the "Verify staging Edge secret names" step against the
+`business-prelaunch` profile — both already part of `validate_prelaunch`,
+just confirm green in the run output, no extra work needed.
+
+**Step 6 — test, after a clean dry-run (still not applying).**
+Re-confirm all local checks are green at the exact HEAD being staged
+(routine re-run), review the dry-run's migration diff and the prelaunch
+profile output line by line, then stop — real apply
+(`apply_migrations`/`apply_all`) is a separate, later, explicitly
+approved action, never bundled into this preflight.
+
+**Step 7 — what access is actually needed, and from whom.** The real
+credentials (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`,
+`SUPABASE_DB_PASSWORD`) already live in GitHub's `nxq-staging`
+environment as repo secrets — they never need to be pasted into chat or
+set as container env vars here. Two ways to run `validate_prelaunch`:
+the user dispatches it directly in the GitHub Actions UI and shares the
+run's log/summary for review, or a Claude session dispatches it via the
+GitHub MCP `actions_run_trigger` tool (only needs a one-time
+tool-permission approval when prompted — still zero secret values pass
+through chat either way). For the real `apply_all` later, the only
+additional "access" is the exact confirmation phrase
+(`APPLY-NXQ-SUPABASE-STAGING`) at dispatch time — a deliberate typed
+gate, not a secret, and never to be pre-filled or guessed by a session.
 
 ## Final release-focused audit — 2026-09-29
 
@@ -1630,7 +1713,11 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    219-migration history applied via `supabase db push`) — that needs
    either a Docker-capable environment to run `supabase start` locally, or
    a throwaway Supabase branch/project, or a guarded staging run.
-3. **Review and, if approved, apply all seven staged migrations**
+3. **Review and, if approved, apply all seven staged migrations.** Follow
+   the "Canonical staging preflight plan" above step by step — it
+   specifies exactly how to check what's already applied before touching
+   anything, the dry-run, failure/recovery, security, and test steps, and
+   what access is actually needed (no secrets in chat, ever).
    (`248_notify_client_on_website_setup_denial.sql`,
    `249_notify_client_on_commerce_customer_request.sql`,
    `250_notify_client_on_file_scan_completion.sql`,
