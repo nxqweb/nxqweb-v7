@@ -57,6 +57,17 @@ type LocationOverEntitlementRow = {
   effective_cap: number;
 };
 
+type BillingNotificationRow = {
+  id: string;
+  client_id: string | null;
+  template_key: string;
+  subject: string | null;
+  body: string;
+  priority: string;
+  status: string;
+  created_at: string;
+};
+
 type LocationAddonEventRow = {
   client_id: string;
   business_name: string;
@@ -88,6 +99,7 @@ export function OwnerBillingLifecycle() {
   const [addonClients, setAddonClients] = useState<LocationAddonClientRow[]>([]);
   const [overEntitlement, setOverEntitlement] = useState<LocationOverEntitlementRow[]>([]);
   const [addonEvents, setAddonEvents] = useState<LocationAddonEventRow[]>([]);
+  const [billingNotifications, setBillingNotifications] = useState<BillingNotificationRow[]>([]);
 
   async function loadClients() {
     setLoading(true);
@@ -126,6 +138,17 @@ export function OwnerBillingLifecycle() {
       setAddonEvents(data.recent_events || []);
     }
 
+    const notificationsResult = await supabase
+      .from("notification_deliveries")
+      .select("id, client_id, template_key, subject, body, priority, status, created_at")
+      .eq("recipient_kind", "owner")
+      .like("template_key", "billing_%")
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (!notificationsResult.error) {
+      setBillingNotifications((notificationsResult.data || []) as BillingNotificationRow[]);
+    }
+
     setLoading(false);
   }
 
@@ -137,6 +160,12 @@ export function OwnerBillingLifecycle() {
     () => clients.filter((client) => ["past_due", "freeze_review", "frozen"].includes(client.billing_status)),
     [clients]
   );
+
+  const clientNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const client of clients) map.set(client.id, client.business_name);
+    return map;
+  }, [clients]);
 
   async function changeBillingState(
     client: ClientRow,
@@ -388,6 +417,30 @@ export function OwnerBillingLifecycle() {
                   <small>
                     Now {event.resulting_enabled_units} unit{event.resulting_enabled_units === 1 ? "" : "s"} · {formatDate(event.occurred_at)}{event.billing_live_at_event ? " · billing was live at this event" : ""}
                   </small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {billingNotifications.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title">
+              <Snowflake size={20} />
+              <div>
+                <h2>Billing notifications needing your attention</h2>
+                <p className="subtle">Processor-connection and freeze-review events NXQ recorded for you, most recent first. These never charge or freeze anything by themselves.</p>
+              </div>
+            </div>
+            <div className="owner-message-list">
+              {billingNotifications.map((notification) => (
+                <article className="owner-message-card" key={notification.id}>
+                  <div className="owner-message-top">
+                    <strong>{(notification.client_id && clientNameById.get(notification.client_id)) || "Unknown client"}</strong>
+                    <span>{notification.status}</span>
+                  </div>
+                  <p>{notification.subject || notification.body}</p>
+                  <small>{formatDate(notification.created_at)}</small>
                 </article>
               ))}
             </div>

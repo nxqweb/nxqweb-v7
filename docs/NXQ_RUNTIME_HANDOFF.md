@@ -7,20 +7,20 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `b79a4ea` — "docs: record final release-focused audit and
-  CORS fix" (prior recorded HEAD was `262df9b`; the CORS fix itself is
-  commit `9d4b4eb`, one before this doc update).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (migration 253 + owner billing
+  notifications read) — prior recorded HEAD was `8f98ec3`.
+- **Working tree:** clean once this session's commits land; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
   `a3442df` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
-- **Five new, unapplied migrations in the tree** — all pass local
+- **Six new, unapplied migrations in the tree** — all pass local
   migration integrity and every other local check, but **none has been
   applied to any database** (no staging credentials in this container,
   and applying is always a separate guarded action anyway). Review all
-  five before the next `apply_all` staging run:
+  six before the next `apply_all` staging run:
   - `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
   - `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`
   - `supabase/migrations/250_notify_client_on_file_scan_completion.sql`
@@ -46,6 +46,11 @@ state. Update this file, not a new one, at every handoff.
     location, reassigning `client_id`). **251 and 252 must be applied
     together, in that order, for the add-on feature to work correctly —
     do not apply 251 without 252.**
+  - `supabase/migrations/253_deliver_billing_notification_events.sql`
+    (new this session) — extends `record_billing_notification()` to
+    deliver the 3 client-facing and 2 owner-facing billing events through
+    `notification_deliveries`; see "`billing_notification_events` fix —
+    implemented" below.
 
 ## Final release-focused audit — 2026-09-29
 
@@ -174,19 +179,71 @@ purely on external setup/approval no local code work can resolve.
 4. **Everything past the credential-gated `test:release` stop, and
    anything needing Docker**: unchanged, reconfirmed, not newly resolved.
 
-### Concrete fix plan for `billing_notification_events` (awaiting approval — not drafted)
-Mirrors the exact pattern already used successfully for migrations
-248/249/250: extend the single existing choke-point function,
-`record_billing_notification()` (migration 100), to also insert into
-`notification_deliveries` — no new table, no privilege change, same
-channel/recipient_kind pattern already established. Recipient mapping:
-`payment_succeeded`/`payment_failed`/`past_due_reminder`/`billing_processor_connection_required`
-→ `recipient_kind: 'client'`; `freeze_review_owner_attention` →
-`recipient_kind: 'owner'` (it's already keyed by the client the review
-concerns, but the audience is the owner, not the client — confirmed by
-reading its call site in migration 187, which flags `requires_owner_decision`).
-Every other line of `record_billing_notification()` stays unchanged. Next
-migration number is 253. Will not be drafted until you approve.
+### `billing_notification_events` fix — implemented (migration 253, staged/unapplied)
+
+Approved, then re-verified before drafting per your explicit instruction,
+which surfaced two real corrections to the plan as first proposed:
+
+1. **Recipient mapping was wrong for one event.**
+   `billing_processor_connection_required` is **not** client-facing —
+   reading its actual call site
+   (`100_automatic_billing_orchestration.sql:236-243`) shows it fires
+   when NXQ's own payment processor isn't connected (something only NXQ
+   can fix), and it's already paired there with an `automation_escalations`
+   row meant for the owner. Corrected split: **3 client events**
+   (`payment_succeeded`, `payment_failed`, `past_due_reminder`), **2
+   owner events** (`billing_processor_connection_required`,
+   `freeze_review_owner_attention`).
+2. **No frontend anywhere reads `notification_deliveries`, for either
+   recipient kind.** Confirmed by grep across all of `src/` — zero hits.
+   Inserting owner-kind rows without a reader would recreate the exact
+   dead-channel pattern being fixed. Closed the owner half concretely:
+   added a "Billing notifications needing your attention" section to
+   `src/pages/OwnerBillingLifecycle.tsx` reading
+   `notification_deliveries` where `recipient_kind='owner'` and
+   `template_key like 'billing_%'` (owners already have full RLS read
+   access via the existing `owner_manage_all_notifications` policy,
+   migration 133 — no migration needed for this part). The client half is
+   **not** silently expanded to build a notification-center UI — that's a
+   pre-existing, broader gap affecting every notification this codebase
+   produces (preview-ready, production-published, domain-reconciliation,
+   etc. are equally invisible in-app today), flagged as its own item
+   below, not bundled into this fix.
+
+**`supabase/migrations/253_deliver_billing_notification_events.sql`**
+(staged, **not applied to any database**): extends the single existing
+choke-point function `record_billing_notification()` (migration 100) to
+also insert into `notification_deliveries` on a genuinely new event only
+(uses the standard `xmax = 0` upsert-detection idiom so a retried call
+with the same `idempotency_key` never duplicates a notification) — no new
+table, no privilege change, `billing_notification_events` behavior
+unchanged.
+
+Verified against a disposable local Postgres (same technique as
+migration 252's proof — native `service postgresql`, no Docker
+available): all 3 client events land with `recipient_kind='client'`, both
+owner events land with `recipient_kind='owner'` and a subject naming the
+client, a replayed idempotency key does not duplicate a notification, and
+`billing_notification_events` still records every call exactly as before
+(5/5, 5/5 by recipient split, 1/1 no-duplicate). Database dropped and
+Postgres stopped again afterward.
+
+Also verified locally: `check-migration-integrity.mjs` (220 files),
+`eslint --max-warnings=0`, `tsc --noEmit`, `test:edge` (44/44),
+`test:release` (69/69 through the same credential-gated stop),
+`test:security` (19/19), `test:accessibility` (19/19), all downstream
+`validate-*.mjs` scripts, `simulate-autonomy-failures.mjs` (23/23),
+`test:lifecycle` (21/21 + 10/10), `npm run build`.
+
+**New systemic gap flagged, not fixed here**: no page in the entire app
+renders `notification_deliveries` content in-app, for any notification
+type or recipient. Every "working" notification found in this and the
+prior audit (preview-ready, production-published, domain-reconciliation,
+now these 3 billing events) is correctly recorded and dispatched
+(marked delivered, or actually sent once an external provider exists)
+but invisible to a client using only the web portal today. Building an
+actual in-app notification feed is a real frontend feature, not a
+routine fix — flagged for your decision, not built speculatively.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
