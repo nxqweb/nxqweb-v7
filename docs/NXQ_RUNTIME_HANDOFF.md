@@ -7,8 +7,8 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `e90ceff` — "docs: record Commerce flow audit and second
-  staged notification migration"
+- **HEAD:** `ed7000c` — "docs: record sales/outreach flow audit (mostly
+  negative results, one logged finding)"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
@@ -537,6 +537,36 @@ state. Update this file, not a new one, at every handoff.
     code changed for this finding — logged here for a future, more
     deliberate product decision about whether/how to surface AI-assisted
     drafting in the Sales Pipeline UI.
+- Continued into the **billing/subscription lifecycle** and found what is
+  likely the most consequential gap of the whole session:
+  `record_billing_notification()` (migration 100) writes every billing
+  lifecycle event — `payment_succeeded`, `payment_failed`,
+  `past_due_reminder`, `billing_processor_connection_required`,
+  `freeze_review_owner_attention` — into a table called
+  `billing_notification_events`. That table is **never read by
+  anything**: not `dispatch-notifications` (which only ever reads
+  `notification_deliveries`), not any client-facing page. Confirmed with
+  a repo-wide grep for `billing_notification_events` outside the two
+  migrations that write to it — zero hits. `ClientBillingStatus.tsx`
+  does show the client's *current* `billing_status` if they think to
+  check that page, so this isn't total silence, but there is no push
+  notification at all for a failed payment, a past-due grace period
+  starting, or a processor not being connected — unlike every other
+  significant event elsewhere in the system (new leads, preview-ready,
+  production-published, domain-connected, Commerce requests), which do
+  push an in-app notification.
+  - `freeze_review_owner_attention` is explicitly owner-facing by design
+    ("only a human owner can freeze service" — the client cannot act on
+    it directly), so any fix should leave that one alone and only add
+    client notifications for the other four event types.
+  - This is in the payments/billing domain (one of the explicit
+    stop-and-ask categories) on top of also being a migration change, so
+    I asked before doing anything, laying out the exact scope (which
+    function, which 4 of 5 event types, what would stay owner-only).
+    The user chose to log it rather than draft a migration, wanting to
+    decide the exact billing-communication wording/scope themselves
+    rather than have it drafted now. **No migration written, no code
+    changed for this finding.**
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -678,9 +708,16 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
   action requiring an explicit decision, not something to do autonomously.
   Whether the gate is fully green beyond that point remains unverified.
 
-## Next 3 highest-priority safe tasks
+## Next highest-priority safe tasks
 
-1. **Review and, if approved, apply both staged migrations**
+1. **Decide the billing-notification gap** (see above): payment
+   succeeded/failed, past-due reminders, and processor-connection-
+   required events are logged but never delivered to the client through
+   any channel. The user chose to decide the exact wording/scope
+   themselves rather than have a migration drafted now — this is the
+   single highest-value known follow-up, but it is explicitly the
+   user's to bring back when ready, not something to draft speculatively.
+2. **Review and, if approved, apply both staged migrations**
    (`248_notify_client_on_website_setup_denial.sql` and
    `249_notify_client_on_commerce_customer_request.sql`) through the
    normal guarded staging workflow (`validate_prelaunch` / `apply_all`
@@ -688,14 +725,14 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    in the repo, not applied anywhere. Once applied, denied clients and
    Commerce clients receiving new customer requests will get in-app
    notifications they don't currently receive.
-2. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
+3. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
    `npm run test:staging-evidence`, and the remainder of
    `npm run test:release` can actually run to completion. This is a
    decision point, not an autonomous task — do not proceed past it without
    an explicit answer.
-3. Consider drafting (only with explicit user approval, never
+4. Consider drafting (only with explicit user approval, never
    autonomously) a migration to drop or properly lock down
    `commerce_cart_items` — orphaned schema found this session: granted to
    `authenticated` but no RLS policy ever written, unreferenced anywhere
