@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `6812458` — "feat: draft migration to notify client on
-  website setup denial (staged, not applied)"
+- **HEAD:** `f4b9c40` — "fix: notify client on domain connection success
+  and DNS action-required"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `6812458` — see "Confirmed blockers/risks" for why stale tracking refs
+  `f4b9c40` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 - **New, unapplied migration in the tree:**
   `supabase/migrations/248_notify_client_on_website_setup_denial.sql`.
@@ -430,6 +430,35 @@ state. Update this file, not a new one, at every handoff.
   (same expected stop point), all 23 downstream validators, the failure
   simulator (23/23, including 9/9 denial-hard-stop checks specifically),
   and the 10-run lifecycle simulation. Fixed/staged in `6812458`.
+- Continued into the domain-connection stage and found a fourth instance:
+  `reconcile-domain` never notified the client on either outcome that
+  matters to them — the domain fully connecting (same magnitude as the
+  already-fixed production-launch notification), or DNS action being
+  required at their own registrar (arguably the single most actionable
+  gap found this session — nothing progresses until the client manually
+  updates DNS, and they had no way to know). This function is polled on
+  a schedule (`next_check_at`/`recheck_minutes: 15`) until it succeeds,
+  so both new notifications are guarded by a state-transition check
+  against the pre-reconciliation `automation_state` fetched earlier in
+  the same function, so they fire exactly once per transition, not on
+  every 15-minute retry. The `dns_pending` sub-case (registrar already
+  connected, just waiting on propagation, no client action needed)
+  intentionally gets no notification, matching its own message. Pure
+  application-code change, no migration needed. Fixed in `f4b9c40`,
+  verified with Deno type-check (44/44), lint, the full release gate
+  (same expected stop point), the domain-specific validator (14/14) and
+  every other validator referencing `reconcile-domain`, all 23
+  downstream validators, the failure simulator (23/23), and the 10-run
+  lifecycle simulation.
+- Checked the remaining owner-decision-stage communication path —
+  `request_targeted_more_info()` (migration 182), the "owner needs more
+  detail before approving" flow — and confirmed it is **not** a gap: it
+  deliberately inserts into `client_messages` (a real in-portal inbox the
+  client reads via `current_client_message_page`, confirmed rendered in
+  `ClientPortal.tsx`), and its own code comment explicitly documents
+  skipping an external notification as an intentional design choice for
+  this pre-approval iterative flow. Good negative result — not every
+  "no notification_deliveries insert" hit is a bug.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
