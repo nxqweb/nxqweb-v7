@@ -85,6 +85,25 @@ equivalent:
 3. Commit and push the handoff update to the safe branch.
 4. Give the user one short "new chat starter" sentence — nothing else.
 
+## End-of-chat reporting (user preference)
+
+- **At the end of every chat/session**, give one short, low-cost launch
+  readiness percentage: roughly how close the product is to "you can plug
+  in real credentials and launch." Do not spend extra tool calls computing
+  this precisely — a quick, honestly-caveated estimate from what's already
+  known this session is enough. Separate "code readiness" (what's built
+  and locally verified) from "launch readiness" (which also requires real
+  provider keys, staging credentials, 10 disposable external QA runs, and
+  owner signoff per `LAUNCH_HARDENING_CHECKLIST.md`) if they differ
+  meaningfully — don't imply one when reporting the other.
+- **Whenever presenting the user a decision** (not a routine implementation
+  choice — a real fork in direction), offer it as clearly labeled options
+  (Option A / B / C, or via the `AskUserQuestion` tool's pop-up-style
+  selection) rather than open-ended prose asking "what do you want to do?"
+- **At the end of a chat that did concrete work**, include a short
+  done/left checklist for that chat specifically (checkboxes: what shipped
+  this chat, what's still open from it).
+
 ## Verification discipline
 
 - Treat a locally cached `origin/<branch>` ref as untrusted until refreshed
