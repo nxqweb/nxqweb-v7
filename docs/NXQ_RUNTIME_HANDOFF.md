@@ -7,8 +7,8 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `a3442df` — "feat: draft migration to notify client on file
-  scan completion (staged, not applied)"
+- **HEAD:** `d9c4a65` — "docs: record file-security notification migration
+  (third staged migration)"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
@@ -657,6 +657,49 @@ state. Update this file, not a new one, at every handoff.
   downstream validators, the failure simulator (23/23), and the 10-run
   lifecycle simulation. Fixed/staged in `a3442df`.
 
+## Consolidated `automation_escalations` audit (closing the recurring finding)
+
+Having hit the same "owner escalation goes nowhere" pattern three times
+(billing, file security, and by extension anything else that writes to
+this table), did one comprehensive pass instead of continuing to
+rediscover it domain by domain. Extracted every `escalation_type` value
+ever inserted into `public.automation_escalations` across the full
+migration history and checked each against every place that table is
+read:
+
+- **Written:** `billing_processor_not_connected`, `billing_payment_failed`,
+  `billing_retry_exhausted`, `client_file_security_alert`,
+  `client_file_scan_exhausted`, `automation_job_exhausted`,
+  `infrastructure_queue_missing_project`,
+  `internal_edge_dispatch_network_unreachable`.
+- **Actually surfaced to the owner:** only
+  `internal_edge_dispatch_network_unreachable`, via
+  `owner_runtime_dispatch_incidents()` (migration 200), which
+  `OwnerExceptionCenter.tsx` calls directly.
+- **Never surfaced anywhere:** all seven of the others. Checked every
+  version of `owner_exception_center()` across its full redefinition
+  history (migrations 127, 161, 167, 198, 216) — none of them ever
+  reference `automation_escalations` at all, **including migration 198**,
+  whose name ("surface provider billing blockers in owner exceptions")
+  directly implies it should. It appears the actual owner-exception
+  surfacing mechanism was built around `automation_jobs`/
+  `website_maintenance_alerts` directly (job failure text detection)
+  rather than this table, and `automation_escalations` writes for
+  billing/file-security/infrastructure concerns were left in place
+  without ever being wired to a reader — likely dead by omission during
+  a refactor, not a deliberate design choice like the maintenance-vs-
+  client separation confirmed earlier this session.
+
+This is now a single, complete, closed finding rather than three
+separate rediscoveries. The user has twice chosen to log rather than
+fix this pattern (for billing and file security specifically); consistent
+with that, **no migration was drafted for this consolidated version
+either, and no code was changed.** If/when the user wants to close this
+gap, the cleanest fix is almost certainly extending
+`owner_exception_center()` (or a sibling function) to also surface open
+`automation_escalations` rows generically, rather than hand-wiring each
+escalation_type into a separate reader one at a time.
+
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
 The prior handoff entry described the 2026-08-16 audit (migration 222,
@@ -799,14 +842,17 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
 
 ## Next highest-priority safe tasks
 
-1. **Decide the two billing follow-ups** (see "Owner operations / launch
-   readiness audit" section above): (a) payment succeeded/failed,
-   past-due, and processor-connection-required events never reach the
-   client through any channel, and (b) billing escalations never reach
-   the owner through `OwnerExceptionCenter.tsx` or any other owner
-   tooling either. Both are the user's to bring back when ready, not
-   something to draft speculatively — they chose to decide the exact
-   scope/wording themselves for both.
+1. **Decide the two deferred systemic gaps** (both explicitly the user's
+   to bring back when ready, not something to draft speculatively):
+   (a) client-facing billing notifications (payment succeeded/failed,
+   past-due, processor-connection-required never reach the client
+   through any channel — see "Owner operations / launch readiness
+   audit"), and (b) the consolidated `automation_escalations`
+   owner-visibility gap (7 of 8 escalation types written are never
+   surfaced to the owner anywhere — see "Consolidated
+   `automation_escalations` audit"). The cleanest fix for (b) is
+   extending `owner_exception_center()` to read `automation_escalations`
+   generically rather than one-off per escalation_type.
 2. **Review and, if approved, apply all three staged migrations**
    (`248_notify_client_on_website_setup_denial.sql`,
    `249_notify_client_on_commerce_customer_request.sql`, and
