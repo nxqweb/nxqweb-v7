@@ -98,9 +98,8 @@ action outside this session.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `54300bc` — "docs: block applying 253 without 254, document
-  interrupted-run scenario" (prior recorded HEAD was `7483695`; the code
-  itself is commit `1859cd3`).
+- **HEAD:** `bed36d6` — "docs: replace guessed readiness percentages with
+  a fixed evidence-based checklist" (prior recorded HEAD was `bbc56a8`).
 - **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
