@@ -59,11 +59,12 @@ checks exercise it, not that it's guessed to work):
 - [ ] 251 — Multi-Location self-serve add-on (**needs 252 in the same
   run** — inert without it)
 - [ ] 252 — fixes 251's trigger conflict
-- [ ] 253 — delivers billing notification events (**needs 254 in the
-  same run — see the read-only ordering plan produced this session for
-  exactly why and how**)
-- [ ] 254 — restricts client notification reads to `recipient_kind='client'`
-  (closes a real RLS gap; see "RLS gap fixed" section below)
+- [ ] 253 — restricts client notification reads to `recipient_kind='client'`
+  (closes a real RLS gap; **applies before 254 by design** — see "Local-file
+  ordering fix — implemented" below)
+- [ ] 254 — delivers billing notification events (**needs 253 already
+  applied ahead of it — guaranteed by numbering, verify anyway before any
+  real apply**)
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
@@ -89,8 +90,9 @@ code work; confirmed blocked in this container as of this checklist:**
 
 **Reading this honestly**: section A is essentially complete for what's
 been built. Section B is a single guarded `apply_all` run away from being
-live, once you approve it (with 253+254 ordering handled correctly — see
-below). Section C is the real distance to launch, and none of it is
+live, once you approve it (253+254 ordering is now enforced by numbering
+itself — see "Local-file ordering fix" below). Section C is the real
+distance to launch, and none of it is
 something local code work can close — it is credentials, external
 provider setup, and the 10-run QA/signoff process, all requiring your
 action outside this session.
@@ -137,99 +139,84 @@ action outside this session.
     location, reassigning `client_id`). **251 and 252 must be applied
     together, in that order, for the add-on feature to work correctly —
     do not apply 251 without 252.**
-  - `supabase/migrations/253_deliver_billing_notification_events.sql` —
-    extends `record_billing_notification()` to deliver the 3 client-facing
-    and 2 owner-facing billing events through `notification_deliveries`;
-    see "`billing_notification_events` fix — implemented" below.
-    **⚠️ NEVER apply 253 without 254 in the same run — see next line and
-    "RLS gap fixed" below for exactly why and what happens if a run is
-    interrupted between them.**
-  - `supabase/migrations/254_restrict_client_notification_recipient_kind.sql`
-    (new this session) — fixes a real RLS gap: the `client_read_own_notifications`
-    policy (migration 133) checks `client_id` ownership only, never
+  - `supabase/migrations/253_restrict_client_notification_recipient_kind.sql`
+    — fixes a real RLS gap: the `client_read_own_notifications` policy
+    (migration 133) checks `client_id` ownership only, never
     `recipient_kind`, so a client can directly `SELECT` any
     `notification_deliveries` row for their own `client_id` regardless of
     recipient — the app's `.eq("recipient_kind", "client")` filter is a
-    query parameter, not a database boundary. See "RLS gap fixed —
-    migration 254" below for the full mechanism, the exact ordering
-    requirement with 253, and what an interrupted apply run means.
+    query parameter, not a database boundary. **Deliberately numbered
+    ahead of 254** so this restriction is guaranteed to apply first, by
+    plain ascending filename order — see "Local-file ordering fix —
+    implemented" below for the full mechanism and why these two were
+    renumbered.
+  - `supabase/migrations/254_deliver_billing_notification_events.sql` —
+    extends `record_billing_notification()` to deliver the 3 client-facing
+    and 2 owner-facing billing events through `notification_deliveries`;
+    see "`billing_notification_events` fix — implemented" below.
+    **⚠️ NEVER apply 254 to any real environment without 253 already
+    applied ahead of it — numbering guarantees this under normal
+    `apply_all`/`db push`, but confirm on the actual target database's
+    migration history before ever applying either.**
 
-## RLS gap fixed — migration 254 (blocks applying 253 alone)
+## RLS gap fixed — migration 253 (structurally, by renumbering — see below)
 
-**Hard rule, explicit: 253 must never be applied to any real environment
-without 254 in the same guarded run. This is not a preference — applying
-253 alone reopens a live path for a client to read an owner-facing
-notification about their own account, the moment that notification is
-ever created.**
+**Hard rule, explicit: migration 254 (the billing-notification writer)
+must never be applied to any real environment without 253 (the RLS
+restriction) already applied ahead of it. This is not a preference —
+applying 254 without 253 first reopens a live path for a client to read
+an owner-facing notification about their own account, the moment that
+notification is ever created.**
 
 **Mechanism** (verified by reading the policy text and confirmed against
 a real Postgres RLS engine, not just reasoning about the SQL — see below):
-`client_read_own_notifications` grants `SELECT` to any `authenticated`
-row where `client_id` belongs to the caller, with no `recipient_kind`
-check at all. `authenticated` also holds a blanket table-level `SELECT`
-grant. The two client-facing pages built this session
-(`ClientPortal.tsx`, `ClientNotificationPreferences.tsx`) filter
-`recipient_kind = 'client'` in their own queries, but that filter lives
-in application code, not the database — any other query against the
-table with that same client's session (a different page, browser
+`client_read_own_notifications` (migration 133's original version) grants
+`SELECT` to any `authenticated` row where `client_id` belongs to the
+caller, with no `recipient_kind` check at all. `authenticated` also holds
+a blanket table-level `SELECT` grant. The two client-facing pages built
+this session (`ClientPortal.tsx`, `ClientNotificationPreferences.tsx`)
+filter `recipient_kind = 'client'` in their own queries, but that filter
+lives in application code, not the database — any other query against
+the table with that same client's session (a different page, browser
 devtools, a direct PostgREST call, or that one line of frontend code
 simply being absent) reads every row for that `client_id`, owner-facing
 rows included.
 
-**Why 253 is the trigger, specifically**: 253 is the only place in this
-codebase that ever writes a `recipient_kind='owner'` row with a
+**Why migration 254 is the trigger, specifically**: 254 is the only place
+in this codebase that ever writes a `recipient_kind='owner'` row with a
 `client_id` set (`billing_processor_connection_required`,
-`freeze_review_owner_attention`). Before 253 exists in a database, there
+`freeze_review_owner_attention`). Before 254 exists in a database, there
 is no code path that creates such a row, so the RLS gap — real as it is —
-has nothing to expose yet. The instant 253 is applied, the *capability*
+has nothing to expose yet. The instant 254 is applied, the *capability*
 to create an exposed row exists; the row itself only appears when a real
 billing event later fires (e.g. the scheduled `advance_automatic_billing_lifecycle()`
 job finds an overdue client, or `queue_due_billing_attempts()` hits a
 disconnected processor).
 
-**Ordering, precisely**: `supabase db push` applies pending migrations in
-ascending filename order — 253 before 254, since that's their numbering.
-That means, for a few moments during any real apply run, 253 is live
-before 254 lands. That is not itself a problem *if the run completes
-253 and 254 together* — no billing automation runs synchronously inside
-a migration transaction, so no row can be created in that brief window
-purely from applying the files. **The actual danger is an interrupted
-run**: if `apply_all`/`supabase db push` applies 253 and then fails,
-disconnects, or is stopped before reaching 254 (network drop, CI runner
-killed, anything short of a clean finish), the database is left with
-253's write-capable function live and 254's fix absent — the original,
-vulnerable policy from migration 133 still in force — for however long
-it takes to notice and finish the job. If any real billing event fires
-during that window (a scheduled cron run, not something that needs a
-person to trigger it), an exposed row would actually be created and
-would actually be client-readable until 254 is applied.
-
-**Before any real staging apply, the checklist is:**
-1. Run `apply_all` (or `supabase db push`) so 253 and 254 apply in the
-   same invocation — never split them across separate approvals or runs.
-2. If the run reports success, verify both landed — query
-   `supabase_migrations.schema_migrations` (or run
-   `supabase migration list`) for both `253` and `254` before considering
-   the job done, not just "no error was printed."
-3. If the run stops between 253 and 254 for any reason, treat it as an
-   active incident, not a retry-later item: either immediately re-run the
-   push to completion, or — if that can't happen right away — pause
-   whatever schedules `advance_automatic_billing_lifecycle()`/
-   `queue_due_billing_attempts()` until 254 is confirmed applied, so no
-   real billing event can create an exposed row during the gap.
+**Fixed structurally by renumbering, not just by process discipline —
+see "Local-file ordering fix — implemented" below.** These two
+migrations were originally drafted the other way around (writer as 253,
+restriction as 254), which meant `supabase db push`'s ascending-filename
+apply order would always run the writer first — an interrupted run
+between them would leave the writer live with the restriction absent.
+Per your explicit approval, the two files were swapped (`git mv`, no
+content changed): the RLS restriction is now 253 and the writer is now
+254, so ascending order runs the restriction first, by construction. See
+the next section for the full before/after and the updated verification
+checklist — read that section for the actual current-state process, not
+the historical description above of why the gap existed in the first
+place.
 
 **On current live data — explicitly not inspected, not claimed**: I have
 not connected to staging or any other database and have not run any
 query against live data for this task, as instructed. Everything above
 about "nothing to leak yet" is an inference from this repository's own
-migration history (253 has never been part of any `apply_all` run this
-session has record of, and this codebase's convention is that a file
-staying in `supabase/migrations/` with no corresponding entry anywhere
-in this session's applied-migration record means unapplied) — it is
-**not** a verified fact about any real database's current contents. If
-253 was ever applied to any environment outside what this session can
-see, that inference would be wrong, and the correct next step before
-trusting any of this is to actually query
+migration history (neither 253 nor 254, under either their original or
+current numbering, has ever been part of any `apply_all` run this session
+has record of) — it is **not** a verified fact about any real database's
+current contents. If either migration was ever applied to any environment
+outside what this session can see, that inference would be wrong, and the
+correct next step before trusting any of this is to actually query
 `supabase_migrations.schema_migrations` on the real target database, not
 assume from repo state alone.
 
@@ -240,103 +227,147 @@ non-superuser `authenticated` Postgres role so RLS was actually enforced
 by the engine, not simulated. First reproduced the bug under migration
 133's original policy — a client's `SELECT *` returned both their own
 client-facing row and an owner-facing row for the same `client_id`. Then
-applied 254's exact policy replacement and confirmed: the client can
+applied 253's exact policy replacement and confirmed: the client can
 still read their own client-facing row; the client gets zero rows when
 querying the owner-facing row's id directly; a full-table `SELECT`
 returns count 1 (only their own); and the owner's `SELECT`, tested
-separately, still returns count 2 (both rows, unaffected). All 5
-assertions passed. Database and the temporary role were dropped
-afterward, Postgres stopped again, left as found. Static validator
-`scripts/validate-notification-recipient-kind-rls-contract.mjs` (5/5)
-checks the migration file itself hasn't drifted from this.
+separately, still returns count 2 (both rows, unaffected). All 4
+assertions passed, re-run again after the renumbering with 253's final
+(post-swap) file content and unchanged results. Database and the
+temporary role were dropped afterward, Postgres stopped again, left as
+found. Static validator
+`scripts/validate-notification-recipient-kind-rls-contract.mjs` (8/8,
+updated for the renumbering) checks the migration files themselves
+haven't drifted from this.
 
-## Read-only ordering plan for 253+254 (no migration edited, no staging touched)
+## Read-only ordering plan (historical — Option A below was chosen; see "Local-file ordering fix — implemented" next)
 
-Produced on request before any staging work, to compare safe ways to
-guarantee 254's RLS fix is in force before 253 can ever create an
-owner-facing row. Nothing here was executed — this is analysis only.
+Produced on request before any staging work and before the renumbering
+below, to compare safe ways to guarantee the RLS fix is in force before
+the billing-notification writer can ever create an owner-facing row.
+Nothing was executed when this was written — analysis only, at the time.
+Numbers below describe the migrations by role (writer / restriction)
+rather than by number, since the two were renumbered afterward and this
+section's original digits would otherwise read backwards against the
+current file names.
 
 **Mechanism**: `supabase db push` applies pending migrations in ascending
-filename order. 253 < 254 numerically, so in any full run, 253 always
-applies first. Each migration file is applied as its own transaction —
-standard, documented Supabase CLI behavior, though **not independently
-confirmed in this environment** (no Docker daemon here to run
-`supabase start` and observe it directly; see "what cannot be verified"
-below). The real risk is not the brief moment between two files
-committing in a clean run — nothing auto-fires inside a migration
-transaction — it's an **interrupted run**: if `apply_all`/`db push`
-applies 253 and then stops (network drop, CI runner killed, timeout)
-before reaching 254, the database is left with 253's write-capable
-function live and 254's fix absent, for however long it takes to notice
-and finish.
+filename order. At the time this was written, the writer migration was
+numbered lower than the restriction migration, so in any full run the
+writer always applied first. Each migration file is applied as its own
+transaction — standard, documented Supabase CLI behavior, though **not
+independently confirmed in this environment** (no Docker daemon here to
+run `supabase start` and observe it directly; see "what cannot be
+verified" below). The real risk was not the brief moment between two
+files committing in a clean run — nothing auto-fires inside a migration
+transaction — it was an **interrupted run**: if `apply_all`/`db push`
+applied the writer and then stopped (network drop, CI runner killed,
+timeout) before reaching the restriction, the database would be left with
+the writer's write-capable function live and the restriction absent, for
+however long it took to notice and finish.
 
-**Option A — Reorder so 254 executes before 253.** `supabase db push`
-cannot apply an out-of-sequence migration ahead of an earlier-numbered
-pending one within one invocation; achieving this would require either
-renumbering the already-drafted, already-reviewed migration files (an
-edit to migrations, which is explicitly off the table right now and also
-breaks this repo's forward-only numbering convention), or manually
-applying 254's SQL out-of-band via a direct psql session before ever
-running `db push` (bypasses the guarded, audited apply pipeline entirely,
-and `schema_migrations` wouldn't reflect it correctly). **Not
-recommended** — both paths violate a standing rule for reasons unrelated
-to whether they'd work.
+**Option A — Renumber so the restriction executes before the writer.**
+Requires renumbering the already-drafted, already-reviewed migration
+files. **This is the option you approved and it has now been
+implemented** — see "Local-file ordering fix — implemented" below for
+the result.
 
 **Option B — One continuous run, with mandatory post-apply verification.**
-Run `apply_all`/`db push` once, in a monitored session, so 253 and 254
-apply back-to-back with no manual action between them. Immediately after
-it reports success, independently query
-`supabase_migrations.schema_migrations` (or `supabase migration list
---linked`) to confirm **both** 253 and 254 show as applied — not just
-"no error was printed." If the run stops between them, treat it as an
-active incident and re-run immediately to complete 254 before doing
-anything else. This is the minimum acceptable process.
+Run `apply_all`/`db push` once, in a monitored session, so both apply
+back-to-back with no manual action between them, then independently
+query `supabase_migrations.schema_migrations` (or `supabase migration
+list --linked`) to confirm **both** show as applied — not just "no error
+was printed." If the run stops between them, treat it as an active
+incident and re-run immediately. Still the correct *process* discipline
+to follow even now that Option A closes the structural risk — belt and
+suspenders, not a substitute.
 
 **Option C — Same as B, plus a pre-apply safety net: pause the billing
-automation schedule first, resume only after 254 is confirmed applied.**
-The two functions that ever create an owner-facing row are
-`advance_automatic_billing_lifecycle()` (writes
-`freeze_review_owner_attention`) and `queue_due_billing_attempts()`
-(writes `billing_processor_connection_required`) — both run on a
-schedule, not on demand. If whatever schedules them (pg_cron, a Supabase
-scheduled Edge Function, or similar — see "cannot verify" below) is
-paused before starting the push and only resumed after 254 is confirmed,
-then even an interrupted run between 253 and 254 cannot actually produce
-an exposed row, because nothing would be running to create one. This
-converts "the vulnerable policy is briefly live" into "the vulnerable
-policy is briefly live but nothing can trigger it" — strictly safer than
-B, at the cost of one extra, fully reversible coordination step.
+automation schedule first, resume only after both are confirmed applied.**
+The two functions that ever create an owner-facing row,
+`advance_automatic_billing_lifecycle()` and `queue_due_billing_attempts()`,
+both run on a schedule, not on demand. Pausing whatever triggers them
+during the apply window remains good practice regardless of Option A.
 
-**Recommendation: Option C.**
+**What was recommended at the time**: Option A, now implemented. Options
+B and C remain valid *additional* process discipline for the actual
+staging apply, whenever that's approved — they were never mutually
+exclusive with A.
 
-- **Option A** — not recommended: violates the no-migration-edits rule
-  and/or bypasses the guarded apply pipeline, for no real safety gain
-  over C.
-- **Option B** — acceptable minimum: safe as long as the verification
-  step is actually done every time; leaves a real, if narrow, exposure
-  window if that step is skipped or delayed under pressure.
-- **Option C** (recommended) — same operational cost as B plus one small
-  extra step, and is the only option that stays safe even if verification
-  is missed, since the underlying trigger for the exposure (the scheduled
-  jobs) is disabled during the risk window regardless.
-
-**What I cannot verify without staging access:**
+**What I cannot verify without staging access** (still true after the
+renumbering):
 - Whether this project's pinned Supabase CLI (`^2.107.0`) truly applies
   each migration file in its own transaction in practice — documented
   standard behavior, but not something observable from this container
   (no Docker daemon for `supabase start`, no staging credentials).
 - What actually schedules `advance_automatic_billing_lifecycle()` and
   `queue_due_billing_attempts()` in the real deployment (pg_cron config,
-  a Supabase scheduled function, or something else) — Option C's "pause
-  the schedule" step needs someone with live access to identify the exact
-  mechanism and confirm a safe pause/resume path before it can actually
-  be carried out.
+  a Supabase scheduled function, or something else) — needed if Option C
+  is also followed at apply time.
 - Whether `schema_migrations` on the real target database already shows
-  253 as applied from some prior run this session has no record of —
+  either migration as applied, under either its original or current
+  number, from some prior run this session has no record of —
   unverifiable from repo state alone; only a live query settles it.
 - Whether any owner-facing `notification_deliveries` row already exists
-  on a real database right now — same caveat, not inspected, not
-  claimed either way.
+  on a real database right now — same caveat, not inspected, not claimed
+  either way.
+
+## Local-file ordering fix — implemented (Option A, renumbering)
+
+Approved and implemented on this branch, repo-only — no staging
+connection, no migration applied, no deploy.
+
+**What changed**: the two migration files were swapped by `git mv`, with
+no content dependency between them either way (verified: neither file's
+SQL references anything the other creates — one only touches
+`record_billing_notification()`, the other only touches the
+`client_read_own_notifications` policy).
+- `supabase/migrations/253_restrict_client_notification_recipient_kind.sql`
+  — the RLS restriction (was drafted as 254)
+- `supabase/migrations/254_deliver_billing_notification_events.sql` — the
+  billing-notification writer (was drafted as 253)
+
+**Why this closes the interrupted-run risk structurally**: `supabase db
+push` applies pending migrations in ascending filename order. 253 < 254,
+so the restriction now always applies before the writer can, by plain
+numbering — not by relying on a monitored run or a paused schedule. If a
+real apply run is interrupted after 253 but before 254, the only thing
+live is the tightened, harmless RLS policy; the writer's capability to
+create an exposed row does not exist yet, so there is nothing for the
+original gap to expose during that window. This is a stronger guarantee
+than Options B or C alone, which only reduce the *chance* of the bad
+window mattering — this removes the bad window's contents entirely.
+
+**Both migration files now say this in their own header comments** (253
+explains it's numbered ahead of 254 specifically for this reason; 254
+explains it's numbered behind 253 and was originally drafted the other
+way around) — read either file directly for the authoritative, in-context
+explanation, not just this summary.
+
+**Explicitly, per instruction**: neither migration's applied status has
+been independently verified against staging in this renumbering pass.
+Nothing here confirms what any real database's `schema_migrations` table
+currently shows for either file, under either its original or current
+number. Before any real apply, query
+`supabase_migrations.schema_migrations` (or `supabase migration list
+--linked`) on the actual target database first — this repository's own
+history is not a substitute for that check.
+
+**Re-verified after the renumbering, not just before it**:
+- `check-migration-integrity.mjs` — 221/221 (unchanged count, filenames
+  renumbered not added/removed)
+- `scripts/validate-notification-recipient-kind-rls-contract.mjs` —
+  rewritten for the new filenames/numbers, 8/8
+- Disposable-Postgres focused test re-run against 253's final (post-swap)
+  file content specifically — same 4 assertions, same results: client
+  reads their own row, client is denied the owner-facing row (0 rows),
+  client's full-table count is 1, owner's count stays 2. Database and the
+  temporary `authenticated` role dropped afterward, Postgres stopped
+  again, left as found.
+- Full local suite re-run: eslint, `tsc --noEmit`, `test:release` (69/69
+  through the same credential-gated stop), `test:security`,
+  `test:accessibility`, `test:lifecycle`, `simulate-autonomy-failures.mjs`,
+  `npm run build` — see "Checks run this session" for exact counts.
 
 ## Final release-focused audit — 2026-09-29
 
@@ -481,7 +512,12 @@ purely on external setup/approval no local code work can resolve.
 4. **Everything past the credential-gated `test:release` stop, and
    anything needing Docker**: unchanged, reconfirmed, not newly resolved.
 
-### `billing_notification_events` fix — implemented (migration 253, staged/unapplied)
+### `billing_notification_events` fix — implemented (migration 254, staged/unapplied)
+
+*(Renumbered from its original draft number — see "Local-file ordering
+fix — implemented" above. Everything below describes this migration's
+content and proof, which is unchanged by the renumbering; only its
+filename/number changed.)*
 
 Approved, then re-verified before drafting per your explicit instruction,
 which surfaced two real corrections to the plan as first proposed:
@@ -512,7 +548,7 @@ which surfaced two real corrections to the plan as first proposed:
    etc. are equally invisible in-app today), flagged as its own item
    below, not bundled into this fix.
 
-**`supabase/migrations/253_deliver_billing_notification_events.sql`**
+**`supabase/migrations/254_deliver_billing_notification_events.sql`**
 (staged, **not applied to any database**): extends the single existing
 choke-point function `record_billing_notification()` (migration 100) to
 also insert into `notification_deliveries` on a genuinely new event only
@@ -552,7 +588,7 @@ Also found and correctly handled a real security-scoping detail: the
 `client_read_own_notifications` RLS policy only checks `client_id`
 ownership, **not** `recipient_kind` — so a naive client-side query would
 also have surfaced owner-facing rows about that same client (e.g. the
-`freeze_review_owner_attention` notification from migration 253, written
+`freeze_review_owner_attention` notification from migration 254, written
 in owner-oriented language). The implementation explicitly filters
 `recipient_kind = 'client'` in the query itself, not just relying on RLS.
 
@@ -1601,20 +1637,25 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `250_notify_client_on_file_scan_completion.sql`,
    `251_multi_location_self_serve_addon.sql`,
    `252_fix_location_addon_trigger_conflict.sql`,
-   `253_deliver_billing_notification_events.sql`, and
-   `254_restrict_client_notification_recipient_kind.sql`) through the
+   `253_restrict_client_notification_recipient_kind.sql`, and
+   `254_deliver_billing_notification_events.sql`) through the
    normal guarded staging workflow (`validate_prelaunch` / `apply_all`
    with the exact confirmation phrase), all in **one** run.
    **251 and 252 must be applied together, in that order** — 251 alone
    leaves the add-on feature functionally inert. **253 and 254 must be
-   applied together, in that order, with no interruption between
-   them** — 253 alone reopens a client-readable path to an owner-facing
-   notification about that same client the moment such a notification is
-   ever created; see "RLS gap fixed — migration 254" above for the exact
-   mechanism, the interrupted-run scenario, and the verification checklist
-   to run before and after the apply. All seven are currently only staged
-   in the repo, not applied anywhere. Once applied: denied clients,
-   Commerce clients receiving new customer requests, and clients
+   applied together, in that order (253 first — now guaranteed by
+   ascending numbering, not just process discipline), with no
+   interruption between them** — applying 254 without 253 already in
+   place reopens a client-readable path to an owner-facing notification
+   about that same client the moment such a notification is ever created;
+   see "Local-file ordering fix — implemented" above for the exact
+   mechanism and the verification checklist to run before and after the
+   apply. Neither migration's applied status has been independently
+   verified against staging — check
+   `supabase_migrations.schema_migrations` on the real target database
+   first. All seven are currently only staged in the repo, not applied
+   anywhere. Once applied: denied clients, Commerce clients receiving new
+   customer requests, and clients
    uploading files will get in-app notifications they don't currently
    receive; Growth/Intelligence clients will be able to self-serve
    enable/cancel Multi-Location add-ons for real (see "Multi-Location

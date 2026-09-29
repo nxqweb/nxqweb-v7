@@ -18,9 +18,9 @@
 -- page, browser devtools, a direct REST call, or simply that filter being
 -- absent -- reads every row for that client_id regardless of recipient_kind.
 --
--- What this exposes once migration 253 is applied (253 is the only place in
--- this codebase that ever writes a recipient_kind='owner' row with a
--- client_id set): a client could read billing_processor_connection_required
+-- What this would expose once migration 254 is applied (254 is the only
+-- place in this codebase that ever writes a recipient_kind='owner' row with
+-- a client_id set): a client could read billing_processor_connection_required
 -- (reveals NXQ's own payment processor isn't connected, plus the exact
 -- blocked charge amount) and freeze_review_owner_attention (reveals the
 -- client's grace period has ended and that a human freeze decision is
@@ -34,24 +34,34 @@
 -- every client-facing notification_deliveries insert in this codebase
 -- already explicitly sets recipient_kind='client' (build-business-website,
 -- promote-business-production, reconcile-domain x2, ingest-business-lead,
--- process-data-subject-request, migrations 248/249/250, and 253's client
+-- process-data-subject-request, migrations 248/249/250, and 254's client
 -- branch). Nothing relies on this policy matching any other recipient_kind.
 -- owner_manage_all_notifications (the separate owner_users-gated FOR ALL
 -- policy) is untouched and continues to give owners full access regardless
 -- of recipient_kind, exactly as before.
 --
--- Ordering requirement, explicit: this migration must be applied in the
--- SAME guarded apply_all run as migration 253, with 254 applying at or
--- before 253 in that run's sequence (supabase db push applies pending
--- migrations in ascending filename order, so 253 then 254, within one
--- transaction-per-migration run -- if the run is interrupted between them,
--- 253 will have applied without 254, and the exposure window above is real
--- for however long that gap lasts). Never apply 253 in a run that does not
--- also carry 254. This is called out explicitly in the runtime handoff
--- doc as a block on applying 253 alone.
+-- Ordering, by design rather than by operational discipline: this
+-- migration is deliberately numbered 253, one lower than migration 254
+-- (the billing-notification writer that creates the exposed rows).
+-- supabase db push applies pending migrations in ascending filename order,
+-- each as its own transaction, so this restrictive policy is guaranteed to
+-- land strictly before 254 ever can. If a push is interrupted after this
+-- file but before 254, the only thing live is a tightened, harmless
+-- policy -- the writer capability in 254 does not exist yet, so there is
+-- nothing for the old gap to expose during that gap. This was originally
+-- drafted as migration 254 with the writer as 253; the two were swapped
+-- (git mv, no content dependency existed either way -- verified neither
+-- file's SQL references anything the other creates) specifically to make
+-- this ordering guarantee structural instead of procedural. See the
+-- runtime handoff doc's "Local-file ordering fix" section for the full
+-- before/after comparison.
 --
 -- This migration is staged for review; it has not been applied to any
--- database.
+-- database. Its applied status has not been independently verified
+-- against any staging or production database in this renumbering pass --
+-- migration history (schema_migrations) must be checked on the real
+-- target database before any apply, regardless of what this file's own
+-- history suggests.
 
 drop policy if exists client_read_own_notifications on public.notification_deliveries;
 

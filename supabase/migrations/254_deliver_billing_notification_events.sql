@@ -39,8 +39,22 @@
 -- genuinely visible in the Owner Portal -- added separately alongside this
 -- migration in OwnerBillingLifecycle.tsx.
 --
+-- Numbering note: this migration is deliberately numbered 254, one higher
+-- than migration 253, which restricts client_read_own_notifications to
+-- recipient_kind='client'. This was originally drafted the other way
+-- around (writer as 253, restriction as 254) and swapped by explicit
+-- approval so the restrictive policy is guaranteed to land first by plain
+-- filename ordering -- see 253's own header comment and the runtime
+-- handoff doc's "Local-file ordering fix" section for why. Never apply
+-- this migration to any real database without 253 already applied ahead
+-- of it (which the numbering now enforces by default under
+-- `supabase db push`, but confirm on the actual target database's
+-- migration history regardless -- this file's own history does not
+-- prove what any real environment has already applied).
+--
 -- This migration is staged for review; it has not been applied to any
--- database.
+-- database. Its applied status has not been independently verified
+-- against any staging or production database in this renumbering pass.
 
 create or replace function public.record_billing_notification(
   target_client_id uuid,
