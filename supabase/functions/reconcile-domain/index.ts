@@ -224,6 +224,20 @@ Deno.serve(async (request) => {
       });
       if (completed.error) throw new Error(completed.error.message);
 
+      if (domainRes.data.automation_state !== "connected") {
+        await admin.from("notification_deliveries").insert({
+          client_id: job.client_id,
+          project_id: job.project_id,
+          channel: "in_app",
+          recipient_kind: "client",
+          template_key: "business_domain_connected",
+          subject: "Your custom domain is connected",
+          body: `${domain} is now connected and live at ${liveUrl}.`,
+          priority: "high",
+          metadata: { domain_id: domainId, domain_name: domain, production_url: liveUrl },
+        });
+      }
+
       return response({ ok: true, domain_id: domainId, domain_name: domain, connected: true, production_url: liveUrl });
     }
 
@@ -258,6 +272,20 @@ Deno.serve(async (request) => {
         },
       });
       if (completed.error) throw new Error(completed.error.message);
+
+      if (!providerConnected && domainRes.data.automation_state !== "action_required") {
+        await admin.from("notification_deliveries").insert({
+          client_id: job.client_id,
+          project_id: job.project_id,
+          channel: "in_app",
+          recipient_kind: "client",
+          template_key: "business_domain_action_required",
+          subject: "Action needed to connect your domain",
+          body: actionMessage,
+          priority: "high",
+          metadata: { domain_id: domainId, domain_name: domain },
+        });
+      }
 
       return response({ ok: true, domain_id: domainId, domain_name: domain, connected: false, action_required: !providerConnected, recheck_minutes: 15 });
     }
