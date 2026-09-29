@@ -4,6 +4,97 @@ This is the live, authoritative handoff document for `nxqweb-v7`. Read
 `CLAUDE.md` first for standing operating rules, then this file for current
 state. Update this file, not a new one, at every handoff.
 
+## Canonical launch checklist (fixed, evidence-based — replaces guessed percentages)
+
+Per user instruction: no more estimated percentages. This checklist is
+derived from the "Final release-focused audit" below (each line traceable
+to a named file/script) and re-verified live at HEAD `bbc56a8` before
+being written: `check-migration-integrity.mjs` → 221/221,
+`npm audit` → 0 vulnerabilities, `test:release` → 69/69 then stops at
+`protected-staging-configuration` (unchanged), `docker info` → no daemon,
+zero `SUPABASE_*`/`NXQ_*` env vars present in this container. Update this
+section — don't restate it unchanged — whenever a line's status actually
+changes; every future end-of-chat report should point here rather than
+inventing a fresh number.
+
+**A. Code completion — what's built and locally verified** (all of this
+is independent of staging/external access; "done" means real local
+checks exercise it, not that it's guessed to work):
+
+- [x] Business signup/intake → owner approve/deny → build → preview →
+  production-promotion code path (RPCs + Edge functions exist, wired,
+  type-check, exercised by the 69/69 paid-capability suite)
+- [x] Client portal (33 pages) and Owner portal (20 pages) — every page
+  has real backing logic; all 113 `supabase.rpc()` calls resolve to a
+  real function (0 missing)
+- [x] Security baseline — SSRF guard on all 12 functions that need it,
+  timing-safe token comparison on all 22, Stripe webhook HMAC
+  verification, CORS/OPTIONS handling complete on all 17
+  browser-invoked Edge functions (2 real gaps found and fixed this
+  session: `secure-client-file-access`/`secure-owner-file-access`,
+  `provision-storefront`)
+- [x] Client-facing in-app notifications already live at HEAD (no
+  migration needed): preview-ready, production-published, domain
+  reconciliation, privacy-request completion
+- [x] Minimal read-only client notification list (`ClientPortal.tsx` +
+  `ClientNotificationPreferences.tsx`), correctly scoped by
+  `recipient_kind` — verified against a real RLS-enforcing Postgres
+- [ ] `commerce_cart_items` / `commerce_carts` orphaned schema — found,
+  not cleaned up (needs a migration decision — your call, see next
+  section's staged migrations)
+- [ ] `automation_escalations` — 7 of 8 owner escalation types are a
+  dead write-only channel; you've twice chosen to defer this, not fixed
+- [ ] `billing_notification_events` delivery + RLS scoping — **code
+  complete, staged as migrations 253+254, not yet applied to any
+  database** (see section B)
+- [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
+  new column + RPC; deferred pending your decision, not started
+
+**B. Staged migrations — code-complete, zero live effect until applied**
+(none of these touch any database yet):
+
+- [ ] 248 — client notification on website-setup denial
+- [ ] 249 — client notification on Commerce customer request
+- [ ] 250 — client notification on file-scan completion
+- [ ] 251 — Multi-Location self-serve add-on (**needs 252 in the same
+  run** — inert without it)
+- [ ] 252 — fixes 251's trigger conflict
+- [ ] 253 — delivers billing notification events (**needs 254 in the
+  same run — see the read-only ordering plan produced this session for
+  exactly why and how**)
+- [ ] 254 — restricts client notification reads to `recipient_kind='client'`
+  (closes a real RLS gap; see "RLS gap fixed" section below)
+
+**C. Live launch verification — requires staging/external access, not
+code work; confirmed blocked in this container as of this checklist:**
+
+- [ ] `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` — absent (`env` check
+  above); without these, `validate-paid-capability-guards-staging.mjs`
+  and everything after it in `test:release` cannot run
+- [ ] Docker daemon — absent (`docker info` above); without it,
+  `supabase start` (full local Postgres+Auth+Storage stack) cannot run
+  in this container, so no migration can be tested against a fully
+  realistic environment here (only the scoped disposable-Postgres
+  technique used this session, which proves trigger/RLS logic but not
+  the full stack)
+- [ ] Real AI provider key, Resend (email), Cloudmersive (malware scan) —
+  not configured; these features fail closed by design, not broken code
+- [ ] Stripe test-mode lifecycle, real payout account — not configured
+- [ ] 10 consecutive disposable external Business QA runs with real
+  Supabase/GitHub/Netlify evidence + your explicit signoff
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — not started; this is the
+  actual production-deploy gate, independent of everything else above
+- [ ] Fresh Netlify build credits — unknown; a prior audit found credits
+  previously exhausted, not confirmed restored (needs live check)
+
+**Reading this honestly**: section A is essentially complete for what's
+been built. Section B is a single guarded `apply_all` run away from being
+live, once you approve it (with 253+254 ordering handled correctly — see
+below). Section C is the real distance to launch, and none of it is
+something local code work can close — it is credentials, external
+provider setup, and the 10-run QA/signoff process, all requiring your
+action outside this session.
+
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
@@ -158,6 +249,94 @@ assertions passed. Database and the temporary role were dropped
 afterward, Postgres stopped again, left as found. Static validator
 `scripts/validate-notification-recipient-kind-rls-contract.mjs` (5/5)
 checks the migration file itself hasn't drifted from this.
+
+## Read-only ordering plan for 253+254 (no migration edited, no staging touched)
+
+Produced on request before any staging work, to compare safe ways to
+guarantee 254's RLS fix is in force before 253 can ever create an
+owner-facing row. Nothing here was executed — this is analysis only.
+
+**Mechanism**: `supabase db push` applies pending migrations in ascending
+filename order. 253 < 254 numerically, so in any full run, 253 always
+applies first. Each migration file is applied as its own transaction —
+standard, documented Supabase CLI behavior, though **not independently
+confirmed in this environment** (no Docker daemon here to run
+`supabase start` and observe it directly; see "what cannot be verified"
+below). The real risk is not the brief moment between two files
+committing in a clean run — nothing auto-fires inside a migration
+transaction — it's an **interrupted run**: if `apply_all`/`db push`
+applies 253 and then stops (network drop, CI runner killed, timeout)
+before reaching 254, the database is left with 253's write-capable
+function live and 254's fix absent, for however long it takes to notice
+and finish.
+
+**Option A — Reorder so 254 executes before 253.** `supabase db push`
+cannot apply an out-of-sequence migration ahead of an earlier-numbered
+pending one within one invocation; achieving this would require either
+renumbering the already-drafted, already-reviewed migration files (an
+edit to migrations, which is explicitly off the table right now and also
+breaks this repo's forward-only numbering convention), or manually
+applying 254's SQL out-of-band via a direct psql session before ever
+running `db push` (bypasses the guarded, audited apply pipeline entirely,
+and `schema_migrations` wouldn't reflect it correctly). **Not
+recommended** — both paths violate a standing rule for reasons unrelated
+to whether they'd work.
+
+**Option B — One continuous run, with mandatory post-apply verification.**
+Run `apply_all`/`db push` once, in a monitored session, so 253 and 254
+apply back-to-back with no manual action between them. Immediately after
+it reports success, independently query
+`supabase_migrations.schema_migrations` (or `supabase migration list
+--linked`) to confirm **both** 253 and 254 show as applied — not just
+"no error was printed." If the run stops between them, treat it as an
+active incident and re-run immediately to complete 254 before doing
+anything else. This is the minimum acceptable process.
+
+**Option C — Same as B, plus a pre-apply safety net: pause the billing
+automation schedule first, resume only after 254 is confirmed applied.**
+The two functions that ever create an owner-facing row are
+`advance_automatic_billing_lifecycle()` (writes
+`freeze_review_owner_attention`) and `queue_due_billing_attempts()`
+(writes `billing_processor_connection_required`) — both run on a
+schedule, not on demand. If whatever schedules them (pg_cron, a Supabase
+scheduled Edge Function, or similar — see "cannot verify" below) is
+paused before starting the push and only resumed after 254 is confirmed,
+then even an interrupted run between 253 and 254 cannot actually produce
+an exposed row, because nothing would be running to create one. This
+converts "the vulnerable policy is briefly live" into "the vulnerable
+policy is briefly live but nothing can trigger it" — strictly safer than
+B, at the cost of one extra, fully reversible coordination step.
+
+**Recommendation: Option C.**
+
+- **Option A** — not recommended: violates the no-migration-edits rule
+  and/or bypasses the guarded apply pipeline, for no real safety gain
+  over C.
+- **Option B** — acceptable minimum: safe as long as the verification
+  step is actually done every time; leaves a real, if narrow, exposure
+  window if that step is skipped or delayed under pressure.
+- **Option C** (recommended) — same operational cost as B plus one small
+  extra step, and is the only option that stays safe even if verification
+  is missed, since the underlying trigger for the exposure (the scheduled
+  jobs) is disabled during the risk window regardless.
+
+**What I cannot verify without staging access:**
+- Whether this project's pinned Supabase CLI (`^2.107.0`) truly applies
+  each migration file in its own transaction in practice — documented
+  standard behavior, but not something observable from this container
+  (no Docker daemon for `supabase start`, no staging credentials).
+- What actually schedules `advance_automatic_billing_lifecycle()` and
+  `queue_due_billing_attempts()` in the real deployment (pg_cron config,
+  a Supabase scheduled function, or something else) — Option C's "pause
+  the schedule" step needs someone with live access to identify the exact
+  mechanism and confirm a safe pause/resume path before it can actually
+  be carried out.
+- Whether `schema_migrations` on the real target database already shows
+  253 as applied from some prior run this session has no record of —
+  unverifiable from repo state alone; only a live query settles it.
+- Whether any owner-facing `notification_deliveries` row already exists
+  on a real database right now — same caveat, not inspected, not
+  claimed either way.
 
 ## Final release-focused audit — 2026-09-29
 

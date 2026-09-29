@@ -87,15 +87,14 @@ equivalent:
 
 ## End-of-chat reporting (user preference)
 
-- **At the end of every chat/session**, give one short, low-cost launch
-  readiness percentage: roughly how close the product is to "you can plug
-  in real credentials and launch." Do not spend extra tool calls computing
-  this precisely — a quick, honestly-caveated estimate from what's already
-  known this session is enough. Separate "code readiness" (what's built
-  and locally verified) from "launch readiness" (which also requires real
-  provider keys, staging credentials, 10 disposable external QA runs, and
-  owner signoff per `LAUNCH_HARDENING_CHECKLIST.md`) if they differ
-  meaningfully — don't imply one when reporting the other.
+- **At the end of every chat/session**, reference the canonical launch
+  checklist at the top of `docs/NXQ_RUNTIME_HANDOFF.md` ("Canonical
+  launch checklist") — do not invent a fresh percentage. If this chat's
+  work changed a line's status, update that checklist (and only that
+  line) as part of the chat; otherwise just point to it as-is. It already
+  keeps "code completion" (section A), "staged migrations" (section B),
+  and "live launch verification" (section C) separate — never collapse
+  them into one number.
 - **Whenever presenting the user a decision** (not a routine implementation
   choice — a real fork in direction), offer it as clearly labeled options
   (Option A / B / C, or via the `AskUserQuestion` tool's pop-up-style
