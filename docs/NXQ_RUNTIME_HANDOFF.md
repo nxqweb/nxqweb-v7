@@ -7,15 +7,15 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `859f200` — "fix: correct stale file-access check spacing and
-  add Stripe link safety copy"
+- **HEAD:** `5f6adc5` — "docs: record full round of release-gate fixes and
+  remaining local checks"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
-  (`afbbc5f` → `c36568d`), then four further local commits
-  (`a94cc2e`, `e9a6fda`, `0bebd56`, `d2c17e6`, `859f200`) — see "Confirmed
-  blockers/risks" for why stale tracking refs must always be refreshed
-  before trusting a reported HEAD.
+  (`afbbc5f` → `c36568d`), then five further local commits
+  (`a94cc2e`, `e9a6fda`, `0bebd56`, `d2c17e6`, `859f200`, `5f6adc5`) — see
+  "Confirmed blockers/risks" for why stale tracking refs must always be
+  refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -76,13 +76,20 @@ state. Update this file, not a new one, at every handoff.
   passed (0 high/critical prod vulnerabilities; 214 migrations valid; 44
   Edge functions type-check; 19/19 accessibility; 17/17 security; build
   and all 16 route smoke checks green).
-- **Still not exercised this session:** `npm run test:lifecycle` (10-run
-  simulation, not yet run for time), `scripts/simulate-autonomy-failures.mjs`,
-  `scripts/check-runtime-stage-readiness.mjs`, and the one credential-gated
-  validator itself (`validate-paid-capability-guards-staging.mjs`) plus
-  `npm run test:staging-evidence`. Everything else in
-  `scripts/run-release-gate.mjs`, run individually rather than through the
-  chained script, is now confirmed green at HEAD `859f200`.
+- Ran the remaining credential-independent pieces of the release gate:
+  `node scripts/check-runtime-stage-readiness.mjs` (9/9, including its own
+  explicit self-deferral of the remote launch-architecture contract since
+  staging credentials are absent), `node scripts/simulate-autonomy-failures.mjs`
+  (23/23), and `npm run test:lifecycle` (21/21 deterministic scenarios plus
+  10/10 clean onboarding-to-live replays; external provider evidence
+  correctly reported as "not exercised" since it needs disposable
+  Supabase/GitHub/Netlify runtime). No fixes needed — all passed cleanly.
+- **Everything in `scripts/run-release-gate.mjs` that does not require live
+  staging credentials is now confirmed green at HEAD `5f6adc5`**, run
+  individually rather than through the chained script (which still stops
+  at `validate-paid-capability-guards-staging.mjs`). The only pieces left
+  unverified are that one validator and `npm run test:staging-evidence`,
+  both of which need real `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
@@ -233,18 +240,21 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `npm run test:release` can actually run to completion. This is a
    decision point, not an autonomous task — do not proceed past it without
    an explicit answer.
-2. Run `npm run test:lifecycle` (10-run deterministic simulation),
-   `node scripts/simulate-autonomy-failures.mjs`, and
-   `node scripts/check-runtime-stage-readiness.mjs` — the remaining
-   credential-independent pieces of the release gate not yet exercised
-   this session — and record the exact result.
-3. Audit `docs/LAUNCH_HARDENING_CHECKLIST.md` against current contract
+2. Audit `docs/LAUNCH_HARDENING_CHECKLIST.md` against current contract
    validator coverage to confirm no row has silently regressed since
-   2026-08-16, and correct any other stale claims found. Three real
+   2026-08-16, and correct any other stale claims found. Four real
    discrepancies were found and fixed by simply reading the code this
    session (Multi-Location status, the brand-contract check, the
-   zero-key/Stripe checks) — treat every older doc claim as unverified
-   until re-checked against current source, not as ground truth.
+   zero-key/Stripe checks, and my own handoff-doc regression) — treat
+   every older doc claim as unverified until re-checked against current
+   source, not as ground truth.
+3. With the entire credential-independent release gate now green (see
+   "Completed work" above), the next real leverage is external: decide
+   with the user whether to pursue staging-credential setup (task #1) or
+   continue hardening/auditing code in the meantime. Absent a new signal,
+   default to task #2 in a loop — the codebase has repeatedly turned out to
+   have small, real drift between docs/tests and source that only surfaces
+   by actually running things and reading the code, not by assuming green.
 
 ## Resume instruction for the next Claude session
 
