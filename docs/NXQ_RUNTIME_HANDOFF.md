@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `731ce8d` — "fix: add missing CORS handling to
-  discover-sales-prospects"
+- **HEAD:** `51aced5` — "fix: notify client when their production
+  website goes live"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `731ce8d` — see "Confirmed blockers/risks" for why stale tracking refs
+  `51aced5` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -307,6 +307,77 @@ state. Update this file, not a new one, at every handoff.
   `731ce8d`, verified with Deno type-check (44/44), lint, the full
   release gate (same expected stop point), all 23 downstream validators,
   the failure simulator (23/23), and the 10-run lifecycle simulation.
+- Ran a read-only end-to-end audit of the actual Business flow, at the
+  user's explicit request: signup/intake → owner decision → build →
+  deploy handoff → client portal → maintenance. Traced each joint by
+  reading real code, not assuming:
+  - **Signup/intake**: `PortalSignup.tsx` collects family/tier-specific
+    project-fit answers and stores them as Supabase auth user metadata.
+    The `handle_new_client_signup()` trigger (migration 193) only reads
+    `business_name`/`contact_name`/`product_family_slug`/`product_tier_key`
+    from that metadata — the richer answers (`intake_family_details`,
+    `intake_family_answers`, `intake_service_area`, `intake_primary_goal`,
+    `intake_tier_goal`) are never read again. Confirmed this is
+    **intentional, not a bug**: the real, authoritative intake is a
+    separate, far more thorough "website setup report" form inside
+    `ClientPortal.tsx` (industry, services, pages, style, brand,
+    competitors, lead-handling rules, AI assistant rules, typed
+    signature) submitted via `submit_current_client_website_setup`,
+    matching migration 218's own description of it as "authoritative
+    intake evidence." The initial signup answers only route the
+    family/tier selection. Worth a UX look someday (why ask detailed
+    questions twice) but that is a product call, not a code gap.
+  - **RPC/route integrity**: every `supabase.rpc(...)` call in `src/`
+    (109 distinct names) resolves to a real function defined in
+    `supabase/migrations/`; every page in `src/pages/` is registered in
+    `src/App.tsx`. No broken buttons or dead routes found.
+  - **Owner decision → build → deploy handoff**: `qa_only` enforcement
+    (blocking disposable QA clients from real infrastructure/billing) is
+    correctly centralized in database RPCs (`nxq_authorize_paid_capability`
+    and siblings), not scattered per-function — the right architecture,
+    confirmed by tracing the exact cost-cap formula rather than assuming.
+    Role authorization (owner-only functions checking `owner_users`,
+    client-facing ones checking `clients`) is consistently correct across
+    all 17 browser-invoked functions.
+  - **Client portal**: the live lead-capture contract between every
+    generated client website (`templates/business-v1/lead-form.js`) and
+    `ingest-business-lead` was checked field-by-field and matches exactly
+    (`form_key`, `name`, `email`, `phone`, `message`, `service_area`,
+    `utm`, `company_website`, `challenge_token` in, `{ok:true,accepted:true}`
+    out) — this is the one contract that, if broken, would silently kill
+    every client's contact form, and it's intact.
+  - **Real gap found**: `promote-business-production` (the function that
+    performs the actual first production launch) logs an internal
+    `automation_audit_log` event (`business_website_published_automatically`)
+    but never notified the client. The parallel, already-correct pattern
+    for *ongoing* changes (migration 137's `notify_change_request_state`
+    trigger) does notify the client the moment a change reaches
+    `published` — the very first launch, arguably the single most
+    important moment in the whole product, had no equivalent. Fixed by
+    adding a `notification_deliveries` insert immediately after the
+    existing audit-log insert, using the exact channel/recipient_kind
+    pattern already established by five other insert sites (migrations
+    137, 148, 154, 155, 159): `channel: "in_app"` (always deliverable,
+    no external provider needed), `recipient_kind: "client"`,
+    `template_key: "business_production_published"`, `priority: "high"`.
+    Deliberately not error-checked, matching the audit-log insert right
+    above it — the launch has already fully succeeded by that point, so
+    a failed notification write must never make the launch report as
+    failed. No migration or schema change needed;
+    `notification_deliveries` and its dispatch worker already exist.
+    Fixed in `51aced5`, verified with Deno type-check (44/44), lint, the
+    full release gate (same expected stop point), every validator that
+    references `promote-business-production` by name, all 23 downstream
+    validators, the failure simulator (23/23), and the 10-run lifecycle
+    simulation.
+  - **Maintenance**: `run-website-maintenance` and its uptime/SSL/backup
+    checks were already exhaustively covered by
+    `validate-recovery-readiness-contract.mjs` (18/18) and
+    `validate-mega-autonomy-contract.mjs` (45/45) earlier this session —
+    not re-audited from scratch here, but nothing in the launch-handoff
+    trace above surfaced anything wrong with how maintenance picks up a
+    newly-published site (`bootstrap_live_website_maintenance` RPC runs
+    unconditionally right before the notification fix above).
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
