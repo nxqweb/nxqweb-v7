@@ -123,10 +123,15 @@ as $nxq_paid_guard_validation$
 declare
   family_id uuid;
   starter_tier_id uuid;
+  growth_tier_id uuid;
   user_one uuid := gen_random_uuid();
   user_two uuid := gen_random_uuid();
+  user_growth_addon uuid := gen_random_uuid();
   client_one uuid := gen_random_uuid();
   client_two uuid := gen_random_uuid();
+  client_growth_addon uuid := gen_random_uuid();
+  addon_result jsonb;
+  addon_active_location_count integer;
   ticket_id uuid;
   result jsonb;
   checks jsonb;
@@ -184,6 +189,9 @@ begin
     'location_audit_write_probe', 'location_result_construction_probe',
     'location_first_created', 'location_second_denied',
     'location_denial_classified', 'location_active_count_one',
+    'location_addon_client_created', 'location_addon_without_addon_denied',
+    'location_addon_enabled', 'location_addon_second_location_permitted',
+    'location_addon_active_count_two', 'location_addon_cap_fix_verified',
     'location_first_failure_authentication',
     'location_first_failure_client_not_found',
     'location_first_failure_lifecycle', 'location_first_failure_tier',
@@ -230,6 +238,16 @@ begin
     raise exception 'Required active Business Starter catalog entry is missing.';
   end if;
 
+  select tier.id into growth_tier_id
+  from public.product_family_tiers tier
+  where tier.product_family_id = family_id
+    and tier.tier_key = 'growth'
+    and tier.is_active;
+
+  if growth_tier_id is null then
+    raise exception 'Required active Business Growth catalog entry is missing.';
+  end if;
+
   insert into auth.users (
     instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
     raw_app_meta_data, raw_user_meta_data, created_at, updated_at
@@ -237,7 +255,9 @@ begin
     ('00000000-0000-0000-0000-000000000000', user_one, 'authenticated', 'authenticated',
       'paid-guard-' || user_one::text || '@synthetic.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
     ('00000000-0000-0000-0000-000000000000', user_two, 'authenticated', 'authenticated',
-      'paid-guard-' || user_two::text || '@synthetic.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
+      'paid-guard-' || user_two::text || '@synthetic.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
+    ('00000000-0000-0000-0000-000000000000', user_growth_addon, 'authenticated', 'authenticated',
+      'paid-guard-' || user_growth_addon::text || '@synthetic.invalid', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
   insert into public.clients (
     id, auth_user_id, business_name, contact_email, business_type, status,
@@ -247,7 +267,9 @@ begin
     (client_one, user_one, 'Synthetic Paid Guard One', 'paid-guard-' || user_one::text || '@synthetic.invalid',
       'Synthetic Validation', 'overdue', 50, 'active', 'synthetic', family_id, starter_tier_id, false),
     (client_two, user_two, 'Synthetic Paid Guard Two', 'paid-guard-' || user_two::text || '@synthetic.invalid',
-      'Synthetic Validation', 'active', 50, 'active', 'synthetic', family_id, starter_tier_id, false);
+      'Synthetic Validation', 'active', 50, 'active', 'synthetic', family_id, starter_tier_id, false),
+    (client_growth_addon, user_growth_addon, 'Synthetic Paid Guard Growth Addon', 'paid-guard-' || user_growth_addon::text || '@synthetic.invalid',
+      'Synthetic Validation', 'active', 100, 'active', 'synthetic', family_id, growth_tier_id, false);
 
   -- A Starter client must be denied a higher-tier feature before credits exist.
   begin
@@ -489,6 +511,7 @@ begin
         and not tgisinternal
         and tgname not in (
           'nxq_enforce_location_entitlement',
+          'enforce_client_location_limit',
           'queue_location_seo_refresh_from_location'
         )
     ) then
@@ -954,6 +977,81 @@ begin
     end if;
   exception when others then
     checks := jsonb_set(checks, '{business_location_limits}', 'false');
+  end;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', user_one::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object('role', 'service_role', 'sub', user_one)::text,
+    true
+  );
+
+  -- Migration 252 regression proof: a Growth-tier client without an enabled
+  -- location add-on must still be capped at one active location (the
+  -- nxq_enforce_location_entitlement fix must not loosen the base cap), and
+  -- the SAME client, after enabling one add-on unit, must be able to create
+  -- a second location (the actual bug migration 251 shipped with -- the
+  -- untouched migration-246 trigger blocked this even with an add-on
+  -- enabled). Kept independently rollback-safe like the other location
+  -- phase, so a failure here cannot mask unrelated phases.
+  begin
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    perform set_config('request.jwt.claim.sub', user_growth_addon::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      jsonb_build_object('role', 'authenticated', 'sub', user_growth_addon)::text,
+      true
+    );
+
+    addon_result := public.current_client_create_location(
+      'Synthetic Growth Primary', 'Synthetic City', 'CA',
+      null, null, null, null, array[]::text[]
+    );
+    if coalesce((addon_result->>'ok')::boolean, false) then
+      checks := jsonb_set(checks, '{location_addon_client_created}', 'true');
+    end if;
+
+    begin
+      perform public.current_client_create_location(
+        'Synthetic Growth Second (no addon)', 'Synthetic City', 'CA',
+        null, null, null, null, array[]::text[]
+      );
+    exception when others then
+      if sqlstate = 'P0001' and lower(sqlerrm) like '%location limit reached%' then
+        checks := jsonb_set(checks, '{location_addon_without_addon_denied}', 'true');
+      end if;
+    end;
+
+    addon_result := public.current_client_enable_location_addon();
+    if coalesce((addon_result->>'ok')::boolean, false)
+       and coalesce((addon_result->>'enabled_units')::integer, 0) = 1 then
+      checks := jsonb_set(checks, '{location_addon_enabled}', 'true');
+    end if;
+
+    addon_result := public.current_client_create_location(
+      'Synthetic Growth Second (with addon)', 'Synthetic City', 'CA',
+      null, null, null, null, array[]::text[]
+    );
+    if coalesce((addon_result->>'ok')::boolean, false) then
+      checks := jsonb_set(checks, '{location_addon_second_location_permitted}', 'true');
+    end if;
+
+    select count(*) into addon_active_location_count
+    from public.client_locations
+    where client_id = client_growth_addon and status <> 'closed';
+    if addon_active_location_count = 2 then
+      checks := jsonb_set(checks, '{location_addon_active_count_two}', 'true');
+    end if;
+
+    if checks->>'location_addon_client_created' = 'true'
+       and checks->>'location_addon_without_addon_denied' = 'true'
+       and checks->>'location_addon_enabled' = 'true'
+       and checks->>'location_addon_second_location_permitted' = 'true'
+       and checks->>'location_addon_active_count_two' = 'true' then
+      checks := jsonb_set(checks, '{location_addon_cap_fix_verified}', 'true');
+    end if;
+  exception when others then
+    checks := jsonb_set(checks, '{location_addon_cap_fix_verified}', 'false');
   end;
   perform set_config('request.jwt.claim.role', 'service_role', true);
   perform set_config('request.jwt.claim.sub', user_one::text, true);

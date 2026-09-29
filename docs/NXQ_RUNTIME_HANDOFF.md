@@ -7,25 +7,45 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `899f02d` — "Add Multi-Location self-serve add-on (staged,
-  unapplied)" (prior recorded HEAD was `d9c4a65`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (migration 252 trigger-conflict
+  fix) — prior recorded HEAD was `6a2446f`.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
   `a3442df` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
-- **Four new, unapplied migrations in the tree** — all pass local
+- **Five new, unapplied migrations in the tree** — all pass local
   migration integrity and every other local check, but **none has been
   applied to any database** (no staging credentials in this container,
   and applying is always a separate guarded action anyway). Review all
-  four before the next `apply_all` staging run:
+  five before the next `apply_all` staging run:
   - `supabase/migrations/248_notify_client_on_website_setup_denial.sql`
   - `supabase/migrations/249_notify_client_on_commerce_customer_request.sql`
   - `supabase/migrations/250_notify_client_on_file_scan_completion.sql`
-  - `supabase/migrations/251_multi_location_self_serve_addon.sql` (new
-    this session — Multi-Location self-serve add-on; see "Multi-Location
-    self-serve add-on — implemented" below)
+  - `supabase/migrations/251_multi_location_self_serve_addon.sql` —
+    Multi-Location self-serve add-on; see "Multi-Location self-serve
+    add-on — implemented" below. **Depends on 252 to work correctly** —
+    see next line.
+  - `supabase/migrations/252_fix_location_addon_trigger_conflict.sql`
+    (new this session) — forward-only fix for a trigger conflict found in
+    a read-only review of 251: `client_locations` already carried a
+    `BEFORE INSERT` trigger from migration 246
+    (`nxq_enforce_location_entitlement`) that hardcodes the non-enterprise
+    location cap at 1 with no awareness of `client_location_addons`. 251
+    added a second, separate trigger with the correct add-on-aware cap,
+    but both fired on every INSERT and the untouched 246 trigger still
+    rejected a second location for Growth/Intelligence clients regardless
+    of enabled add-on units — the add-on feature was functionally inert
+    on its one real path. 252 updates `nxq_enforce_location_entitlement()`
+    in place (preserving its family/status/billing/pipeline guards
+    verbatim) to account for add-on units and to share the same advisory
+    lock namespace as the add-on RPCs, and narrows 251's own trigger to
+    only the UPDATE cases it's actually needed for (reopening a closed
+    location, reassigning `client_id`). **251 and 252 must be applied
+    together, in that order, for the add-on feature to work correctly —
+    do not apply 251 without 252.**
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
@@ -833,6 +853,62 @@ charge, no external connection, and no touch to `clients.monthly_price` or
   a separate, explicitly reviewed activation/reconciliation step for
   whenever live billing turns on — nothing in this migration bridges to it.
 
+## Migration 252 — trigger-conflict fix for the Multi-Location add-on
+
+Found during a read-only release review of 248–251 (before either was ever
+applied), fixed with your explicit approval as a forward-only migration
+rather than amending unapplied 251 in place.
+
+- **`supabase/migrations/252_fix_location_addon_trigger_conflict.sql`**
+  (staged, **not applied to any database**): `create or replace`s
+  `nxq_enforce_location_entitlement()` (originally migration 246) to add
+  `client_location_addons.enabled_units` into its cap formula for
+  Growth/Intelligence, while leaving its family (`business` only),
+  status (`approved`/`active`/`overdue`), billing (`active`/`past_due`),
+  and pipeline-stopped guards byte-for-byte unchanged. Its advisory lock
+  now uses the same `'client-location-capacity:'` namespace as the
+  add-on enable/cancel RPCs and 251's own trigger, closing a race where
+  "enable add-on" and "insert second location" previously didn't
+  serialize against each other. Also narrows `enforce_client_location_limit()`
+  (251's trigger) to only fire on its two UPDATE cases (reopening a
+  closed location, reassigning `client_id`) — the plain-INSERT case it
+  also checked is now redundant since the revised 246 function is
+  authoritative there.
+- **`scripts/sql/validate-paid-capability-guards-staging.sql`**: added
+  `'enforce_client_location_limit'` to the `location_no_unexpected_user_triggers`
+  trigger allow-list (previously only `nxq_enforce_location_entitlement`
+  and `queue_location_seo_refresh_from_location` were permitted — this
+  staging guard would otherwise fail the moment 251 was ever applied
+  anywhere, independent of the functional bug).
+- **New database test**, added to the same guarded staging SQL (only
+  actually runs against a live/staging Postgres with
+  `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`, which this container
+  doesn't have): a synthetic Growth-tier client (`client_growth_addon`)
+  creates a primary location, is denied a second one with zero add-on
+  units enabled (`location_addon_without_addon_denied`), enables one
+  add-on unit (`location_addon_enabled`), then successfully creates a
+  second location (`location_addon_second_location_permitted`), ending
+  with `active_location_count = 2` (`location_addon_active_count_two`).
+  Six new named checks were added; `scripts/validate-paid-capability-enforcement-contract.mjs`'s
+  exact-count assertion on `current_client_create_location(` calls in
+  that SQL file was updated from 2 to 5 to match.
+- **What this proves vs. what still needs a real database**: everything
+  above was verified by static reasoning (reading both trigger bodies)
+  and by every local, credential-free check passing (migration integrity,
+  `test:edge`, eslint, `tsc --noEmit`, the full `test:release` gate up to
+  its credential-gated stop, all 23 downstream `validate-*.mjs` scripts,
+  `simulate-autonomy-failures.mjs`, `test:lifecycle`, `test:security`,
+  `test:accessibility`, `npm run build`). **None of that actually executes
+  this new SQL test** — `validate-paid-capability-guards-staging.mjs`
+  fails closed on missing staging credentials in this container, exactly
+  as before. The new scenario, the trigger-narrowing logic, and the fix
+  itself have only been proven correct by inspection, not by running
+  Postgres. This still needs either a disposable local Postgres
+  (`supabase db push` against a throwaway project/branch, then run this
+  SQL directly) or a guarded staging run of `validate_prelaunch`/`apply_all`
+  before anyone should trust that 251+252 behave as designed. See "Next
+  highest-priority safe tasks" below.
+
 ## Checks run this session
 
 - Git-state verification: `git remote -v`, `git status --short --branch`,
@@ -941,27 +1017,38 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
    `automation_escalations` audit"). The cleanest fix for (b) is
    extending `owner_exception_center()` to read `automation_escalations`
    generically rather than one-off per escalation_type.
-2. **Review and, if approved, apply all four staged migrations**
+2. **Before applying anything: prove migration 252's fix against a real
+   Postgres instance** — a disposable local Postgres or a throwaway
+   Supabase branch/project, running `supabase db push` through at least
+   252, then executing `scripts/sql/validate-paid-capability-guards-staging.sql`'s
+   new `location_addon_*` scenario directly (or via
+   `validate-paid-capability-guards-staging.mjs` against that disposable
+   instance). Nothing this session ran can actually execute that SQL —
+   see "Migration 252 — trigger-conflict fix" above for exactly what's
+   proven vs. unproven.
+3. **Review and, if approved, apply all five staged migrations**
    (`248_notify_client_on_website_setup_denial.sql`,
    `249_notify_client_on_commerce_customer_request.sql`,
-   `250_notify_client_on_file_scan_completion.sql`, and
-   `251_multi_location_self_serve_addon.sql`) through the normal
+   `250_notify_client_on_file_scan_completion.sql`,
+   `251_multi_location_self_serve_addon.sql`, and
+   `252_fix_location_addon_trigger_conflict.sql`) through the normal
    guarded staging workflow (`validate_prelaunch` / `apply_all` with the
-   exact confirmation phrase). All four are currently only staged in
-   the repo, not applied anywhere. Once applied: denied clients,
-   Commerce clients receiving new customer requests, and clients
-   uploading files will get in-app notifications they don't currently
-   receive; and Growth/Intelligence clients will be able to self-serve
-   enable/cancel Multi-Location add-ons (see "Multi-Location self-serve
-   add-on — implemented" above).
-3. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
+   exact confirmation phrase). **251 and 252 must be applied together, in
+   that order** — 251 alone leaves the add-on feature functionally inert.
+   All five are currently only staged in the repo, not applied anywhere.
+   Once applied: denied clients, Commerce clients receiving new customer
+   requests, and clients uploading files will get in-app notifications
+   they don't currently receive; and Growth/Intelligence clients will be
+   able to self-serve enable/cancel Multi-Location add-ons for real (see
+   "Multi-Location self-serve add-on — implemented" above).
+4. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
    the staging project may be provided (as container env vars, never
    pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
    `npm run test:staging-evidence`, and the remainder of
    `npm run test:release` can actually run to completion. This is a
    decision point, not an autonomous task — do not proceed past it without
    an explicit answer.
-4. Consider drafting (only with explicit user approval, never
+5. Consider drafting (only with explicit user approval, never
    autonomously) a migration to drop or properly lock down
    `commerce_cart_items` — orphaned schema found this session: granted to
    `authenticated` but no RLS policy ever written, unreferenced anywhere

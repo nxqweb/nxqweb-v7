@@ -225,7 +225,7 @@ const paidGuardLocationPhase = paidGuardValidationSql.slice(
   paidGuardValidationSql.indexOf("-- Keep the resource denial independently rollback-safe"),
 );
 check("Transactional validation proves location and resource denials from isolated state",
-  (paidGuardValidationSql.match(/public\.current_client_create_location\(/g) || []).length === 2 &&
+  (paidGuardValidationSql.match(/public\.current_client_create_location\(/g) || []).length === 5 &&
   (paidGuardValidationSql.match(/insert into public\.client_locations\(/g) || []).length === 1 &&
   paidGuardValidationSql.includes("jsonb_build_object('role', 'authenticated', 'sub', user_two)::text") &&
   paidGuardValidationSql.includes("synthetic_role <> 'authenticated' or synthetic_uid <> user_two") &&
