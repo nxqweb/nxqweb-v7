@@ -23,7 +23,7 @@ const checks = [
   ["External notifications block instead of pretending delivery", notifications.includes("External notification delivery is disabled until a provider adapter is configured") && notifications.includes('status: "blocked"')],
   ["Missing malware adapter never claims or downloads a file in staging", scanner.includes('mode: "quarantine_only"') && scanner.indexOf("if (!adapterConfigured)") < scanner.indexOf('admin.rpc("claim_next_client_file_security_scan"') && scanner.indexOf("if (!adapterConfigured)") < scanner.indexOf(".download(file.storage_path)")],
   ["Missing malware adapter fails closed outside staging", scanner.includes('mode: "blocked"') && scanner.includes("No file was claimed or released") && scanner.includes("}, 503)")],
-  ["Client and owner file access remain locked to clean released scans", clientFiles.includes('file.scan_status!=="clean"||file.quarantine_status!=="released"') && ownerFiles.includes('scan?.status === "clean" && scan.quarantine_status === "released"')],
+  ["Client and owner file access remain locked to clean released scans", clientFiles.includes('file.scan_status!=="clean" || file.quarantine_status!=="released"') && ownerFiles.includes('scan?.status === "clean" && scan.quarantine_status === "released"')],
 ];
 
 let passed = 0;

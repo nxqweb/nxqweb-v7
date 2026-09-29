@@ -167,7 +167,7 @@ export function ClientCommerceLiveStore() {
           <div className="panel-title"><Save size={20} /><div><h2>Store and payment handoff</h2><p className="subtle">A public payment link can be recorded here later, but this page does not create a payment account, store secrets, charge customers, or connect payouts.</p></div></div>
           <div className="setup-form-grid">
             <label><span>Store name</span><input className="auth-input" value={storeName} onChange={(e) => setStoreName(e.target.value)} /></label>
-            <label><span>Stripe Payment Link</span><input className="auth-input" placeholder="Public payment link only" value={stripePaymentLink} onChange={(e) => setStripePaymentLink(e.target.value)} /></label>
+            <label><span>Stripe Payment Link</span><input className="auth-input" placeholder="https://buy.stripe.com/... public link only" value={stripePaymentLink} onChange={(e) => setStripePaymentLink(e.target.value)} /></label>
             <label><span>Legacy PayPal link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
             <label><span>Legacy Venmo link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
             <label><span>Payment instructions</span><input className="auth-input" placeholder="Public customer-facing instructions only" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} /></label>
@@ -176,7 +176,7 @@ export function ClientCommerceLiveStore() {
             <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(false)} type="button">{busy === "settings" ? "Saving..." : "Save private draft"}</button>
             <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>
           </div>
-          <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a secret key, webhook secret, password, bank account, login code, or other protected credential here.</p>
+          <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a Stripe secret key, webhook secret, password, bank account, login code, or other protected credential here. Only a public Stripe Payment Link (https://buy.stripe.com/...) belongs in this field.</p>
           {data.status === "active" ? <a className="wide-btn" href={liveUrl} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open verified storefront</a> : null}
         </section>
 
