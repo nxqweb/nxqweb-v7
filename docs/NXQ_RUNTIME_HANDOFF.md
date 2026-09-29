@@ -7,10 +7,11 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `4147bb6` — "docs: record client notification-list
-  verification and implementation" (prior recorded HEAD was `b331b96`;
-  the code itself is commit `f1fae0c`, one before this doc update).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (Client Portal notification
+  list) — prior recorded HEAD was `43c769e`; the code itself is commit
+  `db31f85`.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -270,17 +271,25 @@ also have surfaced owner-facing rows about that same client (e.g. the
 in owner-oriented language). The implementation explicitly filters
 `recipient_kind = 'client'` in the query itself, not just relying on RLS.
 
-**Implemented**: `src/pages/ClientNotificationPreferences.tsx` (the
-existing `/client/notifications` page, previously preferences-only) now
-also shows a "Recent notifications" read-only list, newest first, scoped
-to the client's own `client_id` and `recipient_kind = 'client'`. New
-focused validator:
-`scripts/validate-client-notification-center-contract.mjs` (8/8,
-auto-discovered by `run-release-gate.mjs`) — asserts the scoping/filter,
-that no owner-only columns are requested, that no write call exists
-against the table from this page, and that the underlying migration 133
-RLS/grant remain exactly as verified. All local checks re-run clean; no
-migration touched, no Supabase connection, no deploy.
+**Implemented in two places now**: `src/pages/ClientNotificationPreferences.tsx`
+(the existing `/client/notifications` page, previously preferences-only)
+shows the read-only list, and — per your follow-up request — the same
+minimal list was added directly to `src/pages/ClientPortal.tsx` (the main
+dashboard), so it's visible on login, not only under Settings. Both scope
+identically: the client's own `client_id` and `recipient_kind = 'client'`,
+re-verified against the same grant/RLS facts before building the second
+one. `ClientPortal.tsx`'s copy is wired into the existing
+`loadClientPortalData()`/`resetDependentPortalData()` flow, fetched
+alongside messages/files/domains using the already-loaded client row.
+
+Focused validator `scripts/validate-client-notification-center-contract.mjs`
+(14/14, auto-discovered by `run-release-gate.mjs`) now asserts the same
+four scoping/security properties for **both** pages — client_id scoping,
+the explicit `recipient_kind` filter, no owner-only columns requested, no
+write call against the table — plus the route wiring, both pages'
+fail-safe session checks, and that `ClientPortal.tsx`'s reset function
+clears the new state. All local checks re-run clean; no migration
+touched, no Supabase connection, no deploy.
 
 **Still deferred, needs your decision if you want it**: "mark as
 seen"/unread-count/bell-icon — the fuller notification-center feature —
