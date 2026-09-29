@@ -7,13 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `faab445` — "fix: close timing-attack gap in 10 internal
-  worker-token checks"
+- **HEAD:** `cb46ddb` — "fix: block redirect-based SSRF bypass in AI
+  build-plan adapter calls"
 - **Working tree:** clean, pushed to `origin`, no divergence.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
-  `faab445` — see "Confirmed blockers/risks" for why stale tracking refs
+  `cb46ddb` — see "Confirmed blockers/risks" for why stale tracking refs
   must always be refreshed before trusting a reported HEAD.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
@@ -239,6 +239,31 @@ state. Update this file, not a new one, at every handoff.
   (match/mismatch/empty-string), Deno type-check (44/44), lint, the full
   release gate (same expected stop point), all 23 downstream validators,
   the failure simulator (23/23), and the 10-run lifecycle simulation.
+- Considered but declined a softer finding: 19 internal Edge functions
+  (all already gated by worker-token or owner-login auth) parse request
+  bodies with no explicit app-level size cap. Asked the user; no strong
+  preference either way, so went with the recommendation to skip it —
+  low confidence it's a real gap given the existing auth gates plus
+  Supabase's own platform-level request size ceiling, and no single
+  clean established pattern across the codebase to replicate
+  consistently (unlike the SSRF/timing-attack fixes, which had one).
+  Logging this here rather than acting on it; revisit only if a
+  concrete reason to prioritize it shows up.
+- Followed the "does every user of this shared guard actually use it
+  correctly" question one step further: checked every function using
+  `requirePublicHttpsUrl` for whether its actual `fetch()` call also
+  blocks redirects (`redirect: "error"`). A URL can pass upfront
+  validation and still be redirected by the far end to an internal
+  address if the fetch silently follows 3xx responses — a classic
+  SSRF-via-redirect bypass. 6 of 8 already had `redirect: "error"`
+  (the correct, already-established pattern); `generate-business-build-plan`
+  and `prepare-build-plan` — the same two functions already touched for
+  SSRF this session — did not. Added `redirect: "error"` to both,
+  matching the existing pattern exactly; no behavior change for a
+  well-behaved provider. Fixed in `cb46ddb`, verified with Deno
+  type-check (44/44), lint, the full release gate (same expected stop
+  point), all 23 downstream validators, the failure simulator (23/23),
+  and the 10-run lifecycle simulation.
 
 ## Completed work in the prior session (through 2026-09-29 checkpoint sync)
 
