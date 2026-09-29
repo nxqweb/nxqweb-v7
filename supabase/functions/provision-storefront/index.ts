@@ -28,6 +28,7 @@ type SupabaseAdminClient = ReturnType<typeof createClient<DynamicDatabase>>;
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-nxq-worker-token",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 const netlifyHeaders = (token: string) => ({

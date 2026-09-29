@@ -7,9 +7,10 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `20723a9` — "Deliver billing notification events (staged,
-  unapplied) + owner read" (prior recorded HEAD was `8f98ec3`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (CORS sweep completion) —
+  prior recorded HEAD was `f7e7ccf`.
+- **Working tree:** clean once this session's commit lands; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -168,11 +169,27 @@ purely on external setup/approval no local code work can resolve.
    written but never read by any owner/client surface. Same root cause
    each time — a visibility table whose reader was never wired.
 2. **CORS-preflight-missing pattern**: found and fixed once already
-   (`discover-sales-prospects`); this audit found and fixed the same gap
-   in two more browser-invoked functions. Worth a one-time sweep of every
-   function `supabase.functions.invoke()`-called directly from the
-   browser to confirm no others were missed (not done this session — see
-   next tasks).
+   (`discover-sales-prospects`); the prior audit pass fixed the same gap
+   in two more browser-invoked functions
+   (`secure-client-file-access`/`secure-owner-file-access`). **Full sweep
+   completed this session**: enumerated all 17 distinct Edge function
+   names called via `supabase.functions.invoke()` anywhere in `src/`,
+   checked each for OPTIONS handling + `Access-Control-Allow-Origin` +
+   `Access-Control-Allow-Methods`. Found one more real gap:
+   `provision-storefront` had OPTIONS handling and
+   `Access-Control-Allow-Origin: "*"` (the accepted wildcard pattern for
+   bearer-authenticated owner functions — confirmed it does check
+   `auth.getUser` + `owner_users`, so the wildcard itself is fine and
+   already passes `validate-runtime-security-hardening.mjs`'s "Wildcard
+   CORS remains limited to bearer-authenticated owner functions" check)
+   but was **missing `Access-Control-Allow-Methods` entirely** — the only
+   one of 13 wildcard-CORS functions missing it; every sibling function
+   (`discover-sales-prospects`, `check-preview-netlify-status`, etc.) has
+   it. Without it, a real browser's preflight for the actual POST request
+   from `OwnerStorefrontProvisioning.tsx:84` could be rejected. Fixed by
+   adding the single missing header line, matching the sibling pattern
+   exactly. All 17 functions now confirmed complete; this pattern is
+   closed, not just spot-checked.
 3. **Staged-but-unapplied migrations (248-252)**: internally consistent,
    integrity-clean, zero live effect until a guarded `apply_all` run.
 4. **Everything past the credential-gated `test:release` stop, and
