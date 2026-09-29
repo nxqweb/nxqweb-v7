@@ -52,6 +52,12 @@ Deno.serve(async(req)=>{
 
     const finish=await admin.from("data_subject_requests").update({status:nextStatus,result,last_error:null,completed_at:nextStatus==="completed"?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq("id",r.id);
     if(finish.error)throw new Error(finish.error.message);
+
+    if(r.client_id){
+      const notifyBody=r.request_type==="export"?"Your requested data export is ready to review.":r.request_type==="consent_withdrawal"?"Your consent withdrawal request has been completed.":r.request_type==="correct"?"NXQ needs specific field/value instructions to complete your data correction request.":"Your data processing restriction request has been recorded.";
+      await admin.from("notification_deliveries").insert({client_id:r.client_id,channel:"in_app",recipient_kind:"client",template_key:"privacy_request_"+nextStatus,subject:"Update on your privacy request",body:notifyBody,priority:"high",metadata:{data_subject_request_id:r.id,request_type:r.request_type,status:nextStatus}});
+    }
+
     const complete=await admin.rpc("complete_external_automation_job",{target_job_id:job.id,worker_name:workerName,target_result:{data_subject_request_id:r.id,status:nextStatus}});if(complete.error)throw new Error(complete.error.message);
     return response({ok:true,claimed:true,request_id:r.id,status:nextStatus});
   }catch(error){
