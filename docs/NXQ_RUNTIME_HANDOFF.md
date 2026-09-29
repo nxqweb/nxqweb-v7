@@ -840,7 +840,10 @@ charge, no external connection, and no touch to `clients.monthly_price` or
   `git ls-remote origin refs/heads/<branch>`, `git log --oneline
   --decorate`, followed by `git fetch` + `git merge --ff-only`.
 - `npm ci` — clean install, 171 packages, 2 pre-existing `npm audit`
-  findings (1 moderate, 1 high) not yet triaged.
+  findings (1 moderate, 1 high) not yet triaged. **Re-checked at HEAD
+  `30bdee9`: `npm audit` now reports 0 vulnerabilities at any severity** —
+  resolved by a dependency update somewhere between that install and this
+  one; not something this session changed deliberately.
 - `npm run test:release` (full local release gate) — run twice:
   1. First run: failed at `validate-nxqx-brand-contract.mjs`
      ("public plan cards use NXQ-* names"), 13/14 in that suite. All
@@ -855,10 +858,18 @@ charge, no external connection, and no touch to `clients.monthly_price` or
      does not have.
 - The 2026-08-16 entry's "67 contract validators / 189 migrations / 276
   SECURITY DEFINER functions / 35 Edge functions green" claim is still
-  **not fully re-verified** — only the portion of the gate before the
-  credential-gated validator has been confirmed green at current HEAD.
-  Lint, `npm audit --audit-level=high`, `npm run build`, and the bundle
-  budget check have not run this session.
+  **not fully re-verified against live Supabase** — only the portion of
+  the gate before the credential-gated validator has been confirmed green
+  at current HEAD.
+- **Now run and confirmed at HEAD `30bdee9`** (closing the previously
+  open items in this list): `npx eslint . --max-warnings=0` (clean),
+  `npx tsc --noEmit` (clean), `npm audit` (0 vulnerabilities), `npm run
+  build` (production build succeeds, no errors), `npm run test:security`
+  (19/19), `npm run test:accessibility` (19/19), every `validate-*.mjs`
+  script that alphabetically follows the credential-gated one (23 files,
+  all pass), `node scripts/simulate-autonomy-failures.mjs` (23/23), and
+  `npm run test:lifecycle` (21/21 + 10/10 replays). No bundle-size budget
+  script exists in `package.json` to run separately from `npm run build`.
 
 ## Current product decisions and hard rules in force
 
