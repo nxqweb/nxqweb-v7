@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type Job = {
   id: string;
@@ -44,7 +45,7 @@ function stringArray(value: unknown) {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
-  if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) {
+  if (!(await constantTimeEqual(req.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) {
     return response({ ok: false, error: "Unauthorized." }, 401);
   }
 

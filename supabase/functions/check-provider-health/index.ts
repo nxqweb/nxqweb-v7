@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type ProviderConnection = {
   id: string;
@@ -124,7 +125,7 @@ function connectionStatusFromHealth(status: string) {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
-  if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) {
+  if (!(await constantTimeEqual(req.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) {
     return response({ ok: false, error: "Unauthorized." }, 401);
   }
 

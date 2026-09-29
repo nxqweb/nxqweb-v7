@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 const workerName="run-backup-restore-drill";
 const headers={"Content-Type":"application/json"};
@@ -7,7 +8,7 @@ function response(body:unknown,status=200){return new Response(JSON.stringify(bo
 
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405);
-  if(req.headers.get("x-nxq-worker-token")!==secret("NXQ_AUTOMATION_WORKER_TOKEN"))return response({ok:false,error:"Unauthorized."},401);
+  if(!(await constantTimeEqual(req.headers.get("x-nxq-worker-token")||"",secret("NXQ_AUTOMATION_WORKER_TOKEN"))))return response({ok:false,error:"Unauthorized."},401);
   const admin=createClient(secret("SUPABASE_URL"),secret("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false}});
   try{
     await admin.rpc("record_worker_heartbeat",{target_worker_key:workerName,target_execution_target:"scheduler",target_status:"healthy",target_metadata:{started_at:new Date().toISOString(),mode:"non_destructive"},target_last_error:null});

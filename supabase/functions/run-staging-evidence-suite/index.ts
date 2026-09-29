@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import { normalizeGithubPrivateKey } from "../_shared/github-private-key.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 const workerName = "run-staging-evidence-suite";
 const headers = { "Content-Type": "application/json" };
@@ -174,7 +175,7 @@ async function removeFixtures(admin: SupabaseClient, bucket: string, paths: stri
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
-  if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) return response({ ok: false, error: "Unauthorized." }, 401);
+  if (!(await constantTimeEqual(req.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) return response({ ok: false, error: "Unauthorized." }, 401);
   if (secret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase() !== "staging") return response({ ok: false, error: "Staging evidence suite refused outside staging." }, 403);
 
   const url = secret("SUPABASE_URL");

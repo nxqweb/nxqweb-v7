@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type Job = { id:string; client_id:string; project_id:string; job_type:string; payload?:Record<string,unknown>|null };
 type JsonRecord = Record<string, unknown>;
@@ -81,7 +82,7 @@ async function processJob(admin:Admin,job:Job){
 
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405);
-  const expected=secret("NXQ_AUTOMATION_WORKER_TOKEN"); if(req.headers.get("x-nxq-worker-token")!==expected)return response({ok:false,error:"Unauthorized."},401);
+  const expected=secret("NXQ_AUTOMATION_WORKER_TOKEN"); if(!(await constantTimeEqual(req.headers.get("x-nxq-worker-token")||"",expected)))return response({ok:false,error:"Unauthorized."},401);
   const url=secret("SUPABASE_URL"); const service=secret("SUPABASE_SERVICE_ROLE_KEY"); const admin=createClient(url,service,{auth:{persistSession:false}});
   let job:Job|null=null;
   try{

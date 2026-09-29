@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 import { classifyCapabilityRequest } from "../_shared/capability-rules.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type Job = { id: string; client_id: string; project_id: string; job_type: string; payload?: Record<string, unknown> | null };
 type JsonRecord = Record<string, unknown>;
@@ -217,7 +218,7 @@ async function classify(input: JsonRecord, providerUrlRaw: string, providerToken
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
-  if (request.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) return response({ ok: false, error: "Unauthorized." }, 401);
+  if (!(await constantTimeEqual(request.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) return response({ ok: false, error: "Unauthorized." }, 401);
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
   const providerUrl = optionalSecret("NXQ_AI_MODEL_PROVIDER_URL");
   const providerToken = optionalSecret("NXQ_AI_MODEL_PROVIDER_TOKEN");

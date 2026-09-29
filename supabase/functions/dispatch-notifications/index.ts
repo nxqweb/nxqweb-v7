@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type Delivery = {
   id: string;
@@ -91,7 +92,7 @@ async function postAdapter(delivery: Delivery) {
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
-  if (req.headers.get("x-nxq-worker-token") !== secret("NXQ_AUTOMATION_WORKER_TOKEN")) return response({ ok: false, error: "Unauthorized." }, 401);
+  if (!(await constantTimeEqual(req.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) return response({ ok: false, error: "Unauthorized." }, 401);
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
   const adapterConfigured = Boolean(Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim() && Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim());
   const deliveryMode = adapterConfigured ? "external_and_in_app" : "in_app_only";
