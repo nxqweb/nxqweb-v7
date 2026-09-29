@@ -220,19 +220,168 @@ and against `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sal
 Once confirmed current, resume from the "Next 3 highest-priority safe
 tasks" list above, honoring the stop-and-ask gates in `CLAUDE.md`.
 
-## Original one-time staging setup and provider hookup sequence
+## One-time staging setup
 
-The staging setup steps, protected Edge secret names, and the
-plug-in-and-launch sequence previously documented here are unchanged and
-still apply. They are preserved in full detail in the project's
-`docs/STRIPE_LAUNCH_RUNBOOK.md`, `docs/GROWTH_AND_OUTREACH_LAUNCH_RUNBOOK.md`,
-and `docs/LAUNCH_HARDENING_CHECKLIST.md`, and in
-`scripts/edge-function-manifest.mjs --profile=business-prelaunch`. Consult
-those rather than duplicating secret-name lists here, to avoid this file
-drifting out of sync with the scripts that are the actual source of truth
-for required secret names.
+1. Review the latest safe checkpoint on the safe branch. Do not merge it to
+   `main` yet.
+2. Create a separate hosted Supabase staging project. Do not point
+   `nxq-staging` at production.
+3. Create the GitHub Environment named `nxq-staging` with:
+   - `SUPABASE_ACCESS_TOKEN`
+   - `SUPABASE_PROJECT_REF`
+   - `SUPABASE_DB_PASSWORD`
+4. Add the Edge secret names required by `business-prelaunch` to the
+   staging Supabase project. This profile checks every Business launch
+   secret except `NXQ_AI_MODEL_PROVIDER_TOKEN`. `NXQ_RUNTIME_ENVIRONMENT`
+   must have the value `staging`. Print the exact names without values
+   with:
 
-Production remains blocked pending the ten strict external staging runs,
+   ```bash
+   node scripts/edge-function-manifest.mjs --profile=business-prelaunch
+   ```
+
+   The local machine check is authoritative for manifest/auth consistency:
+
+   ```bash
+   npm run test:runtime-stage
+   ```
+
+   The shared AI model provider requires exactly these four protected Edge
+   secret names:
+
+   - `NXQ_AI_MODEL_PROVIDER_URL`
+   - `NXQ_AI_MODEL_PROVIDER_TOKEN`
+   - `NXQ_AI_MODEL_PROVIDER_MODEL`
+   - `NXQ_AI_MODEL_PROVIDER_PROTOCOL`
+
+   For an OpenAI Responses configuration, set the URL to the provider's
+   Responses endpoint and the protocol to `openai_responses`. Store the API
+   key only in Supabase Edge secrets; never paste it into chat, source,
+   logs, workflow inputs, or a committed environment file. The selected
+   model must support strict structured outputs.
+
+   Provider readiness also uses two first-party, protected adapter
+   functions. Point each adapter URL at the matching function in the same
+   staging project and use a separate randomly generated adapter token.
+   Never reuse the automation worker token or place any value in source,
+   GitHub workflow inputs, or chat.
+
+   Notification delivery requires:
+
+   - `NXQ_NOTIFICATION_ADAPTER_URL` → the hosted `notification-provider-adapter` function
+   - `NXQ_NOTIFICATION_ADAPTER_TOKEN`
+   - `NXQ_RESEND_API_KEY`
+   - `NXQ_NOTIFICATION_FROM_EMAIL`
+
+   Malware scanning requires:
+
+   - `NXQ_MALWARE_SCAN_ADAPTER_URL` → the hosted `malware-scan-provider-adapter` function
+   - `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`
+   - `NXQ_CLOUDMERSIVE_API_KEY`
+
+   The default Cloudmersive adapter limit is 3,500,000 bytes so the
+   evaluation tier fails closed before an unsupported upload. A later paid
+   plan may use the optional `NXQ_MALWARE_ADAPTER_MAX_BYTES`, capped by NXQ
+   at 100 MiB. File access remains restricted unless the provider returns
+   valid clean evidence and the independently computed SHA-256 matches.
+
+   Merely adding these names cannot make readiness green. Notification
+   readiness requires a real successful delivery within 30 days.
+   File-security readiness requires real provider success plus a released
+   clean scan within 30 days. The generic provider-health worker
+   deliberately preserves those activity-owned statuses instead of
+   fabricating health from configuration.
+
+5. Before the real AI key is available, run **NXQ Manual Supabase Stage**
+   with action `validate_prelaunch`. It links staging, dry-runs migrations,
+   and proves every other launch secret name is present without changing
+   the database.
+6. Run `validate_zero_key` while the challenge, malware-scan, and external
+   notification providers are intentionally unavailable. This validates
+   the existing public analytics/lead endpoints and fingerprint salt
+   without accepting fake adapter values. `validate_prelaunch` must
+   continue to fail on those nine adapter/provider names until real
+   providers are connected.
+7. Run `validate_non_ai` while using the temporary staging fallback. Only
+   after the real provider token is added should `validate` and
+   `apply_all` be allowed to pass. `apply_all` requires confirmation
+   `APPLY-NXQ-SUPABASE-STAGING`; confirm every pending migration is
+   included before deploying the client portal and changed Edge functions.
+8. Sign into the staging Owner Portal, open **Launch readiness**, and
+   choose **Configure staging runtime routes**. Confirm the exact phrase
+   shown by the dialog.
+9. Refresh Provider Health and request checks for the configured
+   providers. Missing provider secret names stay visible; no secret value
+   is displayed.
+10. Re-check provider capacity before retrying any pending preview. Do not
+    blindly create a replacement site or deploy if Netlify build credits
+    are exhausted.
+11. Start one disposable DENY-path QA run and prove zero infrastructure.
+12. Start disposable APPROVE-path QA runs one at a time until ten strict
+    external runs pass. Do not count local simulations as external
+    evidence.
+
+## Plug-in-and-launch sequence
+
+When Netlify production deployments resume and the model-provider token is
+available:
+
+1. Add or replace only `NXQ_AI_MODEL_PROVIDER_TOKEN` in protected Supabase
+   Edge secrets. Never place it in GitHub, chat, source, logs, or workflow
+   inputs.
+2. Run `validate`; it must pass the strict `business-external-qa` profile.
+3. Run `apply_all` with the exact staging confirmation, then configure
+   staging runtime routes from Owner Launch Readiness.
+4. Prove a real provider call and healthy worker/provider evidence.
+5. Complete one DENY-path run and ten consecutive APPROVE-path external
+   runs without duplicate infrastructure, crossed tenant data, or manual
+   rescue.
+6. Review the production change, provide explicit owner signoff, and make
+   a separate production launch decision. No earlier step merges or
+   publishes production.
+
+## Future one-session provider hookup
+
+NXQ can remain safely staged until the provider accounts are available.
+The Owner Portal **Launch readiness** page now carries the same
+secret-name-only checklist. It does not collect, store, or display any
+secret value.
+
+Prepare the accounts in this order:
+
+1. Under separate staging-mutation authorization, run
+   `configure_internal_provider_adapters` with the exact workflow
+   confirmation. It derives the four first-party function URLs and
+   generates four independent adapter tokens. It sets
+   `NXQ_NOTIFICATION_ADAPTER_URL`, `NXQ_NOTIFICATION_ADAPTER_TOKEN`,
+   `NXQ_MALWARE_SCAN_ADAPTER_URL`, `NXQ_MALWARE_SCAN_ADAPTER_TOKEN`,
+   `NXQ_PROVIDER_HEALTH_ADAPTER_URL`, `NXQ_PROVIDER_HEALTH_ADAPTER_TOKEN`,
+   `NXQ_BUILD_PLAN_AI_ADAPTER_URL`, and `NXQ_BUILD_PLAN_AI_ADAPTER_TOKEN`
+   together without printing their values. The temporary secret file is
+   removed before the job ends. Because the provider-health scheduler may
+   begin read-only GitHub/Netlify checks after configuration, do not run
+   this action without explicit authorization for those resulting calls.
+2. Notification delivery: verify the sender domain and obtain a
+   sending-only key. Add only `NXQ_RESEND_API_KEY` and
+   `NXQ_NOTIFICATION_FROM_EMAIL` directly to protected Supabase staging
+   Edge secrets.
+3. Malware scanning: obtain a file-scanning key. Add only
+   `NXQ_CLOUDMERSIVE_API_KEY` directly to protected Supabase staging Edge
+   secrets.
+4. AI classification and planning: choose a strict-structured-output
+   model. Add only `NXQ_AI_MODEL_PROVIDER_URL`, `NXQ_AI_MODEL_PROVIDER_TOKEN`,
+   `NXQ_AI_MODEL_PROVIDER_MODEL`, and `NXQ_AI_MODEL_PROVIDER_PROTOCOL`
+   directly to protected Supabase staging Edge secrets.
+
+Then configure staging runtime routes from Owner Launch Readiness, open
+Provider Health, and recheck the connections. Real notification, scanning,
+AI, evidence, or QA activity remains a separate explicitly authorized step.
+Never put a provider value in chat, source, logs, workflow inputs, or a
+committed environment file.
+
+## Production remains blocked
+
+Production still requires the ten strict external staging runs,
 healthy provider/worker evidence, recovery proof, owner signoff, a separate
 production change review, and an explicit production deployment decision.
 The staging workflow cannot merge a branch, publish Netlify production,
