@@ -98,8 +98,9 @@ action outside this session.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `bed36d6` — "docs: replace guessed readiness percentages with
-  a fixed evidence-based checklist" (prior recorded HEAD was `bbc56a8`).
+- **HEAD:** `38b08a7` — "docs: record correct HEAD SHA for the
+  evidence-based checklist checkpoint" (prior recorded HEAD was
+  `bbc56a8`; the checklist itself is commit `bed36d6`).
 - **Working tree:** clean, pushed to `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
