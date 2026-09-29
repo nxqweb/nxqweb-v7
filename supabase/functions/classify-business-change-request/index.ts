@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
+import { classifyCapabilityRequest } from "../_shared/capability-rules.ts";
 
 type Job = { id: string; client_id: string; project_id: string; job_type: string; payload?: Record<string, unknown> | null };
 type JsonRecord = Record<string, unknown>;
@@ -252,9 +253,18 @@ Deno.serve(async (request) => {
     if (!changeRes.data) throw new Error("Change request not found.");
     if (["published", "cancelled", "failed"].includes(String(changeRes.data.status))) throw new Error("Change request is already terminal.");
 
-    const deterministic = deterministicResult(changeRes.data.requested_payload);
+    const capabilityCheck = classifyCapabilityRequest(`${changeRes.data.title} ${changeRes.data.description}`);
+    const capabilityBlocksAutomation = capabilityCheck.decision !== "approved_standard";
+    const deterministic = capabilityBlocksAutomation ? null : deterministicResult(changeRes.data.requested_payload);
     let result: ClassifierResult;
-    if (deterministic) result = deterministic;
+    if (capabilityBlocksAutomation) {
+      result = {
+        route: "owner_review",
+        confidence: 1,
+        reason: `NXQ capability policy requires owner review before this request can continue: ${capabilityCheck.clientSafeSummary}`,
+      };
+    }
+    else if (deterministic) result = deterministic;
     else if (!providerConfigured && stagingOnlyFallbackAllowed) {
       result = {
         route: "owner_review",
@@ -276,17 +286,21 @@ Deno.serve(async (request) => {
         target_last_error: null,
       });
     }
-    const classifier = deterministic
-      ? "deterministic-v1"
-      : !providerConfigured && stagingOnlyFallbackAllowed
-        ? "staging-owner-review-v1"
-        : "model-provider-v3";
+    const classifier = capabilityBlocksAutomation
+      ? "capability-policy-v1"
+      : deterministic
+        ? "deterministic-v1"
+        : !providerConfigured && stagingOnlyFallbackAllowed
+          ? "staging-owner-review-v1"
+          : "model-provider-v3";
     const evidence = {
       classifier,
       confidence: result.confidence,
       reason: result.reason || null,
       provider_configured: providerConfigured,
       staging_fallback: classifier === "staging-owner-review-v1",
+      capability_decision: capabilityCheck.decision,
+      capability_matched_features: capabilityCheck.matchedFeatures,
       classified_at: new Date().toISOString(),
       routing_authority: "database_trigger",
     };
