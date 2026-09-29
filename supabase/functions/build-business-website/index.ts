@@ -689,6 +689,18 @@ async function processPreviewCheck(admin: AdminClient, job: AutomationJob) {
     verified_preview_commit_sha: expectedPreviewCommitSha,
   });
 
+  await admin.from("notification_deliveries").insert({
+    client_id: job.client_id,
+    project_id: job.project_id,
+    channel: "in_app",
+    recipient_kind: "client",
+    template_key: "business_preview_ready",
+    subject: "Your website preview is ready",
+    body: `Your website preview is ready for review at ${deploy.url}.`,
+    priority: "high",
+    metadata: { preview_url: deploy.url, commit_sha: expectedPreviewCommitSha, run_id: runId },
+  });
+
   return { run_id: runId, preview_url: deploy.url, netlify_deploy_id: deploy.id, verified_preview_commit_sha: expectedPreviewCommitSha, status: "preview_ready" };
 }
 
