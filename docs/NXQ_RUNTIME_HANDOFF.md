@@ -7,9 +7,13 @@ state. Update this file, not a new one, at every handoff.
 ## Current checkpoint — 2026-09-29
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `7283f4d` — "docs: record disposable-Postgres proof of the
-  migration 252 trigger fix" (prior recorded HEAD was `6a2446f`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** pending this session's commit (final release audit + CORS
+  fix) — prior recorded HEAD was `262df9b` (the doc's own self-reference
+  gap from last round: a commit can't record its own SHA before it
+  exists; fixed properly this time with a follow-up commit once the SHA
+  is known).
+- **Working tree:** clean once this session's commits land; pushed to
+  `origin`.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -45,6 +49,147 @@ state. Update this file, not a new one, at every handoff.
     location, reassigning `client_id`). **251 and 252 must be applied
     together, in that order, for the add-on feature to work correctly —
     do not apply 251 without 252.**
+
+## Final release-focused audit — 2026-09-29
+
+A full launch-readiness pass against README/`LAUNCH_HARDENING_CHECKLIST.md`
+and actual code, prioritized Business onboarding → deployed/maintained
+site, then portals, Commerce, security, billing, notifications. Every
+line below is evidence-checked (file/script named), not asserted from
+memory. Status key: **VERIFIED** = code exists, wired, and a real local
+check exercises it. **UNVERIFIED** = code exists and looks wired but
+nothing runs it against a real Postgres, or it's staged/unapplied.
+**BROKEN** = missing, disconnected, or a known bug. **OWNER** = blocked
+purely on external setup/approval no local code work can resolve.
+
+### 1. Business onboarding → deployed, maintained site
+- **VERIFIED** Signup/intake (`handle_new_client_signup` migration 193,
+  `submit_current_client_website_setup` migration 218)
+- **VERIFIED** Owner APPROVE/DENY + cost-cap enforcement
+  (`nxq_authorize_paid_capability`) — 69/69 paid-capability checks pass
+- **UNVERIFIED** Denial client notification (migration 248) — staged only
+- **VERIFIED** Lead-capture contract, build/preview pipeline (44/44 Edge
+  type-checks), preview-ready + production-published client
+  notifications (application code, live at HEAD, no migration needed)
+- **VERIFIED** Domain reconciliation notifications (connected /
+  DNS-action-required), guarded to fire once per transition
+- **OWNER** Actual production deploy — needs 10 disposable external QA
+  runs + owner signoff (`LAUNCH_HARDENING_CHECKLIST.md`)
+- **OWNER** Real AI provider key, Resend, Cloudmersive malware provider —
+  fail closed by design without secrets
+
+### 2. Client & Owner portals
+- **VERIFIED** All 113 distinct `supabase.rpc()` names used across `src/`
+  resolve to a real migration-defined function (0 missing)
+- **VERIFIED** All 33 `ClientXxx.tsx` / 20 `OwnerXxx.tsx` pages have real
+  backing logic (RPC, direct RLS-scoped read, or Edge function invoke) —
+  individually confirmed, no dead pages
+- **FIXED THIS SESSION (was BROKEN)** `secure-client-file-access` and
+  `secure-owner-file-access` had zero CORS/OPTIONS handling despite being
+  invoked directly from the browser (`ClientFiles.tsx:134`,
+  `OwnerFiles.tsx:104`) — same bug class already fixed once for
+  `discover-sales-prospects` but missed here. Fixed by adding the same
+  `requestOrigin`/`cors`/OPTIONS pattern used in 15+ sibling functions
+  (e.g. `upload-commerce-request-reference`). No auth/RLS/scan logic
+  changed. Verified: `test:edge` 44/44,
+  `validate-client-file-domain-isolation-contract.mjs`, full
+  `test:release` 69/69 through the same stop, `test:security` 19/19,
+  build clean.
+- **VERIFIED** Multi-Location RPC chain wired in `ClientBusinessLocations.tsx`
+
+### 3. Commerce
+- **VERIFIED** Public customer-request flow; test-only checkout path
+  correctly isolated from real Stripe Payment Link purchases
+- **UNVERIFIED** Commerce customer-request client notification
+  (migration 249) — staged only
+- **BROKEN (orphaned, not exploitable)** `commerce_cart_items` (migration
+  036): granted to `authenticated`, zero RLS policy, zero references
+  anywhere in `src/`/`supabase/functions/`. Fails closed today (RLS
+  enabled + no policy = no access), so no live exposure — but dead schema.
+  Needs a migration to drop or lock down; **not touched, awaiting your
+  decision** (stop-and-ask gate).
+- **VERIFIED** Commerce reference uploads — correct CORS, part of the
+  69/69 paid-capability suite
+
+### 4. Security
+- **VERIFIED** SSRF guard (`requirePublicHttpsUrl`) in all 12 functions
+  that need it; timing-safe worker-token comparison in all 22; Stripe
+  webhook HMAC verification; `npm audit` 0 vulnerabilities;
+  `check-migration-integrity.mjs` 219/219
+- **OWNER** `validate-paid-capability-guards-staging.mjs` and everything
+  after it in `test:release` — fails closed on missing
+  `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`, confirmed the exact
+  same stopping point, nothing newly broken or fixed before it
+- **OWNER** Full local Postgres via `supabase start` — Docker binary
+  exists but no daemon in this container; confirmed unchanged from prior
+  session
+
+### 5. Billing
+- **VERIFIED** `online_billing_enabled` flag is a single, consistently
+  read config key (migrations 100/177/227/251); billing-off gating is
+  real, not decorative
+- **BROKEN (dead channel)** `billing_notification_events` (migration
+  100): every billing event (`payment_succeeded`, `payment_failed`,
+  `past_due_reminder`, `billing_processor_connection_required` — all
+  client-facing — and `freeze_review_owner_attention`, owner-facing) is
+  written through the single choke point `record_billing_notification()`
+  but **never read anywhere** in `src/` or `supabase/functions/`. Clients
+  never get pushed a notification for any of these; they only see status
+  if they open `ClientBillingStatus.tsx` themselves. **A concrete fix plan
+  is below, awaiting your approval before drafting the migration**
+  (stop-and-ask gate).
+- **UNVERIFIED** Migrations 251/252 (Multi-Location add-on + trigger fix)
+  — full RPC set and frontend wiring confirmed consistent, still staged.
+  The disposable-Postgres proof from the prior session (9/9 assertions)
+  remains valid evidence for the trigger logic; still does not cover
+  RLS/grants or a real `supabase db push` run.
+- **OWNER** Stripe test-mode lifecycle, real payout account
+
+### 6. Notifications
+- **VERIFIED** `dispatch-notifications` genuinely claims/dispatches
+  `notification_deliveries` rows and fails open to in-app-only (never
+  silently drops) when no external provider is configured
+- **BROKEN (dead channel, previously logged, not re-opened here)**
+  `automation_escalations` — 7 of 8 escalation types written are never
+  read by any owner surface; only
+  `internal_edge_dispatch_network_unreachable` reaches
+  `OwnerExceptionCenter.tsx`. You have twice chosen to log rather than
+  fix this — left as-is unless you ask again.
+- **VERIFIED** In-app notification inserts already live at HEAD (preview-
+  ready, production-published, domain reconciliation, privacy-request
+  completion) — all application code, no migration dependency
+- **UNVERIFIED** Migrations 248/249/250 (denial, commerce-request,
+  file-scan client notifications) — staged only
+
+### Systemic gaps (recurring patterns)
+1. **Write-only/dead-channel pattern**: `automation_escalations` (7/8
+   types) and `billing_notification_events` (entirely) are both tables
+   written but never read by any owner/client surface. Same root cause
+   each time — a visibility table whose reader was never wired.
+2. **CORS-preflight-missing pattern**: found and fixed once already
+   (`discover-sales-prospects`); this audit found and fixed the same gap
+   in two more browser-invoked functions. Worth a one-time sweep of every
+   function `supabase.functions.invoke()`-called directly from the
+   browser to confirm no others were missed (not done this session — see
+   next tasks).
+3. **Staged-but-unapplied migrations (248-252)**: internally consistent,
+   integrity-clean, zero live effect until a guarded `apply_all` run.
+4. **Everything past the credential-gated `test:release` stop, and
+   anything needing Docker**: unchanged, reconfirmed, not newly resolved.
+
+### Concrete fix plan for `billing_notification_events` (awaiting approval — not drafted)
+Mirrors the exact pattern already used successfully for migrations
+248/249/250: extend the single existing choke-point function,
+`record_billing_notification()` (migration 100), to also insert into
+`notification_deliveries` — no new table, no privilege change, same
+channel/recipient_kind pattern already established. Recipient mapping:
+`payment_succeeded`/`payment_failed`/`past_due_reminder`/`billing_processor_connection_required`
+→ `recipient_kind: 'client'`; `freeze_review_owner_attention` →
+`recipient_kind: 'owner'` (it's already keyed by the client the review
+concerns, but the audience is the owner, not the client — confirmed by
+reading its call site in migration 187, which flags `requires_owner_decision`).
+Every other line of `record_billing_notification()` stays unchanged. Next
+migration number is 253. Will not be drafted until you approve.
 
 ## Completed work since the prior handoff entry (2026-09-29, this session)
 
