@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Bell,
   CheckCircle2,
   ImagePlus,
   LogOut,
@@ -37,6 +38,14 @@ type ProjectRow = {
   id: string;
   client_id: string | null;
   website_status: string;
+};
+
+type ClientNotificationRow = {
+  id: string;
+  subject: string | null;
+  body: string;
+  priority: string;
+  created_at: string;
 };
 
 type UploadedFileRow = {
@@ -262,6 +271,7 @@ export function ClientPortal() {
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
+  const [notifications, setNotifications] = useState<ClientNotificationRow[]>([]);
   const [messageHasMore, setMessageHasMore] = useState(false);
   const [messagesVerified, setMessagesVerified] = useState(false);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
@@ -326,6 +336,7 @@ export function ClientPortal() {
     setMessages([]);
     setMessageHasMore(false);
     setMessagesVerified(false);
+    setNotifications([]);
     setUploadedFiles([]);
     setFilesVerified(false);
     setClientDomains([]);
@@ -470,6 +481,21 @@ export function ClientPortal() {
         setMessages(messagePage);
         setMessageHasMore(messagePage.length === 50);
         setMessagesVerified(true);
+      }
+
+      // recipient_kind is filtered explicitly here, not left to RLS alone:
+      // client_read_own_notifications only checks client_id ownership, so an
+      // owner-facing row about this same client (e.g. a billing freeze
+      // review, worded for NXQ, not the client) would otherwise also match.
+      const notificationResult = await supabase
+        .from("notification_deliveries")
+        .select("id,subject,body,priority,created_at")
+        .eq("client_id", loadedClient.id)
+        .eq("recipient_kind", "client")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (!notificationResult.error) {
+        setNotifications((notificationResult.data || []) as ClientNotificationRow[]);
       }
 
       const fileListResult = await supabase.rpc("current_client_file_page", {
@@ -1089,6 +1115,24 @@ export function ClientPortal() {
         {notice ? <div className="notice-card success">{notice}</div> : null}
         {portalDecisionNotice ? <div className={`notice-card portal-decision-notice ${portalDecisionNotice.tone}`}><strong>{portalDecisionNotice.title}</strong><p>{portalDecisionNotice.body}</p></div> : null}
         <ClientWebsiteSecurity />
+
+        {notifications.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title"><Bell size={20} /><h2>Recent notifications</h2></div>
+            <div className="owner-message-list">
+              {notifications.map((notification) => (
+                <article className="owner-message-card" key={notification.id}>
+                  <div className="owner-message-top">
+                    <strong>{notification.subject || "Notification"}</strong>
+                    <span>{notification.priority}</span>
+                  </div>
+                  <p>{notification.body}</p>
+                  <small>{new Date(notification.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="client-grid">
           {!setupComplete && targetedMoreInfoRequest && targetedMoreInfoField ? (

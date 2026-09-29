@@ -4,32 +4,38 @@ import path from "node:path";
 const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 
-const page = read("src/pages/ClientNotificationPreferences.tsx");
+const preferencesPage = read("src/pages/ClientNotificationPreferences.tsx");
+const portalPage = read("src/pages/ClientPortal.tsx");
 const migration133 = read("supabase/migrations/133_business_growth_operations_foundation.sql");
 const app = read("src/App.tsx");
 
 const checks = [];
 const check = (name, passed) => checks.push([name, Boolean(passed)]);
 
-check(
-  "Client notification list is scoped to this client's own client_id",
-  page.includes('.eq("client_id", client.data.id)') && page.includes('.from("notification_deliveries")')
-);
+function checkClientScopedNotificationList(pageName, source, clientIdExpr) {
+  check(
+    `${pageName}: notification list is scoped to this client's own client_id`,
+    source.includes(`.eq("client_id", ${clientIdExpr})`) && source.includes('.from("notification_deliveries")')
+  );
 
-check(
-  "Client notification list explicitly filters recipient_kind to client -- RLS ownership alone would also match owner-facing rows about the same client",
-  page.includes('.eq("recipient_kind", "client")')
-);
+  check(
+    `${pageName}: explicitly filters recipient_kind to client -- RLS ownership alone would also match owner-facing rows about the same client`,
+    source.includes('.eq("recipient_kind", "client")')
+  );
 
-check(
-  "Client notification query does not request owner-only columns (metadata, provider fields) that could carry internal detail",
-  !/\.from\("notification_deliveries"\)[\s\S]{0,40}\.select\([^)]*metadata/.test(page)
-);
+  check(
+    `${pageName}: does not request owner-only columns (metadata, provider fields) that could carry internal detail`,
+    !/\.from\("notification_deliveries"\)[\s\S]{0,60}\.select\([^)]*metadata/.test(source)
+  );
 
-check(
-  "No write/update call is made against notification_deliveries from the client page -- authenticated only has SELECT (migration 133), so marking read/seen requires a migration, not a direct write",
-  !/notification_deliveries[\s\S]{0,80}\.(update|upsert|insert|delete)\(/.test(page)
-);
+  check(
+    `${pageName}: no write/update call against notification_deliveries -- authenticated only has SELECT (migration 133), so marking read/seen requires a migration, not a direct write`,
+    !/notification_deliveries[\s\S]{0,80}\.(update|upsert|insert|delete)\(/.test(source)
+  );
+}
+
+checkClientScopedNotificationList("ClientNotificationPreferences.tsx", preferencesPage, "client.data.id");
+checkClientScopedNotificationList("ClientPortal.tsx", portalPage, "loadedClient.id");
 
 check(
   "Underlying RLS still restricts client reads to their own rows (migration 133 unchanged)",
@@ -44,13 +50,24 @@ check(
 );
 
 check(
-  "/client/notifications route is wired to the notification-center page",
+  "/client/notifications route is wired to the notification-preferences page",
   app.includes('path === "/client/notifications"') && app.includes("ClientNotificationPreferences")
 );
 
 check(
-  "Page still fails safely (no Supabase configured / no session) before querying notifications",
-  page.includes("isSupabaseConfigured") && page.includes('window.location.replace("/portal/login")')
+  "ClientNotificationPreferences.tsx still fails safely (no Supabase configured / no session) before querying notifications",
+  preferencesPage.includes("isSupabaseConfigured") && preferencesPage.includes('window.location.replace("/portal/login")')
+);
+
+check(
+  "ClientPortal.tsx still fails safely (no Supabase configured / no session) before querying notifications",
+  portalPage.includes("isSupabaseConfigured") && portalPage.includes('window.location.replace("/portal/login")')
+);
+
+check(
+  "ClientPortal.tsx clears notifications state when dependent portal data is reset (e.g. on load failure)",
+  portalPage.includes("function resetDependentPortalData") &&
+  /function resetDependentPortalData\(\)\s*\{[\s\S]*?setNotifications\(\[\]\);[\s\S]*?\}/.test(portalPage)
 );
 
 let failed = 0;
