@@ -4,6 +4,39 @@ This is the live, authoritative handoff document for `nxqweb-v7`. Read
 `CLAUDE.md` first for standing operating rules, then this file for current
 state. Update this file, not a new one, at every handoff.
 
+## Progress ledger — run #214 HTTP 400 (do not re-investigate; read this first)
+
+If a future session sees `validate_prelaunch` fail on "Remote
+launch-architecture contract query failed with HTTP 400" again, **check
+this ledger before re-running any investigation**:
+
+- **Cause found and fixed, commit `b87f642`**: 3 lines in
+  `scripts/remote-launch-architecture-contract.mjs` used double quotes
+  around SQL string literals (`"'purchase_credit'"` etc.) inside
+  `position(... in ...)` — PostgreSQL reads double quotes as an
+  identifier, not a string, so this referenced a nonexistent column.
+  Reproduced locally against disposable Postgres 16
+  (`ERROR: column "'purchase_credit'" does not exist`); fix verified the
+  same way. Full trail: "Staging preflight run #214 — HTTP 400 root
+  cause and fix" section below.
+- **Ruled out, do not re-check**: the `/database/query/read-only`
+  endpoint suffix (confirmed working against real staging via runs
+  #212/#213 logs, 2026-09-19) — a same-turn edit that removed it was
+  reverted, never pushed. Also ruled out: a missing-table/unapplied-migration
+  schema mismatch (the referenced tables from migrations 243/244 already
+  existed in staging as of the Sep 19 run — confirmed via that run's own
+  "Remote database is up to date" dry-run line).
+- **If HTTP 400 recurs after this fix**: it is a **different** cause —
+  do not re-apply this same diagnosis. Start from the actual new error
+  text (the script does not currently log the response body on failure;
+  consider adding that before re-diagnosing blind).
+- **Verification status as of this entry**: fix is committed and pushed
+  (`b87f642`, then handoff docs at `2e30e10`). A rerun of
+  `validate_prelaunch` (run #215, id `36665503844`, HEAD `2e30e10`) was
+  dispatched to confirm end-to-end and was awaiting the `nxq-staging`
+  environment approval gate at the time of this entry — check that run's
+  actual outcome before assuming the fix is proven in staging.
+
 ## Canonical launch checklist (fixed, evidence-based — replaces guessed percentages)
 
 Per user instruction: no more estimated percentages. This checklist is
