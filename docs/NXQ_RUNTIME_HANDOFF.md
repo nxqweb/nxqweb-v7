@@ -51,13 +51,121 @@ this ledger before re-running any investigation**:
   amount, `recurring=true`, `auto_refill=true`) and confirming all 5
   conditions still correctly failed. No other check in the query has
   the same space-dependent substring pattern (checked via grep).
-- **Verification status as of this entry**: both fixes committed and
-  pushed (`b87f642`, `e0ea1cd`; handoff docs at `2e30e10`, then this
-  entry). Neither has yet been proven against a full green
-  `validate_prelaunch` run reaching "Link project"/"Migration dry
-  run" — that is still the open item. Do not assume the preflight is
-  fully green until an actual run confirms it end-to-end; check for a
-  run after this entry's timestamp before re-dispatching.
+- **Run #216 result (HEAD `879ecf9`), 2026-09-30 — both fixes confirmed
+  against real staging**: all 24/24 architecture checks passed
+  (`Remote launch-architecture contract passed through read-only
+  Supabase query endpoint`). `Migration dry run` reached and reported
+  cleanly: `Would push these migrations:` listing, in exact ascending
+  order, `248_notify_client_on_website_setup_denial.sql`,
+  `249_notify_client_on_commerce_customer_request.sql`,
+  `250_notify_client_on_file_scan_completion.sql`,
+  `251_multi_location_self_serve_addon.sql`,
+  `252_fix_location_addon_trigger_conflict.sql`,
+  `253_restrict_client_notification_recipient_kind.sql`,
+  `254_deliver_billing_notification_events.sql` — confirming none of
+  the 7 have been applied to staging yet and the dependency ordering
+  (251→252, 253→254) is exactly as the file numbering requires. This
+  is real evidence, not an inference: `supabase db push --dry-run
+  --linked` connected to the actual remote project and reported this.
+  **The run still ended in failure**, but at a later, different step:
+  `business-prelaunch is missing 6 Supabase Edge secret name(s):
+  NXQ_CLOUDMERSIVE_API_KEY, NXQ_LEAD_CHALLENGE_ENDPOINT,
+  NXQ_LEAD_CHALLENGE_TOKEN, NXQ_NOTIFICATION_FROM_EMAIL,
+  NXQ_PUBLIC_TURNSTILE_SITE_KEY, NXQ_RESEND_API_KEY`. This is an
+  environment-configuration gap, not a code defect — no further
+  investigation needed here; see "Missing staging Edge secrets" below
+  for what each value is and how to set it.
+- **Verification status as of this entry**: both `b87f642` and
+  `e0ea1cd` are now proven end-to-end against real staging, not just
+  local reproduction. The next blocker is purely the 6 missing Edge
+  secret names above — not a code or migration issue. Do not
+  re-dispatch `validate_prelaunch` again until those secrets are set;
+  it will fail at the same step for the same reason until then.
+
+## Missing staging Edge secrets — private setup checklist (values never printed)
+
+`business-prelaunch` (the profile `validate_prelaunch` checks against)
+requires every launch secret except the AI model-provider token. Run
+#216 confirms exactly 6 are currently missing from the `nxq-staging`
+Supabase project's Edge secrets. None of these are required by
+`business-non-ai-staging` or `business-zero-key-staging` — see "Can
+`validate_zero_key` make progress now?" below.
+
+For each: **never paste the actual value into chat, a commit, a PR, a
+workflow input, or any file in this repo.** Set it directly in the
+Supabase dashboard (Project Settings → Edge Functions → Secrets) or via
+`supabase secrets set NAME=value --project-ref <ref>` run locally on
+your own machine (not in this session). To verify a name is set
+without ever reading its value, this workflow's own `validate_prelaunch`
+step already does exactly that (`supabase secrets list --output-format
+json`, names only) — rerunning it after setting all 6 is the correct
+verification method, not printing values anywhere.
+
+1. **`NXQ_PUBLIC_TURNSTILE_SITE_KEY`** — Cloudflare Turnstile **site
+   key** (the public, client-embeddable key, not the secret key).
+   Consumed by `supabase/functions/build-business-website/index.ts:546`
+   and baked into each deployed business site's lead form widget.
+   Source: Cloudflare dashboard → Turnstile → your widget → Sitekey.
+   Safe to treat as public (it's shipped to browsers), but still set
+   as a proper Edge secret for consistency with the rest of the
+   pipeline.
+2. **`NXQ_LEAD_CHALLENGE_ENDPOINT`** — the verification endpoint URL
+   this same Turnstile widget's token gets POSTed to for server-side
+   validation. Consumed by
+   `supabase/functions/ingest-business-lead/index.ts:33`. For
+   Cloudflare Turnstile this is Cloudflare's own siteverify endpoint
+   (`https://challenges.cloudflare.com/turnstile/v0/siteverify`) —
+   confirm against Cloudflare's current Turnstile server-side
+   verification docs before setting, in case the path has changed.
+3. **`NXQ_LEAD_CHALLENGE_TOKEN`** — Turnstile **secret key** (paired
+   with the site key above), sent as the verification request's auth
+   credential. Same call site as #2. Source: Cloudflare dashboard →
+   Turnstile → your widget → Secret key. **This one is a real secret**
+   — unlike the site key, never expose it client-side.
+4. **`NXQ_RESEND_API_KEY`** — Resend (email provider) API key.
+   Consumed by
+   `supabase/functions/notification-provider-adapter/index.ts:71`,
+   gating whether the notification adapter is "configured" at all (it
+   returns HTTP 503 "not configured" without it — this is the provider
+   that would eventually deliver the billing/notification emails from
+   migrations 248–250 and 254 once wired up). Source: Resend dashboard
+   → API Keys → create a key scoped to sending only if Resend's
+   dashboard offers scoping.
+5. **`NXQ_NOTIFICATION_FROM_EMAIL`** — the verified "from" address
+   Resend sends as. Same call site as #4
+   (`notification-provider-adapter/index.ts:72`). Must be an address
+   on a domain you've verified in Resend's dashboard (Resend rejects
+   sends from unverified domains) — verify the domain there first,
+   then set this to an address at that domain.
+6. **`NXQ_CLOUDMERSIVE_API_KEY`** — Cloudmersive malware-scanning API
+   key. Consumed by
+   `supabase/functions/malware-scan-provider-adapter/index.ts:43`,
+   gating the malware-scan adapter the same way (#4 gates
+   notifications) — returns "not configured" without it. Source:
+   Cloudmersive account dashboard → API Keys.
+
+**Verification without printing any value**: after setting all 6,
+either re-run `validate_prelaunch` (next session, with your approval —
+not done automatically) or, for a lighter check first, note that
+`supabase secrets list --output-format json` (which the workflow
+already runs) reports names only, never values — so confirming the six
+names now appear in that listing is itself a safe, non-printing
+verification step available before the next full preflight run.
+
+## Can `validate_zero_key` make useful progress right now?
+
+**Yes.** Checked `scripts/edge-function-manifest.mjs`'s
+`runtimeSecretProfiles`: `business-zero-key-staging` (lines 114+) is
+defined as exactly `business-non-ai-staging` plus
+`NXQ_LEAD_FINGERPRINT_SALT`, `NXQ_PUBLIC_ANALYTICS_ENDPOINT`, and
+`NXQ_PUBLIC_LEAD_ENDPOINT` — **none of the 6 missing secrets above are
+in either profile.** A `validate_zero_key` dispatch would not hit this
+same blocker and could make real progress confirming the zero-key
+staging path (public runtime wiring, no external challenge/malware/
+notification adapters) independently of the 6 missing values. Not
+dispatched this session, per your instruction to stop here and report
+— this is an option for you to approve separately, same as any other
+staging run.
 
 ## Canonical launch checklist (fixed, evidence-based — replaces guessed percentages)
 
