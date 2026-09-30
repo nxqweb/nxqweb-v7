@@ -85,6 +85,27 @@ jobs:
       - name: Migration dry run
         run: npx --no-install supabase db push --dry-run --linked
 
+      - name: Show staging migration history and confirm project identity (read-only)
+        if: inputs.action == 'validate_prelaunch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "--- Recorded migration history (local vs. remote, from supabase_migrations.schema_migrations) ---"
+          npx --no-install supabase migration list --linked
+
+          echo ""
+          echo "--- Confirming linked project identity (name/region only; ref and token never printed) ---"
+          npx --no-install supabase projects list --output-format json > "$RUNNER_TEMP/nxq-projects-list.json"
+          node -e '
+            const rows = JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/nxq-projects-list.json", "utf8"));
+            const ref = process.env.SUPABASE_PROJECT_REF;
+            const match = rows.find((r) => r.id === ref);
+            if (!match) { console.error("Linked project ref not found in accessible projects list."); process.exit(1); }
+            console.log("Linked project name:", match.name);
+            console.log("Linked project region:", match.region || "(unknown)");
+          '
+          rm -f "$RUNNER_TEMP/nxq-projects-list.json"
+
       - name: Verify staging Edge secret names
         if: inputs.action == 'validate_foundation' || inputs.action == 'validate_non_ai' || inputs.action == 'validate_zero_key' || inputs.action == 'validate_prelaunch' || inputs.action == 'validate' || inputs.action == 'deploy_functions' || inputs.action == 'apply_all'
         shell: bash
