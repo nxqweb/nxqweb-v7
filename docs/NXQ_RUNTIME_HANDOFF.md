@@ -30,12 +30,34 @@ this ledger before re-running any investigation**:
   do not re-apply this same diagnosis. Start from the actual new error
   text (the script does not currently log the response body on failure;
   consider adding that before re-diagnosing blind).
-- **Verification status as of this entry**: fix is committed and pushed
-  (`b87f642`, then handoff docs at `2e30e10`). A rerun of
-  `validate_prelaunch` (run #215, id `36665503844`, HEAD `2e30e10`) was
-  dispatched to confirm end-to-end and was awaiting the `nxq-staging`
-  environment approval gate at the time of this entry — check that run's
-  actual outcome before assuming the fix is proven in staging.
+- **Run #215 result (HEAD `2e30e10`), 2026-09-29**: the `b87f642` fix
+  worked — HTTP 400 gone, 23 of 24 checks passed. One new, separate
+  failure surfaced: `architecture-one-time-topup-contract`.
+- **Second cause found and fixed, commit `e0ea1cd`**: NOT a real
+  contract mismatch. 4 of that check's 5 `position(... in ...)`
+  substring tests expected spaces (`<> 1000`, `, 900`, `', false`) that
+  this codebase's compact SQL style (see
+  `supabase/migrations/246_enforce_paid_capability_boundaries.sql`
+  lines 286–319, e.g. `target_amount_paid_cents<>1000`,
+  `'purchase_credit',900`, `'recurring',false`) never produces —
+  confirmed by reproducing migration 246's exact function against real
+  Postgres and observing the same 4/5 false results purely from
+  whitespace. The actual payment guard (exactly-1000-cents enforcement,
+  hardcoded 900/false/false, `'purchase_credit'` ledger entry) is
+  intact and correct. Fix normalizes the function-definition text
+  (strips all whitespace) before matching whitespace-free versions of
+  the same 5 substrings — verified this does not weaken the check by
+  running it against a deliberately broken stand-in function (wrong
+  amount, `recurring=true`, `auto_refill=true`) and confirming all 5
+  conditions still correctly failed. No other check in the query has
+  the same space-dependent substring pattern (checked via grep).
+- **Verification status as of this entry**: both fixes committed and
+  pushed (`b87f642`, `e0ea1cd`; handoff docs at `2e30e10`, then this
+  entry). Neither has yet been proven against a full green
+  `validate_prelaunch` run reaching "Link project"/"Migration dry
+  run" — that is still the open item. Do not assume the preflight is
+  fully green until an actual run confirms it end-to-end; check for a
+  run after this entry's timestamp before re-dispatching.
 
 ## Canonical launch checklist (fixed, evidence-based — replaces guessed percentages)
 
