@@ -71,10 +71,10 @@ with checks(label, ok) as (
   union all
   select 'architecture-one-time-topup-contract',
     position('target_amount_paid_cents <> 1000' in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
-    and position("'purchase_credit'" in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
+    and position('''purchase_credit''' in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
     and position(', 900' in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
-    and position("'recurring', false" in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
-    and position("'auto_refill', false" in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
+    and position('''recurring'', false' in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
+    and position('''auto_refill'', false' in lower(pg_get_functiondef('public.nxq_record_usage_credit_purchase(uuid,text,text,integer,jsonb)'::regprocedure)))>0
   union all
   select 'architecture-margin-reservation-contract',
     position('target_margin_percent' in lower(pg_get_functiondef('public.nxq_reserve_economic_usage(uuid,integer,text,text,jsonb)'::regprocedure)))>0
