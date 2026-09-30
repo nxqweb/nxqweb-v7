@@ -97,12 +97,16 @@ something local code work can close — it is credentials, external
 provider setup, and the 10-run QA/signoff process, all requiring your
 action outside this session.
 
-## Current checkpoint — 2026-09-29
+## Current checkpoint — 2026-09-30
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `a7989a9` — "docs: add canonical staging preflight plan
-  (read-only, survives new chat)" (prior recorded HEAD was `3ec2c45`).
-- **Working tree:** clean, pushed to `origin`.
+- **HEAD:** `b87f642e3b237a1ee7c2e77921a108d0fa48e641` — "fix: correct
+  double-quoted SQL literals in remote launch-architecture contract
+  query" (prior recorded HEAD was `9c58112`, corrected from `a7989a9`
+  above by a same-day follow-up commit).
+- **Working tree:** clean, pushed to `origin`, verified matching after
+  `git fetch` (see "Staging preflight run #214 — HTTP 400 root cause and
+  fix" below for how this was confirmed).
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -157,6 +161,68 @@ action outside this session.
     applied ahead of it — numbering guarantees this under normal
     `apply_all`/`db push`, but confirm on the actual target database's
     migration history before ever applying either.**
+
+## Staging preflight run #214 — HTTP 400 root cause and fix (this session)
+
+**What happened**: with explicit approval, the `validate_prelaunch`
+action of `.github/workflows/manual-supabase-stage.yml` was dispatched
+against this branch's HEAD via the GitHub Actions API (run #214, id
+`36647079388`). It failed at step 5, "Validate deployment manifest and
+auth boundaries" (`npm run test:runtime-stage`), before ever reaching
+"Link project" or "Migration dry run" — so the actual point of the run
+(confirming which of migrations 248–254 are already applied in staging)
+never executed.
+
+**First hypothesis, tried and disproven**: the failing sub-check
+(`Remote launch-architecture contract query failed with HTTP 400`)
+comes from `scripts/remote-launch-architecture-contract.mjs` posting to
+`https://api.supabase.com/v1/projects/{ref}/database/query/read-only`.
+Initially suspected the `/read-only` suffix itself was an invalid
+endpoint (never confirmed against Supabase's docs). Pulled the job logs
+of the two prior successful runs on this branch (#212, #213, both
+2026-09-19) and found the exact same endpoint suffix returning a clean
+pass (`Remote launch-architecture contract passed through read-only
+Supabase query endpoint`) against the same staging project with real
+credentials — disproving the endpoint theory. A same-turn edit that
+removed the suffix was reverted before commit once this came to light;
+it was never pushed.
+
+**Actual root cause, confirmed empirically**: commit `6fae1f6` ("fix:
+unify remote launch-architecture checks into one shared source",
+2026-09-28 — after the last successful run, before #214) expanded the
+CI-run check from 9 checks to the full 24-check query. Three of the new
+lines (the `architecture-one-time-topup-contract` check) wrote SQL like:
+
+```sql
+position("'purchase_credit'" in lower(pg_get_functiondef(...)))
+```
+
+PostgreSQL treats double-quoted text as an **identifier**, never a
+string literal — so this parses as a reference to a column literally
+named `'purchase_credit'` (quotes included), which doesn't exist.
+Reproduced the exact failure against a disposable local Postgres 16
+instance (native `service postgresql`, no Docker in this container):
+`ERROR: column "'purchase_credit'" does not exist` — the same class of
+database-side error Supabase's Management API surfaces as HTTP 400.
+Verified the corrected, properly-escaped single-quoted form
+(`'''purchase_credit'''`, and the two related `'recurring', false` /
+`'auto_refill', false` lines) both parses and evaluates correctly
+against a realistic function body containing that text. Grepped the
+whole repo for the same double-quote-around-literal pattern; no other
+instance exists.
+
+**Fix**: `scripts/remote-launch-architecture-contract.mjs`, 3 lines,
+commit `b87f642`. No workflow YAML, migration, or staging state
+touched — this was a plain-script fix, squarely in allowed autonomous
+scope.
+
+**Still outstanding**: this fix has not yet been proven against real
+staging by an actual rerun of `validate_prelaunch` — the local Postgres
+reproduction confirms the SQL bug and the fix's correctness in
+isolation, not that step 5 as a whole now passes end-to-end, or that
+"Link project"/"Migration dry run" (the actual point of this preflight)
+now execute and report correctly. That rerun is the next step once
+approved.
 
 ## RLS gap fixed — migration 253 (structurally, by renumbering — see below)
 
