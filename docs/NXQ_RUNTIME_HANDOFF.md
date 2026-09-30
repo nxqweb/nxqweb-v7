@@ -81,6 +81,17 @@ this ledger before re-running any investigation**:
   secret names above — not a code or migration issue. Do not
   re-dispatch `validate_prelaunch` again until those secrets are set;
   it will fail at the same step for the same reason until then.
+- **Run #217 (`validate_zero_key`, HEAD `9eca5f6`), 2026-09-30 —
+  fully green**, first clean run this session: `Link project` and
+  `Migration dry run` both succeeded (same 248–254 list as run #216,
+  confirming staging state hasn't changed), `Verify staging Edge
+  secret names` **passed** (`business-zero-key-staging has all 24
+  required Supabase Edge secret names`), and all 24 architecture
+  checks passed again. Confirms the zero-key staging path is fully
+  wired and does not depend on the 6 secrets blocking
+  `validate_prelaunch`. **This is not launch approval** — it only
+  proves the zero-key profile; the full prelaunch gate still needs
+  those 6 secrets.
 
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
