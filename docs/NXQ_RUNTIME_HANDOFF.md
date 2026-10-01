@@ -260,6 +260,22 @@ this ledger before re-running any investigation**:
   constraints per column check (table has 3). Local evidence only, not proof
   of staging behavior.
 
+- **Migration 256 written (user-approved), staged locally, NOT applied,
+  2026-10-01.** `supabase/migrations/256_fix_location_seo_trigger_field_access.sql`
+  re-creates `public.queue_location_seo_refresh()` identical to migration 132
+  except the location-id expression reads the field via `to_jsonb(new)->>'location_id'`
+  (no table/trigger/grant/data change; privilege revoke repeated). Tested on a
+  local database built from all 255 prior migrations (stubbed Supabase
+  extensions; 197 fails only for a missing runtime Vault setting): BEFORE 256
+  the validator reproduces run #226's location failures (16 real checks +
+  3 failure flags); AFTER 256 every location check passes (only 3
+  stub-environment failures remain: tenant_isolation, storage_quota_authorization,
+  storage_reservation_cleanup, which passed on staging in run #226);
+  re-applying is a no-op; function stays SECURITY DEFINER and not executable by
+  anon/authenticated. Plan: read-only `validate_prelaunch` (pending must be
+  exactly 256) -> guarded `apply_migrations` -> re-run
+  `validate_paid_capability_guards` (expect 56/56). Local evidence only.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -412,6 +428,8 @@ checks exercise it, not that it's guessed to work):
 - [x] 255 — explicit Data API grants for 2 owner-read tables + 2 service-only
   tables (applied to staging in run #223, verified by run #224; Supabase
   2026-10-30 change)
+- [ ] 256 — fixes latent migration-132 trigger bug (`queue_location_seo_refresh()` made
+  every `client_locations` insert fail, 42703); staged locally, not applied
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
