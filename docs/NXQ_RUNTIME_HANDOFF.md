@@ -198,6 +198,18 @@ this ledger before re-running any investigation**:
   `NXQ_RESEND_API_KEY` (the 3 Turnstile secrets now exist by name). Not a code
   issue. Migration 255 was not in this checkout and is not applied.
 
+- **Informational grant report added (script only), 2026-10-01.**
+  `scripts/remote-launch-architecture-contract.mjs` now ends with a read-only
+  `has_table_privilege` query for the 4 tables migration 255 addresses and
+  prints `INFO  data-api-grants <table> <role>: <privileges>` lines. It never
+  calls pass/fail, so it cannot turn a run red; it reads privilege metadata
+  only. Tested on disposable local Postgres (before 255: authenticated has
+  nothing on the two owner tables; after: SELECT only; service_role gets
+  DELETE/INSERT/SELECT/UPDATE on both nxq_netlify tables) and with
+  `scripts/test-data-api-grant-report.mjs` (3/3). Plan to apply only 255:
+  read-only `validate_prelaunch` first (pending must be exactly 255), then
+  guarded `apply_migrations`, then re-run read-only to read the INFO lines.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)

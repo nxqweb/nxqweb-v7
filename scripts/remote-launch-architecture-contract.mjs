@@ -123,6 +123,52 @@ with checks(label, ok) as (
 select label, ok from checks order by label;
 `;
 
+// Informational only (never calls pass/fail): effective table privileges that the
+// Data API depends on for the tables migration 255 addresses. Reads privilege
+// metadata only -- no table data, no secrets. Output is advisory so it cannot
+// block a run before 255 is applied; see docs/DATA_API_GRANT_AUDIT.md.
+export const dataApiGrantTables = [
+  "automation_jobs", "automation_escalations", "nxq_netlify_budget_settings", "nxq_netlify_build_reservations",
+];
+export const dataApiGrantQuery = `
+select t.table_name, r.grantee,
+  coalesce(string_agg(p.priv, ',' order by p.priv) filter (where has_table_privilege(r.grantee, format('public.%I', t.table_name), p.priv)), '') as privileges
+from unnest(array[${dataApiGrantTables.map((n) => `'${n}'`).join(",")}]) as t(table_name)
+cross join unnest(array['anon','authenticated','service_role']) as r(grantee)
+cross join unnest(array['SELECT','INSERT','UPDATE','DELETE']) as p(priv)
+where to_regclass(format('public.%I', t.table_name)) is not null
+group by t.table_name, r.grantee
+order by t.table_name, r.grantee;
+`;
+
+export function formatDataApiGrantRows(rows) {
+  const lines = [];
+  for (const row of rows) {
+    if (typeof row?.table_name !== "string" || typeof row?.grantee !== "string") continue;
+    const privileges = typeof row.privileges === "string" && row.privileges ? row.privileges : "none";
+    lines.push(`INFO  data-api-grants ${row.table_name} ${row.grantee}: ${privileges}`);
+  }
+  return lines;
+}
+
+async function reportDataApiGrants(accessToken, projectRef) {
+  try {
+    const response = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/query/read-only`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: dataApiGrantQuery }),
+    });
+    if (!response.ok) { console.log(`INFO  data-api-grants unavailable (HTTP ${response.status}); advisory only`); return; }
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.result) ? payload.result : Array.isArray(payload?.data) ? payload.data : [];
+    const lines = formatDataApiGrantRows(rows);
+    if (!lines.length) { console.log("INFO  data-api-grants returned no rows; advisory only"); return; }
+    for (const line of lines) console.log(line);
+  } catch {
+    console.log("INFO  data-api-grants unavailable; advisory only");
+  }
+}
+
 export async function runRemoteLaunchArchitectureChecks({ pass, fail }) {
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN || "";
   const projectRef = process.env.SUPABASE_PROJECT_REF || "";
@@ -171,4 +217,6 @@ export async function runRemoteLaunchArchitectureChecks({ pass, fail }) {
     if (ok) pass(label);
     else fail(label);
   }
+
+  await reportDataApiGrants(accessToken, projectRef);
 }
