@@ -186,6 +186,18 @@ this ledger before re-running any investigation**:
   applying is a separate guarded `apply_migrations` run. Optional anon
   revokes (item 3) were not approved and are not included.
 
+- **Run #221 (`validate_prelaunch`, HEAD `aa08dcd`), 2026-10-01 — post-apply
+  verification, read-only.** `supabase migration list --linked` shows every
+  migration 001–254 in BOTH Local and Remote columns (248–254 now recorded
+  as applied; the run-#220 apply log is the evidence for their *order* — the
+  list shows presence, and its "Time" column repeats the version number, not
+  a timestamp). Dry-run: `Remote database is up to date.` Linked project
+  confirmed: `nxqweb-staging`, `us-east-2`. 24/24 architecture checks passed.
+  The run still ends red at "Verify staging Edge secret names": missing only
+  `NXQ_CLOUDMERSIVE_API_KEY`, `NXQ_NOTIFICATION_FROM_EMAIL`,
+  `NXQ_RESEND_API_KEY` (the 3 Turnstile secrets now exist by name). Not a code
+  issue. Migration 255 was not in this checkout and is not applied.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
