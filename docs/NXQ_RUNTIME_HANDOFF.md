@@ -404,6 +404,19 @@ this ledger before re-running any investigation**:
   apply the diff themselves, or use `deploy_paid_capability_guards` (redeploys 16 other functions).
   The fixed `provision-storefront` source is on this branch but NOT deployed to staging.
 
+- **Workflow action `deploy_provision_storefront` added, 2026-10-01 (user-approved diff; NOT dispatched).**
+  `.github/workflows/manual-supabase-stage.yml`: one new action option and three steps (record
+  `supabase functions list` before; deploy ONLY `provision-storefront` with `--no-verify-jwt` after a
+  manifest guard; verify with `scripts/verify-function-deployment.mjs` that only that function changed,
+  version increased, ACTIVE, `verify_jwt` false). Existing gates unchanged: `nxq-staging` environment
+  approval and the `APPLY-NXQ-SUPABASE-STAGING` confirmation (the action is not exempt from the mutation
+  gate). Local checks passed (YAML, `bash -n` per step, manifest guard, eslint, readiness script,
+  verifier 11/11, `test:release` through the usual credential stop). The deploy itself needs a separate
+  user message (project confirmation + phrase) and the `nxq-staging` click. Unproven until a real run:
+  the exact JSON shape of `functions list --output-format json` (verifier accepts array or envelope and
+  fails loudly if it cannot confirm). Behavior proof of the reservation fix still needs a real storefront
+  provisioning run (Netlify credits + GitHub app).
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)

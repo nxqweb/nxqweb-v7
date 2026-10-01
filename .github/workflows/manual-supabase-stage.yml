@@ -20,6 +20,7 @@ on:
           - apply_migrations
           - deploy_functions
           - deploy_paid_capability_guards
+          - deploy_provision_storefront
           - deploy_provider_readiness
           - deploy_provider_health_only
           - smoke_provider_health_once
@@ -236,6 +237,34 @@ jobs:
             echo "Deploying scoped paid-capability guard function with source-level authentication: $fn"
             npx --no-install supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt
           done
+
+      - name: Record function inventory before provision-storefront deploy
+        if: inputs.action == 'deploy_provision_storefront'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-functions-before.json"
+
+      - name: Deploy provision-storefront function only
+        if: inputs.action == 'deploy_provision_storefront'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/edge-function-manifest.mjs --group=no-verify-jwt | grep -qx provision-storefront \
+            || { echo "Manifest no longer lists provision-storefront as a no-verify-jwt function."; exit 1; }
+          echo "Deploying scoped function with source-level authentication: provision-storefront"
+          npx --no-install supabase functions deploy provision-storefront \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --no-verify-jwt
+
+      - name: Verify only provision-storefront changed
+        if: inputs.action == 'deploy_provision_storefront'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --no-install supabase functions list --project-ref "$SUPABASE_PROJECT_REF" --output-format json > "$RUNNER_TEMP/nxq-functions-after.json"
+          node scripts/verify-function-deployment.mjs "$RUNNER_TEMP/nxq-functions-before.json" "$RUNNER_TEMP/nxq-functions-after.json" provision-storefront --expect-verify-jwt=false
+          rm -f "$RUNNER_TEMP/nxq-functions-before.json" "$RUNNER_TEMP/nxq-functions-after.json"
 
       - name: Audit Commerce remote authentication boundaries only
         if: inputs.action == 'audit_commerce_reference_remote_auth'
