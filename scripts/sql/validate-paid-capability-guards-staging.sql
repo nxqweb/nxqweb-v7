@@ -492,9 +492,10 @@ begin
     -- Report only boolean compatibility for every remaining insert-time
     -- database surface. Catalog rows and object definitions stay private.
     if (
-      select count(*) = 2
+      select count(*) = 3
          and bool_and(tgname in (
            'nxq_enforce_location_entitlement',
+           'enforce_client_location_limit',
            'queue_location_seo_refresh_from_location'
          ))
       from pg_catalog.pg_trigger
@@ -661,6 +662,14 @@ begin
       from pg_catalog.pg_constraint constraint_row
       where constraint_row.conrelid = to_regclass('public.client_locations')
         and constraint_row.contype = 'c'
+        and constraint_row.conkey = array[(
+          select attribute.attnum
+          from pg_catalog.pg_attribute attribute
+          where attribute.attrelid = to_regclass('public.client_locations')
+            and attribute.attname = 'location_code'
+            and attribute.attnum > 0
+            and not attribute.attisdropped
+        )]::smallint[]
     ) then
       checks := jsonb_set(checks, '{location_location_code_check_constraint_compatible}', 'true');
     end if;
@@ -684,12 +693,28 @@ begin
       from pg_catalog.pg_constraint constraint_row
       where constraint_row.conrelid = to_regclass('public.client_locations')
         and constraint_row.contype = 'c'
+        and constraint_row.conkey = array[(
+          select attribute.attnum
+          from pg_catalog.pg_attribute attribute
+          where attribute.attrelid = to_regclass('public.client_locations')
+            and attribute.attname = 'seo_slug'
+            and attribute.attnum > 0
+            and not attribute.attisdropped
+        )]::smallint[]
     ) then
       checks := jsonb_set(checks, '{location_seo_slug_check_constraint_compatible}', 'true');
     end if;
 
+    -- Migration 132 defines exactly three CHECK constraints (status, location_code,
+    -- seo_slug); any additional insert-time CHECK must be reviewed, not ignored.
     if coalesce((checks->>'location_location_code_check_constraint_compatible')::boolean, false)
-       and coalesce((checks->>'location_seo_slug_check_constraint_compatible')::boolean, false) then
+       and coalesce((checks->>'location_seo_slug_check_constraint_compatible')::boolean, false)
+       and (
+         select count(*) = 3
+         from pg_catalog.pg_constraint constraint_row
+         where constraint_row.conrelid = to_regclass('public.client_locations')
+           and constraint_row.contype = 'c'
+       ) then
       checks := jsonb_set(checks, '{location_check_constraints_compatible}', 'true');
     end if;
 

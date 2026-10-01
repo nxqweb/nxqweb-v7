@@ -229,6 +229,37 @@ this ledger before re-running any investigation**:
   at the 3 missing secret names (`NXQ_CLOUDMERSIVE_API_KEY`,
   `NXQ_NOTIFICATION_FROM_EMAIL`, `NXQ_RESEND_API_KEY`).
 
+- **Run #226 (`validate_paid_capability_guards`, HEAD `e9490d3`),
+  2026-10-01 — FIRST REAL STAGING RUN: 38/56 passed, 18 FAILED. Rollback was
+  forced and fixtures synthetic (`rollback-forced`, `synthetic-fixtures-only`,
+  `no-external-runtime` all PASS). All non-location checks passed (tier denial,
+  credits, billing state, usage/purchased-credit accounting, page limits,
+  resource-limit/margin rejection, reservations, storage, tenant isolation).**
+  Root cause of the real failures (reproduced locally, 2026-10-01): trigger
+  function `public.queue_location_seo_refresh()` (migration 132, shared by
+  `client_locations` and `client_location_services`) assigns
+  `target_location_id := case when tg_table_name = 'client_locations' then
+  coalesce(new.id, old.id) else coalesce(new.location_id, old.location_id) end`.
+  PL/pgSQL resolves `new.location_id` when the statement is planned, not when
+  the branch runs, so on `client_locations` (which has no `location_id`
+  column) EVERY insert/update fails with SQLSTATE 42703 `record "new" has no
+  field "location_id"`. Reproduced with a minimal two-table repro on Postgres
+  16 and with a locally built full-schema DB (all migrations applied with
+  stubs; only 197 failed, for missing runtime Vault config). Effect:
+  `current_client_create_location` cannot create a location, so the
+  Multi-Location feature (and the 251/252 add-on's second location) cannot work.
+  Pre-dates 251/252 (introduced by 132); fails closed, no data risk.
+  With only that function patched in the local DB, every location behavior
+  check passes, including 251/252's add-on cap logic (add-on enabled, second
+  location permitted, active count two, cap-fix verified, no-add-on denied).
+  **A fix needs a new forward migration (stop-and-ask gate) and is awaiting
+  user approval; nothing was changed in any migration and nothing was applied.**
+  Separate validator-side defects fixed locally in
+  `scripts/sql/validate-paid-capability-guards-staging.sql`: it expected exactly
+  2 triggers on `client_locations` (now 3 after 251) and counted ALL CHECK
+  constraints per column check (table has 3). Local evidence only, not proof
+  of staging behavior.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
