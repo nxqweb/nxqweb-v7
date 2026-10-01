@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test:lifecycle": "node scripts/simulate-business-lifecycle-e2e.mjs --runs=10",
     "test:security": "node scripts/audit-frontend-security.mjs",
+    "test:data-api-grants": "node scripts/audit-data-api-grants.mjs",
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/validate-public-commerce-route-order.mjs && node scripts/smoke-built-routes.mjs",

@@ -24,7 +24,17 @@ today. Whether any live table actually lacks a grant is **unverified**.
   user-scoped clients only call `auth.getUser()` or definer RPCs (plus the
   evidence-suite test sessions).
 
-## Result summary (178 tables after all migrations)
+## Status after migration 255 (staged locally, NOT applied anywhere)
+
+Migration `255_explicit_data_api_grants_for_owner_reads.sql` (approved by the
+user) adds `grant select` to `authenticated` on `automation_jobs` and
+`automation_escalations`, and explicit `service_role` grants on the two
+`nxq_netlify_*` tables. With it, the validator reports 0 proven gaps. It was
+exercised only against a disposable local Postgres (exact grants produced,
+idempotent on re-run). **Live staging has not been touched; applying 255 is a
+separate guarded step.** The findings below describe the tree *before* 255.
+
+## Result summary (178 tables after migrations 001–254)
 
 - RLS enabled: 178/178.
 - **Proven source-level gaps (2):** `automation_jobs`
@@ -70,9 +80,9 @@ migration order. `Flags` of `ok` means no finding.
 | ai_rules | 001 | yes | select | select | all | - | - | ok |
 | ai_worker_logs | 001 | yes | - | insert,select | all | - | - | ok |
 | automation_audit_log | 097 | yes | - | - | all | - | 4 fn | LATENT_POLICY_WITHOUT_GRANT |
-| automation_escalations | 097 | yes | - | - | all | select | 1 fn | PROVEN_GAP_FRONTEND(missing select) |
+| automation_escalations | 097 | yes | - | select | all | select | 1 fn | ok |
 | automation_governance_rules | 135 | yes | - | - | all | - | - | DELIBERATELY_REVOKED_VESTIGIAL_POLICY |
-| automation_jobs | 097 | yes | - | - | all | select | 2 fn | PROVEN_GAP_FRONTEND(missing select) |
+| automation_jobs | 097 | yes | - | select | all | select | 2 fn | ok |
 | automation_kill_switches | 135 | yes | - | - | all | - | - | DELIBERATELY_REVOKED_VESTIGIAL_POLICY |
 | automation_worker_heartbeats | 134 | yes | - | select | all | select | - | ok |
 | billing_notification_events | 100 | yes | - | - | all | - | - | LATENT_POLICY_WITHOUT_GRANT |
@@ -164,8 +174,8 @@ migration order. `Flags` of `ok` means no finding.
 | nxq_invoice_credit_applications | 229 | yes | - | select | all | - | - | ok |
 | nxq_lead_intelligence | 244 | yes | - | select | all | - | - | ok |
 | nxq_metered_job_policies | 246 | yes | - | - | all | - | - | ok |
-| nxq_netlify_budget_settings | 234 | yes | - | - | all | - | - | SERVICE_ROLE_VIA_DEFAULT_PRIVILEGES_ONLY |
-| nxq_netlify_build_reservations | 234 | yes | - | - | all | - | - | SERVICE_ROLE_VIA_DEFAULT_PRIVILEGES_ONLY |
+| nxq_netlify_budget_settings | 234 | yes | - | - | all | - | - | ok |
+| nxq_netlify_build_reservations | 234 | yes | - | - | all | - | - | ok |
 | nxq_observability_metrics | 244 | yes | - | select | all | - | - | ok |
 | nxq_optimization_findings | 243 | yes | - | select | all | - | - | ok |
 | nxq_organization_memberships | 125 | yes | - | select | all | - | - | ok |

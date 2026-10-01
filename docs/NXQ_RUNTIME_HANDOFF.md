@@ -176,9 +176,15 @@ this ledger before re-running any investigation**:
   over-grants from temporary migration 003, 2 tables relying on migration
   195 default privileges for `service_role`. Migration 251's two tables are
   explicit and minimal. **Not proof of live grants — nothing was checked on
-  staging.** A fix plan (new forward migration, no edits to applied
-  migrations) was shown to the user and is **awaiting approval**; no
-  migration or workflow was edited.
+  staging.** Fix approved (items 1, 2, 5) and implemented locally as
+  **migration 255** (`255_explicit_data_api_grants_for_owner_reads.sql`:
+  select-only grants for `authenticated` on `automation_jobs` /
+  `automation_escalations`; explicit `service_role` grants on the two
+  `nxq_netlify_*` tables) plus `npm run test:data-api-grants`. Proven gaps
+  now 0 at source level. Exercised on disposable local Postgres only
+  (grants as intended, idempotent). **255 is NOT applied to staging**;
+  applying is a separate guarded `apply_migrations` run. Optional anon
+  revokes (item 3) were not approved and are not included.
 
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
@@ -329,6 +335,8 @@ checks exercise it, not that it's guessed to work):
 - [x] 254 — delivers billing notification events (**needs 253 already
   applied ahead of it — guaranteed by numbering, verify anyway before any
   real apply**)
+- [ ] 255 — explicit Data API grants for 2 owner-read tables + 2 service-only
+  tables (staged locally, not applied; Supabase 2026-10-30 change)
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
