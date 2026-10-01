@@ -95,15 +95,8 @@ jobs:
 
           echo ""
           echo "--- Confirming linked project identity (name/region only; ref and token never printed) ---"
-          npx --no-install supabase projects list --output-format json > "$RUNNER_TEMP/nxq-projects-list.json"
-          node -e '
-            const rows = JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/nxq-projects-list.json", "utf8"));
-            const ref = process.env.SUPABASE_PROJECT_REF;
-            const match = rows.find((r) => r.id === ref);
-            if (!match) { console.error("Linked project ref not found in accessible projects list."); process.exit(1); }
-            console.log("Linked project name:", match.name);
-            console.log("Linked project region:", match.region || "(unknown)");
-          '
+          npx --no-install supabase projects list --output json > "$RUNNER_TEMP/nxq-projects-list.json"
+          node scripts/confirm-linked-project-identity.mjs "$RUNNER_TEMP/nxq-projects-list.json"
           rm -f "$RUNNER_TEMP/nxq-projects-list.json"
 
       - name: Verify staging Edge secret names
