@@ -92,6 +92,66 @@ this ledger before re-running any investigation**:
   `validate_prelaunch`. **This is not launch approval** — it only
   proves the zero-key profile; the full prelaunch gate still needs
   those 6 secrets.
+- **Migrations 248–254 risk review (2026-09-30/10-01), read-only, no
+  apply yet**: reviewed all 7 files in full. All additive/restriction-only
+  — no `DROP TABLE`, no backfill, no destructive change. Real findings:
+  (a) **251/252 must apply together, in order** — 251 alone leaves the
+  add-on feature inert (fails closed, not a security/data risk) until
+  252 lands in the same batch; (b) **253/254 ordering is the one real
+  security-sensitive dependency**, already closed structurally by
+  filename order (documented above); (c) **use `apply_migrations`, not
+  `apply_all`** for this task — `apply_all` also deploys every Edge
+  function and its secret gate falls through to `business-external-qa`
+  (= `business-prelaunch` + `NXQ_AI_MODEL_PROVIDER_TOKEN`), which would
+  still fail after the 6 secrets are set; `apply_migrations` skips the
+  Edge-secret-name check step entirely (not in that step's `if:`
+  condition) and only runs `supabase db push --linked`; (d) **traced
+  exactly which already-live staging cron jobs could invoke the new
+  code automatically**: `nxq-automatic-billing-hourly` (migration 100,
+  already live, runs every hour at `:15`) calls
+  `run_automatic_billing_orchestration()` → `queue_due_billing_attempts()`
+  / `advance_automatic_billing_lifecycle()`, both of which already call
+  `record_billing_notification()` (5 call sites) — so migration 254's
+  new notification-insert behavior would fire on the very next hourly
+  tick after apply, with no human action needed, *if* any staging
+  client is currently in a qualifying billing state (not checked — would
+  require reading live staging data, not done). `nxq-file-security-scans-every-two-minutes`
+  (migration 144, already live) could similarly reach migration 250's
+  new code, but is currently blocked earlier in its own chain by the
+  same missing `NXQ_CLOUDMERSIVE_API_KEY`. (e) **Confirmed nothing can
+  send externally regardless of secrets**: all 4 new notification
+  inserts (248/249/250/254) hardcode `channel:'in_app'`, and
+  `dispatch-notifications/index.ts` delivers `in_app` by marking the
+  row `delivered` directly — it never reaches the `postAdapter()` call
+  that would reach Resend/the external adapter. That external path is
+  only used for non-`in_app` channels, which none of these five new
+  notification types use.
+- **Workflow addition, commit `268281b`, 2026-10-01**: added one
+  read-only step to `.github/workflows/manual-supabase-stage.yml`
+  (gated to `validate_prelaunch` only) that runs
+  `supabase migration list --linked` (direct local-vs-remote history
+  from `supabase_migrations.schema_migrations`, not inferred from the
+  dry-run diff) and `supabase projects list` (prints only the linked
+  project's **name** and **region**, matched against
+  `SUPABASE_PROJECT_REF` in-memory — the ref and access token are never
+  printed; exits with failure if the ref isn't found in the accessible
+  projects list). Local checks passed (YAML validity via `python3 -c
+  "import yaml..."`, the embedded `node -e` match/no-match logic unit-tested
+  standalone, and `node scripts/check-runtime-stage-readiness.mjs` full
+  pass). Pushed and confirmed matching origin.
+- **Run #218 dispatched, HEAD `268281b`, 2026-10-01 — outcome not yet
+  known as of this handoff entry.** Dispatched `validate_prelaunch`,
+  was sitting at the `nxq-staging` environment approval gate awaiting
+  the user's approval when this chat was handed off. **Next session:
+  check this run's actual result before doing anything else** — it
+  will still fail at "Verify staging Edge secret names" (the 6 secrets
+  are still unset), but should newly report the direct migration list
+  and linked project name/region from the new step above. If this run
+  already completed by the time you read this, pull its log
+  (`mcp__github__get_job_logs`, `run_id: 36676959762` or look up the
+  latest run on this workflow) and report those two pieces of output
+  before doing anything else — do not re-dispatch to get the same
+  information twice.
 
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
@@ -271,16 +331,20 @@ something local code work can close — it is credentials, external
 provider setup, and the 10-run QA/signoff process, all requiring your
 action outside this session.
 
-## Current checkpoint — 2026-09-30
+## Current checkpoint — 2026-10-01
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
-- **HEAD:** `b87f642e3b237a1ee7c2e77921a108d0fa48e641` — "fix: correct
-  double-quoted SQL literals in remote launch-architecture contract
-  query" (prior recorded HEAD was `9c58112`, corrected from `a7989a9`
-  above by a same-day follow-up commit).
+- **HEAD:** `268281b6471a0bc13f8cb48e959e6f7d8da1099a` — "ci: add
+  read-only staging migration history and project-identity step"
+  (prior recorded HEAD was `b87f642`, superseded by `e0ea1cd`, `879ecf9`,
+  `9eca5f6`, `6456bde`, then this commit — see the progress ledger at
+  the top of this file for the full chain of what each one fixed).
 - **Working tree:** clean, pushed to `origin`, verified matching after
-  `git fetch` (see "Staging preflight run #214 — HTTP 400 root cause and
-  fix" below for how this was confirmed).
+  `git fetch` as of this commit.
+- **Open item:** run #218 (`validate_prelaunch`, HEAD `268281b`) was
+  dispatched and awaiting the `nxq-staging` environment approval gate
+  when this handoff was written — see the progress ledger's last entry
+  for exactly what to check first in the next session.
 - This checkpoint was reached by fetching and fast-forward merging from a
   stale local cache that had lagged the real remote tip
   (`afbbc5f` → `c36568d`), then several further local commits ending at
@@ -2016,8 +2080,12 @@ live git state yourself — do not trust this document's SHA blindly:
 `git fetch origin safe/checkpoint-autonomy-wave35-sales`, compare
 `git rev-parse HEAD` against `git rev-parse origin/safe/checkpoint-autonomy-wave35-sales`
 and against `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`.
-Once confirmed current, resume from the "Next 3 highest-priority safe
-tasks" list above, honoring the stop-and-ask gates in `CLAUDE.md`.
+Once confirmed current, **first check run #218's actual outcome**
+(see the progress ledger's last entry at the top of this file — do not
+re-dispatch `validate_prelaunch` to get information a completed run
+already has), report its migration-list and project-identity output if
+not already reported, then resume from the "Next highest-priority safe
+tasks" list below, honoring the stop-and-ask gates in `CLAUDE.md`.
 
 ## One-time staging setup
 
