@@ -368,6 +368,32 @@ this ledger before re-running any investigation**:
   fixed `provision-storefront` needs a redeploy (gated) before it takes
   effect; Cloudmersive/AI/Stripe/Netlify credits unchanged.
 
+- **Reproducible local full-schema test added, 2026-10-01.** `scripts/test-local-full-schema.mjs`
+  (`npm run test:local-full-schema`; helper `scripts/lib/rpc-call-sites.mjs`, stand-ins
+  `scripts/sql/local-full-schema/stubs.sql`; full coverage/limits in
+  `docs/LOCAL_FULL_SCHEMA_TEST.md`). Builds a disposable Postgres from all 223 migrations and runs 7
+  focused checks (all migrations apply; trigger field references; detector self-test reproducing the
+  migration-132 defect shape with a real 42703; RPC argument + EXECUTE contracts over 281 call sites;
+  `provision-storefront` reservation-key static and runtime regression; client location insert after
+  migration 256). Final run: 7/7 pass, ~12 s, exit 0. **Not a staging reproduction**: pg_cron, pg_net,
+  supabase_vault, auth, storage are stand-ins; migration 197 is applied against PLACEHOLDER Vault secrets
+  (explicit in output and docs), not skipped. It took three runs to get green: the first two failed on
+  fixture mistakes in the new checks, not product defects. Environment restored afterward: Postgres service
+  stopped, database dropped, the four stand-in roles left in the cluster by earlier sessions were dropped by
+  hand (the script itself only drops roles it creates), no extension stubs or temp files remain. The static
+  validator `validate-contract-rpc-call-arguments.mjs` now shares the call-site scanner (re-verified: fails
+  on the old `target_idempotency_key`, passes on the fix). No migration or workflow was edited.
+  **Redeploy of `provision-storefront` to staging is NOT done**; a plan was prepared and awaits explicit
+  approval (see below).
+- **Redeploy plan for `provision-storefront` (prepared 2026-10-01, awaiting approval, nothing dispatched).**
+  Today the workflow has no single-function action for it: it is only reachable through
+  `deploy_functions`/`apply_all` (all 44 functions) or `deploy_paid_capability_guards` (17 functions).
+  "Only provision-storefront" therefore needs a one-step workflow addition (gated: workflow edit +
+  approval), then a guarded dispatch. Details were given to the user in chat; summary: add action
+  `deploy_provision_storefront` mirroring `deploy_commerce_reference_upload`
+  (`--no-verify-jwt`, matches manifest `verify_jwt: false`), with a before/after
+  `supabase functions list` check that the version increased and nothing else changed.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
