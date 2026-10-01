@@ -417,6 +417,16 @@ this ledger before re-running any investigation**:
   fails loudly if it cannot confirm). Behavior proof of the reservation fix still needs a real storefront
   provisioning run (Netlify credits + GitHub app).
 
+- **Run #231 (`deploy_provision_storefront`, HEAD `9a08239`), 2026-10-01 — `provision-storefront` DEPLOYED to
+  `nxqweb-staging` and verified.** User confirmed project + phrase and approved the `nxq-staging` gate. Log:
+  `Deploying Function: provision-storefront` / `Deployed Functions on project ***: provision-storefront` (one
+  function only). Verifier output: `provision-storefront: v27 -> v28, status ACTIVE, verify_jwt false.`,
+  `43 other function(s) unchanged.`, `PASS only provision-storefront changed.` (so the `functions list --output-format
+  json` shape was parsed successfully on the first real run). All other deploy steps and migration steps were
+  skipped; no migration applied, no billing change. The reservation-key fix is now live on staging; its end-to-end
+  effect (a real Commerce storefront provisioning that reserves Netlify credit) has NOT been exercised and still
+  needs a real run with Netlify credits and the GitHub app.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -549,7 +559,7 @@ checks exercise it, not that it's guessed to work):
   correct RPC argument (`provision-storefront` passed `target_idempotency_key`;
   the function takes `target_reservation_key`, so provisioning always failed
   there with a misleading "denied by budget" error). Fixed in source,
-  validator added; **Edge function not redeployed, not proven live**.
+  validator added; **deployed to staging in run #231 (v27 -> v28); end-to-end behavior still not proven live**.
 - [ ] `billing_notification_events` delivery + RLS scoping — **code
   complete, staged as migrations 253+254, not yet applied to any
   database** (see section B)
