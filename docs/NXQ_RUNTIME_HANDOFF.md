@@ -164,6 +164,22 @@ this ledger before re-running any investigation**:
   re-verified** by a post-apply `supabase migration list --linked` — see
   next entry once recorded. The 6 missing Edge secrets are still unset.
 
+- **Data API grant audit (Supabase 2026-10-30 change), local/source-level
+  only, 2026-10-01.** Full table-by-table checklist:
+  `docs/DATA_API_GRANT_AUDIT.md`; validator
+  `scripts/audit-data-api-grants.mjs` (not wired into `test:release`; exits 1
+  while proven gaps exist, `--report` never fails). 178 tables, RLS on all.
+  **2 proven source-level gaps** (frontend `select` with no explicit
+  `authenticated` grant): `automation_jobs`, `automation_escalations` (the
+  latter introduced by commit `1ba8d1e` this session). Also: 7 latent
+  policy-without-grant tables (no direct use), 7 RLS-contained anon
+  over-grants from temporary migration 003, 2 tables relying on migration
+  195 default privileges for `service_role`. Migration 251's two tables are
+  explicit and minimal. **Not proof of live grants — nothing was checked on
+  staging.** A fix plan (new forward migration, no edits to applied
+  migrations) was shown to the user and is **awaiting approval**; no
+  migration or workflow was edited.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
