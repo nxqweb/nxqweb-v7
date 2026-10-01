@@ -46,6 +46,19 @@ type RuntimeDispatchData = {
   generated_at: string;
 };
 
+type EscalationRow = {
+  id: string;
+  client_id: string;
+  project_id?: string | null;
+  escalation_type: string;
+  severity: string;
+  status: string;
+  title: string;
+  summary: string;
+  created_at?: string;
+  clients?: { business_name?: string | null } | { business_name?: string | null }[] | null;
+};
+
 function formatTime(value?: string) {
   if (!value) return "Unknown time";
   return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
@@ -68,9 +81,20 @@ export function OwnerExceptionCenter() {
       return;
     }
 
-    const [exceptionResult, runtimeResult] = await Promise.all([
+    const [exceptionResult, runtimeResult, escalationResult] = await Promise.all([
       supabase.rpc("owner_exception_center"),
       supabase.rpc("owner_runtime_dispatch_incidents"),
+      // Billing, file-security and infrastructure escalations are written to
+      // automation_escalations but are not part of owner_exception_center().
+      // The dispatch-outage type is excluded: it is already shown via the
+      // runtime incidents above.
+      supabase
+        .from("automation_escalations")
+        .select("id, client_id, project_id, escalation_type, severity, status, title, summary, created_at, clients(business_name)")
+        .in("status", ["open", "acknowledged"])
+        .neq("escalation_type", "internal_edge_dispatch_network_unreachable")
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
 
     if (exceptionResult.error) {
@@ -80,12 +104,36 @@ export function OwnerExceptionCenter() {
     }
 
     const base = exceptionResult.data as ExceptionCenterData;
+    const escalationItems: ExceptionItem[] = ((escalationResult.data || []) as unknown as EscalationRow[]).map((row) => {
+      const client = Array.isArray(row.clients) ? row.clients[0] : row.clients;
+      return {
+        source: "escalation",
+        id: row.id,
+        client_id: row.client_id,
+        project_id: row.project_id,
+        business_name: client?.business_name,
+        severity: row.severity,
+        status: row.status,
+        title: row.title,
+        summary: row.summary,
+        type: row.escalation_type,
+        created_at: row.created_at,
+      };
+    });
+    const escalationNotice = escalationResult.error
+      ? `Escalations failed to load: ${escalationResult.error.message}`
+      : "";
     if (runtimeResult.error) {
-      setData(base);
+      setData({
+        ...base,
+        needs_owner_attention: base.needs_owner_attention + escalationItems.length,
+        exceptions: [...(base.exceptions || []), ...escalationItems],
+      });
       setError(`Runtime dispatch health failed to load: ${runtimeResult.error.message}`);
       setLoading(false);
       return;
     }
+    if (escalationNotice) setError(escalationNotice);
 
     const runtime = runtimeResult.data as RuntimeDispatchData;
     const runtimeItems: ExceptionItem[] = (runtime.incidents || []).map((incident) => ({
@@ -104,8 +152,8 @@ export function OwnerExceptionCenter() {
 
     setData({
       ...base,
-      needs_owner_attention: base.needs_owner_attention + (runtime.open_count || 0),
-      exceptions: [...(base.exceptions || []), ...runtimeItems],
+      needs_owner_attention: base.needs_owner_attention + (runtime.open_count || 0) + escalationItems.length,
+      exceptions: [...(base.exceptions || []), ...runtimeItems, ...escalationItems],
       generated_at: runtime.generated_at || base.generated_at,
     });
     setLoading(false);
@@ -207,6 +255,7 @@ export function OwnerExceptionCenter() {
                         {item.source === "automation" ? "Next step: retry through the normal worker lane; every approval, tenant, provider, and publication check runs again." : null}
                         {item.source === "maintenance" ? "Next step: requeue the original check. The alert stays acknowledged until a worker completes the task successfully." : null}
                         {item.source === "runtime" ? "NXQ detected an internal dispatch transport outage. Client jobs stay queued without burning retry attempts; use the external staging dispatcher until database networking recovers." : null}
+                        {item.source === "escalation" ? "Next step: resolve the underlying billing, file-security or infrastructure cause. This view is read-only; the escalation record is unchanged." : null}
                         {item.source === "seo_publish" ? "Next step: check Automation Health for its matching SEO worker job. Production remains unchanged while this run is blocked." : null}
                         {item.source === "change_request" ? "Next step: review the requested risk and missing information. Unsafe or ambiguous changes are never force-published." : null}
                       </p>

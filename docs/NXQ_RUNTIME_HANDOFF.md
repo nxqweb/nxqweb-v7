@@ -276,8 +276,11 @@ checks exercise it, not that it's guessed to work):
 - [ ] `commerce_cart_items` / `commerce_carts` orphaned schema — found,
   not cleaned up (needs a migration decision — your call, see next
   section's staged migrations)
-- [ ] `automation_escalations` — 7 of 8 owner escalation types are a
-  dead write-only channel; you've twice chosen to defer this, not fixed
+- [x] `automation_escalations` — the 7 previously unsurfaced escalation
+  types are now read by `OwnerExceptionCenter.tsx` directly (owner-only RLS
+  policy from migration 097; read-only, no migration). Local checks pass
+  (eslint, tsc, build, operational-control-surface 12/12, a11y 19/19,
+  security audit); not yet exercised against a real database.
 - [ ] `billing_notification_events` delivery + RLS scoping — **code
   complete, staged as migrations 253+254, not yet applied to any
   database** (see section B)
