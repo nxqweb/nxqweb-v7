@@ -303,6 +303,19 @@ this ledger before re-running any investigation**:
   it covers synthetic fixtures only and is not external QA, not launch
   approval, and not evidence for the 10-run QA gate.
 
+- **Dependency audit fix, 2026-10-01 (user-approved).** `npm audit` flagged
+  1 high-severity advisory set (GHSA-q2hr-2g5m-vwhr, GHSA-qhr7-859c-m2p7,
+  GHSA-6j4f-fj2g-mc7p: denial of service) in the dev-only transitive package
+  `brace-expansion` (`eslint` -> `minimatch@10.2.5`). `npm audit fix` changed
+  exactly one package, lockfile only: `brace-expansion` 5.0.9 -> 5.0.12
+  (`package.json` untouched). After a clean `npm ci`: `npm audit` = 0
+  vulnerabilities, eslint, `tsc`, build, migration integrity (223),
+  `test:release` (69/69 then the usual credential stop), `test:security`,
+  `test:accessibility` (19/19), `test:edge` (44), `test:data-api-grants`,
+  `test:runtime-stage` all pass. Not run on CI yet; CI install uses `npm ci`
+  against this lockfile. (The earlier "npm audit 0 vulnerabilities" figure in
+  this file predates the advisory.)
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
