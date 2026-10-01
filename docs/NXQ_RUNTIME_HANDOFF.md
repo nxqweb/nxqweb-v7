@@ -394,6 +394,16 @@ this ledger before re-running any investigation**:
   (`--no-verify-jwt`, matches manifest `verify_jwt: false`), with a before/after
   `supabase functions list` check that the version increased and nothing else changed.
 
+- **provision-storefront redeploy: status 2026-10-01 (user approved plan Option A; workflow edit BLOCKED).**
+  The permission classifier denied the local edit to `.github/workflows/manual-supabase-stage.yml`
+  (adding action `deploy_provision_storefront`), so the workflow is UNCHANGED and nothing was dispatched.
+  Committed (safe-scope, inert until a workflow step calls them): `scripts/verify-function-deployment.mjs`
+  (compares before/after `supabase functions list` captures; confirms only the named function changed,
+  version increased, status ACTIVE, `verify_jwt` false) and `scripts/validate-function-deployment-verifier.mjs`
+  (11 synthetic checks, runs in `test:release`). Awaiting the user's decision: allow the workflow edit,
+  apply the diff themselves, or use `deploy_paid_capability_guards` (redeploys 16 other functions).
+  The fixed `provision-storefront` source is on this branch but NOT deployed to staging.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
