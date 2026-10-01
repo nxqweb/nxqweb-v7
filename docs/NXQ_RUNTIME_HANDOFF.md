@@ -288,6 +288,21 @@ this ledger before re-running any investigation**:
   phrase); expected 56/56 per local evidence (local DB: all location checks
   pass after 256; only stub-environment failures remain locally).
 
+- **Run #229 (`validate_paid_capability_guards`, HEAD `af9440a`),
+  2026-10-01 — 56/56 PASSED on `nxqweb-staging` (us-east-2), after 256.**
+  User authorized with project confirmation + phrase and approved the
+  `nxq-staging` gate. Every check that failed in run #226 now passes,
+  including `location-first-created`, `location-insert-trigger-probe`,
+  `location-audit-write-probe`, `location-addon-second-location-permitted`,
+  `location-addon-active-count-two`, `location-addon-cap-fix-verified`, and
+  the corrected `location-trigger-set-expected` / constraint checks.
+  `rollback-forced`, `synthetic-fixtures-only`, `no-external-runtime` PASS.
+  Dry-run in the same run: `Remote database is up to date.` (256 recorded
+  as applied). No migration, deploy or billing action in this run. This is
+  the first fully green staging run of the paid-capability guard suite;
+  it covers synthetic fixtures only and is not external QA, not launch
+  approval, and not evidence for the 10-run QA gate.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -441,8 +456,8 @@ checks exercise it, not that it's guessed to work):
   tables (applied to staging in run #223, verified by run #224; Supabase
   2026-10-30 change)
 - [x] 256 — fixes latent migration-132 trigger bug (`queue_location_seo_refresh()` made
-  every `client_locations` insert fail, 42703); applied to staging in run #228;
-  effect NOT yet re-verified by the paid-capability guards re-run
+  every `client_locations` insert fail, 42703); applied to staging in run #228; verified by the paid-capability guards
+  re-run in run #229 (56/56)
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
