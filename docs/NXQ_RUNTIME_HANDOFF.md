@@ -316,6 +316,20 @@ this ledger before re-running any investigation**:
   against this lockfile. (The earlier "npm audit 0 vulnerabilities" figure in
   this file predates the advisory.)
 
+- **Run #230 (read-only `validate_prelaunch`, HEAD `de02926`), 2026-10-01 —
+  Resend secrets confirmed present; only Cloudmersive still missing.** The user
+  saved `NXQ_RESEND_API_KEY` and `NXQ_NOTIFICATION_FROM_EMAIL`
+  (`onboarding@resend.dev`, staging test sender) in the Supabase dashboard
+  (names visible in the secrets list; values never shared). Run #230:
+  `business-prelaunch is missing 1 Supabase Edge secret name(s):
+  NXQ_CLOUDMERSIVE_API_KEY` (down from 3). Step results: install with the
+  updated lockfile (`brace-expansion` 5.0.12) succeeded, manifest/auth/remote
+  architecture step succeeded, link, dry-run, and the migration-history +
+  project-identity step all succeeded; only "Verify staging Edge secret names"
+  failed, for that one name. Values are not verified (name presence only);
+  Cloudmersive support ticket is still open. `validate_prelaunch` will pass
+  once that key exists.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
