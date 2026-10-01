@@ -754,7 +754,7 @@ Deno.serve(async (request) => {
         target_client_id: job.client_id,
         target_project_id: job.project_id,
         target_build_kind: "preview",
-        target_idempotency_key: `commerce-storefront:${job.id}:initial-preview`,
+        target_reservation_key: `commerce-storefront:${job.id}:initial-preview`,
         target_metadata: { storefront_provisioning_id: job.id },
       });
       if (buildReservation.error || buildReservation.data?.ok !== true) {

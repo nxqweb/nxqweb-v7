@@ -330,6 +330,44 @@ this ledger before re-running any investigation**:
   Cloudmersive support ticket is still open. `validate_prelaunch` will pass
   once that key exists.
 
+- **Release-focused review (execution-based), 2026-10-01 — 1 proven defect
+  fixed in source, everything else below verified locally.** Method: built a
+  full-schema local Postgres from all 256 migrations (stubbed Supabase
+  extensions only; 197 fails solely for missing runtime Vault config) and
+  checked contracts by running them, not reading them. Verified clean (local
+  evidence only): (1) all 96 triggers: no trigger function references a field
+  missing on its table (one apparent hit, `enforce_and_record_commerce_usage`
+  `new.file_size`, is in a separate IF branch that only runs for the media
+  table); (2) all 137 frontend `.rpc()` call sites match their function's
+  argument names/required args; (3) 64 frontend `.from()` query chains reference
+  existing columns; (4) page-vs-RLS: no client page reads an owner-only table
+  and no owner page lacks an owner policy; (5) every one of the 113 distinct
+  frontend RPCs, run as the role its page uses (client/owner/anon), executes
+  without undefined-column/function/table errors or EXECUTE-permission
+  failures (business denials only), in a fresh-signup state and an
+  active-client-with-project state; (6) real lifecycle in SQL: signup trigger
+  creates a `lead` client with family/tier; frontend-built setup report passes
+  `submit_current_client_website_setup` (labels and $50/$100/$150 match the
+  catalog); owner `approve_website_setup` -> client `approved`, project `planning`,
+  jobs `create_onboarding_welcome` + `ensure_project_workspace` queued; owner
+  `deny_website_setup` -> client `denied`, pipeline stopped, no infrastructure,
+  in-app `business_setup_denied` notification visible to that client.
+  **Defect found and fixed (source only):** `provision-storefront` called
+  `nxq_reserve_netlify_build` with `target_idempotency_key`; the function takes
+  `target_reservation_key` (all other callers are correct). Against the real
+  function the old name raises "function ... does not exist"; the corrected
+  call returns `{"ok": true, "reservation_id": ...}`. Effect before fix:
+  Commerce storefront provisioning always threw "Netlify build denied by the
+  protected build-credit budget" before triggering any build. New validator
+  `scripts/validate-contract-rpc-call-arguments.mjs` (281 call sites in `src/`
+  and `supabase/functions/`, runs inside `test:release`) fails on the old
+  code and passes on the fix. **Not verified / needs live proof or your
+  setup:** the Edge-function chain after the queued jobs (prepare-build-plan,
+  provision-project-infrastructure, build-business-website, preview, promote,
+  maintenance, domain reconcile) needs real GitHub/Netlify/AI providers; the
+  fixed `provision-storefront` needs a redeploy (gated) before it takes
+  effect; Cloudmersive/AI/Stripe/Netlify credits unchanged.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -458,6 +496,11 @@ checks exercise it, not that it's guessed to work):
   policy from migration 097; read-only, no migration). Local checks pass
   (eslint, tsc, build, operational-control-surface 12/12, a11y 19/19,
   security audit); not yet exercised against a real database.
+- [x] Commerce storefront provisioning reserves Netlify build credit with the
+  correct RPC argument (`provision-storefront` passed `target_idempotency_key`;
+  the function takes `target_reservation_key`, so provisioning always failed
+  there with a misleading "denied by budget" error). Fixed in source,
+  validator added; **Edge function not redeployed, not proven live**.
 - [ ] `billing_notification_events` delivery + RLS scoping — **code
   complete, staged as migrations 253+254, not yet applied to any
   database** (see section B)
