@@ -153,6 +153,17 @@ this ledger before re-running any investigation**:
   before doing anything else — do not re-dispatch to get the same
   information twice.
 
+- **Run #220 (`apply_migrations`, HEAD `475566c`), 2026-10-01 — APPLIED to
+  `nxqweb-staging` (us-east-2).** Project identity confirmed first by run
+  #219 (name/region only; user confirmed intended staging target). The
+  apply log shows migrations applied one by one in this exact order, run
+  succeeded: 248, 249, 250, 251 (benign NOTICE: trigger
+  `enforce_client_location_limit` did not exist, skipped), 252, 253, 254.
+  253 applied before 254, as designed. No functions deployed, no
+  `apply_all`, no billing/payment change. **Not yet independently
+  re-verified** by a post-apply `supabase migration list --linked` — see
+  next entry once recorded. The 6 missing Edge secrets are still unset.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -290,16 +301,16 @@ checks exercise it, not that it's guessed to work):
 **B. Staged migrations — code-complete, zero live effect until applied**
 (none of these touch any database yet):
 
-- [ ] 248 — client notification on website-setup denial
-- [ ] 249 — client notification on Commerce customer request
-- [ ] 250 — client notification on file-scan completion
-- [ ] 251 — Multi-Location self-serve add-on (**needs 252 in the same
+- [x] 248 — client notification on website-setup denial
+- [x] 249 — client notification on Commerce customer request
+- [x] 250 — client notification on file-scan completion
+- [x] 251 — Multi-Location self-serve add-on (**needs 252 in the same
   run** — inert without it)
-- [ ] 252 — fixes 251's trigger conflict
-- [ ] 253 — restricts client notification reads to `recipient_kind='client'`
+- [x] 252 — fixes 251's trigger conflict
+- [x] 253 — restricts client notification reads to `recipient_kind='client'`
   (closes a real RLS gap; **applies before 254 by design** — see "Local-file
   ordering fix — implemented" below)
-- [ ] 254 — delivers billing notification events (**needs 253 already
+- [x] 254 — delivers billing notification events (**needs 253 already
   applied ahead of it — guaranteed by numbering, verify anyway before any
   real apply**)
 
