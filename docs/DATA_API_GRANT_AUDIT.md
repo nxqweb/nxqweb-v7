@@ -31,8 +31,10 @@ user) adds `grant select` to `authenticated` on `automation_jobs` and
 `automation_escalations`, and explicit `service_role` grants on the two
 `nxq_netlify_*` tables. With it, the validator reports 0 proven gaps. It was
 exercised only against a disposable local Postgres (exact grants produced,
-idempotent on re-run). **Live staging has not been touched; applying 255 is a
-separate guarded step.** The findings below describe the tree *before* 255.
+idempotent on re-run). **Update: 255 was applied to `nxqweb-staging` in run #223 and the
+resulting privileges were read back from the live database in run #224
+(`authenticated: SELECT` on both owner tables; `service_role` full on both
+`nxq_netlify_*` tables). That is metadata evidence, not an owner-page load.** The findings below describe the tree *before* 255.
 
 ## Result summary (178 tables after migrations 001–254)
 

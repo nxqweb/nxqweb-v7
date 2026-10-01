@@ -210,6 +210,25 @@ this ledger before re-running any investigation**:
   read-only `validate_prelaunch` first (pending must be exactly 255), then
   guarded `apply_migrations`, then re-run read-only to read the INFO lines.
 
+- **Run #223 (`apply_migrations`, HEAD `13d9f8e`) and run #224 (read-only
+  `validate_prelaunch`), 2026-10-01 — migration 255 APPLIED to
+  `nxqweb-staging` (us-east-2) and verified.** Pre-apply gate (run #222): the
+  dry-run listed exactly one pending migration, 255; project identity matched.
+  Run #223 (user confirmed project + phrase, approved the `nxq-staging` gate)
+  applied only `255_explicit_data_api_grants_for_owner_reads.sql` — no
+  functions deployed, no `apply_all`, no billing change. Run #224 (after):
+  migration list shows 001–255 in both Local and Remote, dry-run `Remote
+  database is up to date.`, identity `nxqweb-staging` / `us-east-2`, 24/24
+  architecture checks passed, and the read-only `INFO data-api-grants` lines
+  changed from BEFORE (run #222/#223 pre-apply: `authenticated: none` on both
+  owner tables) to AFTER: `automation_jobs` and `automation_escalations`
+  `authenticated: SELECT`, `anon: none`; both `nxq_netlify_*` tables
+  `service_role: DELETE,INSERT,SELECT,UPDATE`, `anon`/`authenticated: none`.
+  This is privilege-metadata evidence from the live database, **not** an
+  observation of the owner pages actually loading. Run #224 still ends red only
+  at the 3 missing secret names (`NXQ_CLOUDMERSIVE_API_KEY`,
+  `NXQ_NOTIFICATION_FROM_EMAIL`, `NXQ_RESEND_API_KEY`).
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -359,8 +378,9 @@ checks exercise it, not that it's guessed to work):
 - [x] 254 — delivers billing notification events (**needs 253 already
   applied ahead of it — guaranteed by numbering, verify anyway before any
   real apply**)
-- [ ] 255 — explicit Data API grants for 2 owner-read tables + 2 service-only
-  tables (staged locally, not applied; Supabase 2026-10-30 change)
+- [x] 255 — explicit Data API grants for 2 owner-read tables + 2 service-only
+  tables (applied to staging in run #223, verified by run #224; Supabase
+  2026-10-30 change)
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
