@@ -276,6 +276,18 @@ this ledger before re-running any investigation**:
   exactly 256) -> guarded `apply_migrations` -> re-run
   `validate_paid_capability_guards` (expect 56/56). Local evidence only.
 
+- **Run #227 (read-only gate) and run #228 (`apply_migrations`, HEAD
+  `e16f3be`), 2026-10-01 — migration 256 APPLIED to `nxqweb-staging`
+  (us-east-2).** Gate #227: dry-run listed exactly one pending migration, 256;
+  history 001–255 in both columns; identity matched. Run #228 (user confirmed
+  project + phrase, approved the `nxq-staging` gate): the log shows only
+  `Applying migration 256_fix_location_seo_trigger_field_access.sql...` then
+  `Finished supabase db push.`; no functions deployed, no `apply_all`, no
+  billing change. **The fix has NOT yet been verified on staging**: the
+  paid-capability guards must be re-run (needs its own user authorization +
+  phrase); expected 56/56 per local evidence (local DB: all location checks
+  pass after 256; only stub-environment failures remain locally).
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -428,8 +440,9 @@ checks exercise it, not that it's guessed to work):
 - [x] 255 — explicit Data API grants for 2 owner-read tables + 2 service-only
   tables (applied to staging in run #223, verified by run #224; Supabase
   2026-10-30 change)
-- [ ] 256 — fixes latent migration-132 trigger bug (`queue_location_seo_refresh()` made
-  every `client_locations` insert fail, 42703); staged locally, not applied
+- [x] 256 — fixes latent migration-132 trigger bug (`queue_location_seo_refresh()` made
+  every `client_locations` insert fail, 42703); applied to staging in run #228;
+  effect NOT yet re-verified by the paid-capability guards re-run
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
