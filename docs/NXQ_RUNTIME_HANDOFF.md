@@ -182,7 +182,7 @@ this ledger before re-running any investigation**:
   `automation_escalations`; explicit `service_role` grants on the two
   `nxq_netlify_*` tables) plus `npm run test:data-api-grants`. Proven gaps
   now 0 at source level. Exercised on disposable local Postgres only
-  (grants as intended, idempotent). **255 is NOT applied to staging**;
+  (grants as intended, idempotent). **(at the time of this entry 255 was not yet applied; superseded by the run #223/#224 entry below)**;
   applying is a separate guarded `apply_migrations` run. Optional anon
   revokes (item 3) were not approved and are not included.
 
@@ -196,7 +196,7 @@ this ledger before re-running any investigation**:
   The run still ends red at "Verify staging Edge secret names": missing only
   `NXQ_CLOUDMERSIVE_API_KEY`, `NXQ_NOTIFICATION_FROM_EMAIL`,
   `NXQ_RESEND_API_KEY` (the 3 Turnstile secrets now exist by name). Not a code
-  issue. Migration 255 was not in this checkout and is not applied.
+  issue. Migration 255 was not in this checkout (later applied; see run #223/#224 entry).
 
 - **Informational grant report added (script only), 2026-10-01.**
   `scripts/remote-launch-architecture-contract.mjs` now ends with a read-only
