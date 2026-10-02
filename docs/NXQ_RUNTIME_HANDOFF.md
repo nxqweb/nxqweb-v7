@@ -636,6 +636,22 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Owner access and own-site billing (read-only code review, 2026-10-02)
+
+- Owner access is the `owner_users` row for the auth user (`OwnerProtectedRoute.tsx`);
+  it does not depend on billing, plan, or Stripe. A client's billing state cannot lock
+  the owner out of `/owner/*`.
+- A client's own capabilities (builds, etc.) are gated by billing state (paid-capability
+  guards, migration 246). Billing is a manual state machine (`manual` provider): the
+  owner can set a client's state to `active` (`owner_set_client_billing_state`) or record
+  a manual payment (`record_manual_payment_and_restore`, "no card or bank account will be
+  charged") from `/owner/billing`. The 14-day job only moves past-due accounts into
+  *freeze review*; it never freezes automatically.
+- There is no dedicated "comped/free own site" flag. QA-only clients are non-billable but
+  disposable. Open product decision: add an explicit owner-owned/complimentary client
+  flag (needs a migration -> approval gate) or use manual `active` state.
+- Not verified live; code review only. Stripe test mode is still not configured.
+
 ## Current checkpoint — 2026-10-01
 
 - **Branch:** `safe/checkpoint-autonomy-wave35-sales`
