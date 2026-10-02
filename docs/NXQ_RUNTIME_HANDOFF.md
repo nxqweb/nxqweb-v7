@@ -560,14 +560,15 @@ checks exercise it, not that it's guessed to work):
   the function takes `target_reservation_key`, so provisioning always failed
   there with a misleading "denied by budget" error). Fixed in source,
   validator added; **deployed to staging in run #231 (v27 -> v28); end-to-end behavior still not proven live**.
-- [ ] `billing_notification_events` delivery + RLS scoping — **code
-  complete, staged as migrations 253+254, not yet applied to any
-  database** (see section B)
+- [x] `billing_notification_events` delivery + RLS scoping — migrations
+  253+254; **applied to staging in run #220** (see section B; end-to-end
+  billing-notification delivery not exercised live)
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Staged migrations — code-complete, zero live effect until applied**
-(none of these touch any database yet):
+**B. Migrations 248-256 — all applied to staging (`nxqweb-staging`): 248-254
+in run #220, 255 in run #223, 256 in run #228. Not applied to production
+(production is not launched):**
 
 - [x] 248 — client notification on website-setup denial
 - [x] 249 — client notification on Commerce customer request
@@ -618,13 +619,10 @@ code work; confirmed blocked in this container as of this checklist:**
   Netlify-credit/backup alerts) or expected (AI provider not configured).
 
 **Reading this honestly**: section A is essentially complete for what's
-been built. Section B is a single guarded `apply_all` run away from being
-live, once you approve it (253+254 ordering is now enforced by numbering
-itself — see "Local-file ordering fix" below). Section C is the real
-distance to launch, and none of it is
-something local code work can close — it is credentials, external
-provider setup, and the 10-run QA/signoff process, all requiring your
-action outside this session.
+been built. Section B is applied to staging (248-256). Section C is the real
+distance to launch, and none of it is something local code work can close —
+it is credentials, external provider setup, and the 10-run QA/signoff
+process, all requiring your action outside this session.
 
 ## Current checkpoint — 2026-10-01
 
