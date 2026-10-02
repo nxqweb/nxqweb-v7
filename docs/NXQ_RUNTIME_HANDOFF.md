@@ -610,12 +610,20 @@ code work; confirmed blocked in this container as of this checklist:**
   actual production-deploy gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits
   previously exhausted, not confirmed restored (needs live check)
-- [x] Owner read pages live on nxqweb-v9-staging.netlify.app: `/owner`,
-  `/owner/exceptions`, `/owner/automation-health` load for the owner with no
-  permission error (user-supplied screenshots, 2026-10-02) — live proof that
-  migration 255 grants work. Caveat: Netlify activity showed a deploy from
-  `main@77e9455`; which branch the live build tracks is unverified. Remaining
-  items shown are stale (pre-migration-233 `pd.published_url` errors, old
+- [ ] Owner pages with the **escalations panel** live on nxqweb-v9-staging —
+  NOT yet proven. 2026-10-02 screenshots showed `/owner`, `/owner/exceptions`,
+  `/owner/automation-health` loading, but the published deploy is the Aug 24
+  one (`safe/checkp... @52e9f72`, a commit not present in this repo's history)
+  and predates the escalations change, so that load only supports the
+  `automation_jobs` grant, not `automation_escalations`. Auto Publishing is
+  locked; `main@77e9455` (2026-08-13) was also built but is not marked
+  Published. Decision (user, Option A): wait; publish once when the
+  Cloudmersive key is set and we are ready for QA — unpause Netlify, let the
+  latest safe-branch deploy build, click "Publish deploy", then load
+  `/owner/exceptions`. Note: every push to the safe branch triggers a Netlify
+  branch build while builds are unpaused (observed for 2aa8af5, a3d5987), so
+  batch pushes and pause builds in between. Remaining items shown on the pages
+  are stale (pre-migration-233 `pd.published_url` errors, old
   Netlify-credit/backup alerts) or expected (AI provider not configured).
 
 **Reading this honestly**: section A is essentially complete for what's
