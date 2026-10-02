@@ -622,7 +622,11 @@ code work; confirmed blocked in this container as of this checklist:**
   latest safe-branch deploy build, click "Publish deploy", then load
   `/owner/exceptions`. Note: every push to the safe branch triggers a Netlify
   branch build while builds are unpaused (observed for 2aa8af5, a3d5987), so
-  batch pushes and pause builds in between. Remaining items shown on the pages
+  batch pushes and pause builds in between. **Builds were set to "Stopped" by the
+  user on 2026-10-02** (Project configuration > Developer settings > Build
+  settings > Build status); to publish later, set "Active builds", let the
+  safe-branch deploy build, then "Publish deploy". Do not use the Netlify
+  "Claude Agent" box on the project overview. Remaining items shown on the pages
   are stale (pre-migration-233 `pd.published_url` errors, old
   Netlify-credit/backup alerts) or expected (AI provider not configured).
 
