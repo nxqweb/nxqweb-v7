@@ -1,0 +1,94 @@
+name: NXQ Mega Extended CI
+
+on:
+  push:
+    branches:
+      - "safe/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  extended:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Pre-18 launch truth contract
+        run: node scripts/validate-pre18-launch-truth-contract.mjs
+      - name: Wave 14 classifier contract
+        run: node scripts/validate-autonomy-ops-wave14-contract.mjs
+      - name: Extended autonomy safety contract
+        run: node scripts/validate-autonomy-ops-wave15-contract.mjs
+      - name: Wave 16 classifier readiness hardening
+        run: node scripts/validate-autonomy-ops-wave16-contract.mjs
+      - name: Wave 17 ordered billing hardening
+        run: node scripts/validate-autonomy-ops-wave17-contract.mjs
+      - name: Wave 18 AI build-plan enrichment
+        run: node scripts/validate-autonomy-ops-wave18-contract.mjs
+      - name: Wave 19 structured AI runtime adapter
+        run: node scripts/validate-autonomy-ops-wave19-contract.mjs
+      - name: Wave 20 single owner decision authority
+        run: node scripts/validate-autonomy-ops-wave20-contract.mjs
+      - name: Wave 21 disposable Business QA runner
+        run: node scripts/validate-autonomy-ops-wave21-contract.mjs
+      - name: Wave 22 schema replay and RPC repair
+        run: node scripts/validate-autonomy-ops-wave22-contract.mjs
+      - name: Wave 23 decision authority and table capture
+        run: node scripts/validate-autonomy-ops-wave23-contract.mjs
+      - name: Wave 24 deployment authority boundaries
+        run: node scripts/validate-autonomy-ops-wave24-contract.mjs
+      - name: Wave 25 tenant-safe client mutations
+        run: node scripts/validate-autonomy-ops-wave25-contract.mjs
+      - name: Wave 26 canonical tier runtime
+        run: node scripts/validate-autonomy-ops-wave26-contract.mjs
+      - name: Wave 27 human billing freeze and safe recovery
+        run: node scripts/validate-autonomy-ops-wave27-contract.mjs
+      - name: Wave 28 deterministic lifecycle contract
+        run: node scripts/validate-autonomy-ops-wave28-contract.mjs
+      - name: Ten-run local lifecycle simulation
+        run: node scripts/simulate-business-lifecycle-e2e.mjs --runs=10
+      - name: Wave 29 release security and accessibility contract
+        run: node scripts/validate-autonomy-ops-wave29-contract.mjs
+      - name: Wave 30 guarded product-family foundations
+        run: npm run test:families
+      - name: Wave 31 runtime staging contract
+        run: node scripts/validate-autonomy-ops-wave31-contract.mjs
+      - name: Wave 32 client launch journey contract
+        run: node scripts/validate-autonomy-ops-wave32-contract.mjs
+      - name: Wave 33 guided domain connection contract
+        run: node scripts/validate-autonomy-ops-wave33-contract.mjs
+      - name: Wave 34 client value history contract
+        run: node scripts/validate-autonomy-ops-wave34-contract.mjs
+      - name: Runtime deployment manifest and auth boundaries
+        run: npm run test:runtime-stage
+      - name: Migration integrity
+        run: npm run test:migrations
+      - name: Frontend security audit
+        run: npm run test:security
+      - name: Frontend accessibility audit
+        run: npm run test:accessibility
+      - name: Edge function type checks
+        run: npm run test:edge
+      - name: Generated Business site quality
+        run: node scripts/validate-business-generated-site-quality.mjs
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
+      - name: Production build
+        run: npm run build
+      - name: Built bundle security scan
+        run: npm run test:security
+      - name: Built route smoke checks
+        run: npm run test:routes
+      - name: Production bundle budget
+        run: node scripts/check-production-bundle-budget.mjs

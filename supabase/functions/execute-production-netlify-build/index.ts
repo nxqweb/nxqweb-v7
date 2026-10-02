@@ -1,10 +1,23 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+async function boundedProviderFetch(input: string, init: RequestInit = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Provider network request failed.";
+    return new Response(message, { status: 599, statusText: "Provider Network Failure" });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -46,6 +59,9 @@ Deno.serve(async (request) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const guardAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -194,7 +210,19 @@ Deno.serve(async (request) => {
     );
   }
 
-  const githubBranchResponse = await fetch(
+  const paidAuthorization = await guardAdmin.rpc("nxq_authorize_paid_capability", {
+    target_client_id: launch.client_id,
+    target_feature_key: "managed_website",
+    target_resources: { api_requests: 2, automation_jobs: 1 },
+    target_estimated_provider_cost_cents: 1,
+    target_idempotency_key: `production-execution:${launch.id}:provider-preflight`,
+    target_metadata: { production_launch_request_id: launch.id },
+  });
+  if (paidAuthorization.error || paidAuthorization.data?.allowed !== true) {
+    return jsonResponse({ error: "Production execution was blocked by server-side subscription, billing, usage, or margin controls. No external call was made." }, 409);
+  }
+
+  const githubBranchResponse = await boundedProviderFetch(
     `https://api.github.com/repos/${encodeURIComponent(config.github_owner)}/${encodeURIComponent(config.github_repo)}/branches/${encodeURIComponent(configuredProductionBranch)}`,
     {
       headers: {
@@ -219,7 +247,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "GitHub production branch did not return a commit SHA. No build was triggered." }, 409);
   }
 
-  const netlifySiteResponse = await fetch(
+  const netlifySiteResponse = await boundedProviderFetch(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}`,
     { headers: { Authorization: `Bearer ${netlifyToken}` } }
   );
@@ -282,6 +310,19 @@ Deno.serve(async (request) => {
     .eq("id", launch.deployment_record_id)
     .eq("status", "queued");
 
+  const reservation = await guardAdmin.rpc("nxq_reserve_netlify_build", {
+    target_client_id: launch.client_id,
+    target_project_id: launch.project_id,
+    target_build_kind: "manual_production",
+    target_reservation_key: `production-launch:${launch.id}:netlify:${productionCommitSha}`,
+    target_metadata: { production_launch_request_id: launch.id, expected_commit_sha: productionCommitSha },
+  });
+  if (reservation.error) {
+    await supabase.from("production_launch_requests").update({ status: "prepared", execution_started_at: null, error_message: reservation.error.message }).eq("id", launch.id).eq("status", "launching");
+    await supabase.from("project_deployments").update({ status: "queued", started_at: null, error_message: reservation.error.message }).eq("id", launch.deployment_record_id).eq("status", "building");
+    return jsonResponse({ error: reservation.error.message }, 409);
+  }
+
   const buildUrl = new URL(
     `https://api.netlify.com/api/v1/sites/${encodeURIComponent(config.netlify_site_id)}/builds`
   );
@@ -291,7 +332,7 @@ Deno.serve(async (request) => {
 
   let buildResponse: Response;
   try {
-    buildResponse = await fetch(buildUrl.toString(), {
+    buildResponse = await boundedProviderFetch(buildUrl.toString(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${netlifyToken}`,
@@ -318,7 +359,7 @@ Deno.serve(async (request) => {
   }
 
   const responseText = await buildResponse.text();
-  let buildData: Record<string, unknown> = {};
+  let buildData: Record<string, unknown>;
   try {
     buildData = responseText ? JSON.parse(responseText) : {};
   } catch {

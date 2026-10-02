@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, Snowflake } from "lucide-react";
+import { appConfig } from "../lib/appConfig";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type ClientBillingRow = {
@@ -11,6 +12,18 @@ type ClientBillingRow = {
   billing_frozen_at: string | null;
   monthly_price: number;
 };
+
+type LocationAddonSummary = {
+  enabled_addon_units: number;
+  unit_price_cents: number;
+  base_price_cents: number;
+  addon_amount_cents: number;
+  internal_total_cents: number;
+};
+
+function formatCentsMoney(cents: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
+}
 
 function formatStatus(value: string) {
   return value.replaceAll("_", " ");
@@ -30,6 +43,7 @@ function formatDate(value: string | null) {
 
 export function ClientBillingStatus() {
   const [client, setClient] = useState<ClientBillingRow | null>(null);
+  const [addonSummary, setAddonSummary] = useState<LocationAddonSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -38,7 +52,7 @@ export function ClientBillingStatus() {
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Billing status is unavailable because Supabase is not configured.");
+      setError("Billing status is temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -60,12 +74,25 @@ export function ClientBillingStatus() {
       .maybeSingle();
 
     if (result.error || !result.data) {
-      setError(result.error?.message || "No client billing profile was found.");
+      setError("Billing status could not be loaded right now.");
       setLoading(false);
       return;
     }
 
     setClient(result.data as ClientBillingRow);
+
+    const locationsResult = await supabase.rpc("current_client_locations");
+    if (!locationsResult.error && locationsResult.data) {
+      const data = locationsResult.data as LocationAddonSummary;
+      setAddonSummary({
+        enabled_addon_units: data.enabled_addon_units,
+        unit_price_cents: data.unit_price_cents,
+        base_price_cents: data.base_price_cents,
+        addon_amount_cents: data.addon_amount_cents,
+        internal_total_cents: data.internal_total_cents,
+      });
+    }
+
     setLoading(false);
   }
 
@@ -128,15 +155,15 @@ export function ClientBillingStatus() {
             <Clock3 size={22} />
             <div>
               <h1>Billing status</h1>
-              <p className="subtle">Review your current manual billing state and account timing.</p>
+              <p className="subtle">Review your current billing state and account timing.</p>
             </div>
           </div>
 
           <a className="icon-btn" href="/client"><ArrowLeft size={16} /> Client portal</a>
         </div>
 
-        {error ? <div className="notice-card error">{error}</div> : null}
-        {loading ? <div className="empty-state">Loading billing status...</div> : null}
+        {error ? <div className="notice-card error" role="alert">{error}</div> : null}
+        {loading ? <div className="empty-state" role="status">Loading billing status...</div> : null}
 
         {!loading && client ? (
           <>
@@ -161,7 +188,7 @@ export function ClientBillingStatus() {
                 <article className="settings-card">
                   <span>Monthly plan</span>
                   <strong>{formatMoney(Number(client.monthly_price || 0))}</strong>
-                  <p>Manual monthly tracking amount.</p>
+                  <p>Current monthly plan amount.</p>
                 </article>
                 <article className="settings-card">
                   <span>Provider</span>
@@ -181,17 +208,46 @@ export function ClientBillingStatus() {
                 <article className="settings-card">
                   <span>Next due date</span>
                   <strong>{formatDate(client.billing_due_at)}</strong>
-                  <p>May remain unset while billing is handled manually.</p>
+                  <p>May remain unset until billing is fully configured.</p>
                 </article>
               </div>
             </section>
+
+            {addonSummary && addonSummary.enabled_addon_units > 0 ? (
+              <section className="panel panel-wide">
+                <h2>Location add-ons</h2>
+                <p className="subtle">
+                  {addonSummary.enabled_addon_units} extra location{addonSummary.enabled_addon_units === 1 ? "" : "s"} at {formatCentsMoney(addonSummary.unit_price_cents)}/mo each.
+                </p>
+                <div className="settings-grid">
+                  <article className="settings-card">
+                    <span>Base plan</span>
+                    <strong>{formatCentsMoney(addonSummary.base_price_cents)}</strong>
+                    <p>Your current monthly plan amount.</p>
+                  </article>
+                  <article className="settings-card">
+                    <span>Location add-ons</span>
+                    <strong>{formatCentsMoney(addonSummary.addon_amount_cents)}</strong>
+                    <p>Not yet part of your billed amount.</p>
+                  </article>
+                  <article className="settings-card">
+                    <span>Internal total</span>
+                    <strong>{formatCentsMoney(addonSummary.internal_total_cents)}</strong>
+                    <p>For your reference only.</p>
+                  </article>
+                </div>
+                <p className="subtle">
+                  This add-on amount is not yet part of your billed amount. While NXQ billing is off, nothing here is charged. It will only be added to your actual bill once NXQ turns on live billing, as a separate, reviewed step.
+                </p>
+              </section>
+            ) : null}
 
             <section className="panel panel-wide">
               <div className="panel-title">
                 <MessageCircle size={20} />
                 <div>
                   <h2>Need help?</h2>
-                  <p className="subtle">Message support from the Client Portal or email websitedesignercontact@protonmail.com.</p>
+                  <p className="subtle">Message support from the Client Portal or email {appConfig.supportEmail}.</p>
                 </div>
               </div>
               <a className="wide-btn" href="/client">Open Client Portal support</a>

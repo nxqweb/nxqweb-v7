@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
   Clock,
   MessageSquareText,
   RefreshCcw,
+  ShoppingBag,
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -32,6 +33,12 @@ type ClientRow = {
   billing_overdue_since: string | null;
   billing_frozen_at: string | null;
   notes: string | null;
+  qa_only: boolean;
+  created_at: string;
+  project_id: string | null;
+  website_status: string | null;
+  build_plan: Record<string, unknown> | null;
+  unread_message_count: number;
 };
 
 type ApprovalRow = {
@@ -53,22 +60,10 @@ type ApprovalRow = {
   } | null;
   created_at: string;
 };
-type AiTaskOutputRow = {
-  id: string;
-  task_id: string | null;
-  client_id: string | null;
-  project_id: string | null;
-  output_type: string;
-  title: string;
-  content: string;
-  status: string;
-  needs_owner_review: boolean;
-  created_at: string;
-};
-
 type ClientMessageRow = {
   id: string;
   client_id: string | null;
+  business_name?: string;
   sender_type: "owner" | "client" | "ai" | "system";
   message: string;
   needs_owner_review: boolean;
@@ -81,19 +76,21 @@ type ProjectRow = {
   id: string;
   client_id: string | null;
   website_status: string;
+  build_plan: Record<string, unknown> | null;
 };
 
-type PaymentRecordRow = {
-  id: string;
-  client_id: string | null;
-  provider: string;
-  status: string;
-  amount: number;
-  currency: string;
-  note: string | null;
-  created_at: string;
+type OwnerPortalSummary = {
+  total_clients: number;
+  active_clients: number;
+  active_monthly_revenue: number;
+  pipeline_clients: number;
+  pipeline_monthly_value: number;
+  unread_client_messages: number;
+  pending_approvals: number;
 };
 
+const OWNER_PAGE_SIZE = 50;
+const OWNER_UNREAD_PAGE_SIZE = 25;
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
@@ -105,6 +102,12 @@ function formatMoney(value: number) {
 
 function formatStatus(status: string) {
   return status.replaceAll("_", " ");
+}
+
+function formatClientOnboardingStatus(status: string) {
+  if (status === "lead") return "Waiting for client intake";
+  if (["intake_received", "needs_owner_review"].includes(status)) return "Ready for owner review";
+  return formatStatus(status);
 }
 
 function formatDateTime(value: string) {
@@ -119,10 +122,6 @@ function isWebsiteSetupReport(approval: ApprovalRow) {
     approval.request_type === "website_setup_review" ||
     approval.recommended_action?.includes("NXQ WEB WEBSITE SETUP REPORT")
   );
-}
-
-function isAiTaskApproval(approval: ApprovalRow) {
-  return approval.request_type === "ai_task_approval";
 }
 
 function isDomainConnectionReview(approval: ApprovalRow) {
@@ -291,10 +290,21 @@ function groupSetupReportFields(fields: { label: string; value: string }[]) {
 export function OwnerPortal() {
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
-  const [projects, setProjects] = useState<ProjectRow[]>([]);
-  const [paymentRecords, setPaymentRecords] = useState<PaymentRecordRow[]>([]);
   const [clientMessages, setClientMessages] = useState<ClientMessageRow[]>([]);
-  const [aiTaskOutputs, setAiTaskOutputs] = useState<AiTaskOutputRow[]>([]);
+  const [ownerUnreadMessages, setOwnerUnreadMessages] = useState<ClientMessageRow[]>([]);
+  const [ownerSummary, setOwnerSummary] = useState<OwnerPortalSummary>({
+    total_clients: 0,
+    active_clients: 0,
+    active_monthly_revenue: 0,
+    pipeline_clients: 0,
+    pipeline_monthly_value: 0,
+    unread_client_messages: 0,
+    pending_approvals: 0,
+  });
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientHasMore, setClientHasMore] = useState(false);
+  const [messageHasMore, setMessageHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [selectedMessageClientId, setSelectedMessageClientId] = useState("");
   const [ownerReplyText, setOwnerReplyText] = useState("");
   const [ownerView, setOwnerView] = useState<"aps" | "chat">("aps");
@@ -315,47 +325,18 @@ export function OwnerPortal() {
     setNxqTheme(nextTheme);
   }
 
-  const activeMonthlyIncome = useMemo(() => {
-    return clients
-      .filter((client) => client.billing_status === "active")
-      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
-  }, [clients]);
+  const activeMonthlyIncome = Number(ownerSummary.active_monthly_revenue || 0);
+  const pipelineMonthlyValue = Number(ownerSummary.pipeline_monthly_value || 0);
+  const unreadClientMessageCount = Number(ownerSummary.unread_client_messages || 0);
 
-  const pipelineMonthlyValue = useMemo(() => {
-    const excludedStatuses = new Set(["archived", "denied", "dormant"]);
-
-    return clients
-      .filter((client) => !excludedStatuses.has(client.status))
-      .reduce((total, client) => total + Number(client.monthly_price || 0), 0);
-  }, [clients]);
-
-  const filteredClientMessages = useMemo(() => {
-    if (!selectedMessageClientId) {
-      return [];
-    }
-
-    return clientMessages.filter((message) => message.client_id === selectedMessageClientId);
-  }, [clientMessages, selectedMessageClientId]);
-
-  const ownerReviewMessages = useMemo(() => {
-    return clientMessages.filter(
-      (message) => message.sender_type === "client" && !message.owner_seen_at
-    );
-  }, [clientMessages]);
+  const filteredClientMessages = clientMessages;
+  const ownerReviewMessages = ownerUnreadMessages;
 
   const unreadMessageCountByClient = useMemo(() => {
     const counts: Record<string, number> = {};
-
-    for (const message of ownerReviewMessages) {
-      if (!message.client_id) {
-        continue;
-      }
-
-      counts[message.client_id] = (counts[message.client_id] || 0) + 1;
-    }
-
+    for (const client of clients) counts[client.id] = Number(client.unread_message_count || 0);
     return counts;
-  }, [ownerReviewMessages]);
+  }, [clients]);
 
   async function openClientMessageThread(clientId: string | null) {
     if (!clientId) {
@@ -380,19 +361,8 @@ export function OwnerPortal() {
       return;
     }
 
-    const seenAt = new Date().toISOString();
-
-    setClientMessages((currentMessages) =>
-      currentMessages.map((message) =>
-        message.client_id === clientId &&
-        message.sender_type === "client" &&
-        !message.owner_seen_at
-          ? { ...message, owner_seen_at: seenAt }
-          : message
-      )
-    );
-
-    await loadOwnerData();
+    await loadClientMessagePage(clientId, false);
+    await loadOwnerData(clientSearch);
   }
 const selectedReplyClientId = useMemo(() => {
     return selectedMessageClientId || "";
@@ -402,89 +372,32 @@ const selectedReplyClientId = useMemo(() => {
   }
 
   function getProjectForClient(clientId: string) {
-    return projects.find((project) => project.client_id === clientId) || null;
+    const client = clients.find((item) => item.id === clientId);
+    if (!client?.project_id) return null;
+    return {
+      id: client.project_id,
+      client_id: client.id,
+      website_status: client.website_status || "planning",
+      build_plan: client.build_plan,
+    } satisfies ProjectRow;
   }
   function getClientForMessage(message: ClientMessageRow) {
-  return clients.find((client) => client.id === message.client_id) || null;
-}
-
-  function getClientForPayment(payment: PaymentRecordRow) {
-    return clients.find((client) => client.id === payment.client_id) || null;
+    return clients.find((client) => client.id === message.client_id) || null;
   }
 
-
-function parseBuildPlanSections(content: string) {
-  const lines = content
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const sections: { title: string; body: string }[] = [];
-  let currentTitle = "Client summary";
-  let currentBody: string[] = [];
-
-  function pushSection() {
-    const body = currentBody.join("\n").trim();
-
-    if (!body && sections.length > 0) return;
-
-    sections.push({
-      title: currentTitle,
-      body: body || "No details provided yet.",
-    });
-  }
-
-  for (const line of lines) {
-    if (line === "NXQ PROJECT BUILD PLAN") continue;
-
-    const isHeading = line.endsWith(":") && line.length <= 72;
-
-    if (isHeading) {
-      pushSection();
-      currentTitle = line.replace(/:$/, "");
-      currentBody = [];
-      continue;
-    }
-
-    currentBody.push(line);
-  }
-
-  pushSection();
-
-  return sections.length > 0
-    ? sections
-    : [{ title: "Build plan", body: content || "No build plan content yet." }];
+function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
+  return Object.entries(buildPlan).map(([key, value]) => ({
+    title: formatStatus(key),
+    body: typeof value === "string" ? value : JSON.stringify(value, null, 2),
+  }));
 }
 
   function confirmHighRiskAction(action: "accept" | "deny", clientName: string) {
-    const actionLabel = action === "accept" ? "ACCEPT" : "DENY";
+    const actionLabel = action === "accept" ? "APPROVE" : "DENY";
 
     return window.confirm(
       `Confirm ${actionLabel}\n\nClient: ${clientName}\n\nThis will update the approval request in Supabase. Continue?`
     );
-  }
-
-  function useLatestAiDraft() {
-    if (!selectedReplyClientId) {
-      setErrorMessage("Pick a client before loading an AI draft.");
-      return;
-    }
-
-    const draft = aiTaskOutputs.find(
-      (output) =>
-        output.client_id === selectedReplyClientId &&
-        output.output_type === "client_reply_draft" &&
-        output.status === "draft_ready"
-    );
-
-    if (!draft) {
-      setErrorMessage("No ready AI draft found for this selected client yet.");
-      return;
-    }
-
-    setErrorMessage("");
-    setOwnerReplyText(draft.content);
-    setActionMessage("AI draft loaded into the reply box. Review it before sending.");
   }
 
   async function sendOwnerReply() {
@@ -522,9 +435,82 @@ function parseBuildPlanSections(content: string) {
 
     setOwnerReplyText("");
     setActionMessage(resultData?.message || "Owner reply sent to client portal.");
-    await loadOwnerData();
+    await loadOwnerData(clientSearch);
   }
-  async function loadOwnerData() {
+  async function loadClientMessagePage(clientId: string, append: boolean) {
+    if (!supabase) return;
+    const existing = append ? clientMessages : [];
+    const cursor = append && existing.length > 0 ? existing[existing.length - 1] : null;
+    const result = await supabase.rpc("owner_client_message_page", {
+      target_client_id: clientId,
+      target_limit: OWNER_PAGE_SIZE,
+      target_cursor_created_at: cursor?.created_at || null,
+      target_cursor_id: cursor?.id || null,
+    });
+    if (result.error) throw result.error;
+    const page = (result.data || []) as ClientMessageRow[];
+    setClientMessages(append ? [...existing, ...page] : page);
+    setMessageHasMore(page.length === OWNER_PAGE_SIZE);
+  }
+
+  async function loadMoreClients() {
+    if (!supabase || clients.length === 0 || isLoadingMore) return;
+    const cursor = clients[clients.length - 1];
+    setIsLoadingMore(true);
+    try {
+      const result = await supabase.rpc("owner_client_directory_page", {
+        target_limit: OWNER_PAGE_SIZE,
+        target_cursor_created_at: cursor.created_at,
+        target_cursor_id: cursor.id,
+        target_search: clientSearch.trim() || null,
+        target_status: null,
+      });
+      if (result.error) throw result.error;
+      const page = (result.data || []) as ClientRow[];
+      setClients((current) => [...current, ...page]);
+      setClientHasMore(page.length === OWNER_PAGE_SIZE);
+    } catch (error) {
+      setErrorMessage(`Client page load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  async function reloadClientSearch() {
+    if (!supabase) return;
+    setIsLoadingMore(true);
+    try {
+      const result = await supabase.rpc("owner_client_directory_page", {
+        target_limit: OWNER_PAGE_SIZE,
+        target_cursor_created_at: null,
+        target_cursor_id: null,
+        target_search: clientSearch.trim() || null,
+        target_status: null,
+      });
+      if (result.error) throw result.error;
+      const page = (result.data || []) as ClientRow[];
+      setClients(page);
+      setClientHasMore(page.length === OWNER_PAGE_SIZE);
+    } catch (error) {
+      setErrorMessage(`Client search failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  async function loadOlderMessages() {
+    if (!selectedMessageClientId || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      await loadClientMessagePage(selectedMessageClientId, true);
+    } catch (error) {
+      setErrorMessage(`Message page load failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }
+
+  const loadOwnerData = useCallback(async (searchValue = "") => {
     setIsLoading(true);
     setErrorMessage("");
     setActionMessage("");
@@ -536,89 +522,48 @@ function parseBuildPlanSections(content: string) {
     }
 
     try {
-      const approvalResult = await supabase
-        .from("owner_approval_requests")
-        .select(
-          "id, client_id, project_id, request_type, title, summary, recommended_action, risk_level, status, owner_response, options, created_at"
-        )
-        .order("created_at", { ascending: false });
+      const [summaryResult, clientResult, approvalResult, unreadResult] = await Promise.all([
+        supabase.rpc("owner_portal_summary"),
+        supabase.rpc("owner_client_directory_page", {
+          target_limit: OWNER_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+          target_search: searchValue.trim() || null,
+          target_status: null,
+        }),
+        supabase.rpc("owner_approval_page", {
+          target_limit: OWNER_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+          target_status: null,
+        }),
+        supabase.rpc("owner_unread_message_page", {
+          target_limit: OWNER_UNREAD_PAGE_SIZE,
+          target_cursor_created_at: null,
+          target_cursor_id: null,
+        }),
+      ]);
 
-      if (approvalResult.error) {
-        setErrorMessage(`Approval load failed: ${approvalResult.error.message}`);
-      } else {
-        setApprovals((approvalResult.data || []) as ApprovalRow[]);
-      }
+      if (summaryResult.error) throw summaryResult.error;
+      if (clientResult.error) throw clientResult.error;
+      if (approvalResult.error) throw approvalResult.error;
+      if (unreadResult.error) throw unreadResult.error;
 
-      const clientResult = await supabase
-        .from("clients")
-        .select(
-          "id, business_name, contact_name, contact_email, business_type, status, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, notes"
-        )
-        .order("created_at", { ascending: false });
+      const summary = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
+      if (summary) setOwnerSummary(summary as OwnerPortalSummary);
 
-      if (clientResult.error) {
-        setErrorMessage(`Client load failed: ${clientResult.error.message}`);
-      } else {
-        setClients((clientResult.data || []) as ClientRow[]);
-      }      const projectResult = await supabase
-        .from("projects")
-        .select("id, client_id, website_status")
-        .order("created_at", { ascending: false });
-
-      if (projectResult.error) {
-        setErrorMessage(`Project load failed: ${projectResult.error.message}`);
-      } else {
-        setProjects((projectResult.data || []) as ProjectRow[]);
-      }
-
-
-      const paymentResult = await supabase
-        .from("payment_records")
-        .select("id, client_id, provider, status, amount, currency, note, created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      if (paymentResult.error) {
-        setErrorMessage(`Payment records load failed: ${paymentResult.error.message}`);
-      } else {
-        setPaymentRecords((paymentResult.data || []) as PaymentRecordRow[]);
-      }
-
-      const outputResult = await supabase
-        .from("ai_task_outputs")
-        .select(
-          "id, task_id, client_id, project_id, output_type, title, content, status, needs_owner_review, created_at"
-        )
-        .in("output_type", ["client_reply_draft", "project_build_plan"])
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (outputResult.error) {
-        setErrorMessage(`AI outputs load failed: ${outputResult.error.message}`);
-      } else {
-        setAiTaskOutputs((outputResult.data || []) as AiTaskOutputRow[]);
-      }
-
-      const messageResult = await supabase
-  .from("client_messages")
-  .select(
-    "id, client_id, sender_type, message, needs_owner_review, ai_handled, owner_seen_at, created_at"
-  )
-  .order("created_at", { ascending: false })
-  .limit(100);
-
-if (messageResult.error) {
-  setErrorMessage(`Client messages load failed: ${messageResult.error.message}`);
-} else {
-  setClientMessages((messageResult.data || []) as ClientMessageRow[]);
-}
+      const clientPage = (clientResult.data || []) as ClientRow[];
+      setClients(clientPage);
+      setClientHasMore(clientPage.length === OWNER_PAGE_SIZE);
+      setApprovals((approvalResult.data || []) as ApprovalRow[]);
+      setOwnerUnreadMessages((unreadResult.data || []) as ClientMessageRow[]);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown Supabase fetch error";
-      setErrorMessage(`Supabase connection failed: ${message}`);
+      const message = error instanceof Error ? error.message : "Unknown load error";
+      setErrorMessage(`Owner portal load failed: ${message}`);
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   async function updateApprovalStatus(
     approval: ApprovalRow,
@@ -634,80 +579,39 @@ if (messageResult.error) {
     setErrorMessage("");
 
     try {
-      const { error } = await supabase
-        .from("owner_approval_requests")
-        .update({
-          status,
-          owner_response: ownerResponse,
-          resolved_at: new Date().toISOString(),
-        })
-        .eq("id", approval.id);
-
-      if (error) {
-        setErrorMessage(`Action failed: ${error.message}`);
-        return;
-      }
-      if (status === "denied" && isPipelineStartApproval(approval)) {
-        const clientStatusResult = await supabase
-          .from("clients")
-          .update({
-            status: "denied",
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", approval.client_id);
-
-        if (clientStatusResult.error) {
-          setErrorMessage(
-            `Approval was denied, but the client status could not be updated: ${clientStatusResult.error.message}`
-          );
-          return;
-        }
-      }
-
+      let decisionResult;
       if (isDomainConnectionReview(approval)) {
-        const domainDecision = await supabase.rpc("resolve_domain_connection_review", {
+        decisionResult = await supabase.rpc("resolve_domain_connection_review", {
           target_approval_id: approval.id,
           decision_status: status,
           owner_response_text: ownerResponse,
         });
-
-        if (domainDecision.error) {
-          setErrorMessage(`Domain decision failed: ${domainDecision.error.message}`);
+      } else if (isPipelineStartApproval(approval)) {
+        if (status !== "denied") {
+          setErrorMessage("Website setup acceptance must use the protected APPROVE workflow.");
           return;
         }
+        decisionResult = await supabase.rpc("deny_website_setup", {
+          approval_request_id: approval.id,
+          denial_reason: ownerResponse,
+        });
+      } else {
+        decisionResult = await supabase.rpc("resolve_owner_approval_decision", {
+          target_approval_id: approval.id,
+          decision_status: status,
+          owner_response_text: ownerResponse,
+        });
+      }
 
-        const domainDecisionData = domainDecision.data as { message?: string } | null;
-
-        setActionMessage(
-          domainDecisionData?.message
-            ? `Saved: ${ownerResponse} ${domainDecisionData.message}`
-            : `Saved: ${ownerResponse}`
-        );
-
-        await loadOwnerData();
+      if (decisionResult.error) {
+        setErrorMessage(`Action failed: ${decisionResult.error.message}`);
         return;
       }
-      let domainDecisionMessage: string | null = null;
 
+      const resultData = decisionResult.data as { message?: string } | null;
+      setActionMessage(resultData?.message || `Saved: ${ownerResponse}`);
 
-      await supabase.from("activity_logs").insert({
-        client_id: approval.client_id,
-        actor_type: "owner",
-        action: `approval_${status}`,
-        details: {
-          approval_id: approval.id,
-          owner_response: ownerResponse,
-          domain_decision: domainDecisionMessage,
-        },
-      });
-
-      setActionMessage(
-        domainDecisionMessage
-          ? `Saved: ${ownerResponse} ${domainDecisionMessage}`
-          : `Saved: ${ownerResponse}`
-      );
-
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown update error";
       setErrorMessage(`Action failed: ${message}`);
@@ -726,186 +630,6 @@ if (messageResult.error) {
 
     setActionMessage(`Opening targeted Needs Info flow for ${clientName}.`);
     await requestMoreInfoFromClientCard(client);
-  }
-
-  async function updateClientStatus(
-    client: ClientRow,
-    nextStatus: string,
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\n\nSupabase will update the client status only. This will not charge, launch, mark paid, freeze billing, or delete project data. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const statusResult = await supabase.rpc("update_client_status", {
-        target_client_id: client.id,
-        next_client_status: nextStatus,
-        action_label: actionLabel,
-      });
-
-      if (statusResult.error) {
-        setErrorMessage(`Client status update failed: ${statusResult.error.message}`);
-        return;
-      }
-
-      const resultData = statusResult.data as { message?: string } | null;
-
-      setActionMessage(resultData?.message || `${client.business_name}: ${actionLabel} complete.`);
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown client status update error";
-      setErrorMessage(`Client status update failed: ${message}`);
-    }
-  }
-
-  async function approveLaunchPreview(approval: ApprovalRow, clientName: string) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const previewUrl = getLaunchPreviewUrl(approval);
-
-    const ownerNotes = window.prompt(
-      `Approve website preview for launch?\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nThis approves the preview gate only. It does not automatically deploy or launch the live website.`,
-      "Owner inspected preview link and approved this website preview for launch."
-    );
-
-    if (ownerNotes === null) return;
-
-    const cleanOwnerNotes = ownerNotes.trim();
-
-    if (!cleanOwnerNotes) {
-      setErrorMessage("Preview approval cancelled because no owner note was entered.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Confirm preview approval\n\nClient: ${clientName}\nPreview: ${previewUrl || "No preview URL found"}\n\nYou are confirming that you opened the preview link and checked the website. This will allow the project to move live later, but it will NOT launch automatically. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const previewResult = await supabase.rpc("approve_launch_preview", {
-        approval_request_id: approval.id,
-        owner_notes: cleanOwnerNotes,
-      });
-
-      if (previewResult.error) {
-        setErrorMessage(`Preview approval failed: ${previewResult.error.message}`);
-        return;
-      }
-
-      const resultData = previewResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${clientName}: website preview approved for launch.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown preview approval error";
-      setErrorMessage(`Preview approval failed: ${message}`);
-    }
-  }
-  async function createProjectForClient(client: ClientRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const existingProject = getProjectForClient(client.id);
-
-    if (existingProject) {
-      setErrorMessage(`${client.business_name} already has a project record.`);
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Create project\n\nClient: ${client.business_name}\n\nSupabase will create a website project record only. This will not launch, charge, mark paid, activate billing, or freeze anything. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const projectResult = await supabase.rpc("create_project_for_client", {
-        target_client_id: client.id,
-      });
-
-      if (projectResult.error) {
-        setErrorMessage(`Project create failed: ${projectResult.error.message}`);
-        return;
-      }
-
-      const resultData = projectResult.data as { message?: string } | null;
-
-      setActionMessage(resultData?.message || `${client.business_name}: project created.`);
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown project create error";
-      setErrorMessage(`Project create failed: ${message}`);
-    }
-  }
-  async function acceptApprovalAndStartPipelineCloud(
-    approval: ApprovalRow,
-    client: ClientRow | null,
-    clientName: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    if (!client) {
-      setErrorMessage("Cannot start backend pipeline because the client record was not found.");
-      return;
-    }
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const { data, error } = await supabase.rpc("approve_website_setup", {
-        approval_request_id: approval.id,
-      });
-
-      if (error) {
-        setErrorMessage(`Backend approval workflow failed: ${error.message}`);
-        return;
-      }
-
-      const result = data as { message?: string } | null;
-
-      setActionMessage(
-        result?.message ||
-          `${clientName}: approved, moved into planning, and build plan created by Supabase.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown backend workflow error";
-      setErrorMessage(`Backend approval workflow failed: ${message}`);
-    }
   }
 
   async function acceptApprovalAndStartPipeline(
@@ -947,118 +671,13 @@ if (messageResult.error) {
           `${clientName}: approved, moved into planning, and build plan created.`
       );
 
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown pipeline error";
       setErrorMessage(`Pipeline start failed: ${message}`);
     }
   }
 
-  async function activateManualSubscription(client: ClientRow) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Activate manual subscription\n\nClient: ${client.business_name}\nAmount: ${formatMoney(Number(client.monthly_price || 0))}/mo\n\nThis is MANUAL/CASH tracking only. Supabase will mark the client active and save a manual payment record. If a project already exists, live/launch-ready projects will stay in their current stage instead of being moved backward. If no project exists yet, Supabase may create one in building.\n\nThis will NOT charge a card, bank account, or any online payment method. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const activationResult = await supabase.rpc("activate_manual_subscription", {
-        target_client_id: client.id,
-      });
-
-      if (activationResult.error) {
-        setErrorMessage(`Manual activation failed: ${activationResult.error.message}`);
-        return;
-      }
-
-      const resultData = activationResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name} subscription manually activated. No online charge was processed.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown manual activation error";
-      setErrorMessage(`Manual activation failed: ${message}`);
-    }
-  }
-
-  async function updateClientBillingState(
-    client: ClientRow,
-    nextBillingStatus: "active" | "past_due" | "freeze_review" | "frozen",
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      [
-        actionLabel,
-        "",
-        `Client: ${client.business_name}`,
-        `Current billing status: ${formatStatus(client.billing_status || "not_configured")}`,
-        `New billing status: ${formatStatus(nextBillingStatus)}`,
-        "",
-        "This changes billing status only.",
-        "It will not change the website project stage.",
-        "It will not charge a card, bank account, or online payment method.",
-        "",
-        "Continue?",
-      ].join("\n")
-    );
-
-    if (!confirmed) return;
-
-    const billingNote = window.prompt(
-      `Optional billing note for ${client.business_name}:`,
-      ""
-    );
-
-    if (billingNote === null) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const billingResult = await supabase.rpc("set_client_billing_state", {
-        target_client_id: client.id,
-        next_billing_status: nextBillingStatus,
-        next_billing_provider: client.billing_provider || "manual",
-        billing_note: billingNote.trim() || null,
-      });
-
-      if (billingResult.error) {
-        setErrorMessage(`Billing update failed: ${billingResult.error.message}`);
-        return;
-      }
-
-      const resultData = billingResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name} billing changed to ${formatStatus(nextBillingStatus)}.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown billing update error";
-
-      setErrorMessage(`Billing update failed: ${message}`);
-    }
-  }
   async function requestMoreInfoFromClientCard(client: ClientRow) {
     if (!supabase) {
       setErrorMessage("Supabase is not configured yet.");
@@ -1224,104 +843,46 @@ if (messageResult.error) {
           `${client.business_name}: targeted more info requested for ${selectedField.label}.`
       );
 
-      await loadOwnerData();
+      await loadOwnerData(clientSearch);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown more info error";
       setErrorMessage(`Targeted more info request failed: ${message}`);
     }
   }
-  async function updateProjectStage(
-    client: ClientRow,
-    nextStage: string,
-    actionLabel: string
-  ) {
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    const project = getProjectForClient(client.id);
-
-    if (!project) {
-      setErrorMessage(`${client.business_name} does not have a project record yet.`);
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${actionLabel}\n\nClient: ${client.business_name}\nProject stage: ${nextStage}\n\nSupabase will update the project stage only. This will not launch, charge, mark paid, or freeze billing. Continue?`
-    );
-
-    if (!confirmed) return;
-
-    setActionMessage("");
-    setErrorMessage("");
-
-    try {
-      const stageResult = await supabase.rpc("update_project_stage", {
-        target_client_id: client.id,
-        next_website_status: nextStage,
-      });
-
-      if (stageResult.error) {
-        setErrorMessage(`Project stage update failed: ${stageResult.error.message}`);
-        return;
-      }
-
-      const resultData = stageResult.data as { message?: string } | null;
-
-      setActionMessage(
-        resultData?.message ||
-          `${client.business_name}: ${actionLabel} complete.`
-      );
-
-      await loadOwnerData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown project update error";
-      setErrorMessage(`Project stage update failed: ${message}`);
-    }
-  }
   useEffect(() => {
-    loadOwnerData();
-  }, []);
+    void loadOwnerData("");
+  }, [loadOwnerData]);
 
-  const pendingApprovals = approvals.filter((approval) => approval.status === "pending");
+  const normalApprovalTypes = new Set(["website_setup_review", "commerce_intake_review"]);
+  const pendingApprovals = approvals.filter(
+    (approval) => approval.status === "pending" && normalApprovalTypes.has(approval.request_type)
+  );
+  const pendingExceptionApprovals = approvals.filter(
+    (approval) => approval.status === "pending" && !normalApprovalTypes.has(approval.request_type)
+  );
+  const pendingIntakeClients = clients.filter((client) => client.status === "lead");
   const completedApprovals = approvals.filter((approval) => approval.status !== "pending");
 
   const recentCompletedApprovals = completedApprovals.slice(0, 4);
 
-  const latestProjectBuildPlans = aiTaskOutputs
-    .filter((output) => output.output_type === "project_build_plan")
-    .reduce<AiTaskOutputRow[]>((latestPlans, output) => {
-      const existingIndex = latestPlans.findIndex(
-        (plan) => plan.client_id === output.client_id
-      );
-
-      if (existingIndex === -1) {
-        return [...latestPlans, output];
-      }
-
-      const existingPlan = latestPlans[existingIndex];
-      const outputDate = new Date(output.created_at).getTime();
-      const existingDate = new Date(existingPlan.created_at).getTime();
-
-      if (outputDate <= existingDate) {
-        return latestPlans;
-      }
-
-      const nextPlans = [...latestPlans];
-      nextPlans[existingIndex] = output;
-      return nextPlans;
-    }, []);
+  const latestProjectBuildPlans = clients
+    .filter((client) => client.build_plan && Object.keys(client.build_plan).length > 0)
+    .map((client) => ({
+      id: client.project_id || client.id,
+      client_id: client.id,
+      website_status: client.website_status || "planning",
+      build_plan: client.build_plan,
+    } satisfies ProjectRow));
 
   return (
     <main className="nxq-page">
       <section className="portal-shell">
         <div className="portal-header">
           <div>
-            <p className="eyebrow">Owner APS</p>
-            <h1>{ownerView === "aps" ? "NXQ command chat" : "NXQ client chat"}</h1>
+            <p className="eyebrow">Owner Portal</p>
+            <h1>{ownerView === "aps" ? "NXQ approvals" : "NXQ client chat"}</h1>
             <p className="subtle">
-              {ownerView === "aps" ? "AI approval cockpit and owner decisions." : "Pick one client and text them directly."}
+              {ownerView === "aps" ? "One decision starts the normal autonomous workflow." : "Pick one client and text them directly."}
             </p>
           </div>
 
@@ -1339,7 +900,7 @@ if (messageResult.error) {
               type="button"
               onClick={() => setOwnerView("chat")}
             >
-              Client chat {ownerReviewMessages.length > 0 ? `(${ownerReviewMessages.length})` : ""}
+              Client chat {unreadClientMessageCount > 0 ? `(${unreadClientMessageCount})` : ""}
             </button>
             <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
@@ -1359,10 +920,10 @@ if (messageResult.error) {
             <div className="panel-title panel-title-row">
               <div className="panel-title">
                 <Bot size={20} />
-                <h2>AI approval chat</h2>
+                <h2>Client approvals</h2>
               </div>
 
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
+              <button className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
                 <RefreshCcw size={16} />
                 Refresh
               </button>
@@ -1377,7 +938,7 @@ if (messageResult.error) {
                 <strong>Client message pings</strong>
 
 
-                <span>{ownerReviewMessages.length} new</span>
+                <span>{unreadClientMessageCount} new</span>
 
 
               </div>
@@ -1466,13 +1027,28 @@ if (messageResult.error) {
                 <p>
                   {isLoading
                     ? "Loading approval queue from Supabase..."
-                    : `Approval queue loaded. ${pendingApprovals.length} pending item(s) need owner review.`}
+                    : `${pendingApprovals.length} ready for your decision · ${pendingIntakeClients.length} waiting for client intake.`}
                 </p>
               </div>
 
               {!isLoading && pendingApprovals.length === 0 ? (
                 <div className="empty-state">
-                  No pending approvals right now. The AI agency manager is standing by.
+                  No completed intake is waiting for approval right now.
+                </div>
+              ) : null}
+
+              {!isLoading && pendingIntakeClients.length > 0 ? (
+                <div className="completed-section owner-intake-waiting-list">
+                  <h3>Waiting for client intake</h3>
+                  <p className="subtle">
+                    These accounts are created, but APPROVE appears only after the client submits their setup details and agreement.
+                  </p>
+                  {pendingIntakeClients.map((client) => (
+                    <div className="completed-row" key={`intake-${client.id}`}>
+                      <span>{client.business_name}</span>
+                      <strong>{formatMoney(Number(client.monthly_price || 0))}/mo</strong>
+                    </div>
+                  ))}
                 </div>
               ) : null}
 
@@ -1592,7 +1168,8 @@ if (messageResult.error) {
 
                       className={`approval-actions ${
 
-                        approval.request_type === "client_plan_change"
+                        approval.request_type === "client_plan_change" ||
+                        isLaunchPreviewReview(approval)
 
                           ? "plan-change-generic-actions-hidden"
 
@@ -1600,14 +1177,10 @@ if (messageResult.error) {
 
                       }`}
 
-                    >                      <button
+                    >
+                      <button
                         type="button"
                         onClick={() => {
-                          if (isLaunchPreviewReview(approval)) {
-                            approveLaunchPreview(approval, clientName);
-                            return;
-                          }
-
                           if (!confirmHighRiskAction("accept", clientName)) return;
 
                           if (isPipelineStartApproval(approval)) {
@@ -1615,19 +1188,14 @@ if (messageResult.error) {
                             return;
                           }
 
-                          if (isAiTaskApproval(approval) || !isPipelineStartApproval(approval)) {
-                            updateApprovalStatus(
-                              approval,
-                              "accepted",
-                              "Owner accepted this approval request."
-                            );
-                            return;
-                          }
-
-                          acceptApprovalAndStartPipelineCloud(approval, client, clientName);
+                          updateApprovalStatus(
+                            approval,
+                            "accepted",
+                            "Owner accepted this approval request."
+                          );
                         }}
                       >
-                        Accept
+                        APPROVE
                       </button>
 
                       <button
@@ -1635,7 +1203,7 @@ if (messageResult.error) {
                         onClick={() => {
                           const enteredReason = window.prompt(
                             `Why are you denying ${clientName}?`,
-                            "The project was not accepted. Please contact NXQ Web support if you believe this decision was made in error."
+                            "The project was not accepted. Please contact NXQ-Web support if you believe this decision was made in error."
                           );
 
                           if (enteredReason === null) return;
@@ -1656,28 +1224,17 @@ if (messageResult.error) {
                           );
                         }}
                       >
-                        Deny
+                        DENY
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateApprovalStatus(
-                            approval,
-                            "revision_requested",
-                            "Owner requested edits/revision."
-                          )
-                        }
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => requestMoreSetupInfo(approval, client, clientName)}
-                      >
-                        Ask More
-                      </button>
+                      {isPipelineStartApproval(approval) ? (
+                        <button
+                          type="button"
+                          onClick={() => requestMoreSetupInfo(approval, client, clientName)}
+                        >
+                          Ask More
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -1712,14 +1269,34 @@ if (messageResult.error) {
             </div>
 
             <div className="client-control-row">
-              <a className="icon-btn" href="/owner">
-                Owner dashboard
+              <a className="icon-btn" href="/owner/commerce">
+                <ShoppingBag size={16} /> Commerce
               </a>
 
               <a className="icon-btn" href="/owner/files">
                 Client files
               </a>
             </div>
+
+            <details className="owner-system-tools">
+              <summary>
+                System and exception tools{pendingExceptionApprovals.length ? ` (${pendingExceptionApprovals.length})` : ""}
+              </summary>
+              <p className="subtle">
+                These are for setup, outages, billing exceptions, and launch diagnostics—not the normal client workflow.
+              </p>
+              <div className="client-control-row">
+                <a className="icon-btn" href="/owner/automation-health">Automation health</a>
+                <a className="icon-btn" href="/owner/providers">Provider health</a>
+                <a className="icon-btn" href="/owner/exceptions">Exceptions</a>
+                <a className="icon-btn" href="/owner/billing">Billing exceptions</a>
+                <a className="icon-btn" href="/owner/launch-readiness">Launch readiness</a>
+                <a className="icon-btn" href="/owner/product-families">Product families</a>
+                <a className="icon-btn" href="/owner/plan-changes">Plan changes</a>
+                <a className="icon-btn" href="/owner/sales">Sales pipeline</a>
+                <a className="icon-btn" href="/owner/growth">Growth controls</a>
+              </div>
+            </details>
           </section>
 
           <section className="panel build-plan-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
@@ -1729,7 +1306,7 @@ if (messageResult.error) {
                 <h2>Project build plans</h2>
               </div>
 
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
+              <button className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
                 <RefreshCcw size={16} />
                 Refresh
               </button>
@@ -1742,17 +1319,22 @@ if (messageResult.error) {
                 </div>
               ) : null}
 
-              {latestProjectBuildPlans.map((output) => {
-                const client = output.client_id
-                  ? clients.find((clientItem) => clientItem.id === output.client_id) || null
+              {latestProjectBuildPlans.map((project) => {
+                const client = project.client_id
+                  ? clients.find((clientItem) => clientItem.id === project.client_id) || null
                   : null;
-                const project = output.client_id ? getProjectForClient(output.client_id) : null;
+                const enrichment = project.build_plan?.ai_enrichment as
+                  | Record<string, unknown>
+                  | undefined;
+                const planStatus = typeof enrichment?.status === "string"
+                  ? enrichment.status
+                  : "saved";
 
                 return (
-                  <article className="build-plan-card" key={output.id}>
+                  <article className="build-plan-card" key={project.id}>
                     <div className="approval-top">
-                      <span>{output.title}</span>
-                      <small>Saved draft: {formatStatus(output.status)}</small>
+                      <span>{client?.business_name || "Business"} build plan</span>
+                      <small>Canonical plan: {formatStatus(planStatus)}</small>
                     </div>
 
                     <div className="project-stage-box">
@@ -1765,8 +1347,8 @@ if (messageResult.error) {
                     </div>
 
                     <div className="build-plan-sections">
-                      {parseBuildPlanSections(output.content).map((section) => (
-                        <section className="build-plan-section" key={`${output.id}-${section.title}`}>
+                      {parseBuildPlanSections(project.build_plan || {}).map((section) => (
+                        <section className="build-plan-section" key={`${project.id}-${section.title}`}>
                           <div className="build-plan-section-title">
                             <span>{section.title}</span>
                           </div>
@@ -1786,40 +1368,38 @@ if (messageResult.error) {
               <h2>Clients</h2>
             </div>
 
+            <div className="owner-client-search-row">
+              <input
+                className="message-filter-select"
+                value={clientSearch}
+                onChange={(event) => setClientSearch(event.target.value)}
+                onKeyDown={(event) => { if (event.key === "Enter") void reloadClientSearch(); }}
+                placeholder="Search clients by business, contact, or email"
+                aria-label="Search clients"
+              />
+              <button className="wide-btn" type="button" onClick={() => void reloadClientSearch()} disabled={isLoadingMore}>
+                Search
+              </button>
+              <small>{Number(ownerSummary.total_clients || 0).toLocaleString()} total clients</small>
+            </div>
+
             <div className="client-list">
               {clients.length === 0 && !isLoading ? (
                 <p className="subtle">No clients found yet.</p>
               ) : null}
 
+              {clientHasMore && clients.length > 0 ? (
+                <button className="wide-btn" type="button" onClick={() => void loadMoreClients()} disabled={isLoadingMore}>
+                  {isLoadingMore ? "Loading…" : "Load more clients"}
+                </button>
+              ) : null}
+
               {clients.map((client) => (
                 <article className="mini-client-card" key={client.id}>
                   <strong>{client.business_name}</strong>
-                  <span>{client.business_type || "Business type missing"}</span>
-                  <small>{formatStatus(client.status)}</small>
-                  <b>{formatMoney(Number(client.monthly_price || 0))}/mo</b>
-
-                  <div className="client-control-row">
-<button
-                      type="button"
-                      onClick={() => updateClientStatus(client, "approved", "Approve client")}
-                    >
-                      Approve
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => requestMoreInfoFromClientCard(client)}
-                    >
-                      Needs Info
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => updateClientStatus(client, "archived", "Archive client")}
-                    >
-                      Archive
-                    </button>
-                  </div>
+                  <span>{client.business_type || (client.status === "lead" ? "Setup not submitted yet" : "Business details pending")}</span>
+                  <small>{formatClientOnboardingStatus(client.status)}</small>
+                  <b>{client.qa_only ? "Disposable QA · billing locked" : `${formatMoney(Number(client.monthly_price || 0))}/mo`}</b>
 
                   <div className="project-stage-box">
                     <span>
@@ -1827,129 +1407,18 @@ if (messageResult.error) {
                         ? formatStatus(getProjectForClient(client.id)?.website_status || "")
                         : "No project yet"}
                     </span>
-
-                    {!getProjectForClient(client.id) ? (
-                      <button
-                        className="create-project-btn"
-                        type="button"
-                        onClick={() => createProjectForClient(client)}
-                      >
-                        Create Project
-                      </button>
-                    ) : null}
-
-                    <div className="project-stage-row">
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "planning", "Move to planning")}
-                      >
-                        Planning
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "building", "Move to building")}
-                      >
-                        Building
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "live", "Move to live")}
-                      >
-                        Live
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => updateProjectStage(client, "frozen", "Freeze project")}
-                      >
-                        Frozen
-                      </button>
-                    </div>
+                    <small>
+                      {client.qa_only
+                        ? "Manual client, project, and billing controls are disabled for disposable QA."
+                        : client.status === "lead"
+                        ? "The client must finish intake before an approval decision is created."
+                        : "APPROVE or DENY owns the client lifecycle; automation owns project stages."}
+                    </small>
                   </div>
 
                   <div className="project-stage-box">
-                    <span>
-                      Billing: {formatStatus(client.billing_status || "not_configured")}
-                    </span>
-
-                    <small>
-                      Provider: {client.billing_provider || "Not configured"}
-                    </small>
-
-                    <div className="project-stage-row">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "past_due",
-                            "Mark billing past due"
-                          )
-                        }
-                      >
-                        Past Due
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "freeze_review",
-                            "Send billing to freeze review"
-                          )
-                        }
-                      >
-                        Freeze Review
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "frozen",
-                            "Freeze billing"
-                          )
-                        }
-                      >
-                        Freeze Billing
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateClientBillingState(
-                            client,
-                            "active",
-                            "Restore active billing"
-                          )
-                        }
-                      >
-                        Restore Active
-                      </button>
-                    </div>
-
-                    {client.billing_status === "active" ? (
-                      <button
-                        className="manual-activate-btn is-active"
-                        type="button"
-                        disabled
-                      >
-                        Subscription Active
-                      </button>
-                    ) : ["approved", "needs_review", "intake_received"].includes(client.status) &&
-                      Number(client.monthly_price || 0) > 0 ? (
-                      <button
-                        className="manual-activate-btn"
-                        type="button"
-                        onClick={() => activateManualSubscription(client)}
-                      >
-                        Activate Subscription
-                      </button>
-                    ) : null}
+                    <span>Billing: {formatStatus(client.billing_status || "not_configured")}</span>
+                    <small>Billing exceptions are handled from System and exception tools.</small>
                   </div>
                 </article>
               ))}
@@ -1963,7 +1432,7 @@ if (messageResult.error) {
       <h2>Client chat</h2>
     </div>
 
-    <button className="icon-btn" onClick={loadOwnerData} type="button">
+    <button aria-label="Refresh client chat" className="icon-btn" onClick={() => void loadOwnerData(clientSearch)} type="button">
       <RefreshCcw size={16} />
     </button>
   </div>
@@ -1988,6 +1457,12 @@ if (messageResult.error) {
   <div className="owner-message-list">
     {filteredClientMessages.length === 0 && !isLoading ? (
       <div className="empty-state">Pick a client to open their private message thread.</div>
+    ) : null}
+
+    {messageHasMore && selectedMessageClientId ? (
+      <button className="wide-btn" type="button" onClick={() => void loadOlderMessages()} disabled={isLoadingMore}>
+        {isLoadingMore ? "Loading…" : "Load older messages"}
+      </button>
     ) : null}
 
     {filteredClientMessages.map((message) => {
@@ -2026,15 +1501,6 @@ if (messageResult.error) {
 
               <button
                 className="wide-btn"
-                onClick={useLatestAiDraft}
-                type="button"
-                disabled={!selectedReplyClientId || aiTaskOutputs.length === 0}
-              >
-                Use latest AI draft
-              </button>
-
-              <button
-                className="wide-btn"
                 onClick={sendOwnerReply}
                 type="button"
                 disabled={!selectedReplyClientId}
@@ -2057,83 +1523,11 @@ if (messageResult.error) {
   </div>
 </section>
 
-          <aside className="panel owner-payments-panel" style={{ display: ownerView === "aps" ? undefined : "none" }}>
-            <div className="panel-title panel-title-row">
-              <div className="panel-title">
-                <Clock size={20} />
-                <h2>Payment records</h2>
-              </div>
-
-              <button className="icon-btn" onClick={loadOwnerData} type="button">
-                <RefreshCcw size={16} />
-              </button>
-            </div>
-
-            <div className="owner-message-list">
-              {paymentRecords.length === 0 && !isLoading ? (
-                <div className="empty-state">No payment records yet.</div>
-              ) : null}
-
-              {paymentRecords.map((payment) => {
-                const client = getClientForPayment(payment);
-
-                return (
-                  <article className="owner-message-card" key={payment.id}>
-                    <div className="owner-message-top">
-                      <strong>{client?.business_name || "Unknown client"}</strong>
-                      <span>{formatDateTime(payment.created_at)}</span>
-                    </div>
-
-                    <p>
-                      {payment.provider} · {formatStatus(payment.status)} ·{" "}
-                      {formatMoney(Number(payment.amount || 0))}
-                    </p>
-
-                    <small>{payment.note || "No payment note saved."}</small>
-                  </article>
-                );
-              })}
-            </div>
-
-            <div className="history-item">
-              <CheckCircle2 size={16} />
-              <p>Manual payment records appear here. Online billing integrations can be added later.</p>
-            </div>
-          </aside>
         </div>
       </section>
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

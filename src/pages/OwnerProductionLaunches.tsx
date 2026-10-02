@@ -191,19 +191,9 @@ export function OwnerProductionLaunches() {
     setCreating(true);
     setErrorMessage("");
     setActionMessage("");
-    const result = await supabase
-      .from("production_launch_requests")
-      .insert({
-        deployment_config_id: preview.deployment_config_id,
-        project_id: preview.project_id,
-        client_id: preview.client_id,
-        preview_request_id: preview.id,
-        production_branch: config.production_branch,
-        production_url: config.production_url,
-        status: "audit_required",
-      })
-      .select(launchSelect)
-      .single();
+    const result = await supabase.rpc("owner_create_production_launch_request", {
+      target_preview_request_id: preview.id,
+    });
     setCreating(false);
     if (result.error) {
       setErrorMessage(`Production launch request creation failed: ${result.error.message}`);
@@ -269,31 +259,14 @@ export function OwnerProductionLaunches() {
       setErrorMessage("A decision note is required.");
       return;
     }
-    const userResult = await supabase.auth.getUser();
-    if (userResult.error || !userResult.data.user) {
-      setErrorMessage(userResult.error?.message || "Unable to confirm the owner account.");
-      return;
-    }
     setDecidingId(launch.id);
     setErrorMessage("");
     setActionMessage("");
-    const result = await supabase
-      .from("production_launch_requests")
-      .update({
-        status: decision,
-        owner_decision_by: userResult.data.user.id,
-        owner_decision_at: new Date().toISOString(),
-        owner_decision_note: note.trim(),
-      })
-      .eq("id", launch.id)
-      .in(
-        "status",
-        decision === "approved_for_production"
-          ? ["audit_passed", "pending_owner_approval"]
-          : ["audit_passed", "audit_blocked", "pending_owner_approval", "audit_required"]
-      )
-      .select(launchSelect)
-      .single();
+    const result = await supabase.rpc("owner_decide_production_launch", {
+      target_launch_request_id: launch.id,
+      target_decision: decision,
+      target_note: note.trim(),
+    });
     setDecidingId("");
     if (result.error) {
       setErrorMessage(`Production decision failed: ${result.error.message}`);
@@ -632,4 +605,3 @@ export function OwnerProductionLaunches() {
     </main>
   );
 }
-

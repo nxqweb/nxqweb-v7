@@ -106,6 +106,7 @@ export function ClientCommerceProducts() {
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -121,10 +122,11 @@ export function ClientCommerceProducts() {
 
   async function loadProducts() {
     setLoading(true);
+    setVerified(false);
     setError("");
 
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce products are unavailable because Supabase is not configured.");
+      setError("Commerce products are temporarily unavailable.");
       setLoading(false);
       return;
     }
@@ -137,10 +139,11 @@ export function ClientCommerceProducts() {
 
     const result = await supabase.rpc("get_my_commerce_catalog");
     if (result.error) {
-      setError(`Products failed to load: ${result.error.message}`);
+      setError("Product drafts could not be verified right now. Unverified product data is not shown.");
     } else {
       const catalog = (result.data as CatalogResult) || {};
       setProducts(catalog.products || []);
+      setVerified(true);
     }
 
     setLoading(false);
@@ -212,7 +215,7 @@ export function ClientCommerceProducts() {
   }
 
   async function saveProduct() {
-    if (!supabase) return;
+    if (!supabase || saving || !verified) return;
     if (!draft.name.trim()) {
       setError("Enter a product name before saving.");
       return;
@@ -239,13 +242,12 @@ export function ClientCommerceProducts() {
     setSaving(false);
 
     if (result.error) {
-      setError(`Product could not be saved: ${result.error.message}`);
+      setError("Product draft could not be saved. The previously saved catalog remains unchanged, and nothing was published.");
       return;
     }
 
-    const response = result.data as { message?: string } | null;
-    setMessage(response?.message || "Product draft saved.");
-    resetDraft();
+    setMessage("Product draft saved. Nothing was published to a live storefront.");
+    setDraft({ ...emptyDraft, variants: [{ ...emptyVariant }] });
     await loadProducts();
   }
 
@@ -266,18 +268,20 @@ export function ClientCommerceProducts() {
         </div>
 
         <div className="notice-card">
-          Products saved here remain drafts. Product photos and live publishing are added in the next protected phase.
+          Products saved here remain drafts. Saving does not publish a storefront, activate payments, or bypass review and production safety gates.
         </div>
 
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
         {message ? <div className="auth-success">{message}</div> : null}
 
+        {loading ? <div className="empty-state">Loading product drafts...</div> : null}
+        {!loading && verified ? <>
         <section className="panel panel-wide">
           <div className="panel-title">
             <Save size={20} />
             <div>
               <h2>{editing ? "Edit product draft" : "Add product"}</h2>
-              <p className="subtle">Available inventory across variants: {availableInventory}</p>
+              <p className="subtle">Available inventory across this draft's variants: {availableInventory}</p>
             </div>
           </div>
 
@@ -293,25 +297,25 @@ export function ClientCommerceProducts() {
           <label className="auth-label"><span>Short description</span><textarea className="auth-input" rows={2} value={draft.short_description} onChange={(event) => setDraft((current) => ({ ...current, short_description: event.target.value }))} /></label>
           <label className="auth-label"><span>Full description</span><textarea className="auth-input" rows={5} value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></label>
 
-          <div className="setup-section-divider"><span>Custom product facts</span><p>Add facts such as burn time, ingredients, wax type, scent notes, materials, care instructions, compatibility, or warranty.</p></div>
+          <div className="setup-section-divider"><span>Custom product facts</span><p>Add only facts supplied or verified by the client, such as materials, dimensions, care instructions, compatibility, or warranty terms.</p></div>
           {draft.attributes.map((attribute, index) => (
             <div className="setup-form-grid" key={`attribute-${index}`}>
-              <input className="auth-input" placeholder="Fact name, e.g. Burn time" value={attribute.label} onChange={(event) => updateAttribute(index, "label", event.target.value)} />
-              <input className="auth-input" placeholder="Value, e.g. 45-55 hours" value={attribute.value} onChange={(event) => updateAttribute(index, "value", event.target.value)} />
-              <button className="icon-btn" type="button" onClick={() => setDraft((current) => ({ ...current, attributes: current.attributes.filter((_, attributeIndex) => attributeIndex !== index) }))}><Trash2 size={15} /> Remove</button>
+              <input className="auth-input" placeholder="Fact name" value={attribute.label} onChange={(event) => updateAttribute(index, "label", event.target.value)} />
+              <input className="auth-input" placeholder="Verified value" value={attribute.value} onChange={(event) => updateAttribute(index, "value", event.target.value)} />
+              <button className="icon-btn" type="button" disabled={saving} onClick={() => setDraft((current) => ({ ...current, attributes: current.attributes.filter((_, attributeIndex) => attributeIndex !== index) }))}><Trash2 size={15} /> Remove</button>
             </div>
           ))}
-          <button className="icon-btn" type="button" onClick={() => setDraft((current) => ({ ...current, attributes: [...current.attributes, { label: "", value: "" }] }))}><Plus size={15} /> Add product fact</button>
+          <button className="icon-btn" type="button" disabled={saving} onClick={() => setDraft((current) => ({ ...current, attributes: [...current.attributes, { label: "", value: "" }] }))}><Plus size={15} /> Add product fact</button>
 
-          <div className="setup-section-divider"><span>Variants and advanced inventory</span><p>Each size, scent, color, or style can have separate price, SKU, stock, reserved stock, incoming stock, threshold, reorder point, and location.</p></div>
+          <div className="setup-section-divider"><span>Variants and advanced inventory</span><p>Each size, color, style, or other variant can have separate price, SKU, stock, reserved stock, incoming stock, threshold, reorder point, and location.</p></div>
           {draft.variants.map((variant, index) => (
             <article className="settings-card" key={`variant-${index}`}>
               <div className="panel-title panel-title-row">
                 <div className="panel-title"><Boxes size={18} /><strong>Variant {index + 1}</strong></div>
-                {draft.variants.length > 1 ? <button className="icon-btn" type="button" onClick={() => setDraft((current) => ({ ...current, variants: current.variants.filter((_, variantIndex) => variantIndex !== index) }))}><Trash2 size={15} /> Remove</button> : null}
+                {draft.variants.length > 1 ? <button className="icon-btn" type="button" disabled={saving} onClick={() => setDraft((current) => ({ ...current, variants: current.variants.filter((_, variantIndex) => variantIndex !== index) }))}><Trash2 size={15} /> Remove</button> : null}
               </div>
               <div className="setup-form-grid">
-                <label><span>Variant title</span><input className="auth-input" value={variant.title} onChange={(event) => updateVariant(index, "title", event.target.value)} placeholder="Example: 12 oz / Vanilla" /></label>
+                <label><span>Variant title</span><input className="auth-input" value={variant.title} onChange={(event) => updateVariant(index, "title", event.target.value)} /></label>
                 <label><span>SKU</span><input className="auth-input" value={variant.sku} onChange={(event) => updateVariant(index, "sku", event.target.value)} /></label>
                 <label><span>Price</span><input className="auth-input" min="0" step="0.01" type="number" value={variant.price} onChange={(event) => updateVariant(index, "price", toNumber(event.target.value))} /></label>
                 <label><span>On hand</span><input className="auth-input" min="0" type="number" value={variant.inventory_quantity} onChange={(event) => updateVariant(index, "inventory_quantity", toNumber(event.target.value))} /></label>
@@ -319,12 +323,12 @@ export function ClientCommerceProducts() {
                 <label><span>Incoming</span><input className="auth-input" min="0" type="number" value={variant.incoming_quantity} onChange={(event) => updateVariant(index, "incoming_quantity", toNumber(event.target.value))} /></label>
                 <label><span>Low-stock threshold</span><input className="auth-input" min="0" type="number" value={variant.low_stock_threshold} onChange={(event) => updateVariant(index, "low_stock_threshold", toNumber(event.target.value))} /></label>
                 <label><span>Reorder point</span><input className="auth-input" min="0" type="number" value={variant.reorder_point} onChange={(event) => updateVariant(index, "reorder_point", toNumber(event.target.value))} /></label>
-                <label><span>Inventory location</span><input className="auth-input" value={variant.inventory_location} onChange={(event) => updateVariant(index, "inventory_location", event.target.value)} placeholder="Example: Shelf A3" /></label>
+                <label><span>Inventory location</span><input className="auth-input" value={variant.inventory_location} onChange={(event) => updateVariant(index, "inventory_location", event.target.value)} /></label>
                 <label><span>When sold out</span><select className="auth-input" value={variant.inventory_policy} onChange={(event) => updateVariant(index, "inventory_policy", event.target.value as ProductVariant["inventory_policy"])}><option value="deny">Stop selling</option><option value="continue">Allow backorders</option></select></label>
               </div>
             </article>
           ))}
-          <button className="icon-btn" type="button" onClick={() => setDraft((current) => ({ ...current, variants: [...current.variants, { ...emptyVariant, price: current.base_price, title: `Variant ${current.variants.length + 1}` }] }))}><Plus size={15} /> Add variant</button>
+          <button className="icon-btn" type="button" disabled={saving} onClick={() => setDraft((current) => ({ ...current, variants: [...current.variants, { ...emptyVariant, price: current.base_price, title: `Variant ${current.variants.length + 1}` }] }))}><Plus size={15} /> Add variant</button>
 
           <div className="setup-section-divider"><span>SEO and product behavior</span></div>
           <div className="setup-form-grid">
@@ -337,15 +341,13 @@ export function ClientCommerceProducts() {
 
           <div className="panel-actions">
             <button className="wide-btn" type="button" disabled={saving} onClick={saveProduct}><Save size={16} /> {saving ? "Saving..." : "Save product draft"}</button>
-            {editing ? <button className="icon-btn" type="button" onClick={resetDraft}>Cancel edit</button> : null}
+            {editing ? <button className="icon-btn" type="button" disabled={saving} onClick={resetDraft}>Cancel edit</button> : null}
           </div>
         </section>
 
         <section className="panel panel-wide">
-          <div className="panel-title"><PackagePlus size={20} /><div><h2>Product drafts</h2><p className="subtle">{products.length} product{products.length === 1 ? "" : "s"}</p></div></div>
-          {loading ? <div className="empty-state">Loading products...</div> : null}
-          {!loading && products.length === 0 ? <div className="empty-state">No product drafts yet.</div> : null}
-          {!loading && products.length > 0 ? (
+          <div className="panel-title"><PackagePlus size={20} /><div><h2>Product drafts</h2><p className="subtle">{products.length} verified product{products.length === 1 ? "" : "s"}</p></div></div>
+          {products.length === 0 ? <div className="empty-state">No verified product drafts yet.</div> : (
             <div className="settings-grid">
               {products.map((product) => {
                 const variants = product.variants || [];
@@ -357,13 +359,14 @@ export function ClientCommerceProducts() {
                     <strong>{product.name}</strong>
                     <p>${Number(product.base_price || 0).toFixed(2)} · {variants.length} variant{variants.length === 1 ? "" : "s"}</p>
                     <p>On hand: {onHand} · Available: {available}</p>
-                    <button className="icon-btn" type="button" onClick={() => editProduct(product)}>Edit product</button>
+                    <button className="icon-btn" type="button" disabled={saving} onClick={() => editProduct(product)}>Edit product</button>
                   </article>
                 );
               })}
             </div>
-          ) : null}
+          )}
         </section>
+        </> : null}
       </section>
     </main>
   );

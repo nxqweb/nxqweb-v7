@@ -1,0 +1,39 @@
+name: Portal Scale Contract
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+      - main
+    paths:
+      - src/pages/OwnerPortal.tsx
+      - src/pages/ClientPortal.tsx
+      - supabase/migrations/205_paginated_portal_read_models.sql
+      - supabase/migrations/207_scale_search_and_cursor_hardening.sql
+      - supabase/migrations/217_scalable_owner_portal_read_models.sql
+      - scripts/validate-portal-scale-contract.mjs
+      - .github/workflows/portal-scale-contract.yml
+  pull_request:
+    paths:
+      - src/pages/OwnerPortal.tsx
+      - src/pages/ClientPortal.tsx
+      - supabase/migrations/205_paginated_portal_read_models.sql
+      - supabase/migrations/207_scale_search_and_cursor_hardening.sql
+      - supabase/migrations/217_scalable_owner_portal_read_models.sql
+      - scripts/validate-portal-scale-contract.mjs
+      - .github/workflows/portal-scale-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  scale-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate bounded-page unbounded-total portal architecture
+        run: node scripts/validate-portal-scale-contract.mjs

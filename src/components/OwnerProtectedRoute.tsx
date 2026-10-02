@@ -16,7 +16,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
     if (!supabase) return;
 
     await supabase.auth.signOut();
-    window.location.href = "/portal/login";
+    window.location.replace("/portal/login");
   }
 
   useEffect(() => {
@@ -34,13 +34,13 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
       const session = sessionResult.data.session;
 
       if (!session) {
-        window.location.href = "/portal/login";
+        window.location.replace("/portal/login");
         return;
       }
 
       const ownerResult = await supabase
         .from("owner_users")
-        .select("id, role")
+        .select("id")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
 
