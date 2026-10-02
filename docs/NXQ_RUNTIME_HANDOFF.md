@@ -609,6 +609,13 @@ code work; confirmed blocked in this container as of this checklist:**
   actual production-deploy gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits
   previously exhausted, not confirmed restored (needs live check)
+- [x] Owner read pages live on nxqweb-v9-staging.netlify.app: `/owner`,
+  `/owner/exceptions`, `/owner/automation-health` load for the owner with no
+  permission error (user-supplied screenshots, 2026-10-02) — live proof that
+  migration 255 grants work. Caveat: Netlify activity showed a deploy from
+  `main@77e9455`; which branch the live build tracks is unverified. Remaining
+  items shown are stale (pre-migration-233 `pd.published_url` errors, old
+  Netlify-credit/backup alerts) or expected (AI provider not configured).
 
 **Reading this honestly**: section A is essentially complete for what's
 been built. Section B is a single guarded `apply_all` run away from being
