@@ -636,6 +636,21 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Cloudmersive status (2026-10-03/04) — malware-scanner key still not obtained
+
+- Free-tier signup worked, but the portal showed "Free-Tier Key Creation Limit Reached" with
+  no keys on the account, then "User Blocked ... activity not in compliance with our usage
+  policy" after the user submitted a support request. Cause unknown. Two support requests
+  submitted (2026-10-02 and 2026-10-03/04); no reply yet. User will not use phone contact.
+  Email verification attempted; no change.
+- Decision (user): Option A — wait until about Wednesday/Thursday (2026-10-07/08), meanwhile
+  compare alternative scanners; switch only if no resolution. Do not create a second account
+  or use a VPN. Uploads stay safely blocked without a scanner (fails closed); nothing else
+  is blocked.
+- Switching providers means rewriting `malware-scan-provider-adapter` + provider setup text
+  and a guarded staging deploy (external-service gate). Options and trade-offs:
+  `docs/UNIT_ECONOMICS_AND_SCALE.md` section 5 (unverified, from memory).
+
 ## Owner access and own-site billing (read-only code review, 2026-10-02)
 
 - Owner access is the `owner_users` row for the auth user (`OwnerProtectedRoute.tsx`);
