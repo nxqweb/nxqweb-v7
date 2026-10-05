@@ -313,6 +313,7 @@ export function ClientPortal() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [isSubmittingDomain, setIsSubmittingDomain] = useState(false);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [notice, setNotice] = useState("");
@@ -888,19 +889,18 @@ export function ClientPortal() {
   }
 
   async function uploadClientFile() {
-    setNotice("");
-    setErrorMessage("");
+    setUploadStatus(null);
 
     if (!supabase) {
-      setErrorMessage("File uploads are temporarily unavailable. Please try again later.");
+      setUploadStatus({ tone: "error", text: "File uploads are temporarily unavailable. Please try again later." });
       return;
     }
     if (!client) {
-      setErrorMessage("Your client profile must be loaded before a file can be uploaded.");
+      setUploadStatus({ tone: "error", text: "Your client profile must be loaded before a file can be uploaded." });
       return;
     }
     if (!selectedFile) {
-      setErrorMessage("Choose a file before uploading.");
+      setUploadStatus({ tone: "error", text: "Choose a file before uploading." });
       return;
     }
 
@@ -910,11 +910,11 @@ export function ClientPortal() {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ]);
     if (!allowedFileTypes.has(selectedFile.type)) {
-      setErrorMessage("Supported files: PDF, JPG, PNG, WebP, TXT, CSV, DOCX, and XLSX.");
+      setUploadStatus({ tone: "error", text: "Supported files: PDF, JPG, PNG, WebP, TXT, CSV, DOCX, and XLSX." });
       return;
     }
     if (selectedFile.size < 1 || selectedFile.size > 25 * 1024 * 1024) {
-      setErrorMessage("Files must be between 1 byte and 25 MB.");
+      setUploadStatus({ tone: "error", text: "Files must be between 1 byte and 25 MB." });
       return;
     }
 
@@ -926,7 +926,7 @@ export function ClientPortal() {
       try {
         uploadTicketId = await authorizeStorageUpload(supabase, "client-files", filePath, selectedFile);
       } catch {
-        setErrorMessage("The file upload is not available under the current account limits or billing state.");
+        setUploadStatus({ tone: "error", text: "The file upload is not available under the current account limits or billing state." });
         return;
       }
       const uploadResult = await supabase.storage
@@ -939,7 +939,7 @@ export function ClientPortal() {
 
       if (uploadResult.error) {
         await cancelStorageUpload(supabase, uploadTicketId);
-        setErrorMessage("The file could not be uploaded. No file record was created.");
+        setUploadStatus({ tone: "error", text: "The file could not be uploaded. No file record was created." });
         return;
       }
 
@@ -948,7 +948,7 @@ export function ClientPortal() {
       } catch {
         await supabase.storage.from("client-files").remove([filePath]);
         await cancelStorageUpload(supabase, uploadTicketId);
-        setErrorMessage("The file upload could not be finalized. The temporary upload was removed.");
+        setUploadStatus({ tone: "error", text: "The file upload could not be finalized. The temporary upload was removed." });
         return;
       }
 
@@ -963,18 +963,18 @@ export function ClientPortal() {
         const cleanupResult = await supabase.storage.from("client-files").remove([filePath]);
         await cancelStorageUpload(supabase, uploadTicketId);
         if (cleanupResult.error) {
-          setErrorMessage("The file could not be registered and automatic cleanup could not be verified. It remains inaccessible while support reviews it.");
+          setUploadStatus({ tone: "error", text: "The file could not be registered and automatic cleanup could not be verified. It remains inaccessible while support reviews it." });
           return;
         }
-        setErrorMessage("The file could not be registered. The uploaded copy was removed, so no client file was added.");
+        setUploadStatus({ tone: "error", text: "The file could not be registered. The uploaded copy was removed, so no client file was added." });
         return;
       }
 
       setSelectedFile(null);
-      setNotice("File uploaded securely. NXQX file security is scanning it before anyone can open it.");
+      setUploadStatus({ tone: "success", text: "File uploaded securely. NXQX file security is scanning it before anyone can open it." });
       await loadClientPortalData();
     } catch {
-      setErrorMessage("The file upload could not be completed. No client-facing file access was granted.");
+      setUploadStatus({ tone: "error", text: "The file upload could not be completed. No client-facing file access was granted." });
     } finally {
       setIsUploadingFile(false);
     }
@@ -1233,6 +1233,7 @@ export function ClientPortal() {
             <div className="panel-title"><UploadCloud size={20} /><h2>Upload files</h2></div>
             <p className="subtle">Upload logos, business photos, reviews, service images, and content for your website.</p>
             <div className="upload-box"><ImagePlus size={30} /><input className="auth-input" type="file" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /><span>{selectedFile ? `Ready to upload: ${selectedFile.name}` : "Choose a logo, photo, review, screenshot, or content file."}</span><button className="wide-btn" disabled={isUploadingFile || !selectedFile || !client} onClick={() => void uploadClientFile()} type="button">{isUploadingFile ? "Uploading file..." : "Upload file"}</button></div>
+            {uploadStatus ? <div className={`notice-card ${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>{uploadStatus.text}</div> : null}
             <div className="message-list">
               {!filesVerified ? <div className="empty-state">File history could not be verified right now.</div> : uploadedFiles.length === 0 ? <div className="empty-state">No files uploaded yet.</div> : null}
               {filesVerified ? uploadedFiles.map((file) => <article className="message-card" key={file.id}><div className="message-card-top"><strong>{file.file_name}</strong><span>{new Date(file.uploaded_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span></div><p>Status: {formatStatus(file.status)}</p><small>{file.expires_at ? `Expires ${new Date(file.expires_at).toLocaleDateString([], { dateStyle: "medium" })}` : "No automatic expiration"}</small></article>) : null}
