@@ -10,5 +10,8 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 
 | Draft | Purpose | Plan |
 |---|---|---|
-| `01_repair_pgcrypto_search_path.sql` | Adds `extensions` to the pinned search_path of 7 functions that call pgcrypto unqualified | `scripts/sql/local-full-schema/known-unqualified-pgcrypto.txt` |
-| `02_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
+| `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
+
+Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
+(approved by the owner; not yet applied to staging). Its regression test lives in
+`scripts/sql/local-full-schema/regression/`. Draft numbering for the rest is assigned on approval (258+).

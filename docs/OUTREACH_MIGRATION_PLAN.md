@@ -36,7 +36,7 @@ works with mail-client unsubscribe buttons). Reply ingestion becomes optional; u
 replies are handled by the owner with the existing `owner_record_sales_reply`, and the footer
 wording must say so truthfully.
 
-## 3. Proposed migration 257 - `outreach_inbound_and_unsubscribe` (gate)
+## 3. Proposed migration (now numbered 258 or later; 257 is the pgcrypto repair) - `outreach_inbound_and_unsubscribe` (gate)
 
 Additive only: one index and two service-role functions. No table or column is changed, so existing
 callers cannot break. Final SQL must pass the local full-schema test, the RPC argument-name
@@ -100,10 +100,10 @@ migrations and the local full-schema test accept (migration "repair_commerce_pgc
 shows this has bitten before).
 
 **Update 2026-10-05:** the SQL for 257 now exists as a tested DRAFT in
-`docs/drafts/migrations/02_outreach_inbound_and_unsubscribe.sql` (with its sidecar test), using
+`docs/drafts/migrations/01_outreach_inbound_and_unsubscribe.sql` (with its sidecar test), using
 `set search_path = public, extensions`. It is not in `supabase/migrations/` and is not applied. A suspected
 pgcrypto path problem in 7 existing functions (including the three sales delivery functions this plan
-depends on) is described in the handoff; its draft repair is `01_repair_pgcrypto_search_path.sql`.
+depends on) is described in the handoff; the repair is now committed as migration 257 (approved to add; not applied).
 
 ## 4. Edge functions to add (code, then a guarded deploy) (gate)
 

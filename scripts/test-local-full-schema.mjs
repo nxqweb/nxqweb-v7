@@ -266,6 +266,16 @@ if (setupComplete) {
   if (flaggedCrypto.length) console.log(`NOTE  known runtime risk on Supabase (pgcrypto in the extensions schema): ${flaggedCrypto.join(", ")}`);
 }
 
+// ---- 3c. Regression tests for real migrations (scripts/sql/local-full-schema/regression) ----
+// Each <name>.test.sql runs in a rolled-back transaction and must select DRAFT_TEST_OK.
+const regressionDir = path.join(root, "scripts/sql/local-full-schema/regression");
+if (setupComplete && fs.existsSync(regressionDir)) {
+  for (const name of fs.readdirSync(regressionDir).filter((n) => n.endsWith(".test.sql")).sort()) {
+    const t = psql({ db: dbName, tuples: true, sql: fs.readFileSync(path.join(regressionDir, name), "utf8") });
+    record(`regression ${name}`, t.status === 0 && t.stdout.includes("DRAFT_TEST_OK"), t.status === 0 ? t.stdout.trim().slice(-160) : firstError(t.stderr));
+  }
+}
+
 // ---- 4. Check: provision-storefront reservation-key regression ------------------------
 const storefrontSource = fs.readFileSync(path.join(root, "supabase/functions/provision-storefront/index.ts"), "utf8");
 const reserveCall = /rpc\(\s*["']nxq_reserve_netlify_build["']\s*,\s*\{([\s\S]*?)\}\s*\)/.exec(storefrontSource)?.[1] || "";
@@ -349,10 +359,6 @@ if (setupComplete && fs.existsSync(draftDir)) {
       if (!fs.existsSync(testPath)) { record(`draft ${name} has a sidecar test`, false, "missing"); continue; }
       const t = psql({ db: dbName, tuples: true, sql: fs.readFileSync(testPath, "utf8") });
       record(`draft ${name} passes its sidecar test`, t.status === 0 && t.stdout.includes("DRAFT_TEST_OK"), t.status === 0 ? t.stdout.trim().slice(-200) : firstError(t.stderr));
-    }
-    if (drafts.some((n) => n.includes("repair_pgcrypto_search_path"))) {
-      const left = listFlaggedCrypto();
-      record("after the drafted repair no function pins search_path to public and calls pgcrypto unqualified", left.length === 0, left.join(", "));
     }
   }
 }

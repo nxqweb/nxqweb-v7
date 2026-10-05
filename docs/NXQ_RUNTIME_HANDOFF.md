@@ -652,17 +652,23 @@ process, all requiring your action outside this session.
 - Draft SQL (NOT migrations) in `docs/drafts/migrations/`: `01_repair_pgcrypto_search_path.sql` and
   `02_outreach_inbound_and_unsubscribe.sql`, each with a sidecar test run by
   `scripts/test-local-full-schema.mjs` (now 13 checks, all passing).
-- **Suspected latent bug (needs a staging fact):** 7 committed functions pin `search_path = public` and
-  call pgcrypto unqualified: `nxq_flag_referral_payment_reversal`, `nxq_queue_sales_delivery`,
-  `nxq_record_sales_delivery_event`, `nxq_reserve_sales_delivery`,
-  `owner_create_fictional_sales_source_run`, `owner_record_sales_reply`,
-  `submit_public_commerce_customer_request` (migration 242 qualified `digest` there but left
-  `gen_random_bytes`; 249 re-created the function). If pgcrypto lives in the `extensions` schema on
-  staging these fail at runtime. The local simulation (pgcrypto moved to `extensions`) reproduces the
-  failure with the original path and passes with the drafted repair. To confirm on staging, the owner can
-  run this read-only query in the Supabase SQL editor:
-  `select extname, extnamespace::regnamespace from pg_extension where extname = 'pgcrypto';`
-  A repair migration (or applying the draft) is a stop-and-ask gate.
+- **pgcrypto search_path bug: staging layout CONFIRMED, repair added as migration 257, NOT yet applied.**
+  The owner ran `select extname, extnamespace::regnamespace from pg_extension where extname='pgcrypto';`
+  on `nxqweb-staging`: result `pgcrypto | extensions`. 7 committed functions pin `search_path = public`
+  and call pgcrypto unqualified, so those code paths fail at runtime on staging:
+  `nxq_flag_referral_payment_reversal`, `nxq_queue_sales_delivery`, `nxq_record_sales_delivery_event`,
+  `nxq_reserve_sales_delivery`, `owner_create_fictional_sales_source_run`, `owner_record_sales_reply`,
+  `submit_public_commerce_customer_request` (the upload-ticket branch). Not yet proven by calling the
+  functions on staging; reproduced in the local simulation with pgcrypto moved to `extensions`.
+  `supabase/migrations/257_repair_pgcrypto_search_path.sql` only runs `alter function ... set search_path =
+  public, extensions` on those seven (no body, grant, owner or signature change). Regression test:
+  `scripts/sql/local-full-schema/regression/257_repair_pgcrypto_search_path.test.sql` (negative control
+  fails with the old path, passes with the new). Adding the file was approved by the owner on 2026-10-05;
+  **applying it to staging still needs the owner's explicit authorization** via a guarded `apply_migrations`
+  run with the confirmation phrase. Local harness: 11/11 pass; release gate unchanged (1,273 PASS, stops at
+  `protected-staging-configuration`).
+- The outreach SQL stays a draft: `docs/drafts/migrations/01_outreach_inbound_and_unsubscribe.sql`
+  (final number 258 or later on approval; the schedule migration would follow it).
 
 ## Outreach delivery orchestration (stage 1, sender logic) — local only, NO Edge function, NOT deployed (2026-10-05)
 

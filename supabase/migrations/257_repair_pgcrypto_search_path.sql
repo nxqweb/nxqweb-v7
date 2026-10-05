@@ -1,7 +1,10 @@
--- DRAFT (not applied). Repairs a suspected runtime failure: these functions pin search_path to public
--- but call pgcrypto functions without a schema prefix. Where pgcrypto lives in the "extensions" schema
--- (the Supabase default), the calls cannot be resolved. Setting the search_path to "public, extensions"
--- works wherever pgcrypto is installed. Only the setting changes: no body, grant, owner or signature.
+-- Repairs a runtime failure class: these functions pin search_path to public but call pgcrypto
+-- functions (digest, gen_random_bytes) without a schema prefix. On this project pgcrypto is installed in
+-- the "extensions" schema (confirmed on nxqweb-staging), so the unqualified calls cannot be resolved
+-- when those code paths run. Adding "extensions" to the pinned search_path fixes it wherever pgcrypto
+-- is installed. This changes only each function's search_path setting: no body, signature, owner or
+-- grant changes. "extensions" is not writable by application roles, so it is safe on SECURITY DEFINER.
+-- Covered by scripts/sql/local-full-schema/regression/257_repair_pgcrypto_search_path.test.sql.
 alter function public.nxq_flag_referral_payment_reversal(uuid, text, text) set search_path = public, extensions;
 alter function public.nxq_queue_sales_delivery(uuid, timestamptz, text) set search_path = public, extensions;
 alter function public.nxq_record_sales_delivery_event(uuid, text, text, text) set search_path = public, extensions;
