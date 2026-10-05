@@ -433,6 +433,13 @@ this ledger before re-running any investigation**:
   effect (a real Commerce storefront provisioning that reserves Netlify credit) has NOT been exercised and still
   needs a real run with Netlify credits and the GitHub app.
 
+- **Run #232 (`apply_migrations`, HEAD `117d4e6`), 2026-10-05 — APPLIED migration 257 only to `nxqweb-staging`.**
+  Owner confirmed the staging project and authorized `apply_migrations` for migration 257 only with the
+  exact phrase. Pre-check: owner queries showed 223 applied versions, latest 256 (rows 001-233 matched
+  the repo exactly). Dry run: "Would push these migrations: 257_repair_pgcrypto_search_path.sql" (only).
+  Apply: "Applying migration 257_repair_pgcrypto_search_path.sql... Finished supabase db push". No
+  function deploys, no secrets, no billing. Job result: success. Not yet verified by a runtime call.
+
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
 `business-prelaunch` (the profile `validate_prelaunch` checks against)
@@ -572,8 +579,8 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-256 — all applied to staging (`nxqweb-staging`): 248-254
-in run #220, 255 in run #223, 256 in run #228. Not applied to production
+**B. Migrations 248-257 — all applied to staging (`nxqweb-staging`): 248-254
+in run #220, 255 in run #223, 256 in run #228, 257 in run #232. Not applied to production
 (production is not launched):**
 
 - [x] 248 — client notification on website-setup denial
@@ -594,6 +601,9 @@ in run #220, 255 in run #223, 256 in run #228. Not applied to production
 - [x] 256 — fixes latent migration-132 trigger bug (`queue_location_seo_refresh()` made
   every `client_locations` insert fail, 42703); applied to staging in run #228; verified by the paid-capability guards
   re-run in run #229 (56/56)
+- [x] 257 — repairs the pinned `search_path` of 7 functions that call pgcrypto unqualified (pgcrypto is in
+  the `extensions` schema on staging); applied to staging in run #232 (dry run listed only 257; apply
+  succeeded). **Applied, not yet exercised at runtime**; verify with the read-only query in the handoff.
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
@@ -664,8 +674,10 @@ process, all requiring your action outside this session.
   public, extensions` on those seven (no body, grant, owner or signature change). Regression test:
   `scripts/sql/local-full-schema/regression/257_repair_pgcrypto_search_path.test.sql` (negative control
   fails with the old path, passes with the new). Adding the file was approved by the owner on 2026-10-05;
-  **applying it to staging still needs the owner's explicit authorization** via a guarded `apply_migrations`
-  run with the confirmation phrase. Local harness: 11/11 pass; release gate unchanged (1,273 PASS, stops at
+  **APPLIED to staging in run #232 (2026-10-05, owner-authorized with the confirmation phrase; head
+  `117d4e6`)**: the dry run listed only `257_repair_pgcrypto_search_path.sql` and the apply step reported
+  "Applying migration 257_repair_pgcrypto_search_path.sql... Finished supabase db push". Pre-check: staging
+  had 223 migrations, latest 256 (the owner's query). Local harness: 11/11 pass; release gate unchanged (1,273 PASS, stops at
   `protected-staging-configuration`).
 - The outreach SQL stays a draft: `docs/drafts/migrations/01_outreach_inbound_and_unsubscribe.sql`
   (final number 258 or later on approval; the schedule migration would follow it).
