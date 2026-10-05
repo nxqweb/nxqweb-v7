@@ -103,7 +103,7 @@ export function PortalSignup() {
     }
 
     if (!trimmedFamilyDetails || !trimmedPrimaryGoal) {
-      setErrorMessage("Complete the project-fit questions so NXQ can prepare the right setup after verification.");
+      setErrorMessage("Complete the project-fit questions so NXQX can prepare the right setup after verification.");
       return;
     }
 
@@ -180,7 +180,7 @@ export function PortalSignup() {
           {unavailableFamily ? (
             <div className="notice-card">
               <strong>{unavailableFamily.name} is still in development.</strong>
-              <p>NXQ-Business is available now, so we switched you to a client-ready option.</p>
+              <p>NXQX-Business is available now, so we switched you to a client-ready option.</p>
             </div>
           ) : null}
 
@@ -280,7 +280,7 @@ export function PortalSignup() {
           </section>
 
           <section className="premium-intake-box">
-            <h2>Create your NXQ client account.</h2>
+            <h2>Create your NXQX client account.</h2>
             <p>Your selection and project details stay attached to the account so your workspace can continue with the right website and service context.</p>
 
             <div className="premium-form-grid">
@@ -302,7 +302,7 @@ export function PortalSignup() {
           <div className="notice-card">
             <strong>{selectedFamily.name} · {tier.name}</strong>
             <p>
-              Creating an account does not approve or launch the project. NXQ reviews the completed setup before managed build work can move forward.
+              Creating an account does not approve or launch the project. NXQX reviews the completed setup before managed build work can move forward.
             </p>
           </div>
 

@@ -1,4 +1,4 @@
-// AI model routing for NXQ: pick the cheapest adequate model for each task, keep premium models
+// AI model routing for NXQX: pick the cheapest adequate model for each task, keep premium models
 // for premium plans, stay inside the per-client cost ceiling, and escalate at most once.
 // Pure functions only: no network, no database, no environment reads, no secrets. Nothing calls
 // this yet. The database stays the authority for spend (economic reservations and the minimum

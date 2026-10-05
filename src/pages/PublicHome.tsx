@@ -29,7 +29,7 @@ const storyStages = [
   {
     eyebrow: "01 · Build",
     title: "Start with a site that already feels premium.",
-    body: "NXQ-Web turns the business setup into a polished, responsive website structure instead of handing the owner a blank builder.",
+    body: "NXQX-Web turns the business setup into a polished, responsive website structure instead of handing the owner a blank builder.",
     signal: "Launch foundation",
     detail: "Pages, brand direction, calls to action, and client controls stay connected to the same project.",
   },
@@ -57,7 +57,7 @@ const storyStages = [
   {
     eyebrow: "05 · Improve",
     title: "Keep the website moving after launch.",
-    body: "NXQ-Web is designed around ongoing care: maintenance, content improvements, SEO opportunities, and higher-tier optimization cycles.",
+    body: "NXQX-Web is designed around ongoing care: maintenance, content improvements, SEO opportunities, and higher-tier optimization cycles.",
     signal: "Ongoing care",
     detail: "The website stays part of an active managed system instead of becoming a forgotten one-time project.",
   },
@@ -80,11 +80,11 @@ export function PublicHome() {
   return (
     <main className="px">
       <header className="px-nav" aria-label="Primary">
-        <a className="px-brand" href="/" aria-label="NXQX NXQ-Web home">
+        <a className="px-brand" href="/" aria-label="NXQX NXQX-Web home">
           <span className="px-mark">N</span>
           <span className="px-brandtext">
             <strong>NXQX</strong>
-            <span>NXQ-Web</span>
+            <span>NXQX-Web</span>
           </span>
         </a>
         <nav className="px-links" aria-label="Main navigation">
@@ -104,15 +104,15 @@ export function PublicHome() {
             Your website should work <em>as hard as your business.</em>
           </h1>
           <p className="px-lede px-rise px-d2">
-            NXQ-Web builds, manages, improves, and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates, growth work, and ongoing care stay connected in one managed system.
+            NXQX-Web builds, manages, improves, and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates, growth work, and ongoing care stay connected in one managed system.
           </p>
           <div className="px-btns px-rise px-d3">
             <a className="px-btn px-gold" data-px-wipe href="/portal/signup?family=business&tier=growth">
               Build my website <ArrowRight size={18} />
             </a>
-            <a className="px-btn px-ghost" href="#systems">See how NXQ works</a>
+            <a className="px-btn px-ghost" href="#systems">See how NXQX works</a>
           </div>
-          <div className="px-chips px-rise px-d4" aria-label="NXQ-Web service principles">
+          <div className="px-chips px-rise px-d4" aria-label="NXQX-Web service principles">
             <span>Managed after launch</span>
             <span>Built to keep improving</span>
             <span>Owner-reviewed where it matters</span>
@@ -134,7 +134,7 @@ export function PublicHome() {
           <span className="px-kicker" data-px-reveal>One system. Your website operation.</span>
           <h2 data-px-reveal>A premium site is only the beginning.</h2>
           <p className="px-sub" data-px-reveal>
-            NXQ-Web is designed around the full lifecycle: getting your business online, helping customers find it, turning attention into leads, and keeping the site current instead of letting it age in place.
+            NXQX-Web is designed around the full lifecycle: getting your business online, helping customers find it, turning attention into leads, and keeping the site current instead of letting it age in place.
           </p>
           <div className="px-grid4">
             {[
@@ -151,7 +151,7 @@ export function PublicHome() {
             ))}
           </div>
 
-          <div className="px-story" aria-label="NXQ-Web managed website lifecycle demonstration">
+          <div className="px-story" aria-label="NXQX-Web managed website lifecycle demonstration">
             <div className="px-card px-story-card" aria-live="polite">
               {storyStages.map((item, index) => (
                 <div className={`px-stage ${index === stage ? "px-on" : ""}`} key={item.eyebrow}>
@@ -259,10 +259,10 @@ export function PublicHome() {
           <div className="px-card px-cmp" data-px-reveal>
             <span className="px-kicker">Compare the outcome</span>
             <div className="px-cmp-head">
-              <h3>See what changes as NXQ-Web takes on more of the growth work.</h3>
+              <h3>See what changes as NXQX-Web takes on more of the growth work.</h3>
               <a className="px-btn px-ghost" href="/plans">Open full plans</a>
             </div>
-            <table aria-label="NXQ-Web tier comparison">
+            <table aria-label="NXQX-Web tier comparison">
               <thead>
                 <tr><th>Capability</th><th>Starter</th><th>Growth</th><th>Intelligence</th><th>Enterprise</th></tr>
               </thead>
@@ -282,14 +282,14 @@ export function PublicHome() {
 
       <section id="process">
         <div className="px-wrap">
-          <span className="px-kicker" data-px-reveal>How NXQ-Web works</span>
+          <span className="px-kicker" data-px-reveal>How NXQX-Web works</span>
           <h2 data-px-reveal>Simple for the client. Controlled behind the scenes.</h2>
           <p className="px-sub" data-px-reveal>The client gets a clean guided experience while project approval and higher-impact decisions stay protected.</p>
           <div className="px-steps" data-px-steps>
             {[
               ["1", "Choose", "Select the website family and service tier that match the business."],
               ["2", "Tell us what matters", "Complete a project form that changes based on the selected family and tier."],
-              ["3", "Review", "NXQ reviews the setup before protected build automation can move forward."],
+              ["3", "Review", "NXQX reviews the setup before protected build automation can move forward."],
               ["4", "Build + launch", "Approved projects move through the managed website workflow and ongoing care path."],
             ].map(([number, title, body]) => (
               <div className="px-step" data-px-reveal data-px-step key={title}>
@@ -309,7 +309,7 @@ export function PublicHome() {
           <span className="px-kicker" data-px-reveal>Why managed beats DIY</span>
           <h2 data-px-reveal>Your time should go into the business, not babysitting a website builder.</h2>
           <p className="px-sub" data-px-reveal>
-            DIY tools can help create pages. NXQ-Web is designed around the work that comes after that too: structure, client intake, updates, SEO, lead flow, monitoring, reports, and ongoing improvements.
+            DIY tools can help create pages. NXQX-Web is designed around the work that comes after that too: structure, client intake, updates, SEO, lead flow, monitoring, reports, and ongoing improvements.
           </p>
           <div className="px-vs">
             <div className="px-card" data-px-reveal>
@@ -322,7 +322,7 @@ export function PublicHome() {
               </ul>
             </div>
             <div className="px-card px-nxq" data-px-reveal>
-              <h3>With NXQ-Web</h3>
+              <h3>With NXQX-Web</h3>
               <ul>
                 <li>Premium presentation built for you</li>
                 <li>Hosting, SSL, and maintenance handled</li>
@@ -340,10 +340,10 @@ export function PublicHome() {
           <span className="px-kicker" data-px-reveal>Questions</span>
           <h2 data-px-reveal>Good to know before you start.</h2>
           <div className="px-faq" data-px-reveal>
-            <details><summary>What happens after I choose a plan?</summary><p>You complete a project form that adapts to the website family and tier. NXQ reviews the setup before protected build automation moves forward, then approved projects continue into the managed build and ongoing care path.</p></details>
+            <details><summary>What happens after I choose a plan?</summary><p>You complete a project form that adapts to the website family and tier. NXQX reviews the setup before protected build automation moves forward, then approved projects continue into the managed build and ongoing care path.</p></details>
             <details><summary>Can I ask for changes after launch?</summary><p>Yes. The client portal includes update requests, so changes stay connected to your project instead of getting lost in email.</p></details>
             <details><summary>Is advanced tracking always on?</summary><p>No. Behavior analytics such as click and scroll insight are tier-gated and consent-gated rather than silently enabled for every client.</p></details>
-            <details><summary>When will the other NXQ-Web systems open?</summary><p>NXQ-Business is open now. The others are planned, and signup stays closed for each one until its experience is ready for clients.</p></details>
+            <details><summary>When will the other NXQX-Web systems open?</summary><p>NXQX-Business is open now. The others are planned, and signup stays closed for each one until its experience is ready for clients.</p></details>
             <details><summary>Which plan should I start with?</summary><p>Starter is a polished managed site. Growth adds visibility and lead generation and is the most popular. Intelligence adds deeper insight and a monthly optimization cycle. Enterprise is custom for multi-location and larger teams.</p></details>
           </div>
         </div>
@@ -353,10 +353,10 @@ export function PublicHome() {
         <div className="px-cta-band" data-px-reveal>
           <span className="px-kicker">Stop treating your website like a one-time project</span>
           <h2>Choose the system and tier that fit your business.</h2>
-          <p className="px-sub">NXQ-Web keeps the website, project workflow, updates, and growth work connected after launch.</p>
+          <p className="px-sub">NXQX-Web keeps the website, project workflow, updates, and growth work connected after launch.</p>
           <div className="px-btns">
             <a className="px-btn px-gold" data-px-wipe href="/portal/signup?family=business&tier=growth">
-              Start with NXQ-Business <ArrowRight size={18} />
+              Start with NXQX-Business <ArrowRight size={18} />
             </a>
             <a className="px-btn px-ghost" href="#pricing">Compare plans</a>
           </div>
@@ -365,7 +365,7 @@ export function PublicHome() {
 
       <footer>
         <div className="px-wrap px-foot">
-          <span>NXQX · NXQ-Web</span>
+          <span>NXQX · NXQX-Web</span>
           <span>Premium managed website systems</span>
         </div>
       </footer>

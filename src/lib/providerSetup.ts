@@ -12,7 +12,7 @@ export const providerSetupGroups: readonly ProviderSetupGroup[] = [
   {
     id: "notifications",
     title: "Notification delivery",
-    purpose: "Sends approved NXQ email notifications through the protected first-party adapter.",
+    purpose: "Sends approved NXQX email notifications through the protected first-party adapter.",
     accountTask: "Create the provider account, verify a sender domain, and create a sending-only API key.",
     preparedSecretNames: [
       "NXQ_NOTIFICATION_ADAPTER_URL",

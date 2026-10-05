@@ -228,7 +228,7 @@ Deno.serve(async (request) => {
         Authorization: `Bearer ${githubToken}`,
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "NXQ-Web-Preview-Executor",
+        "User-Agent": "NXQX-Web-Preview-Executor",
       },
     }
   );
@@ -295,7 +295,7 @@ Deno.serve(async (request) => {
   );
   buildUrl.searchParams.set("branch", sourceBranch);
   buildUrl.searchParams.set("clear_cache", "false");
-  buildUrl.searchParams.set("title", `NXQ owner-approved preview: ${sourceBranch}`);
+  buildUrl.searchParams.set("title", `NXQX owner-approved preview: ${sourceBranch}`);
 
   let buildResponse: Response;
 

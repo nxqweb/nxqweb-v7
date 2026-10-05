@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
 
     const clientRows = (await requireOk(admin.from("clients").insert(userIds.map((userId, index) => ({
       auth_user_id: userId,
-      business_name: `NXQ Evidence Tenant ${index + 1} ${runId}`,
+      business_name: `NXQX Evidence Tenant ${index + 1} ${runId}`,
       contact_email: emails[index],
       status: "lead",
       monthly_price: 0,
@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
 
     const projectRows = (await requireOk(admin.from("projects").insert(clientIds.map((clientId, index) => ({
       client_id: clientId,
-      project_name: `NXQ Evidence Project ${index + 1} ${runId}`,
+      project_name: `NXQX Evidence Project ${index + 1} ${runId}`,
       stage: "intake",
       website_status: "intake",
     }))).select("id,client_id"), "Create project fixtures")) || [];
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
 
     for (let index = 0; index < clientIds.length; index += 1) {
       const path = `${clientIds[index]}/evidence-${runId}-${index + 1}.txt`;
-      const uploaded = await admin.storage.from(bucket).upload(path, new TextEncoder().encode(`NXQ staging evidence ${runId} tenant ${index + 1}`), { contentType: "text/plain", upsert: false });
+      const uploaded = await admin.storage.from(bucket).upload(path, new TextEncoder().encode(`NXQX staging evidence ${runId} tenant ${index + 1}`), { contentType: "text/plain", upsert: false });
       if (uploaded.error) throw new Error(`Storage fixture upload failed: ${uploaded.error.message}`);
       storagePaths.push(path);
     }

@@ -40,7 +40,7 @@ export function OwnerCommerceHub() {
           <div className="panel-title">
             <ShoppingBag size={22} />
             <div>
-              <h1>NXQ-Commerce</h1>
+              <h1>NXQX-Commerce</h1>
               <p className="subtle">Owner controls for plans, limits, major storefront requests, and protected launches.</p>
             </div>
           </div>
@@ -50,7 +50,7 @@ export function OwnerCommerceHub() {
         <div className="panel panel-wide">
           <h2>Client-owned store data</h2>
           <p className="subtle">
-            Clients manage their own products, images, categories, prices, inventory, and normal edits. NXQ enforces plan limits automatically and does not require routine owner approval.
+            Clients manage their own products, images, categories, prices, inventory, and normal edits. NXQX enforces plan limits automatically and does not require routine owner approval.
           </p>
           <p className="subtle">
             Owner approval is reserved for major actions: creating or migrating a storefront, connecting payments or domains, and publishing to production.

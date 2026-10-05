@@ -83,7 +83,7 @@ async function postAdapter(delivery: Delivery) {
     try { body = text ? asAdapterResponse(JSON.parse(text) as unknown) : {}; } catch { body = { message: text }; }
     if (!res.ok) throw new Error(`Notification adapter failed (${res.status}): ${String(body.message || "unknown")}`);
     const echoedKey = String(body.idempotency_key || "");
-    if (echoedKey !== idempotencyKey) throw new Error("Notification adapter did not confirm the NXQ idempotency key.");
+    if (echoedKey !== idempotencyKey) throw new Error("Notification adapter did not confirm the NXQX idempotency key.");
     const providerMessageId = String(body.provider_message_id || body.id || "");
     if (!providerMessageId) throw new Error("Notification adapter success response did not include a provider message id.");
     return { provider_message_id: providerMessageId, provider_status: String(body.status || "delivered"), idempotency_key: echoedKey };
@@ -166,12 +166,12 @@ Deno.serve(async (req) => {
           const ambiguousWrite=await admin.from("notification_deliveries").update({
             status:"blocked",
             provider_message_id:acceptedProviderMessageId || null,
-            last_error:`Provider accepted this delivery, but NXQ could not safely finalize local state. Automatic resend is blocked to prevent duplicates. ${message}`.slice(0,2000),
+            last_error:`Provider accepted this delivery, but NXQX could not safely finalize local state. Automatic resend is blocked to prevent duplicates. ${message}`.slice(0,2000),
             updated_at:new Date().toISOString(),
             metadata:{...(current.metadata||{}),provider_acceptance_ambiguous:true,provider_idempotency_key:current.id},
           }).eq("id",current.id).eq("status","sending");
           if(current.client_id){
-            await admin.from("automation_escalations").insert({client_id:current.client_id,project_id:current.project_id,escalation_type:"notification_delivery_ambiguous",severity:"warning",title:"Notification delivery needs reconciliation",summary:`A ${current.channel} provider accepted a notification but NXQ could not safely finalize delivery state. Automatic resend was blocked.`,details:{notification_delivery_id:current.id,provider_message_id:acceptedProviderMessageId||null,idempotency_key:current.id,error:message,local_block_write_failed:Boolean(ambiguousWrite.error)}});
+            await admin.from("automation_escalations").insert({client_id:current.client_id,project_id:current.project_id,escalation_type:"notification_delivery_ambiguous",severity:"warning",title:"Notification delivery needs reconciliation",summary:`A ${current.channel} provider accepted a notification but NXQX could not safely finalize delivery state. Automatic resend was blocked.`,details:{notification_delivery_id:current.id,provider_message_id:acceptedProviderMessageId||null,idempotency_key:current.id,error:message,local_block_write_failed:Boolean(ambiguousWrite.error)}});
           }
           blocked++; continue;
         }

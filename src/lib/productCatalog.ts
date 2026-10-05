@@ -45,7 +45,7 @@ export type ProductTierDefinition = {
 export const productFamilyCatalog: ProductFamilyDefinition[] = [
   {
     slug: "business",
-    name: "NXQ-Business",
+    name: "NXQX-Business",
     description: "Premium managed websites for service businesses, contractors, local companies, and growing brands.",
     status: "available",
     eyebrow: "Available now",
@@ -82,7 +82,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "booking",
-    name: "NXQ-Booking",
+    name: "NXQX-Booking",
     description: "Appointments, availability, reminders, cancellations, and scheduling workflows.",
     status: "planned",
     eyebrow: "Launching next",
@@ -121,7 +121,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "commerce",
-    name: "NXQ-Commerce",
+    name: "NXQX-Commerce",
     description: "Products, carts, checkout, orders, inventory, and customer accounts.",
     status: "planned",
     eyebrow: "In development",
@@ -158,7 +158,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "menu",
-    name: "NXQ-Menu",
+    name: "NXQX-Menu",
     description: "Digital menus, specials, hours, locations, and ordering integrations.",
     status: "planned",
     eyebrow: "In development",
@@ -195,7 +195,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "property",
-    name: "NXQ-Property",
+    name: "NXQX-Property",
     description: "Searchable listings, agents, inquiries, and inventory management.",
     status: "planned",
     eyebrow: "In development",
@@ -232,7 +232,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "multi-location",
-    name: "NXQ-Multi-Location",
+    name: "NXQX-Multi-Location",
     description: "One premium website with location-specific pages, teams, contact details, and local SEO.",
     status: "planned",
     eyebrow: "Specialized system",
@@ -269,7 +269,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "membership",
-    name: "NXQ-Membership",
+    name: "NXQX-Membership",
     description: "Member accounts, subscriptions, gated content, dashboards, and renewals.",
     status: "planned",
     eyebrow: "Specialized system",
@@ -307,7 +307,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   },
   {
     slug: "enterprise-systems",
-    name: "NXQ-Enterprise Systems",
+    name: "NXQX-Enterprise Systems",
     description: "Advanced permissions, integrations, departments, and custom infrastructure.",
     status: "private",
     eyebrow: "Custom",

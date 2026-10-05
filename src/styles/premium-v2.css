@@ -288,7 +288,7 @@ body[data-nxq-theme="light"] .px-glance { background: rgba(255,255,255,.7); bord
 body[data-nxq-theme="light"] .px-ring-track { stroke: rgba(0,0,0,.1); } body[data-nxq-theme="light"] .px-ring-value { stroke: #a8863a; }
 body[data-nxq-theme="light"] .px-glance-stat { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.1); } body[data-nxq-theme="light"] .px-glance-stat small, body[data-nxq-theme="light"] .px-ring-label span, body[data-nxq-theme="light"] .px-rail-step { color: #5a5444; }
 
-/* Action-center rows: the small "Your action / NXQ handling" label sat on the same line as the title. */
+/* Action-center rows: the small "Your action / NXQX handling" label sat on the same line as the title. */
 .portal-action-copy > span { display: block; margin-bottom: 2px; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--px-gold); }
 body[data-nxq-theme="light"] .portal-action-copy > span { color: #7a5f1a; }
 

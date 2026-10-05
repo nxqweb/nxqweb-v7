@@ -1147,7 +1147,7 @@ body[data-nxq-theme="light"] .domain-exact-instructions pre {
   }
 }
 
-/* NXQ premium gold public website */
+/* NXQX premium gold public website */
 
 .lux-home {
   min-height: 100vh;
@@ -2391,7 +2391,7 @@ body[data-nxq-theme="light"] .journey-progress {
 }
 
 /* =========================================================
-   NXQ V7 reusable bubble-glass card system
+   NXQX V7 reusable bubble-glass card system
    Dark default + prepared light theme variables
    ========================================================= */
 
@@ -2687,7 +2687,7 @@ textarea:focus,
 }
 
 /* =========================================================
-   NXQ V7 bubble-glass clarity polish
+   NXQX V7 bubble-glass clarity polish
    Makes cards clearer and border animation smoother
    ========================================================= */
 
@@ -2813,7 +2813,7 @@ textarea:focus,
     0 0 58px rgba(247, 201, 72, 0.14) !important;
 }
 
-/* NXQ theme toggle polish */
+/* NXQX theme toggle polish */
 .nxq-theme-toggle {
   border-color: rgba(253, 230, 138, 0.45) !important;
   color: var(--nxq-champagne) !important;
@@ -2841,7 +2841,7 @@ body[data-nxq-theme="light"] .history-item p {
 }
 
 /* =========================================================
-   NXQ V7 light mode readability polish
+   NXQX V7 light mode readability polish
    Keeps platinum/gold glass while improving contrast
    ========================================================= */
 
@@ -2983,7 +2983,7 @@ body[data-nxq-theme="light"] .message-list::-webkit-scrollbar-thumb {
   border-color: rgba(8, 145, 178, 0.22) !important;
 }
 
-/* NXQ Project Build Plan display */
+/* NXQX Project Build Plan display */
 .build-plan-list {
   display: grid;
   gap: 14px;
@@ -3011,7 +3011,7 @@ body[data-nxq-theme="light"] .build-plan-card pre {
   color: rgba(15, 23, 42, 0.82);
 }
 
-/* NXQ Project Build Plan display */
+/* NXQX Project Build Plan display */
 .build-plan-list {
   display: grid;
   gap: 14px;
@@ -4128,7 +4128,7 @@ body[data-nxq-theme="light"] .owner-message-ping small {
   }
 }
 
-/* NXQ subtle portal card gold/platinum trail restore v2
+/* NXQX subtle portal card gold/platinum trail restore v2
    Only applies to portal/system cards — not public homepage lux cards. */
 .auth-card::before,
 .glass-card::before,

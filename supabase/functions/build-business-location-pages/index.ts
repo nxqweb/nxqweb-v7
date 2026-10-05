@@ -71,7 +71,7 @@ async function processJob(admin:Admin,job:Job){
   const token=await githubToken();
   const path=`locations/${String(locationRes.data.seo_slug)}/index.html`;
   const html=locationHtml(String(clientRes.data.business_name||"Business"),locationRes.data as JsonRecord,(servicesRes.data||[]) as JsonRecord[]);
-  const write=await putFile(String(deployRes.data.github_owner),String(deployRes.data.github_repo),branch,path,html,token,`NXQ: refresh location page ${String(locationRes.data.display_name)}`);
+  const write=await putFile(String(deployRes.data.github_owner),String(deployRes.data.github_repo),branch,path,html,token,`NXQX: refresh location page ${String(locationRes.data.display_name)}`);
   const commitSha=String(write?.commit?.sha||"");
   const pageTitle=String(locationRes.data.seo_title||`${clientRes.data.business_name} in ${[locationRes.data.city,locationRes.data.state_region].filter(Boolean).join(", ")}`);
   const canonical=`/locations/${String(locationRes.data.seo_slug)}/`;

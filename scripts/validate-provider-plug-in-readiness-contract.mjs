@@ -30,7 +30,7 @@ const setupStep = /- name: Configure internal provider adapters only[\s\S]*?- na
 const checks = [
   ["Checklist has notification, malware, provider-health, and AI groups", ["notifications", "malware", "provider_health", "ai"].every((id) => setup.includes(`id: "${id}"`))],
   ["Checklist names every protected provider setting", requiredSecretNames.every((name) => setup.includes(`"${name}"`))],
-  ["Checklist separates NXQ-prepared and account-provided values", setup.includes("preparedSecretNames") && setup.includes("accountSecretNames") && launchReadiness.includes("NXQ prepares through the guarded staging action")],
+  ["Checklist separates NXQX-prepared and account-provided values", setup.includes("preparedSecretNames") && setup.includes("accountSecretNames") && launchReadiness.includes("NXQX prepares through the guarded staging action")],
   ["Checklist never contains secret values or collection inputs", !/value\s*=|localStorage|sessionStorage|password|type=["']password/i.test(setup + launchReadiness)],
   ["Owner view presents the checklist and Provider Health route", launchReadiness.includes("data-provider-setup-checklist") && launchReadiness.includes('href="/owner/providers"')],
   ["Owner view keeps real proof behind separate authorization", launchReadiness.includes("Run real staging proof only with separate explicit authorization")],

@@ -42,7 +42,7 @@ async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job:
       target_scope_reference: scopeReference,
     } as never);
     if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
-    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQX ${scopeType} or global kill switch.`);
   }
 }
 
@@ -479,7 +479,7 @@ async function findBranchDeployState(siteId: string, branch: string, expectedCom
 
 function providerBillingBlockReason(message: string) {
   return /credit usage exceeded|operational credits|production deploys .* paused|account.*credit/i.test(message)
-    ? "EXTERNAL_PROVIDER_BILLING_BLOCKER: Netlify deployment capacity is paused by account credits. NXQ preserved the existing repository, safe branch, generated files, and exact commit and will retry after the provider account resumes."
+    ? "EXTERNAL_PROVIDER_BILLING_BLOCKER: Netlify deployment capacity is paused by account credits. NXQX preserved the existing repository, safe branch, generated files, and exact commit and will retry after the provider account resumes."
     : "";
 }
 
@@ -490,8 +490,8 @@ function providerCapacityBlockReason(deploy: { state: string; createdAt: string;
   const ageMs = Date.now() - started;
   if (ageMs < 20 * 60 * 1000) return "";
   return deploy
-    ? `EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained ${deploy.state || "pending"} for more than 20 minutes. NXQ will keep the exact commit queued and retry automatically when provider capacity resumes.`
-    : "EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify has not created a preview deploy for the exact commit after 20 minutes. Provider builds may be paused by account credits or capacity. NXQ preserved the repository, safe branch, generated files, and exact commit and will retry automatically.";
+    ? `EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained ${deploy.state || "pending"} for more than 20 minutes. NXQX will keep the exact commit queued and retry automatically when provider capacity resumes.`
+    : "EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify has not created a preview deploy for the exact commit after 20 minutes. Provider builds may be paused by account credits or capacity. NXQX preserved the repository, safe branch, generated files, and exact commit and will retry automatically.";
 }
 
 async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {
@@ -577,11 +577,11 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   for (const file of blueprintFiles) {
     const content = await fetchBlueprintFile(file, token);
     await assertProviderMutationAllowed(admin, job);
-    await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQ Business v1: sync ${file}`);
+    await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQX Business v1: sync ${file}`);
   }
   const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig), null, 2)};\n`;
   await assertProviderMutationAllowed(admin, job);
-  await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQ: generate client website config");
+  await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQX: generate client website config");
   const expectedPreviewCommitSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
   if (!expectedPreviewCommitSha) throw new Error("Generated preview branch commit could not be resolved.");
   await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1", expected_preview_commit_sha: expectedPreviewCommitSha });

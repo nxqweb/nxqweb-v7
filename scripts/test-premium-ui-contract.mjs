@@ -50,7 +50,7 @@ check("client overview graph reads no backend and invents no numbers", !/supabas
 check("unknown journey or action values show a dash, never zero or a green state", glance.includes('percent === null ? "—"') && glance.includes('attentionCount === null ? "—"'));
 check("overview graph is fed from state the portal already loaded", topCards.includes("<ClientOverviewGraph") && topCards.includes("journey={effectiveJourney}") && topCards.includes("billingLabel={billingState.title}"));
 
-check("clients see their NXQ ID and client ID, with a pending state, from already-loaded health data", glance.includes("Your NXQ ID") && glance.includes("NXQ-Web client ID") && glance.includes('"Pending setup"') && topCards.includes("clientCode={health?.client_code") && topCards.includes("nxqId={health?.nxq_id"));
+check("clients see their NXQX ID and client ID, with a pending state, from already-loaded health data", glance.includes("Your NXQX ID") && glance.includes("NXQX-Web client ID") && glance.includes('"Pending setup"') && topCards.includes("clientCode={health?.client_code") && topCards.includes("nxqId={health?.nxq_id"));
 check("Enterprise public price is $300+ and it lists Everything in Intelligence", read("src/lib/productCatalog.ts").includes('priceLabel: "$300+/mo"') && /key: "enterprise"[\s\S]*?"Everything in Intelligence"/.test(read("src/lib/productCatalog.ts")));
 
 // ---- founding-client program: honest, text only ----

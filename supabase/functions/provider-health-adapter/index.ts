@@ -171,7 +171,7 @@ async function checkProvider(request: AdapterRequest) {
         Accept: "application/vnd.github+json",
         Authorization: "Bearer " + token,
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "NXQ-Web-Provider-Health",
+        "User-Agent": "NXQX-Web-Provider-Health",
       },
     );
   }
@@ -184,7 +184,7 @@ async function checkProvider(request: AdapterRequest) {
       token,
       {
         Authorization: "Bearer " + token,
-        "User-Agent": "NXQ-Web-Provider-Health",
+        "User-Agent": "NXQX-Web-Provider-Health",
       },
     );
   }

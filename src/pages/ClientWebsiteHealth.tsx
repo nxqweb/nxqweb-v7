@@ -98,7 +98,7 @@ export function ClientWebsiteHealth() {
             <Activity size={24} />
             <div>
               <h1>Website health</h1>
-              <p className="subtle">Live status, monitoring, maintenance, and your NXQ identity.</p>
+              <p className="subtle">Live status, monitoring, maintenance, and your NXQX identity.</p>
             </div>
           </div>
           <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
@@ -121,8 +121,8 @@ export function ClientWebsiteHealth() {
                   <strong>{pretty(data.health)}</strong>
                   <p>
                     {data.health === "healthy"
-                      ? "NXQ is monitoring this website and no current exception needs attention."
-                      : "NXQ is still setting up, watching, or recovering part of this website automatically."}
+                      ? "NXQX is monitoring this website and no current exception needs attention."
+                      : "NXQX is still setting up, watching, or recovering part of this website automatically."}
                   </p>
                 </div>
               </div>
@@ -144,9 +144,9 @@ export function ClientWebsiteHealth() {
 
               <section className="panel">
                 <Fingerprint size={20} />
-                <h2>NXQ ID</h2>
+                <h2>NXQX ID</h2>
                 <p><strong>{data.nxq_id || "Pending setup"}</strong></p>
-                <p className="subtle">NXQ-Web Client ID: {data.client_code || "Pending"}</p>
+                <p className="subtle">NXQX-Web Client ID: {data.client_code || "Pending"}</p>
                 <p className="subtle">Identity assurance: Level {data.assurance_level}</p>
                 <p className="subtle">Account: {pretty(data.nxq_account_status)}</p>
               </section>
@@ -157,7 +157,7 @@ export function ClientWebsiteHealth() {
                 <p className="subtle">Last maintenance: {formatTime(data.last_maintenance_at)}</p>
                 <p className="subtle">Project stage: {pretty(data.project_stage)}</p>
                 <p className="subtle">Website status: {pretty(data.website_status)}</p>
-                {data.latest_maintenance_error ? <p className="auth-error">A maintenance check needs another retry. Detailed provider errors stay internal to NXQ.</p> : null}
+                {data.latest_maintenance_error ? <p className="auth-error">A maintenance check needs another retry. Detailed provider errors stay internal to NXQX.</p> : null}
               </section>
             </div>
 
@@ -166,7 +166,7 @@ export function ClientWebsiteHealth() {
                 <Activity size={20} />
                 <div>
                   <h2>Recent automated checks</h2>
-                  <p className="subtle">Evidence-based checks NXQ has actually run.</p>
+                  <p className="subtle">Evidence-based checks NXQX has actually run.</p>
                 </div>
               </div>
               {data.recent_checks.length === 0 ? (
@@ -188,12 +188,12 @@ export function ClientWebsiteHealth() {
               <div className="panel-title">
                 <Fingerprint size={20} />
                 <div>
-                  <h2>NXQ ecosystem access</h2>
-                  <p className="subtle">Your NXQ ID can carry approved identity state into future NXQ products.</p>
+                  <h2>NXQX ecosystem access</h2>
+                  <p className="subtle">Your NXQX ID can carry approved identity state into future NXQX products.</p>
                 </div>
               </div>
               {data.product_memberships.length === 0 ? (
-                <div className="empty-state">No NXQ product memberships found yet.</div>
+                <div className="empty-state">No NXQX product memberships found yet.</div>
               ) : (
                 data.product_memberships.map((membership) => (
                   <div className="owner-message-card" key={membership.product_slug}>

@@ -39,13 +39,13 @@ Deno.serve(async(req)=>{
       result={...result,export_version:"nxq-account-export-v1",bounded:true,account:account.data,product_memberships:memberships.data||[],client_profile:client.data,locations:locations.data||[],privacy_consents:consents.data||[],security_events:securityEvents.data||[],note:"This staged export is bounded. Large files/messages/provider-held data can be delivered through future export adapters."};
       nextStatus="ready";
     }else if(r.request_type==="consent_withdrawal"){
-      if(!r.nxq_account_id)throw new Error("NXQ account is required for consent withdrawal.");
+      if(!r.nxq_account_id)throw new Error("NXQX account is required for consent withdrawal.");
       const update=await admin.from("privacy_consents").update({status:"withdrawn",withdrawn_at:new Date().toISOString()}).eq("nxq_account_id",r.nxq_account_id).in("status",["granted"]);
       if(update.error)throw new Error(update.error.message);result={...result,consents_withdrawn:true};
     }else if(r.request_type==="restrict"){
       result={...result,restriction_recorded:true,note:"Provider-specific processing restrictions remain enforced by adapter policy hooks."};
     }else if(r.request_type==="correct"){
-      nextStatus="ready";result={...result,needs_specific_fields:true,note:"Correction requests require explicit field/value instructions; NXQ does not guess identity/profile corrections."};
+      nextStatus="ready";result={...result,needs_specific_fields:true,note:"Correction requests require explicit field/value instructions; NXQX does not guess identity/profile corrections."};
     }else{
       throw new Error(`Unsupported automated privacy request type: ${r.request_type}`);
     }
@@ -54,7 +54,7 @@ Deno.serve(async(req)=>{
     if(finish.error)throw new Error(finish.error.message);
 
     if(r.client_id){
-      const notifyBody=r.request_type==="export"?"Your requested data export is ready to review.":r.request_type==="consent_withdrawal"?"Your consent withdrawal request has been completed.":r.request_type==="correct"?"NXQ needs specific field/value instructions to complete your data correction request.":"Your data processing restriction request has been recorded.";
+      const notifyBody=r.request_type==="export"?"Your requested data export is ready to review.":r.request_type==="consent_withdrawal"?"Your consent withdrawal request has been completed.":r.request_type==="correct"?"NXQX needs specific field/value instructions to complete your data correction request.":"Your data processing restriction request has been recorded.";
       await admin.from("notification_deliveries").insert({client_id:r.client_id,channel:"in_app",recipient_kind:"client",template_key:"privacy_request_"+nextStatus,subject:"Update on your privacy request",body:notifyBody,priority:"high",metadata:{data_subject_request_id:r.id,request_type:r.request_type,status:nextStatus}});
     }
 

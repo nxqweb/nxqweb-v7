@@ -56,7 +56,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: false,
     requiresExternalApi: false,
     riskLevel: "low",
-    clientSafeResponse: "NXQ can support this as part of a standard website build when it fits the selected package.",
+    clientSafeResponse: "NXQX can support this as part of a standard website build when it fits the selected package.",
     ownerInternalNote: "Safe standard website feature. Include in the normal build plan unless package scope is too small.",
   },
   {
@@ -112,7 +112,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: true,
     requiresExternalApi: true,
     riskLevel: "high",
-    clientSafeResponse: "Full checkout may be possible, but NXQ needs owner review before confirming payment, shipping, tax, and provider requirements.",
+    clientSafeResponse: "Full checkout may be possible, but NXQX needs owner review before confirming payment, shipping, tax, and provider requirements.",
     ownerInternalNote: "Do not promise checkout automatically. Requires provider readiness, legal/tax/shipping decisions, and likely custom quote.",
   },
   {
@@ -126,7 +126,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: false,
     requiresExternalApi: false,
     riskLevel: "high",
-    clientSafeResponse: "NXQ can plan a limited preset-option vehicle build request system. Advanced visual or 3D customization requires owner review and custom scope.",
+    clientSafeResponse: "NXQX can plan a limited preset-option vehicle build request system. Advanced visual or 3D customization requires owner review and custom scope.",
     ownerInternalNote: "Offer safe version first: preset options, photos, quote request, dealer follow-up. Do not promise real-time 3D or inventory sync.",
   },
   {
@@ -140,7 +140,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: false,
     requiresExternalApi: true,
     riskLevel: "high",
-    clientSafeResponse: "This is an advanced custom application and cannot be confirmed automatically. NXQ needs owner review before promising scope, timeline, or pricing.",
+    clientSafeResponse: "This is an advanced custom application and cannot be confirmed automatically. NXQX needs owner review before promising scope, timeline, or pricing.",
     ownerInternalNote: "Treat as advanced custom app. Likely requires assets, data source, external APIs, 3D/image system, and large scope.",
   },
   {
@@ -154,7 +154,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: false,
     requiresExternalApi: true,
     riskLevel: "high",
-    clientSafeResponse: "Live syncing with external systems requires owner review, API access, and custom scoping before NXQ can confirm it.",
+    clientSafeResponse: "Live syncing with external systems requires owner review, API access, and custom scoping before NXQX can confirm it.",
     ownerInternalNote: "Do not promise external integrations without API access, credentials, pricing, and maintenance plan.",
   },
   {
@@ -168,7 +168,7 @@ export const capabilityRules: CapabilityRule[] = [
     requiresPaymentProvider: false,
     requiresExternalApi: true,
     riskLevel: "high",
-    clientSafeResponse: "This request involves restricted or high-risk workflows and cannot be confirmed automatically. NXQ owner review is required.",
+    clientSafeResponse: "This request involves restricted or high-risk workflows and cannot be confirmed automatically. NXQX owner review is required.",
     ownerInternalNote: "High-risk. Do not allow AI to promise this. Requires compliance review and likely should be declined or deferred.",
   },
 ];
@@ -209,7 +209,7 @@ export function classifyCapabilityRequest(requestedText: string): CapabilityClas
       requiresPaymentProvider: false,
       requiresExternalApi: false,
       matchedFeatures: [],
-      clientSafeSummary: "NXQ needs owner review before confirming this feature because it does not match a standard launch capability yet.",
+      clientSafeSummary: "NXQX needs owner review before confirming this feature because it does not match a standard launch capability yet.",
       ownerInternalSummary: "Unknown feature request. Owner should classify scope before the AI promises anything.",
     };
   }

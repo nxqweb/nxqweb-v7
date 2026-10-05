@@ -229,7 +229,7 @@ Deno.serve(async (request) => {
         Authorization: `Bearer ${githubToken}`,
         Accept: "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "NXQ-Web-Production-Executor",
+        "User-Agent": "NXQX-Web-Production-Executor",
       },
     }
   );
@@ -266,7 +266,7 @@ Deno.serve(async (request) => {
   if (netlifyProductionBranch && netlifyProductionBranch.toLowerCase() !== configuredProductionBranch.toLowerCase()) {
     return jsonResponse(
       {
-        error: `Netlify reports production branch ${netlifyProductionBranch}, but NXQ is configured for ${configuredProductionBranch}. No build was triggered.`,
+        error: `Netlify reports production branch ${netlifyProductionBranch}, but NXQX is configured for ${configuredProductionBranch}. No build was triggered.`,
       },
       409
     );
@@ -328,7 +328,7 @@ Deno.serve(async (request) => {
   );
   buildUrl.searchParams.set("branch", configuredProductionBranch);
   buildUrl.searchParams.set("clear_cache", "false");
-  buildUrl.searchParams.set("title", `NXQ owner-approved production build: ${configuredProductionBranch}`);
+  buildUrl.searchParams.set("title", `NXQX owner-approved production build: ${configuredProductionBranch}`);
 
   let buildResponse: Response;
   try {
@@ -444,6 +444,6 @@ Deno.serve(async (request) => {
     production_published: false,
     auto_publish_recorded_locked: true,
     note:
-      "A Netlify build was started from the configured production branch. NXQ has not confirmed or recorded the deploy as published. Publication status must be checked separately.",
+      "A Netlify build was started from the configured production branch. NXQX has not confirmed or recorded the deploy as published. Publication status must be checked separately.",
   });
 });

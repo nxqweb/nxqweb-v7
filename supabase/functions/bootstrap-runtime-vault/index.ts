@@ -63,7 +63,7 @@ Deno.serve(async (request) => {
   const workerToken = requiredSecret("NXQ_AUTOMATION_WORKER_TOKEN");
   const runtimeEnvironment = requiredSecret("NXQ_RUNTIME_ENVIRONMENT").toLowerCase();
   if (runtimeEnvironment !== "staging") {
-    return response({ ok: false, error: "Runtime Vault bootstrap is locked to an NXQ staging project." }, 409);
+    return response({ ok: false, error: "Runtime Vault bootstrap is locked to an NXQX staging project." }, 409);
   }
   const authorization = request.headers.get("Authorization") || "";
   if (!authorization) return response({ ok: false, error: "Owner authentication is required." }, 401);

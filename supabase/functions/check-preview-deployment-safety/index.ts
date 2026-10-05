@@ -217,7 +217,7 @@ Deno.serve(async (request) => {
         Accept: "application/vnd.github+json",
         Authorization: `Bearer ${githubToken}`,
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "NXQ-Web-Preview-Safety-Guard",
+        "User-Agent": "NXQX-Web-Preview-Safety-Guard",
       };
 
       const branchResponse = await timedFetch(
@@ -277,7 +277,7 @@ Deno.serve(async (request) => {
         {
           headers: {
             Authorization: `Bearer ${netlifyToken}`,
-            "User-Agent": "NXQ-Web-Preview-Safety-Guard",
+            "User-Agent": "NXQX-Web-Preview-Safety-Guard",
           },
         }
       );

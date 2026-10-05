@@ -12,7 +12,7 @@ export function ProductFamilySignupSelector() {
       <span className="px-kicker" data-px-reveal>Choose your website system</span>
       <h2 data-px-reveal>Start with the system that matches how your business actually works.</h2>
       <p className="px-sub" data-px-reveal>
-        NXQ-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
+        NXQX-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
       </p>
 
       <div className="px-grid4">

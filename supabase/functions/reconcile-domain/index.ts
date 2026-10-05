@@ -244,8 +244,8 @@ Deno.serve(async (request) => {
     if (sslRes.status === 422) {
       const providerConnected = Boolean(domainRes.data.provider_adapter && domainRes.data.provider_connection_ref);
       const actionMessage = providerConnected
-        ? "The registrar adapter is connected, but DNS is not pointing to Netlify yet. NXQ will keep reconciling automatically."
-        : `Point ${domain} to the NXQ/Netlify site using your registrar's DNS settings. NXQ will recheck automatically; no second owner approval is needed.`;
+        ? "The registrar adapter is connected, but DNS is not pointing to Netlify yet. NXQX will keep reconciling automatically."
+        : `Point ${domain} to the NXQX/Netlify site using your registrar's DNS settings. NXQX will recheck automatically; no second owner approval is needed.`;
 
       const pendingState = await admin.from("client_domains").update({
         automation_state: providerConnected ? "dns_pending" : "action_required",

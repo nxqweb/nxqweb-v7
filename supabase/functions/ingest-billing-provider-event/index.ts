@@ -35,7 +35,7 @@ Deno.serve(async(req)=>{
     if(provider.error||!provider.data)throw new Error("Billing provider is not registered and enabled.");
 
     const link=await admin.from("billing_provider_customer_links").select("client_id,status").eq("provider_key",providerKey).eq("provider_customer_id",providerCustomerId).eq("status","active").maybeSingle();
-    if(link.error||!link.data)throw new Error("Provider customer is not linked to an active NXQ client.");
+    if(link.error||!link.data)throw new Error("Provider customer is not linked to an active NXQX client.");
     const clientId=String(link.data.client_id);
 
     const existing=await admin.from("billing_provider_events").select("id,applied,ignored,ignore_reason").eq("provider_key",providerKey).eq("provider_event_id",providerEventId).maybeSingle();

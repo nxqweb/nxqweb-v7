@@ -60,7 +60,7 @@ export function ClientCommercePortalTab() {
 
       {setupNeedsAttention ? (
         <div className="notice-card">
-          Finish Commerce setup before NXQ prepares the storefront build and migration plan.
+          Finish Commerce setup before NXQX prepares the storefront build and migration plan.
         </div>
       ) : null}
 

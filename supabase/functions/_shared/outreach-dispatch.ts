@@ -1,4 +1,4 @@
-// Outreach delivery orchestration for NXQ sales email.
+// Outreach delivery orchestration for NXQX sales email.
 // Pure orchestration with injected dependencies: no database client, no environment reads, no
 // network except the optional Resend sender whose fetch is injected. Nothing in the repository
 // calls this yet; it becomes active only when a thin Edge function is added and deployed through

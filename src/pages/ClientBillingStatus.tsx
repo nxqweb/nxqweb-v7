@@ -227,7 +227,7 @@ export function ClientBillingStatus() {
                   </article>
                 </div>
                 <p className="subtle">
-                  This add-on amount is not yet part of your billed amount. While NXQ billing is off, nothing here is charged. It will only be added to your actual bill once NXQ turns on live billing, as a separate, reviewed step.
+                  This add-on amount is not yet part of your billed amount. While NXQX billing is off, nothing here is charged. It will only be added to your actual bill once NXQX turns on live billing, as a separate, reviewed step.
                 </p>
               </section>
             ) : null}

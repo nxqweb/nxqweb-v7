@@ -192,7 +192,7 @@ export function OwnerExceptionCenter() {
           <div className="panel-title">
             <ShieldAlert size={24} />
             <div>
-              <h1>NXQ Exception Center</h1>
+              <h1>NXQX Exception Center</h1>
               <p className="subtle">The owner view for things automation could not safely finish on its own.</p>
             </div>
           </div>
@@ -233,7 +233,7 @@ export function OwnerExceptionCenter() {
                 <ShieldAlert size={20} />
                 <div>
                   <h2>Exceptions</h2>
-                  <p className="subtle">Routine retries stay hidden here until NXQ exhausts its safe recovery path.</p>
+                  <p className="subtle">Routine retries stay hidden here until NXQX exhausts its safe recovery path.</p>
                 </div>
               </div>
 
@@ -254,7 +254,7 @@ export function OwnerExceptionCenter() {
                       <p className="subtle">
                         {item.source === "automation" ? "Next step: retry through the normal worker lane; every approval, tenant, provider, and publication check runs again." : null}
                         {item.source === "maintenance" ? "Next step: requeue the original check. The alert stays acknowledged until a worker completes the task successfully." : null}
-                        {item.source === "runtime" ? "NXQ detected an internal dispatch transport outage. Client jobs stay queued without burning retry attempts; use the external staging dispatcher until database networking recovers." : null}
+                        {item.source === "runtime" ? "NXQX detected an internal dispatch transport outage. Client jobs stay queued without burning retry attempts; use the external staging dispatcher until database networking recovers." : null}
                         {item.source === "escalation" ? "Next step: resolve the underlying billing, file-security or infrastructure cause. This view is read-only; the escalation record is unchanged." : null}
                         {item.source === "seo_publish" ? "Next step: check Automation Health for its matching SEO worker job. Production remains unchanged while this run is blocked." : null}
                         {item.source === "change_request" ? "Next step: review the requested risk and missing information. Unsafe or ambiguous changes are never force-published." : null}

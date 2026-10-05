@@ -39,7 +39,7 @@ async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job:
       target_scope_reference: scopeReference,
     } as never);
     if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
-    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQX ${scopeType} or global kill switch.`);
   }
 }
 
@@ -302,7 +302,7 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
   const verifiedPreviewCommitSha = String(previewOutput.verified_preview_commit_sha || "");
   if (previewRes.data?.status !== "completed" || !previewUrl.startsWith("https://") || !verifiedPreviewCommitSha) throw new Error("A verified HTTPS preview bound to an exact commit is required before production.");
   if (!configRes.data?.github_owner || !configRes.data?.github_repo || !configRes.data?.netlify_site_id) throw new Error("Deployment infrastructure is incomplete.");
-  if (!configRes.data.auto_publish_locked) throw new Error("Uncontrolled Netlify auto-publish must remain locked in NXQ metadata.");
+  if (!configRes.data.auto_publish_locked) throw new Error("Uncontrolled Netlify auto-publish must remain locked in NXQX metadata.");
 
   const token = await githubInstallationToken();
   const sourceSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, runRes.data.source_branch, token);
@@ -441,7 +441,7 @@ async function processProductionCheck(admin: AdminClient, job: AutomationJob) {
   const projectUpdate = await admin.from("projects").update({
     stage: "live",
     current_blocker: null,
-    next_step: "NXQ is monitoring and maintaining your live website.",
+    next_step: "NXQX is monitoring and maintaining your live website.",
   }).eq("id", job.project_id).eq("client_id", job.client_id);
   if (projectUpdate.error) throw new Error(projectUpdate.error.message);
 

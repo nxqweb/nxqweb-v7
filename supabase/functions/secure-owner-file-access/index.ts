@@ -36,7 +36,7 @@ Deno.serve(async(req)=>{
 
     const scan=await admin.from("client_file_security_scans").select("status,quarantine_status,released_at").eq("client_file_id",clientFileId).eq("client_id",file.data.client_id).maybeSingle();
     if(scan.error||!scan.data)return response({ok:false,error:"File security verification is not complete."},423,origin);
-    if(scan.data.status!=="clean"||scan.data.quarantine_status!=="released"||!scan.data.released_at)return response({ok:false,error:"File remains restricted by NXQ file security."},423,origin);
+    if(scan.data.status!=="clean"||scan.data.quarantine_status!=="released"||!scan.data.released_at)return response({ok:false,error:"File remains restricted by NXQX file security."},423,origin);
 
     const bucket=String(file.data.bucket_id||"client-files").trim();
     const storagePath=String(file.data.storage_path||"").trim();

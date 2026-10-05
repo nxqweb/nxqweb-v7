@@ -46,10 +46,10 @@ export function ClientLaunchJourneyPage() {
             <div>
               <p className="eyebrow">Clear from setup to launch</p>
               <h1>Your website journey</h1>
-              <p className="subtle">One truthful timeline showing what is complete, what NXQ is handling, and the exact moments when we need you.</p>
+              <p className="subtle">One truthful timeline showing what is complete, what NXQX is handling, and the exact moments when we need you.</p>
             </div>
           </div>
-          <div className="client-control-row"><a className="icon-btn" href="/client/history">NXQ value & history</a><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Portal</a></div>
+          <div className="client-control-row"><a className="icon-btn" href="/client/history">NXQX value & history</a><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Portal</a></div>
         </div>
 
         {error ? <div className="auth-error" role="alert">{error}</div> : null}
@@ -69,7 +69,7 @@ export function ClientLaunchJourneyPage() {
               <div className={`journey-next-action ${journey.next_action.owner === "client" ? "client-action" : "nxq-action"}`}>
                 {journey.next_action.owner === "client" ? <CircleAlert size={19} /> : <ShieldCheck size={19} />}
                 <div>
-                  <span>{journey.next_action.owner === "client" ? "Your next step" : "NXQ is handling this"}</span>
+                  <span>{journey.next_action.owner === "client" ? "Your next step" : "NXQX is handling this"}</span>
                   <strong>{journey.next_action.title}</strong>
                   <p>{journey.next_action.detail}</p>
                 </div>
@@ -101,7 +101,7 @@ export function ClientLaunchJourneyPage() {
             <section className="panel panel-wide">
               <div className="panel-title">
                 <ShieldCheck size={20} />
-                <div><h2>What NXQ needs from you</h2><p className="subtle">If there is no action-required item, you are good—NXQ owns the next step.</p></div>
+                <div><h2>What NXQX needs from you</h2><p className="subtle">If there is no action-required item, you are good—NXQX owns the next step.</p></div>
               </div>
               <div className="journey-requirements">
                 {journey.requirements.map((requirement) => (

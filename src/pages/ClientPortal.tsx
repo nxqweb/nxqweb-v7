@@ -161,7 +161,7 @@ const completedSetupStatuses = [
 function getLatestMoreInfoRequest(notes: string | null | undefined) {
   if (!notes) return "";
 
-  const marker = "NXQ MORE INFO REQUEST";
+  const marker = "NXQX MORE INFO REQUEST";
   const sections = notes.split(marker);
   const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
   const requestedInfoLine = latestSection
@@ -181,7 +181,7 @@ type TargetedMoreInfoRequest = {
 function getLatestTargetedMoreInfoRequest(notes: string | null | undefined): TargetedMoreInfoRequest | null {
   if (!notes) return null;
 
-  const marker = "NXQ TARGETED MORE INFO REQUEST";
+  const marker = "NXQX TARGETED MORE INFO REQUEST";
   const sections = notes.split(marker);
   const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
 
@@ -210,7 +210,7 @@ function parseClientSetupReport(notes: string | null | undefined) {
     return new Map<string, string>();
   }
 
-  const reportOnly = notes.split("NXQ MORE INFO REQUEST")[0] || notes;
+  const reportOnly = notes.split("NXQX MORE INFO REQUEST")[0] || notes;
   const lines = reportOnly.split("\n");
   const fields = new Map<string, string>();
   let activeLabel = "";
@@ -486,7 +486,7 @@ export function ClientPortal() {
       // recipient_kind is filtered explicitly here, not left to RLS alone:
       // client_read_own_notifications only checks client_id ownership, so an
       // owner-facing row about this same client (e.g. a billing freeze
-      // review, worded for NXQ, not the client) would otherwise also match.
+      // review, worded for NXQX, not the client) would otherwise also match.
       const notificationResult = await supabase
         .from("notification_deliveries")
         .select("id,subject,body,priority,created_at")
@@ -971,7 +971,7 @@ export function ClientPortal() {
       }
 
       setSelectedFile(null);
-      setNotice("File uploaded securely. NXQ file security is scanning it before anyone can open it.");
+      setNotice("File uploaded securely. NXQX file security is scanning it before anyone can open it.");
       await loadClientPortalData();
     } catch {
       setErrorMessage("The file upload could not be completed. No client-facing file access was granted.");
@@ -1209,7 +1209,7 @@ export function ClientPortal() {
                   <label className="domain-field"><span>DNS provider</span><input placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS..." value={domainDnsProvider} onChange={(event) => setDomainDnsProvider(event.target.value)} /></label>
                   <label className="domain-field domain-field-wide"><span>Domain notes</span><textarea placeholder="Tell us if this domain already has email, a live website, or special DNS setup." value={domainNotes} onChange={(event) => setDomainNotes(event.target.value)} /></label>
                 </div>
-                <label className="domain-ownership-box"><input checked={domainOwnershipConfirmed} onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)} type="checkbox" /><span>I confirm I purchased and own or control this domain. I keep ownership, renewal responsibility, and registrar access. NXQ-Web only provides DNS instructions, verifies the connection, and monitors SSL; NXQ-Web will never ask for my registrar password or take ownership of the domain.</span></label>
+                <label className="domain-ownership-box"><input checked={domainOwnershipConfirmed} onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)} type="checkbox" /><span>I confirm I purchased and own or control this domain. I keep ownership, renewal responsibility, and registrar access. NXQX-Web only provides DNS instructions, verifies the connection, and monitors SSL; NXQX-Web will never ask for my registrar password or take ownership of the domain.</span></label>
                 <button className="wide-btn" disabled={isSubmittingDomain || !client} onClick={() => void submitDomainRequest()} type="button">{isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}</button>
               </div>
             ) : (

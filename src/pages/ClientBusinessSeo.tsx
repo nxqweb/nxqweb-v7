@@ -37,7 +37,7 @@ export function ClientBusinessSeo(){
   const readyArtifacts=useMemo(()=>artifacts.filter((artifact)=>artifact.status==="ready"||artifact.status==="published").length,[artifacts]);
 
   return <main className="nxq-page"><section className="portal-shell">
-    <div className="panel-title panel-title-row"><div className="panel-title"><Search size={22}/><div><h1>SEO center</h1><p className="subtle">Evidence-based SEO status for your NXQ-managed website.</p></div></div><a className="icon-btn" href="/client/business"><ArrowLeft size={16}/>Business</a></div>
+    <div className="panel-title panel-title-row"><div className="panel-title"><Search size={22}/><div><h1>SEO center</h1><p className="subtle">Evidence-based SEO status for your NXQX-managed website.</p></div></div><a className="icon-btn" href="/client/business"><ArrowLeft size={16}/>Business</a></div>
     {error?<div className="auth-error" role="alert">{error}</div>:null}
     {loading?<div className="empty-state">Loading SEO status...</div>:null}
     {!loading&&verified?<><div className="portal-grid"><section className="panel"><h2>Open issues</h2><div className="status-summary">{open.length}</div></section><section className="panel"><h2>High priority</h2><div className="status-summary">{high}</div></section><section className="panel"><h2>SEO artifacts ready</h2><div className="status-summary">{readyArtifacts}/{artifacts.length}</div></section></div>

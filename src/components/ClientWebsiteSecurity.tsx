@@ -159,7 +159,7 @@ export function ClientWebsiteSecurity() {
         <article className="settings-card">
           <span>Active incidents</span>
           <strong>{loading ? "Loading..." : activeIncidents.toLocaleString("en-US")}</strong>
-          <p>{activeIncidents > 0 ? "NXQ review or repair is required." : "No active incidents are recorded."}</p>
+          <p>{activeIncidents > 0 ? "NXQX review or repair is required." : "No active incidents are recorded."}</p>
         </article>
 
         <article className="settings-card">
@@ -167,7 +167,7 @@ export function ClientWebsiteSecurity() {
           <strong>{loading ? "Loading..." : formatDate(profile?.last_scan_at || null)}</strong>
           <p>
             {activeIncidents > 0
-              ? "NXQ is reviewing the active incident details."
+              ? "NXQX is reviewing the active incident details."
               : "No client-facing scan issue is currently recorded."}
           </p>
         </article>

@@ -1,4 +1,4 @@
-// Rule-based client auto-approval for NXQ. NO AI and no free text are involved in the decision.
+// Rule-based client auto-approval for NXQX. NO AI and no free text are involved in the decision.
 // Pure functions only: no network, no database, no environment reads. Nothing calls this yet.
 // The owner's APPROVE/DENY decision stays the authority until the owner explicitly turns this on;
 // the safe rollout is "shadow" mode (the engine records what it would decide while the owner still

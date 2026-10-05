@@ -256,7 +256,7 @@ export function ClientCommerceRequests() {
             </section>
 
             <section className="panel panel-wide">
-              <div className="panel-title"><MessageSquareText size={20} /><div><h2>Submitted requests</h2><p className="subtle">These are managed by the store owner, not approved by NXQ. A request is not an order and does not authorize payment.</p></div></div>
+              <div className="panel-title"><MessageSquareText size={20} /><div><h2>Submitted requests</h2><p className="subtle">These are managed by the store owner, not approved by NXQX. A request is not an order and does not authorize payment.</p></div></div>
               {requests.length === 0 ? <div className="empty-state">No verified customer requests yet.</div> : null}
               {requests.map((request) => <RequestCard key={request.id} request={request} disabled={saving} onSave={updateRequest} />)}
             </section>

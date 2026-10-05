@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const tutorialSteps = [
   {
-    title: "Welcome to NXQ-Commerce",
+    title: "Welcome to NXQX-Commerce",
     text: "Your Commerce workspace keeps products, images, categories, inventory, orders, customer requests, usage limits, and launch setup in one place.",
     href: "/client/commerce",
     action: "Open dashboard",
@@ -48,7 +48,7 @@ const tutorialSteps = [
   },
   {
     title: "Preview and prepare for launch",
-    text: "Preview shows saved Commerce data without making the store live. NXQ checks policies, shipping, taxes, inventory, storefront content, security, and payment readiness separately before publication.",
+    text: "Preview shows saved Commerce data without making the store live. NXQX checks policies, shipping, taxes, inventory, storefront content, security, and payment readiness separately before publication.",
     href: "/client/commerce/preview",
     action: "Open preview",
   },

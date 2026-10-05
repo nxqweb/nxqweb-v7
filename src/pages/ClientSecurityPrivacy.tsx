@@ -50,7 +50,7 @@ export function ClientSecurityPrivacy() {
 
   async function request(type: "export" | "delete" | "restrict") {
     if (!supabase) return;
-    if (type === "delete" && !window.confirm("Submit an account/data deletion request? NXQ will verify the request before any destructive action.")) return;
+    if (type === "delete" && !window.confirm("Submit an account/data deletion request? NXQX will verify the request before any destructive action.")) return;
 
     setError("");
     setMessage("");
@@ -60,7 +60,7 @@ export function ClientSecurityPrivacy() {
     });
 
     if (result.error) {
-      setError("NXQ could not submit this data request right now. Please try again.");
+      setError("NXQX could not submit this data request right now. Please try again.");
       return;
     }
 
@@ -89,7 +89,7 @@ export function ClientSecurityPrivacy() {
             <ShieldCheck size={22} />
             <div>
               <h1>Security & privacy</h1>
-              <p className="subtle">NXQ ID security activity, trusted credentials, consent state, and data requests.</p>
+              <p className="subtle">NXQX ID security activity, trusted credentials, consent state, and data requests.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/settings"><ArrowLeft size={16} /> Settings</a>
@@ -111,7 +111,7 @@ export function ClientSecurityPrivacy() {
 
           <section className="panel panel-wide">
             <h2>Privacy consent</h2>
-            {consents.length === 0 ? <div className="empty-state">No account-level consent records yet. Visitor analytics consent on managed websites is also kept separate from NXQ account identity.</div> : consents.map((consent) => <div className="owner-message-card" key={consent.id}><strong>{consent.consent_type.replaceAll("_", " ")}</strong><span className="subtle">{consent.status} · policy {consent.policy_version}</span></div>)}
+            {consents.length === 0 ? <div className="empty-state">No account-level consent records yet. Visitor analytics consent on managed websites is also kept separate from NXQX account identity.</div> : consents.map((consent) => <div className="owner-message-card" key={consent.id}><strong>{consent.consent_type.replaceAll("_", " ")}</strong><span className="subtle">{consent.status} · policy {consent.policy_version}</span></div>)}
           </section>
 
           <section className="panel panel-wide">
@@ -129,7 +129,7 @@ export function ClientSecurityPrivacy() {
                   {requestRow.request_type === "export" && requestRow.status === "ready" && requestRow.result ? <button className="icon-btn" type="button" onClick={() => downloadExport(requestRow)}><Download size={15} /> Download export</button> : null}
                 </div>
                 {requestRow.last_error ? <div className="auth-error">This request needs another review. Detailed internal error information is not exposed in the client portal.</div> : null}
-                {requestRow.status === "identity_check" ? <p className="subtle">NXQ is waiting for the required identity re-verification before any destructive action.</p> : null}
+                {requestRow.status === "identity_check" ? <p className="subtle">NXQX is waiting for the required identity re-verification before any destructive action.</p> : null}
               </div>
             ))}
           </section>

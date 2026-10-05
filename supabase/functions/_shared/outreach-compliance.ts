@@ -1,4 +1,4 @@
-// Outreach compliance helpers for NXQ sales email.
+// Outreach compliance helpers for NXQX sales email.
 // Pure functions only: no network, no database, no environment reads, no secrets.
 // They add conservative checks on top of the database rules (channel permissions, suppression,
 // sender identity, owner review). They reduce risk; they do not make outreach legally risk-free.

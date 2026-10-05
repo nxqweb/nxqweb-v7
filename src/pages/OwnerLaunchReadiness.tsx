@@ -111,9 +111,9 @@ export function OwnerLaunchReadiness() {
 
   async function bootstrapRuntime() {
     if (!supabase) return;
-    const requiredConfirmation = "CONFIGURE-NXQ-STAGING-RUNTIME";
+    const requiredConfirmation = "CONFIGURE-NXQX-STAGING-RUNTIME";
     const confirmation = window.prompt(
-      `Configure protected staging runtime routes now?\n\nNXQ will derive this staging project's Edge Function URLs and copy the already-configured internal worker token into Supabase Vault. It will not display secret values, deploy functions, create client infrastructure, touch billing, or change production.\n\nType ${requiredConfirmation} exactly to continue.`
+      `Configure protected staging runtime routes now?\n\nNXQX will derive this staging project's Edge Function URLs and copy the already-configured internal worker token into Supabase Vault. It will not display secret values, deploy functions, create client infrastructure, touch billing, or change production.\n\nType ${requiredConfirmation} exactly to continue.`
     );
     if (confirmation === null) return;
     if (confirmation !== requiredConfirmation) {
@@ -145,9 +145,9 @@ export function OwnerLaunchReadiness() {
 
   async function approveLaunchReadiness() {
     if (!supabase) return;
-    const requiredConfirmation = "APPROVE-NXQ-AUTONOMOUS-LAUNCH";
+    const requiredConfirmation = "APPROVE-NXQX-AUTONOMOUS-LAUNCH";
     const confirmation = window.prompt(
-      `Record your final NXQ autonomous-launch readiness approval?\n\nThis records the human governance signoff only. It does not merge code, deploy production, change domains, create billing, or contact customers. If any required readiness check later regresses, this approval is automatically invalidated.\n\nType ${requiredConfirmation} exactly to continue.`
+      `Record your final NXQX autonomous-launch readiness approval?\n\nThis records the human governance signoff only. It does not merge code, deploy production, change domains, create billing, or contact customers. If any required readiness check later regresses, this approval is automatically invalidated.\n\nType ${requiredConfirmation} exactly to continue.`
     );
     if (confirmation === null) return;
     if (confirmation !== requiredConfirmation) {
@@ -214,7 +214,7 @@ export function OwnerLaunchReadiness() {
               <KeyRound size={20} />
               <div>
                 <h2>Future provider plug-in checklist</h2>
-                <p className="subtle">Everything NXQ can safely prepare is already separated from the real account credentials. When the provider accounts are available, add only the named values directly to protected Supabase staging secrets.</p>
+                <p className="subtle">Everything NXQX can safely prepare is already separated from the real account credentials. When the provider accounts are available, add only the named values directly to protected Supabase staging secrets.</p>
               </div>
             </div>
             <a className="icon-btn" href="/owner/providers">Open provider health</a>
@@ -230,7 +230,7 @@ export function OwnerLaunchReadiness() {
                   </div>
                   <span className="status-summary">add later</span>
                 </div>
-                <p><strong>NXQ prepares through the guarded staging action:</strong></p>
+                <p><strong>NXQX prepares through the guarded staging action:</strong></p>
                 <ul>
                   {group.preparedSecretNames.map((secretName) => <li key={secretName}><code>{secretName}</code></li>)}
                 </ul>
@@ -267,7 +267,7 @@ export function OwnerLaunchReadiness() {
               <ServerCog size={20} />
               <div>
                 <h2>Staging runtime routes</h2>
-                <p className="subtle">One-time setup after migrations, Edge functions, and provider secret names are present. NXQ writes internal scheduler routes to Vault without returning protected values.</p>
+                <p className="subtle">One-time setup after migrations, Edge functions, and provider secret names are present. NXQX writes internal scheduler routes to Vault without returning protected values.</p>
               </div>
             </div>
             <button className="icon-btn" type="button" disabled={bootstrappingRuntime} onClick={() => void bootstrapRuntime()}>

@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       return response({ ok: false, error: "File security verification is not complete." }, 423, origin);
     }
     if (scan.data.status !== "clean" || scan.data.quarantine_status !== "released" || !scan.data.released_at) {
-      return response({ ok: false, error: "File remains restricted by NXQ file security." }, 423, origin);
+      return response({ ok: false, error: "File remains restricted by NXQX file security." }, 423, origin);
     }
 
     const bucket = String(file.data.bucket_id || "").trim();

@@ -209,7 +209,7 @@ Deno.serve(async (request) => {
     const githubHeaders: Record<string, string> = {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "NXQ-Web-Connection-Verifier",
+      "User-Agent": "NXQX-Web-Connection-Verifier",
     };
 
     if (githubToken) {
@@ -280,7 +280,7 @@ Deno.serve(async (request) => {
         {
           headers: {
             Authorization: `Bearer ${netlifyToken}`,
-            "User-Agent": "NXQ-Web-Connection-Verifier",
+            "User-Agent": "NXQX-Web-Connection-Verifier",
           },
         }
       );

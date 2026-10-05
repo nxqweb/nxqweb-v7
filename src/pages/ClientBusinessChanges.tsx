@@ -123,7 +123,7 @@ export function ClientBusinessChanges() {
       return;
     }
 
-    setMessage("Change request submitted. NXQ will route it through the protected review, build, and preview path before any publish action.");
+    setMessage("Change request submitted. NXQX will route it through the protected review, build, and preview path before any publish action.");
     setTitle("");
     setDescription("");
     setPhone("");
@@ -140,7 +140,7 @@ export function ClientBusinessChanges() {
             <MessageSquarePlus size={22} />
             <div>
               <h1>Website changes</h1>
-              <p className="subtle">Request updates without emailing back and forth. NXQ routes changes through a protected build, review, and preview path.</p>
+              <p className="subtle">Request updates without emailing back and forth. NXQX routes changes through a protected build, review, and preview path.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/business"><ArrowLeft size={16} /> Business</a>

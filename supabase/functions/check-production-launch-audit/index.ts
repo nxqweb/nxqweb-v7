@@ -58,7 +58,7 @@ async function fetchText(url: string) {
       response = await fetch(currentUrl, {
         method: "GET",
         redirect: "manual",
-        headers: { "User-Agent": "NXQ-Web-Production-Launch-Audit" },
+        headers: { "User-Agent": "NXQX-Web-Production-Launch-Audit" },
         signal: controller.signal,
       });
       if (![301, 302, 303, 307, 308].includes(response.status)) break;
@@ -271,7 +271,7 @@ Deno.serve(async (request) => {
             Authorization: `Bearer ${githubToken}`,
             Accept: "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "NXQ-Web-Production-Launch-Audit",
+            "User-Agent": "NXQX-Web-Production-Launch-Audit",
           },
         }
       );

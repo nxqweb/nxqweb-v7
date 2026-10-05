@@ -35,14 +35,14 @@ type FamilyFoundation = {
 type FamilyResponse = { families: FamilyFoundation[]; generated_at: string };
 
 const fallbackFamilies: FamilyFoundation[] = [
-  ["business", "NXQ-Business", "Premium managed websites for service businesses and growing brands.", "available", "qa", "safe/family/business", "business-v1", "build-business-website", ["website", "leads", "locations", "changes", "analytics", "seo", "reports"]],
-  ["booking", "NXQ-Booking", "Appointments, availability, reminders, cancellations, and scheduling workflows.", "planned", "schema_design", "safe/family/booking", "booking-v1-blueprint", null, ["booking_setup", "services", "staff", "availability", "appointment_requests", "reminders"]],
-  ["commerce", "NXQ-Commerce", "Storefronts, catalogs, inventory, protected checkout, orders, and usage controls.", "planned", "qa", "safe/family/commerce", "commerce-v1", "provision-storefront", ["setup", "catalog", "products", "images", "inventory", "orders", "requests", "preview", "usage"]],
-  ["menu", "NXQ-Menu", "Digital menus, specials, hours, locations, and ordering integrations.", "planned", "scaffolded", "safe/family/menu", null, null, ["menu_setup", "sections", "items", "specials", "hours", "locations"]],
-  ["property", "NXQ-Property", "Searchable listings, agents, private inquiries, and inventory feeds.", "planned", "scaffolded", "safe/family/property", null, null, ["property_setup", "listings", "agents", "inquiries", "feeds"]],
-  ["multi-location", "NXQ-Multi-Location", "Location-specific content, teams, reporting, and local SEO under one system.", "planned", "schema_design", "safe/family/multi-location", null, null, ["locations", "regional_content", "local_seo", "teams", "reports"]],
-  ["membership", "NXQ-Membership", "Member accounts, access rules, renewals, dashboards, and gated content.", "planned", "scaffolded", "safe/family/membership", null, null, ["membership_setup", "levels", "members", "access", "renewals", "content"]],
-  ["enterprise-systems", "NXQ-Enterprise Systems", "Custom permissions, integrations, identity, departments, and infrastructure.", "private", "scaffolded", "safe/family/enterprise-systems", null, null, ["organizations", "roles", "integrations", "identity", "audit"]],
+  ["business", "NXQX-Business", "Premium managed websites for service businesses and growing brands.", "available", "qa", "safe/family/business", "business-v1", "build-business-website", ["website", "leads", "locations", "changes", "analytics", "seo", "reports"]],
+  ["booking", "NXQX-Booking", "Appointments, availability, reminders, cancellations, and scheduling workflows.", "planned", "schema_design", "safe/family/booking", "booking-v1-blueprint", null, ["booking_setup", "services", "staff", "availability", "appointment_requests", "reminders"]],
+  ["commerce", "NXQX-Commerce", "Storefronts, catalogs, inventory, protected checkout, orders, and usage controls.", "planned", "qa", "safe/family/commerce", "commerce-v1", "provision-storefront", ["setup", "catalog", "products", "images", "inventory", "orders", "requests", "preview", "usage"]],
+  ["menu", "NXQX-Menu", "Digital menus, specials, hours, locations, and ordering integrations.", "planned", "scaffolded", "safe/family/menu", null, null, ["menu_setup", "sections", "items", "specials", "hours", "locations"]],
+  ["property", "NXQX-Property", "Searchable listings, agents, private inquiries, and inventory feeds.", "planned", "scaffolded", "safe/family/property", null, null, ["property_setup", "listings", "agents", "inquiries", "feeds"]],
+  ["multi-location", "NXQX-Multi-Location", "Location-specific content, teams, reporting, and local SEO under one system.", "planned", "schema_design", "safe/family/multi-location", null, null, ["locations", "regional_content", "local_seo", "teams", "reports"]],
+  ["membership", "NXQX-Membership", "Member accounts, access rules, renewals, dashboards, and gated content.", "planned", "scaffolded", "safe/family/membership", null, null, ["membership_setup", "levels", "members", "access", "renewals", "content"]],
+  ["enterprise-systems", "NXQX-Enterprise Systems", "Custom permissions, integrations, identity, departments, and infrastructure.", "private", "scaffolded", "safe/family/enterprise-systems", null, null, ["organizations", "roles", "integrations", "identity", "audit"]],
 ].map(([slug, name, description, publicStatus, foundationStatus, branch, template, worker, modules]) => ({
   slug: slug as string,
   name: name as string,
@@ -116,7 +116,7 @@ export function OwnerProductFamilies() {
             <Building2 size={24} />
             <div>
               <h1>Product family readiness</h1>
-              <p className="subtle">One premium control surface for every NXQ service line, its evidence, and its next safe gate.</p>
+              <p className="subtle">One premium control surface for every NXQX service line, its evidence, and its next safe gate.</p>
             </div>
           </div>
           <div className="client-control-row">
@@ -166,7 +166,7 @@ export function OwnerProductFamilies() {
                 </div>
                 <p className="subtle">Protected branch: {family.source_branch_prefix || "Pending"}<br />Template: {family.template_key || "Pending"} · Worker: {family.worker_key || "Pending"}</p>
                 {href ? (
-                  <a className="wide-btn" href={href}>Open {family.name.replace("NXQ ", "")} workspace</a>
+                  <a className="wide-btn" href={href}>Open {family.name.replace("NXQX ", "")} workspace</a>
                 ) : (
                   <button className="wide-btn" type="button" disabled><LockKeyhole size={16} /> Launch locked</button>
                 )}

@@ -50,9 +50,9 @@ Deno.serve(async(req)=>{
 
     const admin=createClient(secret("SUPABASE_URL"),secret("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false}});
     const link=await admin.from("billing_provider_customer_links").select("client_id,status").eq("provider_key","stripe").eq("provider_customer_id",providerCustomerId).eq("status","active").maybeSingle();
-    if(link.error||!link.data)throw new Error("Stripe customer is not linked to an active NXQ client.");
+    if(link.error||!link.data)throw new Error("Stripe customer is not linked to an active NXQX client.");
     const client=await admin.from("clients").select("id,qa_only").eq("id",link.data.client_id).single();
-    if(client.error||!client.data)throw new Error("Linked NXQ client was not found.");
+    if(client.error||!client.data)throw new Error("Linked NXQX client was not found.");
     if(client.data.qa_only)throw new Error("Billing artifacts are forbidden for QA-only clients.");
 
     const existing=await admin.from("billing_provider_events").select("id").eq("provider_key","stripe").eq("provider_event_id",eventId).maybeSingle();

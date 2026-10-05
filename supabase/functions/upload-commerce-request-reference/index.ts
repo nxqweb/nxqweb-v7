@@ -303,7 +303,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
   try {
     const client = await admin.from("clients").insert({
       business_name: fixtureTag,
-      contact_name: "NXQ staging smoke test",
+      contact_name: "NXQX staging smoke test",
       contact_email: `${runId}@qa.invalid`,
       business_type: "qa_only_commerce_reference",
       status: "archived",
@@ -317,7 +317,7 @@ async function runStagingSmokeTest(admin: SupabaseClient, includeAiHandoff = fal
     const requestRecord = await admin.from("commerce_customer_requests").insert({
       client_id: clientId,
       request_type: "general_suggestion",
-      customer_name: "NXQ staging smoke test",
+      customer_name: "NXQX staging smoke test",
       customer_email: `${runId}@qa.invalid`,
       preferred_contact_method: "email",
       product_name: "Disposable reference-image verification",

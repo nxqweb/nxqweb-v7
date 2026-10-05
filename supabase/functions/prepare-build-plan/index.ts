@@ -93,7 +93,7 @@ function parseSignedSetupReport(value: unknown) {
   const fields = new Map<string, string>();
   if (!notes.includes("NXQ WEB WEBSITE SETUP REPORT")) return fields;
 
-  const reportOnly = notes.split("NXQ MORE INFO REQUEST")[0] || notes;
+  const reportOnly = notes.split("NXQX MORE INFO REQUEST")[0] || notes;
   let activeLabel = "";
   let activeValue: string[] = [];
   const save = () => {
@@ -483,7 +483,7 @@ Deno.serve(async (request) => {
       buildPlan = existingPlan;
       adapterReused = true;
     } else {
-      // Contact details stay in NXQ's deterministic merge and are intentionally excluded from the AI adapter payload.
+      // Contact details stay in NXQX's deterministic merge and are intentionally excluded from the AI adapter payload.
       const aiInput = {
         business_name: businessName,
         business_type: businessType,
@@ -557,14 +557,14 @@ Deno.serve(async (request) => {
     const projectSave = await admin.from("projects").update({
       build_plan: buildPlan,
       current_blocker: null,
-      next_step: "NXQ is preparing the website workspace and first build.",
+      next_step: "NXQX is preparing the website workspace and first build.",
     }).eq("id", projectId).eq("client_id", job.client_id).select("id").single();
     if (projectSave.error) throw new Error(projectSave.error.message);
 
     const onboardingSave = await admin.from("client_onboarding_state").update({
       status: "completed",
       missing_fields: [],
-      next_step: "NXQ is building your website.",
+      next_step: "NXQX is building your website.",
     }).eq("client_id", job.client_id);
     if (onboardingSave.error) throw new Error(onboardingSave.error.message);
 

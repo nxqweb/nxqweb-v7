@@ -192,10 +192,10 @@ export function OwnerCommandCenter() {
   if (!host) return null;
 
   return createPortal(
-    <section className="owner-command-center" aria-label="NXQ owner command center">
+    <section className="owner-command-center" aria-label="NXQX owner command center">
       <div className="owner-command-center-head">
         <div aria-live="polite">
-          <span className="owner-command-kicker">NXQ command center</span>
+          <span className="owner-command-kicker">NXQX command center</span>
           <h2>
             {hasUrgentWork
               ? "Your attention queue"
@@ -207,10 +207,10 @@ export function OwnerCommandCenter() {
             {loading
               ? "Loading the current owner workload..."
               : hasUrgentWork
-                ? "NXQ keeps routine automation out of your way and surfaces only the decisions, messages, and exceptions that need you."
+                ? "NXQX keeps routine automation out of your way and surfaces only the decisions, messages, and exceptions that need you."
                 : hasUnknownOperationalData
-                  ? "One or more operational sources could not be verified, so NXQ is showing those values as unavailable instead of assuming everything is healthy."
-                  : "No immediate owner action is surfaced right now. NXQ can keep handling the normal workflow."}
+                  ? "One or more operational sources could not be verified, so NXQX is showing those values as unavailable instead of assuming everything is healthy."
+                  : "No immediate owner action is surfaced right now. NXQX can keep handling the normal workflow."}
           </p>
         </div>
         <button className="icon-btn owner-command-refresh" type="button" onClick={() => void load()} disabled={loading}>

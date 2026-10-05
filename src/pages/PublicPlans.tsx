@@ -13,11 +13,11 @@ export function PublicPlans() {
   return (
     <main className="px">
       <header className="px-nav" aria-label="Primary">
-        <a className="px-brand" href="/" aria-label="NXQX NXQ-Web home">
+        <a className="px-brand" href="/" aria-label="NXQX NXQX-Web home">
           <span className="px-mark">N</span>
           <span className="px-brandtext">
             <strong>NXQX</strong>
-            <span>NXQ-Web systems</span>
+            <span>NXQX-Web systems</span>
           </span>
         </a>
         <nav className="px-links" aria-label="Main navigation">
@@ -69,14 +69,14 @@ export function PublicPlans() {
       <div className="px-wrap">
         <div className="px-cta-band" data-px-reveal>
           <Clock3 size={26} />
-          <h2>More NXQ-Web systems are on the way.</h2>
+          <h2>More NXQX-Web systems are on the way.</h2>
           <p className="px-sub">Planned families stay visible so you can see what is coming, but signup stays closed until each experience is ready for clients.</p>
           <p className="px-sub">
-            Coming next: NXQ-Booking, NXQ-Commerce, NXQ-Menu, NXQ-Property, NXQ-Multi-Location, NXQ-Membership, and NXQ-Enterprise.
+            Coming next: NXQX-Booking, NXQX-Commerce, NXQX-Menu, NXQX-Property, NXQX-Multi-Location, NXQX-Membership, and NXQX-Enterprise.
           </p>
           <div className="px-btns">
             <a className="px-btn px-gold" data-px-wipe href="/portal/signup?family=business&tier=growth">
-              Start NXQ-Business <ArrowRight size={16} />
+              Start NXQX-Business <ArrowRight size={16} />
             </a>
           </div>
         </div>
@@ -84,7 +84,7 @@ export function PublicPlans() {
 
       <footer>
         <div className="px-wrap px-foot">
-          <span>NXQX · NXQ-Web</span>
+          <span>NXQX · NXQX-Web</span>
           <span>Premium managed website systems</span>
         </div>
       </footer>

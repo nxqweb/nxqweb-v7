@@ -28,7 +28,7 @@ check("/owner/login redirects to the shared sign-in", /path === "\/owner\/login"
 const guard = read("src/components/OwnerProtectedRoute.tsx");
 check("no session -> redirect to /portal/login", /if \(!session\) \{\s*window\.location\.replace\("\/portal\/login"\);\s*return;/.test(guard));
 check("owner access is decided by an owner_users row for the signed-in user", guard.includes('.from("owner_users")') && guard.includes('.eq("auth_user_id", session.user.id)'));
-check("a query error or a missing owner row denies access", guard.includes("setIsOwner(false)") && guard.includes("not approved as an NXQ owner"));
+check("a query error or a missing owner row denies access", guard.includes("setIsOwner(false)") && guard.includes("not approved as an NXQX owner"));
 check("access is granted only after an owner row is found", /if \(!ownerResult\.data\) \{[\s\S]*?return;\s*\}\s*setIsOwner\(true\)/.test(guard));
 check("the owner guard does not read billing, plan or payment state (billing cannot lock the owner out)", !/billing|subscription|payment|plan_/i.test(guard));
 

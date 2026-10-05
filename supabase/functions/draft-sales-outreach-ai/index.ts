@@ -9,7 +9,7 @@ function optional(name: string) { return Deno.env.get(name)?.trim() || ""; }
 function text(value: unknown, max: number) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 function deterministic(name: string, city: string, findings: string[]) {
   const observation = findings[0] || "I could not find a clear, mobile-friendly path for customers to request service";
-  return { subject: `A website idea for ${name}`, body: `Hi ${name} team,\n\nI reviewed the public information available for your business${city ? ` in ${city}` : ""}. ${observation}.\n\nNXQ-Web, a branch of NXQX, builds and manages professional small-business websites, including the setup, updates, hosting, and lead-ready contact experience. If improving that part of your business is a priority, I can send a short plan based only on the services and facts you approve.\n\nWould you like me to send it?`, ai_used: false };
+  return { subject: `A website idea for ${name}`, body: `Hi ${name} team,\n\nI reviewed the public information available for your business${city ? ` in ${city}` : ""}. ${observation}.\n\nNXQX-Web, a branch of NXQX, builds and manages professional small-business websites, including the setup, updates, hosting, and lead-ready contact experience. If improving that part of your business is a priority, I can send a short plan based only on the services and facts you approve.\n\nWould you like me to send it?`, ai_used: false };
 }
 
 Deno.serve(async (req) => {
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
       if (costReservation.error || costReservation.data?.allowed !== true) {
         return response({ ok: false, blocked: true, error: "AI outreach drafting is blocked by the protected platform cost budget." }, 409);
       }
-      const prompt = { task: "draft_truthful_small_business_outreach", rules: ["Use only supplied facts.", "Do not claim guaranteed results.", "Describe NXQ as a premium done-for-you website service, not an AI product.", "Ask one low-pressure question.", "No markdown."], prospect: { business_name: prospect.data.business_name, niche: prospect.data.niche_key, city: prospect.data.city, state: prospect.data.state_region, website: prospect.data.website_url, factual_findings: findings } };
+      const prompt = { task: "draft_truthful_small_business_outreach", rules: ["Use only supplied facts.", "Do not claim guaranteed results.", "Describe NXQX as a premium done-for-you website service, not an AI product.", "Ask one low-pressure question.", "No markdown."], prospect: { business_name: prospect.data.business_name, niche: prospect.data.niche_key, city: prospect.data.city, state: prospect.data.state_region, website: prospect.data.website_url, factual_findings: findings } };
       const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 12000);
       try {
         const ai = await fetch(safeEndpoint, { method: "POST", redirect: "error", signal: controller.signal, headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiToken}` }, body: JSON.stringify({ model, store: false, input: JSON.stringify(prompt), text: { format: { type: "json_schema", name: "nxq_outreach_draft", strict: true, schema: { type: "object", properties: { subject: { type: "string" }, body: { type: "string" } }, required: ["subject", "body"], additionalProperties: false } } }, max_output_tokens: 700 }) });

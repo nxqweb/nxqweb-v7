@@ -37,7 +37,7 @@ async function assertProviderMutationAllowed(admin: MutationGuardRpcClient, job:
       target_scope_reference: scopeReference,
     } as never);
     if (allowed.error) throw new Error(`Automation kill-switch check failed for ${scopeType}: ${allowed.error.message}`);
-    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQ ${scopeType} or global kill switch.`);
+    if (allowed.data !== true) throw new Error(`Automation is paused by an NXQX ${scopeType} or global kill switch.`);
   }
 }
 
@@ -230,7 +230,7 @@ async function ensureRepository(
     body: JSON.stringify({
       owner,
       name: repositoryName,
-      description: `${businessName} ${familySlug} website managed by NXQ-Web`,
+      description: `${businessName} ${familySlug} website managed by NXQX-Web`,
       include_all_branches: false,
       private: true,
     }),

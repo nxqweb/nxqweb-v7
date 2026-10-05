@@ -96,7 +96,7 @@ export function OwnerFiles() {
     const scan = scanByFileId.get(file.id);
     if (!isReleased(scan)) {
       const label = scan ? `${scan.status}/${scan.quarantine_status}` : "scan pending";
-      setErrorMessage(`Access to ${file.file_name} is blocked until NXQ file security releases it clean (${label}).`);
+      setErrorMessage(`Access to ${file.file_name} is blocked until NXQX file security releases it clean (${label}).`);
       return null;
     }
     const result = await supabase.functions.invoke("secure-owner-file-access", {
@@ -147,7 +147,7 @@ export function OwnerFiles() {
 
   return (
     <main className="nxq-page"><section className="portal-shell">
-      <div className="panel-title panel-title-row"><div className="panel-title"><FileText size={22}/><div><h1>Client files</h1><p className="subtle">Private client files stay quarantined until NXQ file security verifies them clean.</p></div></div>
+      <div className="panel-title panel-title-row"><div className="panel-title"><FileText size={22}/><div><h1>Client files</h1><p className="subtle">Private client files stay quarantined until NXQX file security verifies them clean.</p></div></div>
         <div className="client-control-row"><a className="icon-btn" href="/owner"><ArrowLeft size={16}/>Owner portal</a><a className="icon-btn" href="/owner/deployments"><Rocket size={16}/>Deployments</a><a className="icon-btn" href="/owner/preview-requests"><ShieldCheck size={16}/>Preview requests</a><button className="icon-btn" onClick={() => void loadFiles()} type="button"><RefreshCcw size={16}/>Refresh</button></div>
       </div>
       {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}

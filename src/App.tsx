@@ -170,7 +170,7 @@ function App() {
   return (
     <>
       {variant ? <PremiumBackdrop variant={variant} /> : null}
-      <div id="main-content" tabIndex={-1}><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQ…</div></main>}><AppRoutes /></Suspense></div>
+      <div id="main-content" tabIndex={-1}><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQX…</div></main>}><AppRoutes /></Suspense></div>
     </>
   );
 }

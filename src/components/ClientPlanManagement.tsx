@@ -146,7 +146,7 @@ export function ClientPlanManagement() {
     const loadedPlan: CurrentPlan = {
       clientId: clientResult.data.id,
       familySlug,
-      familyName: familyResult.data?.name || "NXQ-Business",
+      familyName: familyResult.data?.name || "NXQX-Business",
       tierKey,
       tierName: tierResult.data?.name || "Starter",
       monthlyPrice,
@@ -209,7 +209,7 @@ export function ClientPlanManagement() {
       rows.map((row) => ({
         ...row,
         currentPlanLabel: `${
-          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQ-Business"
+          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQX-Business"
         } · ${
           (row.current_product_tier_id && tierMap.get(row.current_product_tier_id)) || "Starter"
         }`,
@@ -270,7 +270,7 @@ export function ClientPlanManagement() {
       <div className="panel-title plan-management-heading">
         <ArrowRightLeft size={20} />
         <div>
-          <span className="plan-management-kicker">Your NXQ-Web service</span>
+          <span className="plan-management-kicker">Your NXQX-Web service</span>
           <h2>Plan & website upgrades</h2>
           <p className="subtle">Compare your current plan with a requested change before sending anything for review.</p>
         </div>
@@ -307,7 +307,7 @@ export function ClientPlanManagement() {
               <div>
                 <strong>Owner review is already in progress</strong>
                 <p>{pendingRequest.currentPlanLabel} → {pendingRequest.requestedPlanLabel}</p>
-                <small>Requested {formatDateTime(pendingRequest.created_at)}. Your current plan stays active until NXQ approves the change.</small>
+                <small>Requested {formatDateTime(pendingRequest.created_at)}. Your current plan stays active until NXQX approves the change.</small>
               </div>
             </div>
           ) : null}
@@ -353,7 +353,7 @@ export function ClientPlanManagement() {
               <div className="panel-title">
                 <BadgeDollarSign size={18} />
                 <div>
-                  <span className="plan-management-kicker">What you are asking NXQ to review</span>
+                  <span className="plan-management-kicker">What you are asking NXQX to review</span>
                   <strong>{selectedFamily.name} · {selectedTier.name}</strong>
                   <p>{selectedTier.priceLabel}</p>
                 </div>
@@ -365,7 +365,7 @@ export function ClientPlanManagement() {
               </div>
               <div className="plan-review-boundary">
                 <ShieldCheck size={18} />
-                <p>Submitting this does not change billing, features, or your website. NXQ reviews pricing, scope, and any one-time website change fee first.</p>
+                <p>Submitting this does not change billing, features, or your website. NXQX reviews pricing, scope, and any one-time website change fee first.</p>
               </div>
             </article>
 
@@ -377,7 +377,7 @@ export function ClientPlanManagement() {
               id="plan-change-note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Tell NXQ what you want to add, remove, or improve."
+              placeholder="Tell NXQX what you want to add, remove, or improve."
               rows={4}
               disabled={hasPendingRequest}
             />
@@ -429,7 +429,7 @@ export function ClientPlanManagement() {
                       <p>One-time website change fee: {formatMoney(Number(request.one_time_change_fee))}</p>
                     ) : null}
                     {request.client_note ? <p>Client request: {request.client_note}</p> : null}
-                    {request.owner_note ? <p className="recommendation">NXQ response: {request.owner_note}</p> : null}
+                    {request.owner_note ? <p className="recommendation">NXQX response: {request.owner_note}</p> : null}
                   </article>
                 ))}
               </div>

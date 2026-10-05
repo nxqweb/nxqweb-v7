@@ -127,7 +127,7 @@ function classificationSchema() {
 
 function providerInstructions() {
   return [
-    "You are NXQ-Web's conservative website-change classifier.",
+    "You are NXQX-Web's conservative website-change classifier.",
     "Return only the requested structured result. Never include markdown, links, code, tool calls, or secrets.",
     `Allowed patch keys: ${[...supportedPatchKeys].join(", ")}.`,
     "Use safe_patch only when the whole request is a low-risk, reversible content update, patch_json is a JSON object containing only allowed keys, and confidence is at least 0.90.",
@@ -268,7 +268,7 @@ Deno.serve(async (request) => {
       result = {
         route: "owner_review",
         confidence: 1,
-        reason: `NXQ capability policy requires owner review before this request can continue: ${capabilityCheck.clientSafeSummary}`,
+        reason: `NXQX capability policy requires owner review before this request can continue: ${capabilityCheck.clientSafeSummary}`,
       };
     }
     else if (deterministic) result = deterministic;
@@ -276,7 +276,7 @@ Deno.serve(async (request) => {
       result = {
         route: "owner_review",
         confidence: 1,
-        reason: "External AI classification is unavailable in staging, so NXQ safely routed this request to owner review.",
+        reason: "External AI classification is unavailable in staging, so NXQX safely routed this request to owner review.",
       };
     }
     else {
@@ -315,17 +315,17 @@ Deno.serve(async (request) => {
     if (result.route === "safe_patch") {
       const patch = validatePatch(result.patch);
       if (result.confidence < 0.9 || !patch) {
-        await admin.from("website_change_requests").update({ status: "blocked", last_error: "Classifier suggested automation but confidence/patch validation did not meet NXQ safety rules.", automation_plan: { route: "owner_review", ...evidence } }).eq("id", changeId).eq("client_id", job.client_id);
+        await admin.from("website_change_requests").update({ status: "blocked", last_error: "Classifier suggested automation but confidence/patch validation did not meet NXQX safety rules.", automation_plan: { route: "owner_review", ...evidence } }).eq("id", changeId).eq("client_id", job.client_id);
       } else {
         const update = await admin.from("website_change_requests").update({ status: "submitted", risk_level: "low", requested_payload: { patch }, last_error: null, automation_plan: { route: "classifier_to_structured_edge", source: deterministic ? "deterministic_classifier" : "ai_classifier", ...evidence } }).eq("id", changeId).eq("client_id", job.client_id);
         if (update.error) throw new Error(`Safe classification update failed: ${update.error.message}`);
       }
     } else if (result.route === "needs_info") {
-      const question = result.question || "NXQ needs a little more information before this change can be completed safely.";
+      const question = result.question || "NXQX needs a little more information before this change can be completed safely.";
       const update = await admin.from("website_change_requests").update({ status: "needs_info", last_error: null, automation_plan: { route: "needs_info", question, ...evidence } }).eq("id", changeId).eq("client_id", job.client_id);
       if (update.error) throw new Error(`Needs-info update failed: ${update.error.message}`);
     } else {
-      const reason = result.reason || "NXQ requires owner review before this change can continue safely.";
+      const reason = result.reason || "NXQX requires owner review before this change can continue safely.";
       const update = await admin.from("website_change_requests").update({ status: "blocked", last_error: reason, automation_plan: { route: "owner_review", ...evidence } }).eq("id", changeId).eq("client_id", job.client_id);
       if (update.error) throw new Error(`Owner-review update failed: ${update.error.message}`);
     }

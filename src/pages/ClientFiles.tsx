@@ -127,7 +127,7 @@ export function ClientFiles() {
 
     // Keep these explicit checks aligned with the protected file-access contract.
     if (file.scan_status!=="clean" || file.quarantine_status!=="released") {
-      setError("This file is still restricted by NXQ file security and cannot be opened or downloaded yet.");
+      setError("This file is still restricted by NXQX file security and cannot be opened or downloaded yet.");
       return null;
     }
 
@@ -181,7 +181,7 @@ export function ClientFiles() {
             <div>
               <h1>Your files</h1>
               <p className="subtle">
-                Private client files. NXQ keeps new uploads restricted until file-security scanning releases them.
+                Private client files. NXQX keeps new uploads restricted until file-security scanning releases them.
               </p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export function ClientFiles() {
 
                     {!released ? (
                       <p className="subtle" style={{ marginTop: ".65rem" }}>
-                        Open/download stays disabled until NXQ receives a clean scanner result.
+                        Open/download stays disabled until NXQX receives a clean scanner result.
                       </p>
                     ) : null}
                   </article>

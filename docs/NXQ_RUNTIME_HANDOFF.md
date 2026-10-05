@@ -10,6 +10,41 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
+
+**Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
+saved locally as `backup/local-e8c9594` (local only, never pushed; holds ~50 older commits incl. a "read-only staging migration
+history" workflow step that is NOT on origin — cherry-pick only if wanted) and the working branch was reset to `origin` (`a6d1e26`) with
+the owner's explicit approval ("Option A"). Always verify with `git fetch` + `git ls-remote` before work.
+
+**Owner decision (legal):** every customer-facing "NXQ" brand name becomes **NXQX** (parent NXQX; branch **NXQX-Web**; products
+**NXQX-Business/Booking/Commerce/Menu/Property/Multi-Location/Membership/Enterprise Systems**). This supersedes the old "NXQ-*"
+branch naming in `scripts/validate-nxqx-brand-contract.mjs` (updated). Not legal advice; owner will confirm with a lawyer.
+
+**Done (code only, local checks green, NOT published to Netlify):** visible brand text renamed in `src/`, `index.html`, `templates/`,
+`README.md`, Edge-function copy (`supabase/functions/**`), and `docs/drafts/*.md`. The built bundle has 0 visible "NXQ" and 265 "NXQX".
+**Deliberately NOT renamed (breaking/real identifiers):** DB tables/columns/RPCs (`nxq_*`), env/secret names (`NXQ_SCANII_*` etc.),
+CSS vars/data-attributes (`--nxq-*`, `data-nxq-theme`), workflows, applied migrations, the setup-evidence marker
+`NXQ WEB WEBSITE SETUP REPORT` (stored data code matches), the typed confirmation `CONFIGURE-NXQ-STAGING-RUNTIME`, and the real mailbox
+`NXQweb@protonmail.com`. Other remote branches (47) were NOT touched (only the designated branch may be pushed).
+
+**Still shows "NXQ" until applied (gated):** DB-sourced display names — `product_families.name`, `nxq_products.product_name`, outreach
+sender names — via drafted `docs/drafts/migrations/04_nxqx_display_names.sql` (needs owner approval + staged apply). Edge-function copy
+changes also need a deploy to take effect (gated; `deploy_functions` or scoped actions).
+
+**Checks:** eslint 0, `tsc -b` 0, build OK, 26/27 local test scripts pass (only `test:local-full-schema` fails: no Postgres server in this
+container — environment, unchanged), migration integrity 224/224.
+
+**Commerce launch (client waiting) — findings:** Commerce is built (20+ client pages, owner hub, public storefront/checkout, migrations
+036-257) but catalog status is `planned` ("In development", "owner review only"), owner product table marks it `qa`, public checkout is
+`protected_test` (NO real payments), and live storefront provisioning is not yet proven end to end. Storefront payment links (Stripe/PayPal/
+Venmo https only) already work. **Decision pending from owner:** soft launch (flip to available, payment links, owner-reviewed builds)
+vs full Stripe checkout (gated: Stripe/Netlify/deploys) vs onboard this one client privately first.
+
+**Next 3 safe tasks:** (1) Commerce launch path per owner's pick; (2) real client dashboard from existing data (`docs/PROMISE_AUDIT.md`);
+(3) with approval: draft-04 display-name migration + function deploys, Scanii deploy + EICAR test. Copy question for owner: title now reads
+"NXQX-Web by NXQX" and header "NXQX / NXQX-Web" — consider dropping the redundancy.
+
 ## START HERE — latest session state (2026-10-05, end of the long design/security session)
 
 **Branch:** `safe/checkpoint-autonomy-wave35-sales`. **HEAD:** the commit that added this section (check `git log -1`).

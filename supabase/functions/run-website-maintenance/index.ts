@@ -301,7 +301,7 @@ async function monthlyReport(admin: ReturnType<typeof createClient<DynamicDataba
     generated_from_real_checks: true,
   };
   const recommendations = failed.length
-    ? ["Review unresolved maintenance exceptions in the NXQ owner portal."]
+    ? ["Review unresolved maintenance exceptions in the NXQX owner portal."]
     : ["No unresolved maintenance exceptions were recorded for this reporting period."];
   const save = await admin.from("website_monthly_reports").update({
     status: "ready",

@@ -98,9 +98,9 @@ export function ClientDomainStatus() {
     setError("");
     setNotice("");
     const result = await supabase.rpc("current_client_request_domain_recheck", { target_domain_id: domain.id });
-    if (result.error) setError("NXQ could not queue a fresh domain check right now. Please try again shortly.");
+    if (result.error) setError("NXQX could not queue a fresh domain check right now. Please try again shortly.");
     else {
-      setNotice(`NXQ queued a fresh DNS and SSL check for ${domain.domain_name}.`);
+      setNotice(`NXQX queued a fresh DNS and SSL check for ${domain.domain_name}.`);
       await load();
     }
     setBusy(null);
@@ -115,7 +115,7 @@ export function ClientDomainStatus() {
             <div>
               <p className="eyebrow">Guided domain connection</p>
               <h1>Domain status</h1>
-              <p className="subtle">NXQ-Web checks DNS and SSL automatically. If your registrar needs you, the exact next action stays here.</p>
+              <p className="subtle">NXQX-Web checks DNS and SSL automatically. If your registrar needs you, the exact next action stays here.</p>
               <p className="subtle">{clientDomainPolicy.summary}</p>
             </div>
           </div>
@@ -129,7 +129,7 @@ export function ClientDomainStatus() {
           <div className="empty-state">
             <Globe2 size={22} />
             <strong>No domain submitted yet</strong>
-            <p>You can submit the domain you already own from Settings. If you do not have one, purchase it from a registrar in your own name first; NXQ-Web does not sell, register, own, renew, or take registrar credentials for client domains.</p>
+            <p>You can submit the domain you already own from Settings. If you do not have one, purchase it from a registrar in your own name first; NXQX-Web does not sell, register, own, renew, or take registrar credentials for client domains.</p>
             <a className="wide-btn" href="/client/settings" style={{ width: "auto" }}>Open domain settings</a>
           </div>
         ) : null}
@@ -149,13 +149,13 @@ export function ClientDomainStatus() {
                       <p className="subtle">DNS {label(domain.dns_status)} · SSL {label(domain.ssl_status)}</p>
                     </div>
                   </div>
-                  <span className="status-summary">{connected ? "connected" : action ? "action required" : "NXQ checking"}</span>
+                  <span className="status-summary">{connected ? "connected" : action ? "action required" : "NXQX checking"}</span>
                 </div>
 
                 {connected ? (
                   <div className="domain-success-state">
                     <CheckCircle2 size={19} />
-                    <div><strong>Connection complete</strong><p>DNS and SSL evidence are ready. NXQ will keep monitoring the domain.</p></div>
+                    <div><strong>Connection complete</strong><p>DNS and SSL evidence are ready. NXQX will keep monitoring the domain.</p></div>
                   </div>
                 ) : null}
 
@@ -169,15 +169,15 @@ export function ClientDomainStatus() {
                         <ol aria-label={`${guide.provider} navigation path`}>
                           {guide.openPath.map((step) => <li key={step}>{step}</li>)}
                         </ol>
-                        <p>Make the NXQ-Web-provided change in <strong>{guide.recordArea}</strong>.</p>
+                        <p>Make the NXQX-Web-provided change in <strong>{guide.recordArea}</strong>.</p>
                       </div>
                     ) : (
-                      <p>Sign in to the company where your DNS is managed, open the DNS records for this domain, and use the exact NXQ-Web instructions below.</p>
+                      <p>Sign in to the company where your DNS is managed, open the DNS records for this domain, and use the exact NXQX-Web instructions below.</p>
                     )}
 
                     {domain.dns_instructions ? (
                       <div className="domain-exact-instructions">
-                        <span>Exact NXQ-Web instructions</span>
+                        <span>Exact NXQX-Web instructions</span>
                         <pre>{domain.dns_instructions}</pre>
                       </div>
                     ) : (
@@ -194,11 +194,11 @@ export function ClientDomainStatus() {
                 {!connected && !action ? (
                   <div className="domain-checking-state">
                     <Clock3 size={18} />
-                    <div><strong>NXQ-Web is checking automatically</strong><p>No change is required unless this card switches to Action required.</p></div>
+                    <div><strong>NXQX-Web is checking automatically</strong><p>No change is required unless this card switches to Action required.</p></div>
                   </div>
                 ) : null}
 
-                {domain.automation_error && !action ? <p className="subtle">Last automatic check needs another retry. NXQ will keep the detailed provider error internal.</p> : null}
+                {domain.automation_error && !action ? <p className="subtle">Last automatic check needs another retry. NXQX will keep the detailed provider error internal.</p> : null}
                 <div className="domain-meta-grid">
                   <span><strong>Registrar</strong>{domain.registrar_name || "Not specified"}</span>
                   <span><strong>DNS provider</strong>{domain.dns_provider || "Not specified"}</span>

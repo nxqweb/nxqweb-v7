@@ -11,7 +11,7 @@ type Props = {
   billingTone: Tone;
   attentionCount: number | null; // null when the action list could not be built
   nxqId: string | null; // account identity number, shown so clients can quote it to support
-  clientCode: string | null; // NXQ-Web client ID
+  clientCode: string | null; // NXQX-Web client ID
 };
 
 const RING_RADIUS = 52;
@@ -97,8 +97,8 @@ export function ClientOverviewGraph({ journey, healthLabel, healthTone, billingL
         </div>
 
         <div className="px-id-row" aria-label="Your identity numbers">
-          <IdChip label="Your NXQ ID" value={nxqId} />
-          <IdChip label="NXQ-Web client ID" value={clientCode} />
+          <IdChip label="Your NXQX ID" value={nxqId} />
+          <IdChip label="NXQX-Web client ID" value={clientCode} />
           <p className="px-id-note">Quote these when you contact support so we can find your account fast.</p>
         </div>
       </div>

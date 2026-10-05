@@ -5,12 +5,12 @@ const tutorialKey = "nxq-client-portal-tutorial-v2-complete";
 
 const steps = [
   {
-    title: "Welcome to your NXQ-Web workspace",
+    title: "Welcome to your NXQX-Web workspace",
     body: "This portal is the home for your website, messages, files, billing, domain setup, and ongoing website health.",
   },
   {
     title: "Follow website progress here",
-    body: "Your Website Journey shows a truthful setup-to-launch timeline. It separates the exact actions we need from you from work NXQ is already handling.",
+    body: "Your Website Journey shows a truthful setup-to-launch timeline. It separates the exact actions we need from you from work NXQX is already handling.",
   },
   {
     title: "Messages and files stay with the client record",
@@ -18,11 +18,11 @@ const steps = [
   },
   {
     title: "Domain and account settings",
-    body: "Settings keeps your login, appearance, plan, and domain information together. Domain automation will show a clear action-required message only when your registrar needs something NXQ cannot do yet.",
+    body: "Settings keeps your login, appearance, plan, and domain information together. Domain automation will show a clear action-required message only when your registrar needs something NXQX cannot do yet.",
   },
   {
-    title: "Your NXQ ID goes beyond NXQ-Web",
-    body: "Your NXQ ID is your shared identity across future NXQ products. Products that need stronger identity proof can ask you to add verification without creating a separate NXQ account.",
+    title: "Your NXQX ID goes beyond NXQX-Web",
+    body: "Your NXQX ID is your shared identity across future NXQX products. Products that need stronger identity proof can ask you to add verification without creating a separate NXQX account.",
   },
 ];
 

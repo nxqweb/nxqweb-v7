@@ -103,7 +103,7 @@ const transitionOptions = [
   ["replace_existing", "Replace the current website after preview approval"],
   ["rebuild_with_existing_content", "Rebuild using selected existing content"],
   ["connect_existing_supported_site", "Connect and manage the existing supported website"],
-  ["nxq_review", "Let NXQ review and recommend the safest path"],
+  ["nxq_review", "Let NXQX review and recommend the safest path"],
 ] as const;
 
 export function ClientCommerceSetup() {
@@ -173,7 +173,7 @@ export function ClientCommerceSetup() {
     }
 
     if (submitForReview && intake.website_transition_mode === "not_selected") {
-      setError("Choose how NXQ should handle the current website before submitting.");
+      setError("Choose how NXQX should handle the current website before submitting.");
       return;
     }
 
@@ -201,7 +201,7 @@ export function ClientCommerceSetup() {
 
     const response = result.data as { status?: string; message?: string } | null;
     setIntake((current) => ({ ...current, status: response?.status || current.status }));
-    setMessage(submitForReview ? "Commerce setup submitted for NXQ review." : "Commerce setup draft saved.");
+    setMessage(submitForReview ? "Commerce setup submitted for NXQX review." : "Commerce setup draft saved.");
   }
 
   return (
@@ -211,7 +211,7 @@ export function ClientCommerceSetup() {
           <div className="panel-title">
             <ShoppingBag size={22} />
             <div>
-              <h1>NXQ-Commerce setup</h1>
+              <h1>NXQX-Commerce setup</h1>
               <p className="subtle">Define the storefront, migration path, motion, checkout, and fulfillment before the build starts.</p>
             </div>
           </div>
@@ -239,15 +239,15 @@ export function ClientCommerceSetup() {
             </section>
 
             <section className="panel panel-wide">
-              <div className="panel-title"><MonitorPlay size={20} /><div><h2>Existing website and migration</h2><p className="subtle">NXQ detected what it could from the account. Choose the safest transition path.</p></div></div>
+              <div className="panel-title"><MonitorPlay size={20} /><div><h2>Existing website and migration</h2><p className="subtle">NXQX detected what it could from the account. Choose the safest transition path.</p></div></div>
               {intake.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {(intake.detected_site_source || "account data").replaceAll("_", " ")}.</p></div> : <div className="notice-card">No reliable website was detected from the client profile, domain records, or monitoring data.</div>}
-              <label className="auth-label"><span>How should NXQ handle the website?</span><select className="auth-input" value={intake.website_transition_mode} disabled={isLocked} onChange={(event) => updateField("website_transition_mode", event.target.value)}><option value="not_selected">Choose a transition path</option>{transitionOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label className="auth-label"><span>Current store URL</span><input className="auth-input" value={intake.current_store_url} disabled={isLocked} onChange={(event) => updateField("current_store_url", event.target.value)} placeholder="Only needed when NXQ could not detect it" /></label>
+              <label className="auth-label"><span>How should NXQX handle the website?</span><select className="auth-input" value={intake.website_transition_mode} disabled={isLocked} onChange={(event) => updateField("website_transition_mode", event.target.value)}><option value="not_selected">Choose a transition path</option>{transitionOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="auth-label"><span>Current store URL</span><input className="auth-input" value={intake.current_store_url} disabled={isLocked} onChange={(event) => updateField("current_store_url", event.target.value)} placeholder="Only needed when NXQX could not detect it" /></label>
               <label className="auth-label"><span>Where is your product data now?</span><textarea className="auth-input" rows={3} value={intake.product_data_source} disabled={isLocked} onChange={(event) => updateField("product_data_source", event.target.value)} placeholder="Spreadsheet, Shopify, Square, handwritten list, etc." /></label>
             </section>
 
             <section className="panel panel-wide">
-              <div className="panel-title"><MonitorPlay size={20} /><div><h2>Storefront design and motion</h2><p className="subtle">Choose the default visual system. NXQ can refine it during review.</p></div></div>
+              <div className="panel-title"><MonitorPlay size={20} /><div><h2>Storefront design and motion</h2><p className="subtle">Choose the default visual system. NXQX can refine it during review.</p></div></div>
               <div className="setup-form-grid">
                 <label><span>Layout style</span><select className="auth-input" value={intake.layout_style} disabled={isLocked} onChange={(event) => updateField("layout_style", event.target.value)}><option value="modern_grid">Modern product grid</option><option value="editorial">Editorial / story-led</option><option value="minimal">Minimal</option><option value="luxury">Luxury</option><option value="bold">Bold / high-energy</option><option value="custom">Custom direction</option></select></label>
                 <label><span>Scroll behavior</span><select className="auth-input" value={intake.scroll_behavior} disabled={isLocked} onChange={(event) => updateField("scroll_behavior", event.target.value)}><option value="standard">Standard scrolling</option><option value="smooth">Smooth scrolling</option><option value="section_snap">Section snap</option><option value="custom">Custom scrolling</option></select></label>
@@ -273,13 +273,13 @@ export function ClientCommerceSetup() {
               <div className="setup-form-grid"><label><span>Customer accounts</span><select className="auth-input" value={intake.customer_accounts_preference} disabled={isLocked} onChange={(event) => updateField("customer_accounts_preference", event.target.value)}><option value="disabled">Disabled</option><option value="optional">Optional</option><option value="required">Required</option><option value="not_sure">Not sure yet</option></select></label><label className="settings-card"><span>Allow guest checkout</span><input type="checkbox" checked={intake.guest_checkout_preference} disabled={isLocked} onChange={(event) => updateField("guest_checkout_preference", event.target.checked)} /></label></div>
               <label className="auth-label"><span>Shipping regions and rules</span><textarea className="auth-input" rows={3} value={intake.shipping_regions} disabled={isLocked} onChange={(event) => updateField("shipping_regions", event.target.value)} /></label>
               <label className="auth-label"><span>Local pickup or delivery details</span><textarea className="auth-input" rows={3} value={intake.local_pickup_details} disabled={isLocked} onChange={(event) => updateField("local_pickup_details", event.target.value)} /></label>
-              <label className="auth-label"><span>Tax requirements</span><textarea className="auth-input" rows={3} value={intake.tax_requirements} disabled={isLocked} onChange={(event) => updateField("tax_requirements", event.target.value)} placeholder="Describe what you know. NXQ does not provide tax advice." /></label>
+              <label className="auth-label"><span>Tax requirements</span><textarea className="auth-input" rows={3} value={intake.tax_requirements} disabled={isLocked} onChange={(event) => updateField("tax_requirements", event.target.value)} placeholder="Describe what you know. NXQX does not provide tax advice." /></label>
               <label className="auth-label"><span>Payment and checkout requirements</span><textarea className="auth-input" rows={3} value={intake.payment_requirements} disabled={isLocked} onChange={(event) => updateField("payment_requirements", event.target.value)} /></label>
               <label className="auth-label"><span>Preferred payment provider</span><input className="auth-input" value={intake.requested_payment_provider} disabled={isLocked} onChange={(event) => updateField("requested_payment_provider", event.target.value)} placeholder="Example: Stripe, Square, not sure" /></label>
             </section>
 
             <section className="panel panel-wide">
-              <div className="panel-title"><ShoppingBag size={20} /><div><h2>Policies, content, and launch</h2><p className="subtle">Give NXQ the remaining information needed to plan the storefront.</p></div></div>
+              <div className="panel-title"><ShoppingBag size={20} /><div><h2>Policies, content, and launch</h2><p className="subtle">Give NXQX the remaining information needed to plan the storefront.</p></div></div>
               <label className="auth-label"><span>Returns policy</span><textarea className="auth-input" rows={3} value={intake.returns_policy} disabled={isLocked} onChange={(event) => updateField("returns_policy", event.target.value)} /></label>
               <label className="auth-label"><span>Refund policy</span><textarea className="auth-input" rows={3} value={intake.refund_policy} disabled={isLocked} onChange={(event) => updateField("refund_policy", event.target.value)} /></label>
               <label className="auth-label"><span>Required integrations</span><textarea className="auth-input" rows={3} value={intake.integrations} disabled={isLocked} onChange={(event) => updateField("integrations", event.target.value)} /></label>
@@ -287,12 +287,12 @@ export function ClientCommerceSetup() {
               <label className="auth-label"><span>Required pages</span><textarea className="auth-input" rows={3} value={intake.required_pages} disabled={isLocked} onChange={(event) => updateField("required_pages", event.target.value)} placeholder="Shop, categories, about, FAQ, policies, contact, etc." /></label>
               <label className="auth-label"><span>Special features</span><textarea className="auth-input" rows={3} value={intake.special_features} disabled={isLocked} onChange={(event) => updateField("special_features", event.target.value)} /></label>
               <label className="auth-label"><span>Launch priority or target date</span><input className="auth-input" value={intake.launch_priority} disabled={isLocked} onChange={(event) => updateField("launch_priority", event.target.value)} /></label>
-              <label className="auth-label"><span>Anything else NXQ should know?</span><textarea className="auth-input" rows={4} value={intake.additional_notes} disabled={isLocked} onChange={(event) => updateField("additional_notes", event.target.value)} /></label>
+              <label className="auth-label"><span>Anything else NXQX should know?</span><textarea className="auth-input" rows={4} value={intake.additional_notes} disabled={isLocked} onChange={(event) => updateField("additional_notes", event.target.value)} /></label>
             </section>
 
             <section className="panel panel-wide">
-              <div className="panel-title"><CheckCircle2 size={20} /><div><h2>Save or submit</h2><p className="subtle">Save a draft anytime. Submit when the information is ready for NXQ review.</p></div></div>
-              <div className="setup-form-grid"><button className="icon-btn" type="button" disabled={saving || isLocked} onClick={() => void saveIntake(false)}><Save size={16} />{saving ? "Saving..." : "Save draft"}</button><button className="wide-btn" type="button" disabled={saving || isLocked} onClick={() => void saveIntake(true)}><CheckCircle2 size={16} />{saving ? "Submitting..." : "Submit for NXQ review"}</button></div>
+              <div className="panel-title"><CheckCircle2 size={20} /><div><h2>Save or submit</h2><p className="subtle">Save a draft anytime. Submit when the information is ready for NXQX review.</p></div></div>
+              <div className="setup-form-grid"><button className="icon-btn" type="button" disabled={saving || isLocked} onClick={() => void saveIntake(false)}><Save size={16} />{saving ? "Saving..." : "Save draft"}</button><button className="wide-btn" type="button" disabled={saving || isLocked} onClick={() => void saveIntake(true)}><CheckCircle2 size={16} />{saving ? "Submitting..." : "Submit for NXQX review"}</button></div>
               {intake.status ? <p className="subtle">Current intake status: {intake.status.replaceAll("_", " ")}</p> : null}
             </section>
           </div>

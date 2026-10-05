@@ -192,7 +192,7 @@ export function ClientCommerceReadiness() {
 
         {!loading && !verified ? (
           <div className="empty-state">
-            Launch-readiness data is not verified, so NXQ-Web is not showing or accepting readiness changes from this screen.
+            Launch-readiness data is not verified, so NXQX-Web is not showing or accepting readiness changes from this screen.
           </div>
         ) : null}
 
@@ -277,7 +277,7 @@ export function ClientCommerceReadiness() {
                 <CircleAlert size={20} />
                 <div>
                   <h2>Tax preparation</h2>
-                  <p className="subtle">NXQ records readiness notes but does not provide tax or legal advice.</p>
+                  <p className="subtle">NXQX records readiness notes but does not provide tax or legal advice.</p>
                 </div>
               </div>
 
@@ -294,7 +294,7 @@ export function ClientCommerceReadiness() {
                 <textarea
                   value={form.tax_notes}
                   onChange={(event) => updateField("tax_notes", event.target.value)}
-                  placeholder="Jurisdictions, product exemptions, registration details kept outside NXQ, or questions for a professional"
+                  placeholder="Jurisdictions, product exemptions, registration details kept outside NXQX, or questions for a professional"
                 />
               </Field>
             </section>

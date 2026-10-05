@@ -17,7 +17,7 @@ const items = [
   {
     icon: UserCheck,
     title: "Owner review on high-impact steps",
-    body: "Setup approvals and other higher-impact decisions are reviewed by the NXQ owner before protected automation moves forward.",
+    body: "Setup approvals and other higher-impact decisions are reviewed by the NXQX owner before protected automation moves forward.",
   },
   {
     icon: Eye,
@@ -43,7 +43,7 @@ export function SecurityBand() {
         <span className="px-kicker" data-px-reveal>Security and privacy</span>
         <h2 data-px-reveal id="px-security-title">Built so your business and your customers stay protected.</h2>
         <p className="px-sub" data-px-reveal>
-          Here is how NXQ-Web is designed, in plain language. Security is an ongoing practice, so this describes our approach rather than promising that nothing can ever go wrong.
+          Here is how NXQX-Web is designed, in plain language. Security is an ongoing practice, so this describes our approach rather than promising that nothing can ever go wrong.
         </p>
         <div className="px-grid3">
           {items.map(({ icon: Icon, title, body }) => (

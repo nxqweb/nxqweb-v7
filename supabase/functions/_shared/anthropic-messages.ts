@@ -1,4 +1,4 @@
-// Claude (Anthropic Messages API) protocol helpers for the NXQ AI workers.
+// Claude (Anthropic Messages API) protocol helpers for the NXQX AI workers.
 // Pure functions only: no network calls, no environment reads, no secrets.
 // The caller supplies the full endpoint URL (for example https://api.anthropic.com/v1/messages)
 // through the existing NXQ_AI_MODEL_PROVIDER_URL setting and validates it with requirePublicHttpsUrl.
@@ -40,7 +40,7 @@ export function anthropicPayload(options: {
 }
 
 // Returns the concatenated text blocks. Thinking blocks are ignored. Refusals, truncation, and
-// empty output are errors so the NXQ validators never see a partial or declined result.
+// empty output are errors so the NXQX validators never see a partial or declined result.
 export function anthropicOutput(root: JsonRecord, refusalMessage: string): string {
   const stopReason = root.stop_reason;
   if (stopReason === "refusal") throw new Error(refusalMessage);

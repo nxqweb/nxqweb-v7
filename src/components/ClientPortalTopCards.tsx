@@ -138,7 +138,7 @@ export function ClientPortalTopCards() {
 
       setSummaryError(
         failures.length > 0
-          ? `Some portal status could not be verified: ${failures.join(", ")}. NXQ is showing those areas as unavailable instead of guessing.`
+          ? `Some portal status could not be verified: ${failures.join(", ")}. NXQX is showing those areas as unavailable instead of guessing.`
           : ""
       );
     }
@@ -166,25 +166,25 @@ export function ClientPortalTopCards() {
       stage_detail: denied
         ? (billing?.pipeline_stop_reason || "The project is stopped and no new infrastructure will be created.")
         : accepted
-          ? "NXQ is turning your approved setup into a protected build plan."
-          : "NXQ has your signed setup and the owner decision is the next step.",
+          ? "NXQX is turning your approved setup into a protected build plan."
+          : "NXQX has your signed setup and the owner decision is the next step.",
       progress_percent: denied ? 0 : Math.max(journey.progress_percent, 17),
       attention_required: false,
       next_action: denied
         ? journey.next_action
         : {
             owner: "nxq" as const,
-            title: accepted ? "NXQ is preparing your website plan" : "Waiting for NXQ review",
+            title: accepted ? "NXQX is preparing your website plan" : "Waiting for NXQX review",
             detail: accepted
-              ? "No action is required unless NXQ asks for a specific detail."
+              ? "No action is required unless NXQX asks for a specific detail."
               : "Your information was received. You do not need to resubmit it.",
             href: accepted ? "/client/health" : "/client",
           },
       milestones: journey.milestones.map((milestone, index) => index === 0
-        ? { ...milestone, status: "complete" as const, detail: "Your signed website setup was received by NXQ." }
+        ? { ...milestone, status: "complete" as const, detail: "Your signed website setup was received by NXQX." }
         : milestone),
       requirements: journey.requirements.map((requirement, index) => index === 0
-        ? { ...requirement, status: "complete" as const, detail: "Received by NXQ." }
+        ? { ...requirement, status: "complete" as const, detail: "Received by NXQX." }
         : requirement),
     } satisfies ClientLaunchJourney;
   }, [billing, journey]);
@@ -200,7 +200,7 @@ export function ClientPortalTopCards() {
       tone: "warning",
       icon: <TriangleAlert size={20} />,
       title: "Billing status is unavailable",
-      body: "NXQ could not verify billing status right now. No billing state is being assumed from this screen.",
+      body: "NXQX could not verify billing status right now. No billing state is being assumed from this screen.",
     };
 
     const status = billing.billing_status || "not_configured";
@@ -248,7 +248,7 @@ export function ClientPortalTopCards() {
       tone: "warning",
       icon: <TriangleAlert size={20} />,
       title: "Website health is unavailable",
-      body: "NXQ could not verify website health right now. This screen is not treating an unknown state as healthy.",
+      body: "NXQX could not verify website health right now. This screen is not treating an unknown state as healthy.",
     };
 
     const state = health.health || "setting_up";
@@ -256,18 +256,18 @@ export function ClientPortalTopCards() {
       tone: "success",
       icon: <CheckCircle2 size={20} />,
       title: "Website health is good",
-      body: `NXQ is monitoring your site. ${health.open_alerts || 0} open alerts.`,
+      body: `NXQX is monitoring your site. ${health.open_alerts || 0} open alerts.`,
     };
     if (state === "needs_attention") return {
       tone: "danger",
       icon: <TriangleAlert size={20} />,
-      title: "NXQ is handling a website issue",
-      body: "An automated check needs attention. NXQ will retry safe recovery and escalate only if needed.",
+      title: "NXQX is handling a website issue",
+      body: "An automated check needs attention. NXQX will retry safe recovery and escalate only if needed.",
     };
     if (state === "watching") return {
       tone: "warning",
       icon: <Activity size={20} />,
-      title: "NXQ is watching a website issue",
+      title: "NXQX is watching a website issue",
       body: "Monitoring detected something worth watching, but the website remains under automated supervision.",
     };
     return {
@@ -284,7 +284,7 @@ export function ClientPortalTopCards() {
         owner: "nxq",
         tone: "info",
         title: "Checking your current website workflow",
-        detail: "NXQ is loading billing, website health, and journey status before showing any required action.",
+        detail: "NXQX is loading billing, website health, and journey status before showing any required action.",
         href: "/client/journey",
         label: "View journey",
       }];
@@ -308,7 +308,7 @@ export function ClientPortalTopCards() {
         owner: "nxq",
         tone: "warning",
         title: "Billing status could not be verified",
-        detail: "NXQ is not assuming a billing state from missing data. Open billing details for the dedicated status view.",
+        detail: "NXQX is not assuming a billing state from missing data. Open billing details for the dedicated status view.",
         href: "/client/billing",
         label: "Billing details",
       });
@@ -342,7 +342,7 @@ export function ClientPortalTopCards() {
         owner: "nxq",
         tone: "warning",
         title: "Journey status could not be verified",
-        detail: "NXQ could not load the launch journey on this summary screen, so no next action is being guessed.",
+        detail: "NXQX could not load the launch journey on this summary screen, so no next action is being guessed.",
         href: "/client/journey",
         label: "Journey details",
       });
@@ -362,7 +362,7 @@ export function ClientPortalTopCards() {
         owner: "nxq",
         tone: "warning",
         title: "Website health could not be verified",
-        detail: "NXQ is not presenting an unknown website-health state as healthy.",
+        detail: "NXQX is not presenting an unknown website-health state as healthy.",
         href: "/client/health",
         label: "Health details",
       });
@@ -372,8 +372,8 @@ export function ClientPortalTopCards() {
         tone: health.health === "needs_attention" ? "danger" : "warning",
         title: health.health === "needs_attention" ? "Website issue under recovery" : "Website issue under observation",
         detail: health.health === "needs_attention"
-          ? "NXQ is already handling the issue through the protected recovery path."
-          : "NXQ is monitoring the issue and will escalate only if it becomes actionable.",
+          ? "NXQX is already handling the issue through the protected recovery path."
+          : "NXQX is monitoring the issue and will escalate only if it becomes actionable.",
         href: "/client/health",
         label: "Health details",
       });
@@ -384,7 +384,7 @@ export function ClientPortalTopCards() {
         owner: "nxq",
         tone: "success",
         title: "Nothing needs your attention",
-        detail: "NXQ is handling the current website workflow. We will surface a task here when you need to do something.",
+        detail: "NXQX is handling the current website workflow. We will surface a task here when you need to do something.",
         href: "/client/journey",
         label: "View journey",
       });
@@ -413,12 +413,12 @@ export function ClientPortalTopCards() {
           nxqId={health?.nxq_id ?? null}
         />
       ) : null}
-      <section className="notice-card portal-action-center info" aria-label="NXQ-Web action center">
+      <section className="notice-card portal-action-center info" aria-label="NXQX-Web action center">
         <div className="portal-action-center-head">
           <div className="panel-title">
             <Sparkles size={21} />
             <div>
-              <span className="journey-kicker">NXQ-Web action center</span>
+              <span className="journey-kicker">NXQX-Web action center</span>
               <strong>
                 {clientActionCount > 0
                   ? `${clientActionCount} item${clientActionCount === 1 ? "" : "s"} need your attention`
@@ -426,7 +426,7 @@ export function ClientPortalTopCards() {
                     ? "Some website status is unavailable"
                     : "Your website workflow is on track"}
               </strong>
-              <p>Important client tasks rise to the top. Everything marked NXQ is being handled for you.</p>
+              <p>Important client tasks rise to the top. Everything marked NXQX is being handled for you.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/journey">Full journey <ArrowRight size={15} /></a>
@@ -443,7 +443,7 @@ export function ClientPortalTopCards() {
                   : action.tone === "success" ? <CheckCircle2 size={18} /> : <Route size={18} />}
               </div>
               <div className="portal-action-copy">
-                <span>{action.owner === "client" ? "Your action" : "NXQ handling"}</span>
+                <span>{action.owner === "client" ? "Your action" : "NXQX handling"}</span>
                 <strong>{action.title}</strong>
                 <p>{action.detail}</p>
               </div>
@@ -460,7 +460,7 @@ export function ClientPortalTopCards() {
             <Ban size={20} />
             <div>
               <strong>Website setup was not approved</strong>
-              <p>{billing?.pipeline_stop_reason || "Your NXQ-Web setup request was denied and automation has been stopped."}</p>
+              <p>{billing?.pipeline_stop_reason || "Your NXQX-Web setup request was denied and automation has been stopped."}</p>
               <p className="subtle">No new website infrastructure or automation will continue. For questions, contact NXQweb@protonmail.com.</p>
             </div>
           </div>
@@ -473,7 +473,7 @@ export function ClientPortalTopCards() {
               <div>
                 <strong>{healthState.title}</strong>
                 <p>{healthState.body}</p>
-                {health?.nxq_id ? <p className="subtle">NXQ ID: {health.nxq_id}</p> : null}
+                {health?.nxq_id ? <p className="subtle">NXQX ID: {health.nxq_id}</p> : null}
               </div>
             </div>
             <a className="icon-btn" href="/client/health">Website health</a>

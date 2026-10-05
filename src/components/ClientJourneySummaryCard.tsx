@@ -30,7 +30,7 @@ export function ClientJourneySummaryCard({ journey }: Props) {
       <div className={`journey-next-action ${clientAction ? "client-action" : "nxq-action"}`}>
         {clientAction ? <CircleAlert size={17} /> : <Clock3 size={17} />}
         <div>
-          <span>{clientAction ? "Your next step" : "NXQ is handling this"}</span>
+          <span>{clientAction ? "Your next step" : "NXQX is handling this"}</span>
           <strong>{journey.next_action.title}</strong>
           <p>{journey.next_action.detail}</p>
         </div>

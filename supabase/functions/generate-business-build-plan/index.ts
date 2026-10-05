@@ -149,7 +149,7 @@ function selectProvider(): ProviderSelection | null {
 function validateRequest(value: unknown): BuildPlanRequest {
   const root = record(value);
   if (root.task !== "enrich_business_build_plan_v1" || root.schema_version !== schemaVersion) {
-    throw new Error("Unsupported NXQ AI task or schema version.");
+    throw new Error("Unsupported NXQX AI task or schema version.");
   }
   const requestFingerprint = text(root.request_fingerprint, "request_fingerprint", 64, 64).toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(requestFingerprint)) throw new Error("request_fingerprint must be a SHA-256 hex digest.");
@@ -178,16 +178,16 @@ function validateRequest(value: unknown): BuildPlanRequest {
     throw new Error("AI contract allowlists do not match the sanitized intake.");
   }
   if (contractThemes.some((theme) => !allowedThemeKeys.has(theme))) {
-    throw new Error("AI contract requested a theme outside the NXQ allowlist.");
+    throw new Error("AI contract requested a theme outside the NXQX allowlist.");
   }
   const minimumConfidence = Number(rawContract.minimum_confidence);
   if (!Number.isFinite(minimumConfidence) || minimumConfidence < 0.82 || minimumConfidence > 1) {
-    throw new Error("AI contract minimum confidence is outside NXQ safety limits.");
+    throw new Error("AI contract minimum confidence is outside NXQX safety limits.");
   }
   if (rawContract.plain_text_only !== true || rawContract.no_links_or_markup !== true
     || rawContract.production_or_provider_actions_forbidden !== true
     || rawContract.legal_financial_medical_guarantees_forbidden !== true) {
-    throw new Error("AI contract is missing mandatory NXQ safety rules.");
+    throw new Error("AI contract is missing mandatory NXQX safety rules.");
   }
 
   return {
@@ -253,7 +253,7 @@ function buildOutputSchema(request: BuildPlanRequest) {
 
 function instructions(request: BuildPlanRequest) {
   return [
-    "You are NXQ-Web's Business website strategy engine.",
+    "You are NXQX-Web's Business website strategy engine.",
     "Return only the requested structured result. Never include markdown, HTML, links, code, contact data, or instructions to call tools.",
     "Do not invent certifications, awards, reviews, statistics, guarantees, addresses, years in business, licensing, pricing, or medical, legal, or financial claims.",
     "Use every allowed service exactly once and every allowed page exactly once. Never rename, add, or remove either.",
@@ -337,7 +337,7 @@ function validateProviderResult(value: unknown, request: BuildPlanRequest) {
     throw new Error("AI provider result has an unexpected top-level shape.");
   }
   if (root.schema_version !== schemaVersion || root.request_fingerprint !== request.request_fingerprint) {
-    throw new Error("AI provider result did not preserve the NXQ schema and intake fingerprint.");
+    throw new Error("AI provider result did not preserve the NXQX schema and intake fingerprint.");
   }
   if (!Number.isFinite(Number(root.confidence)) || !Array.isArray(root.risk_flags) || !root.strategy) {
     throw new Error("AI provider result is missing required safety fields.");
@@ -490,7 +490,7 @@ Deno.serve(async (request) => {
   try {
     parsedRequest = validateRequest(body);
   } catch (error) {
-    return response({ ok: false, error: error instanceof Error ? error.message : "Invalid NXQ build-plan request." }, 400);
+    return response({ ok: false, error: error instanceof Error ? error.message : "Invalid NXQX build-plan request." }, 400);
   }
 
   let protocol: ProviderProtocol;

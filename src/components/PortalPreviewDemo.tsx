@@ -105,7 +105,7 @@ export function PortalPreviewDemo() {
   return (
     <div className="px-portal px-card-shell" data-px-reveal>
       <aside className="px-side" aria-hidden="true">
-        <div className="px-who"><span className="px-mark">N</span><div><b>Example Dental Co.</b>NXQ-Business · Growth</div></div>
+        <div className="px-who"><span className="px-mark">N</span><div><b>Example Dental Co.</b>NXQX-Business · Growth</div></div>
         <span className="px-on">Dashboard</span>
         <span>Website health <small>98</small></span>
         <span>Leads <small>24</small></span>

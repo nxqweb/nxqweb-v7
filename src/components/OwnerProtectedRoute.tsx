@@ -52,7 +52,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
       }
 
       if (!ownerResult.data) {
-        setErrorMessage("This account is logged in, but it is not approved as an NXQ owner.");
+        setErrorMessage("This account is logged in, but it is not approved as an NXQX owner.");
         setIsOwner(false);
         setIsChecking(false);
         return;
@@ -74,7 +74,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
               <ShieldCheck size={22} />
               <h1>Checking owner access</h1>
             </div>
-            <p className="subtle">Verifying your NXQ owner permissions...</p>
+            <p className="subtle">Verifying your NXQX owner permissions...</p>
           </div>
         </section>
       </main>
@@ -94,7 +94,7 @@ export function OwnerProtectedRoute({ children }: OwnerProtectedRouteProps) {
             {errorMessage ? <div className="auth-error">{errorMessage}</div> : null}
 
             <p className="subtle">
-              This area is restricted to approved NXQ owner accounts only.
+              This area is restricted to approved NXQX owner accounts only.
             </p>
 
             <button className="primary-btn auth-submit" onClick={handleLogout} type="button">

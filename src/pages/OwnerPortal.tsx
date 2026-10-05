@@ -877,7 +877,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
           <OwnerOverviewGraph
             subtitle={ownerView === "aps" ? "One decision starts the normal autonomous workflow." : "Pick one client and text them directly."}
             summary={ownerSummaryLoaded ? ownerSummary : null}
-            title={ownerView === "aps" ? "NXQ approvals" : "NXQ client chat"}
+            title={ownerView === "aps" ? "NXQX approvals" : "NXQX client chat"}
           />
 
           <div className="stat-card">
@@ -987,7 +987,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
             <div className="chat-feed">
 
               <div className="ai-bubble">
-                <strong>NXQ AI</strong>
+                <strong>NXQX AI</strong>
                 <p>
                   {isLoading
                     ? "Loading approval queue from Supabase..."
@@ -1038,7 +1038,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                     <h3>{clientName}</h3>
                     {isSetupResubmission ? (
                       <p className="recommendation">
-                        Resubmission: This is an updated setup sheet after NXQ requested more information.
+                        Resubmission: This is an updated setup sheet after NXQX requested more information.
                       </p>
                     ) : null}
                     <p>{approval.summary}</p>
@@ -1166,7 +1166,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                         onClick={() => {
                           const enteredReason = window.prompt(
                             `Why are you denying ${clientName}?`,
-                            "The project was not accepted. Please contact NXQ-Web support if you believe this decision was made in error."
+                            "The project was not accepted. Please contact NXQX-Web support if you believe this decision was made in error."
                           );
 
                           if (enteredReason === null) return;

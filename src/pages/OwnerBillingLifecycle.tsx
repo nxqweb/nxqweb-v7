@@ -345,7 +345,7 @@ export function OwnerBillingLifecycle() {
               <Snowflake size={20} />
               <div>
                 <h2>Over entitlement</h2>
-                <p className="subtle">These accounts have more active locations than their plan allows (e.g. a downgrade left them over cap). NXQ never closes a location automatically -- this is visibility only.</p>
+                <p className="subtle">These accounts have more active locations than their plan allows (e.g. a downgrade left them over cap). NXQX never closes a location automatically -- this is visibility only.</p>
               </div>
             </div>
             <div className="owner-message-list">
@@ -419,7 +419,7 @@ export function OwnerBillingLifecycle() {
               <Snowflake size={20} />
               <div>
                 <h2>Billing notifications needing your attention</h2>
-                <p className="subtle">Processor-connection and freeze-review events NXQ recorded for you, most recent first. These never charge or freeze anything by themselves.</p>
+                <p className="subtle">Processor-connection and freeze-review events NXQX recorded for you, most recent first. These never charge or freeze anything by themselves.</p>
               </div>
             </div>
             <div className="owner-message-list">

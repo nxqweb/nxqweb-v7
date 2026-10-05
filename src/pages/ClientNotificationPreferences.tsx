@@ -107,7 +107,7 @@ export function ClientNotificationPreferences() {
 
   return (
     <main className="nxq-page"><section className="portal-shell">
-      <div className="panel-title panel-title-row"><div className="panel-title"><Bell size={22}/><div><h1>Notifications</h1><p className="subtle">Choose how NXQ keeps you updated. Urgent and security-critical notices can stay immediate.</p></div></div><a className="icon-btn" href="/client/settings"><ArrowLeft size={16}/> Settings</a></div>
+      <div className="panel-title panel-title-row"><div className="panel-title"><Bell size={22}/><div><h1>Notifications</h1><p className="subtle">Choose how NXQX keeps you updated. Urgent and security-critical notices can stay immediate.</p></div></div><a className="icon-btn" href="/client/settings"><ArrowLeft size={16}/> Settings</a></div>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {message ? <div className="auth-success" role="status">{message}</div> : null}
       {!loading ? <section className="panel panel-wide"><h2>Recent notifications</h2>{notifications.length === 0 ? <div className="empty-state">No notifications yet.</div> : <div className="owner-message-list">{notifications.map((notification) => <article className="owner-message-card" key={notification.id}><div className="owner-message-top"><strong>{notification.subject || "Notification"}</strong><span>{notification.priority}</span></div><p>{notification.body}</p><small>{formatNotificationDate(notification.created_at)}</small></article>)}</div>}</section> : null}
