@@ -43,3 +43,10 @@ This checklist is evidence-based. A missing external provider, credential, brows
 - Legal/sales copy reviewed, including outreach and referral terms.
 - Explicit owner production-launch approval recorded independently of automated checks.
 - Production deploy performed through the guarded workflow; rollback evidence verified afterward.
+
+## Temporary test helpers (must be removed before launch)
+
+- [ ] **Remove the owner "Activate billing (no charge)" test button** on `/owner/billing`: delete everything between the `TEMPORARY-TEST-ACTIVATION` markers in
+  `src/pages/OwnerBillingLifecycle.tsx`, the `testActivationClients` memo, the `status, qa_only` additions to its client query if no longer needed, and
+  `scripts/test-temp-owner-activation.mjs` (plus its `test:temp-owner-activation` npm script). Added 2026-10-05 at the owner's request so existing test clients can be
+  activated without hand-run SQL; it uses the guarded `owner_set_client_billing_state` function, refuses QA-only clients, and never charges money.

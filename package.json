@@ -25,6 +25,7 @@
     "test:lead-funnel": "node scripts/test-lead-funnel.mjs",
     "test:report-cycle": "node scripts/test-report-cycle.mjs",
     "test:upload-feedback": "node scripts/test-client-upload-feedback.mjs",
+    "test:temp-owner-activation": "node scripts/test-temp-owner-activation.mjs",
     "test:scanii": "node scripts/test-scanii-scan.mjs",
     "test:select-columns": "node scripts/test-select-columns-exist.mjs",
     "test:safe-url": "node scripts/test-safe-url.mjs",

@@ -20,6 +20,8 @@ type ClientRow = {
   billing_provider: string | null;
   billing_overdue_since: string | null;
   billing_frozen_at: string | null;
+  status: string;
+  qa_only: boolean | null;
 };
 
 function formatDate(value: string | null) {
@@ -104,7 +106,7 @@ export function OwnerBillingLifecycle() {
     const result = await supabase
       .from("clients")
       .select(
-        "id, business_name, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at"
+        "id, business_name, monthly_price, billing_status, billing_provider, billing_overdue_since, billing_frozen_at, status, qa_only"
       )
       .order("business_name");
 
@@ -148,6 +150,12 @@ export function OwnerBillingLifecycle() {
 
   const attentionClients = useMemo(
     () => clients.filter((client) => ["past_due", "freeze_review", "frozen"].includes(client.billing_status)),
+    [clients]
+  );
+
+  // TEMPORARY-TEST-ACTIVATION: clients that could be switched to Active by hand for testing. Remove with the section below.
+  const testActivationClients = useMemo(
+    () => clients.filter((client) => ["not_configured", "activation_pending"].includes(client.billing_status)),
     [clients]
   );
 
@@ -289,6 +297,48 @@ export function OwnerBillingLifecycle() {
           <section className="panel"><Snowflake size={20} /><h2>{clients.filter((client) => client.billing_status === "freeze_review").length}</h2><p className="subtle">Human freeze decisions</p></section>
           <section className="panel"><CheckCircle2 size={20} /><h2>{clients.filter((client) => client.billing_status === "active").length}</h2><p className="subtle">Active accounts</p></section>
         </div>
+
+        {/* TEMPORARY-TEST-ACTIVATION (start): owner-requested test helper. REMOVE this whole section, testActivationClients above, and
+            scripts/test-temp-owner-activation.mjs when testing is finished. See docs/LAUNCH_HARDENING_CHECKLIST.md. */}
+        {!loading && testActivationClients.length > 0 ? (
+          <section className="panel panel-wide" aria-label="Temporary test activation">
+            <div className="panel-title">
+              <CheckCircle2 size={20} />
+              <div>
+                <h2>Temporary: activate a test client (no charge)</h2>
+                <p className="subtle">
+                  For testing only. This switches billing to Active without charging anything, so a test client can upload files and use paid features.
+                  It does not approve the client, and it never works on QA-only clients. Remove this section when testing is finished.
+                </p>
+              </div>
+            </div>
+            <div className="owner-message-list">
+              {testActivationClients.map((client) => {
+                const approved = ["approved", "active", "overdue"].includes(client.status);
+                return (
+                  <article className="owner-message-card" key={client.id}>
+                    <div className="owner-message-top">
+                      <strong>{client.business_name}</strong>
+                      <span>Billing: {formatStatus(client.billing_status)}</span>
+                    </div>
+                    <p className="subtle">Client status: {formatStatus(client.status)}</p>
+                    {client.qa_only ? (
+                      <p className="subtle">QA-only client: permanently non-billable, so it cannot be activated and cannot upload files. Use a normal test client.</p>
+                    ) : (
+                      <>
+                        {!approved ? <p className="subtle">Uploads also need this client to be approved first (approve it in the owner portal). Activating billing alone is not enough.</p> : null}
+                        <button className="wide-btn" disabled={workingClientId === client.id} onClick={() => void changeBillingState(client, "active")} type="button">
+                          {workingClientId === client.id ? "Updating…" : "Activate billing (no charge)"}
+                        </button>
+                      </>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+        {/* TEMPORARY-TEST-ACTIVATION (end) */}
 
         <section className="panel panel-wide">
           <div className="panel-title">
