@@ -697,6 +697,10 @@ process, all requiring your action outside this session.
 - Not done: authenticated portal pages were only checked unauthenticated (their data states), not with real data.
   A real-time chart inside the client portal needs a data source and is a later, approved step.
   Plans for the waitlist and the example page: `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md` (no code).
+- Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
+  a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
+  publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
+  A safe-branch push builds a Deploy Preview (not published) to view the new look.
 - Found while testing (pre-existing, now fixed by CSS only): `.portal-grid` had no rules and link-panels were
   inline, so the Business workspace tiles overlapped.
 
