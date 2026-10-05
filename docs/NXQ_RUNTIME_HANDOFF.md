@@ -667,6 +667,16 @@ process, all requiring your action outside this session.
   migration and approval); a backup owner account (later, with approval).
 - Release gate unchanged: 1,273 PASS, stops at `protected-staging-configuration`.
 
+## Client IDs / NXQX account plan and UI redesign exploration (2026-10-05, docs + draft only)
+
+- Client ID idea: the IDs already exist (`clients.client_code` `WEB-...`, `nxq_accounts.nxq_id` `NXQ-...`,
+  migration 125). Gap: the owner list does not show/search them. Drafted + locally tested (not applied):
+  `docs/drafts/migrations/02_owner_client_directory_v2.sql`. Plan and the "external login later" option:
+  `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md`. Do NOT change `OwnerPortal.tsx` to call v2 before the migration
+  is applied. Local harness 13/13.
+- UI redesign exploration: `docs/UI_REDESIGN_PLAN.md` + static prototype `docs/design/premium-home/`
+  (not in the build, no `src/` changes). Waiting on the owner's review of the direction.
+
 ## Routing, auto-approval engine, drafted SQL, and a suspected pgcrypto runtime bug (local only, 2026-10-05)
 
 - Pure libraries with offline tests, wired into the release gate, NOT deployed, NOT called by any
