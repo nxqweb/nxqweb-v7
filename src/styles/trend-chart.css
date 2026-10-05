@@ -140,3 +140,53 @@ body[data-nxq-theme="light"] .nxq-trend {
   color: var(--nxq-soft);
   font-size: 0.85rem;
 }
+
+/* Lead funnel bars (client Business funnel). Bars wear the series ink; every label and value wears text tokens. */
+.nxq-funnel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.nxq-funnel-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 12px;
+}
+
+.nxq-funnel-label {
+  color: var(--nxq-muted);
+  font-size: 0.9rem;
+}
+
+.nxq-funnel-track {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  border-left: 1px solid var(--trend-grid, rgba(226, 232, 240, 0.12));
+}
+
+.nxq-funnel-bar {
+  display: block;
+  height: 20px;
+  background: var(--trend-ink, var(--nxq-gold, #f7c948));
+  border-radius: 0 4px 4px 0;
+}
+
+.nxq-funnel-value {
+  color: var(--nxq-text);
+  text-align: right;
+}
+
+body[data-nxq-theme="light"] .nxq-funnel {
+  --trend-ink: #8a5a00;
+  --trend-grid: rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 480px) {
+  .nxq-funnel-row {
+    grid-template-columns: 76px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+}

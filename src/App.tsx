@@ -23,6 +23,7 @@ const CheckEmail = named(() => import("./pages/CheckEmail"), "CheckEmail");
 const ForgotPassword = named(() => import("./pages/ForgotPassword"), "ForgotPassword");
 const ClientBillingStatus = named(() => import("./pages/ClientBillingStatus"), "ClientBillingStatus");
 const ClientBusinessAnalytics = named(() => import("./pages/ClientBusinessAnalytics"), "ClientBusinessAnalytics");
+const ClientBusinessFunnel = named(() => import("./pages/ClientBusinessFunnel"), "ClientBusinessFunnel");
 const ClientBusinessChanges = named(() => import("./pages/ClientBusinessChanges"), "ClientBusinessChanges");
 const ClientBusinessDashboard = named(() => import("./pages/ClientBusinessDashboard"), "ClientBusinessDashboard");
 const ClientBusinessLeads = named(() => import("./pages/ClientBusinessLeads"), "ClientBusinessLeads");
@@ -122,6 +123,7 @@ function AppRoutes() {
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
   if (path === "/client/business/locations") return <ClientBusinessLocations />;
   if (path === "/client/business/analytics") return <ClientBusinessAnalytics />;
+  if (path === "/client/business/funnel") return <ClientBusinessFunnel />;
   if (path === "/client/business/reports") return <ClientBusinessReports />;
   if (path === "/client/business/seo") return <ClientBusinessSeo />;
   if (path === "/client/business") return <ClientBusinessDashboard />;
