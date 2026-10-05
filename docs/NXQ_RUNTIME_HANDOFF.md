@@ -704,6 +704,15 @@ process, all requiring your action outside this session.
 - **Promise audit written (`docs/PROMISE_AUDIT.md`):** every public claim mapped to code. Owner's rule: whatever the site
   promises must be delivered. Gaps: lead-source/funnel insights not found; "live view" is only a table today; preview
   should be labeled as the Growth-plan view. Planned next: real client dashboard from existing tables (no migration needed).
+- **Owner requests logged for the next session (2026-10-05, nothing built yet):** (1) owner-portal header: replace the empty
+  left area with a real-data graph (clients, income, site views); check owner read access to analytics rollups first (an
+  owner RPC would be a migration = gate). (2) Client "Request export" ended `failed` (DSR-D75E4C4ED446); the worker
+  `process-data-subject-request` stores `data_subject_requests.last_error` - read it (owner SQL) before fixing; the staging
+  dispatcher is also failing, so the worker may not be woken. Verify every function on Security & privacy. (3) Password and
+  email change call `supabase.auth.updateUser` with NO current-password check (`ClientSettings.tsx`): add re-authentication
+  with the current password first (frontend; Supabase "secure password change" setting is an external-service gate). (4) Owner
+  idea "export only after 5 years" - advised against (privacy-law access/portability rights, trust, own domain policy);
+  alternatives: free export + paid migration/handoff service, annual prepay, setup fee. Needs a decision + lawyer review.
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
