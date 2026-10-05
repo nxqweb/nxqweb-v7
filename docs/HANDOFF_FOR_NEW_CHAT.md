@@ -36,12 +36,10 @@ container — environment, unchanged), migration integrity 224/224.
 **Commerce launch (client waiting) — findings:** Commerce is built (20+ client pages, owner hub, public storefront/checkout, migrations
 036-257) but catalog status is `planned` ("In development", "owner review only"), owner product table marks it `qa`, public checkout is
 `protected_test` (NO real payments), and live storefront provisioning is not yet proven end to end. Storefront payment links (Stripe/PayPal/
-Venmo https only) already work. **Decision pending from owner:** soft launch (flip to available, payment links, owner-reviewed builds)
-vs full Stripe checkout (gated: Stripe/Netlify/deploys) vs onboard this one client privately first.
+Venmo https only) already work. **DECISION (owner, 2026-10-05): Option A — private onboarding of ONE free test/showcase Commerce client.** She will not be charged; the owner builds her site manually; it must be hooked into the system so it works when NXQX-Web launches. No public flip of Commerce to `available` and no Stripe checkout for now. Findings: Commerce is ALREADY allowed through the guarded plan-change gate (`plan_change_enabled=true`, migration 040) while public status stays `planned`, so her path needs no code change: client requests plan change to Commerce -> owner approves in OwnerPlanChanges (approval touches no Stripe/billing, so she is not charged) -> migration 041 auto-creates her Commerce setup -> owner builds/provisions the storefront. Per-client limits can be raised with `commerce_usage_limit_overrides` (migration 051; owner-only). Remaining blockers are all gated/live: deploy `provision-storefront` (`deploy_provision_storefront`), a live staging dry run of the whole path, and the Netlify publish. Header decision: public header now shows NXQX with just "Web" beneath (commit 1131991).
 
-**Next 3 safe tasks:** (1) Commerce launch path per owner's pick; (2) real client dashboard from existing data (`docs/PROMISE_AUDIT.md`);
-(3) with approval: draft-04 display-name migration + function deploys, Scanii deploy + EICAR test. Copy question for owner: title now reads
-"NXQX-Web by NXQX" and header "NXQX / NXQX-Web" — consider dropping the redundancy.
+**Next 3 safe tasks:** (1) Commerce free test client: with approval deploy `provision-storefront`, then a staging dry run of the plan-change -> setup -> storefront path; (2) real client dashboard from existing data (`docs/PROMISE_AUDIT.md`);
+(3) with approval: draft-04 display-name migration + function deploys, Scanii deploy + EICAR test. Page title still reads "NXQX-Web by NXQX" (owner may want it shorter).
 
 ## Latest session state (2026-10-05, end of the long design/security session)
 
