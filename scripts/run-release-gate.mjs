@@ -31,6 +31,7 @@ run(npm, ["run", "test:auto-approval"]);
 run(npm, ["run", "test:format-helpers"]);
 run(npm, ["run", "test:auth-guards"]);
 run(npm, ["run", "test:premium-ui"]);
+run(npm, ["run", "test:scanii"]);
 run(npm, ["run", "lint", "--", "--max-warnings=0"]);
 run(npm, ["audit", "--omit=dev", "--audit-level=high"]);
 run(npm, ["run", "build"]);

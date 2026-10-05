@@ -32,7 +32,7 @@ request types are implemented, and what an erasure removes versus retains under 
 
 Supabase (database, auth, storage), Netlify (website hosting), GitHub (source repositories),
 Cloudflare Turnstile (bot check; sees visitor IP), a malware-scan provider (receives uploaded
-files; Cloudmersive today, alternatives under review), an email provider (Resend), an AI provider
+files; Cloudmersive or Scanii (Scanii US region by default); the account that applies is whichever has its secrets set), an email provider (Resend), an AI provider
 (when configured), Stripe (when billing is enabled). Each needs a data processing agreement and a
 line in the privacy policy. Hosting providers also keep their own server logs that include IP
 addresses, outside NXQ's control (verify each provider's retention).

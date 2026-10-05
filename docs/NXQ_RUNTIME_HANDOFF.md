@@ -721,6 +721,10 @@ process, all requiring your action outside this session.
   10 free founding spots under written terms, closes when filled or at 10,000 clients. See
   `docs/FOUNDING_CLIENT_PROGRAM_PLAN.md`. No counter or automatic discount exists; terms need a lawyer; billing, a grants
   migration and free-spot budget handling are later gated steps.
+- **Scanii (malware scan) support built locally, NOT deployed:** Cloudmersive stays blocked; owner opened a Scanii trial.
+  Adapter now supports Scanii (`_shared/scanii-scan.ts`, `npm run test:scanii`, 29 checks) and falls back to Cloudmersive; draft
+  `docs/drafts/migrations/03_malware_provider_scanii_readiness.sql` widens readiness (harness 15/15). Remaining gated steps and the
+  untouched readiness/secret-profile lists: `docs/MALWARE_PROVIDER_SCANII_PLAN.md`. Owner sets Scanii secrets (never in chat).
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
