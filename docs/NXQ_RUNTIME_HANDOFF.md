@@ -642,6 +642,28 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Routing, auto-approval engine, drafted SQL, and a suspected pgcrypto runtime bug (local only, 2026-10-05)
+
+- Pure libraries with offline tests, wired into the release gate, NOT deployed, NOT called by any
+  function: `_shared/ai-routing.ts` (`npm run test:ai-routing`, 26 checks; tiers, plan gating for
+  premium work, cost ceiling, escalate-once, provider failover; reference prices only) and
+  `_shared/auto-approval.ts` (`npm run test:auto-approval`, 34 checks; rules only, no AI or free text;
+  off/shadow/live modes; `shadowReadiness` for the rollout decision).
+- Draft SQL (NOT migrations) in `docs/drafts/migrations/`: `01_repair_pgcrypto_search_path.sql` and
+  `02_outreach_inbound_and_unsubscribe.sql`, each with a sidecar test run by
+  `scripts/test-local-full-schema.mjs` (now 13 checks, all passing).
+- **Suspected latent bug (needs a staging fact):** 7 committed functions pin `search_path = public` and
+  call pgcrypto unqualified: `nxq_flag_referral_payment_reversal`, `nxq_queue_sales_delivery`,
+  `nxq_record_sales_delivery_event`, `nxq_reserve_sales_delivery`,
+  `owner_create_fictional_sales_source_run`, `owner_record_sales_reply`,
+  `submit_public_commerce_customer_request` (migration 242 qualified `digest` there but left
+  `gen_random_bytes`; 249 re-created the function). If pgcrypto lives in the `extensions` schema on
+  staging these fail at runtime. The local simulation (pgcrypto moved to `extensions`) reproduces the
+  failure with the original path and passes with the drafted repair. To confirm on staging, the owner can
+  run this read-only query in the Supabase SQL editor:
+  `select extname, extnamespace::regnamespace from pg_extension where extname = 'pgcrypto';`
+  A repair migration (or applying the draft) is a stop-and-ask gate.
+
 ## Outreach delivery orchestration (stage 1, sender logic) — local only, NO Edge function, NOT deployed (2026-10-05)
 
 - New `supabase/functions/_shared/outreach-dispatch.ts`: `runOutreachDispatch` (injected

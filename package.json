@@ -15,6 +15,8 @@
     "test:ai-protocols": "node scripts/test-ai-protocols.mjs",
     "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:outreach-dispatch": "node scripts/test-outreach-dispatch.mjs",
+    "test:ai-routing": "node scripts/test-ai-routing.mjs",
+    "test:auto-approval": "node scripts/test-auto-approval.mjs",
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/validate-public-commerce-route-order.mjs && node scripts/smoke-built-routes.mjs",

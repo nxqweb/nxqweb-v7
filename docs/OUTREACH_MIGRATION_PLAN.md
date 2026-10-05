@@ -99,6 +99,12 @@ Open detail: pgcrypto's `digest` schema. Follow whatever resolution the existing
 migrations and the local full-schema test accept (migration "repair_commerce_pgcrypto_schema_resolution"
 shows this has bitten before).
 
+**Update 2026-10-05:** the SQL for 257 now exists as a tested DRAFT in
+`docs/drafts/migrations/02_outreach_inbound_and_unsubscribe.sql` (with its sidecar test), using
+`set search_path = public, extensions`. It is not in `supabase/migrations/` and is not applied. A suspected
+pgcrypto path problem in 7 existing functions (including the three sales delivery functions this plan
+depends on) is described in the handoff; its draft repair is `01_repair_pgcrypto_search_path.sql`.
+
 ## 4. Edge functions to add (code, then a guarded deploy) (gate)
 
 | Function | Auth | Job |

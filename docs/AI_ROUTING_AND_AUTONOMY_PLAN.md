@@ -114,3 +114,11 @@ logging. "Cannot be injected" is not achievable; layered controls are.
 3. Auto-approval: shadow mode first, and which client class is "low risk".
 4. Outreach: stage 1 first; regions; a separate sending domain and email provider.
 5. Lawyer review of outreach templates and privacy policy before any real send.
+
+## Status update 2026-10-05
+Local pure libraries now exist with offline tests (not deployed, not called by any function):
+`supabase/functions/_shared/ai-routing.ts` (section 1) and `supabase/functions/_shared/auto-approval.ts`
+(section 2, rules only, off/shadow/live). Section 3 groundwork: `outreach-compliance.ts`,
+`outreach-dispatch.ts`. Everything that connects them to the database, a function, or a provider is still
+a gate (migration, deploy, secrets).
+

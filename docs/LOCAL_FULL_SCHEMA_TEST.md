@@ -72,3 +72,16 @@ replaced by this.
 The script drops its database and any roles it created, and verifies the database is gone. It leaves no
 files outside the repository. It does not stop the Postgres server it ran against. If it is
 interrupted (Ctrl-C) it attempts the same teardown.
+
+## Added 2026-10-05
+
+- **Check 3b (pgcrypto search_path).** Fails if a function pins `search_path` to `public` yet calls a
+  pgcrypto function (digest, hmac, gen_random_bytes, crypt, gen_salt) without `extensions.`. On Supabase
+  pgcrypto normally lives in the `extensions` schema, so such calls can fail at runtime; the harness
+  hides it because it installs pgcrypto into `public`. Seven committed functions are listed in
+  `scripts/sql/local-full-schema/known-unqualified-pgcrypto.txt` (reported, staging layout unconfirmed).
+  The check fails on any NEW function and when a listed one is no longer flagged.
+- **Draft migrations.** SQL in `docs/drafts/migrations/` is applied after all real migrations, and its
+  `*.test.sql` sidecar must end with `DRAFT_TEST_OK`. Sidecars simulate the Supabase layout by moving
+  pgcrypto to `extensions`. Drafts are not migrations and are never applied anywhere else.
+

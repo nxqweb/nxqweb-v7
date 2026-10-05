@@ -238,6 +238,34 @@ if (setupComplete) {
     problems.length ? problems.join("; ") : `${checked} call sites (${skipped} non-literal skipped, ${privilegeChecked} privilege-checked)`);
 }
 
+// ---- 3b. Check: pinned search_path + unqualified pgcrypto calls --------------------------
+// On Supabase, pgcrypto lives in the "extensions" schema. A function with `set search_path = public`
+// that calls digest()/hmac()/gen_random_bytes()/crypt()/gen_salt() without the `extensions.` prefix
+// fails at RUNTIME there ("function digest(...) does not exist"), but passes locally because this
+// harness installs pgcrypto into public. Migration 242 fixed one instance of this. The query reads
+// the final catalog, so functions repaired by a later migration are not flagged.
+const flaggedCryptoSql = `select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+      where n.nspname='public' and p.prokind='f' and p.proconfig is not null
+        and exists (select 1 from unnest(p.proconfig) c where c like 'search_path=%' and c not like '%extensions%')
+        and p.prosrc ~* '(^|[^.[:alnum:]_])(digest|hmac|gen_random_bytes|crypt|gen_salt|pgp_sym_encrypt|pgp_sym_decrypt)[[:space:]]*\\(' order by 1;`;
+const listFlaggedCrypto = () => psql({ db: dbName, tuples: true, sql: flaggedCryptoSql }).stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+if (setupComplete) {
+  const flaggedCrypto = listFlaggedCrypto();
+  // Baseline of functions already known to have this problem (reported, awaiting an approved repair
+  // migration). Anything NOT in this list is a new regression and fails the check.
+  const baselinePath = path.join(root, "scripts/sql/local-full-schema/known-unqualified-pgcrypto.txt");
+  const knownCryptoBaseline = new Set(fs.existsSync(baselinePath)
+    ? fs.readFileSync(baselinePath, "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"))
+    : []);
+  const fresh = flaggedCrypto.filter((name) => !knownCryptoBaseline.has(name));
+  const stale = [...knownCryptoBaseline].filter((name) => !flaggedCrypto.includes(name));
+  record("no NEW function pins search_path to public yet calls pgcrypto without the extensions. prefix", fresh.length === 0 && stale.length === 0,
+    fresh.length || stale.length
+      ? `new: ${fresh.join(", ") || "none"}; baseline entries no longer flagged (remove them): ${stale.join(", ") || "none"}`
+      : `${flaggedCrypto.length} known function(s) still affected (see known-unqualified-pgcrypto.txt); no new ones`);
+  if (flaggedCrypto.length) console.log(`NOTE  known runtime risk on Supabase (pgcrypto in the extensions schema): ${flaggedCrypto.join(", ")}`);
+}
+
 // ---- 4. Check: provision-storefront reservation-key regression ------------------------
 const storefrontSource = fs.readFileSync(path.join(root, "supabase/functions/provision-storefront/index.ts"), "utf8");
 const reserveCall = /rpc\(\s*["']nxq_reserve_netlify_build["']\s*,\s*\{([\s\S]*?)\}\s*\)/.exec(storefrontSource)?.[1] || "";
@@ -300,6 +328,33 @@ reset role;`),
   });
   const locOut = Object.fromEntries(location.stdout.split("\n").filter((l) => l.includes("|")).map((l) => l.split("|")));
   record("a client can create a location (no 42703 from queue_location_seo_refresh, migration 256)", locOut.create_location === "true", `result=${locOut.create_location ?? `fixture failed: ${firstError(location.stderr)}`}`);
+}
+
+// ---- 5. Draft migrations (docs/drafts/migrations) ---------------------------------------
+// Drafts are NOT real migrations. Each is applied after all real migrations, then its sidecar test
+// (<name>.test.sql, which must select DRAFT_TEST_OK) runs inside a rolled-back transaction.
+const draftDir = path.join(root, "docs/drafts/migrations");
+if (setupComplete && fs.existsSync(draftDir)) {
+  const drafts = fs.readdirSync(draftDir).filter((n) => n.endsWith(".sql") && !n.endsWith(".test.sql")).sort();
+  let allApplied = true;
+  for (const name of drafts) {
+    const applied = psql({ db: dbName, sql: fs.readFileSync(path.join(draftDir, name), "utf8"), singleTransaction: true, stopOnError: true });
+    record(`draft ${name} applies after all real migrations`, applied.status === 0, firstError(applied.stderr));
+    if (applied.status !== 0) { allApplied = false; continue; }
+  }
+  if (allApplied && drafts.length) {
+    // Run the sidecar tests only after every draft is applied, so drafts that depend on each other work.
+    for (const name of drafts) {
+      const testPath = path.join(draftDir, name.replace(/\.sql$/, ".test.sql"));
+      if (!fs.existsSync(testPath)) { record(`draft ${name} has a sidecar test`, false, "missing"); continue; }
+      const t = psql({ db: dbName, tuples: true, sql: fs.readFileSync(testPath, "utf8") });
+      record(`draft ${name} passes its sidecar test`, t.status === 0 && t.stdout.includes("DRAFT_TEST_OK"), t.status === 0 ? t.stdout.trim().slice(-200) : firstError(t.stderr));
+    }
+    if (drafts.some((n) => n.includes("repair_pgcrypto_search_path"))) {
+      const left = listFlaggedCrypto();
+      record("after the drafted repair no function pins search_path to public and calls pgcrypto unqualified", left.length === 0, left.join(", "));
+    }
+  }
 }
 
 // ---- Teardown and summary ----------------------------------------------------------------

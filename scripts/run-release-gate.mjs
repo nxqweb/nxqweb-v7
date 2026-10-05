@@ -26,6 +26,8 @@ run(npm, ["run", "test:edge"]);
 run(npm, ["run", "test:ai-protocols"]);
 run(npm, ["run", "test:outreach-compliance"]);
 run(npm, ["run", "test:outreach-dispatch"]);
+run(npm, ["run", "test:ai-routing"]);
+run(npm, ["run", "test:auto-approval"]);
 run(npm, ["run", "lint", "--", "--max-warnings=0"]);
 run(npm, ["audit", "--omit=dev", "--audit-level=high"]);
 run(npm, ["run", "build"]);
