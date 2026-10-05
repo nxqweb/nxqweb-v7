@@ -636,6 +636,25 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Outreach compliance layer, stage 1 groundwork — local only, NOT deployed, NOT wired to sending (2026-10-05)
+
+- New `supabase/functions/_shared/outreach-compliance.ts` (pure functions): draft validator
+  (links/domains, markup, deceptive subjects, guarantees, false urgency, claimed prior
+  relationship, unverifiable claims, payment terms, prompt/model leaks), audit-finding
+  sanitiser (website content is untrusted input), deterministic reply triage
+  (unsubscribe / complaint / auto-reply; over-suppresses on purpose), US-only region rule, and a
+  send-eligibility evaluator (emergency stop, guarded mode, delivery switch, approved email draft,
+  active permission, suppression, do-not-contact, region, sender identity, daily cap <= 50,
+  weekday send window in the business timezone; fails closed).
+- `draft-sales-outreach-ai` now sanitises findings and validates drafts: a failing AI draft is
+  replaced by the deterministic draft; a draft that still fails is blocked (HTTP 422). It never
+  sends (`messages_sent: 0`). Takes effect only when that function is redeployed (guarded step).
+- `npm run test:outreach-compliance` (47 checks) added and wired into `run-release-gate.mjs`.
+- Still NOT built: the sender function, unsubscribe processing, reply ingestion, bounce/complaint
+  handling, a sending domain and email provider. Reading of the code found no function that uses
+  the delivery, suppression or reply tables. Any real send is an external-service gate.
+- Plan: `docs/AI_ROUTING_AND_AUTONOMY_PLAN.md`.
+
 ## Claude (Anthropic Messages) protocol added to the AI workers — local only, NOT deployed (2026-10-05)
 
 - New shared helper `supabase/functions/_shared/anthropic-messages.ts` and a new protocol value

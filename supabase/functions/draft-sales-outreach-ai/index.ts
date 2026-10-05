@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
+import { sanitizeAuditFinding, validateOutreachDraft } from "../_shared/outreach-compliance.ts";
 
 const jsonHeaders = { "Content-Type": "application/json" };
 function response(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: jsonHeaders }); }
@@ -26,7 +27,7 @@ Deno.serve(async (req) => {
     const prospect = await admin.from("nxq_sales_prospects").select("id,business_name,niche_key,city,state_region,website_url,website_audit_summary,status,source_provider").eq("id", body.prospect_id).single();
     if (prospect.error || !prospect.data) throw new Error("Prospect not found.");
     if (prospect.data.status === "do_not_contact") throw new Error("This prospect is on the do-not-contact list.");
-    const findings = Array.isArray(prospect.data.website_audit_summary?.findings) ? prospect.data.website_audit_summary.findings.map(String).slice(0, 5) : [];
+    const findings = Array.isArray(prospect.data.website_audit_summary?.findings) ? prospect.data.website_audit_summary.findings.map(sanitizeAuditFinding).filter(Boolean).slice(0, 5) : [];
     let draft = deterministic(prospect.data.business_name, prospect.data.city || "", findings);
     const endpoint = optional("NXQ_AI_MODEL_PROVIDER_URL"); const apiToken = optional("NXQ_AI_MODEL_PROVIDER_TOKEN"); const model = optional("NXQ_AI_MODEL_PROVIDER_MODEL");
     if (endpoint && apiToken && model && prospect.data.source_provider !== "zero_key_fictional") {
@@ -57,6 +58,17 @@ Deno.serve(async (req) => {
           target_actual_cost_cents: 10,
         });
       }
+    }
+    // Compliance gate: an AI draft that fails the checks is replaced by the deterministic draft;
+    // a draft that still fails is blocked. Nothing is sent from this function either way.
+    const allowedLiterals = [prospect.data.business_name, prospect.data.city || ""];
+    let complianceCheck = validateOutreachDraft(draft, { allowedLiterals });
+    if (!complianceCheck.ok && draft.ai_used) {
+      draft = deterministic(prospect.data.business_name, prospect.data.city || "", findings);
+      complianceCheck = validateOutreachDraft(draft, { allowedLiterals });
+    }
+    if (!complianceCheck.ok) {
+      return response({ ok: false, blocked: true, error: "The outreach draft failed compliance checks and was not created.", reasons: complianceCheck.reasons, messages_sent: 0 }, 422);
     }
     const step = Math.min(Math.max(Number(body.sequence_step) || 1, 1), 3);
     const created = await userClient.rpc("owner_create_sales_outreach_draft", { target_prospect_id: prospect.data.id, target_channel: "email", target_sequence_step: step, target_subject: draft.subject, target_body: draft.body, target_scheduled_for: null });

@@ -13,6 +13,7 @@
     "test:data-api-grants": "node scripts/audit-data-api-grants.mjs",
     "test:local-full-schema": "node scripts/test-local-full-schema.mjs",
     "test:ai-protocols": "node scripts/test-ai-protocols.mjs",
+    "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/validate-public-commerce-route-order.mjs && node scripts/smoke-built-routes.mjs",
