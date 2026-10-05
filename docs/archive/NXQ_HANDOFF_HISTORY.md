@@ -1461,3 +1461,99 @@ rather than amending unapplied 251 in place.
   all pass), `node scripts/simulate-autonomy-failures.mjs` (23/23), and
   `npm run test:lifecycle` (21/21 + 10/10 replays). No bundle-size budget
   script exists in `package.json` to run separately from `npm run build`.
+
+## Superseded on 2026-10-05: "Next highest-priority safe tasks" and "Resume instruction" (as written 2026-10-01)
+
+## Next highest-priority safe tasks
+
+1. **Decide the two deferred systemic gaps** (both explicitly the user's
+   to bring back when ready, not something to draft speculatively):
+   (a) client-facing billing notifications (payment succeeded/failed,
+   past-due, processor-connection-required never reach the client
+   through any channel — see "Owner operations / launch readiness
+   audit"), and (b) the consolidated `automation_escalations`
+   owner-visibility gap (7 of 8 escalation types written are never
+   surfaced to the owner anywhere — see "Consolidated
+   `automation_escalations` audit"). The cleanest fix for (b) is
+   extending `owner_exception_center()` to read `automation_escalations`
+   generically rather than one-off per escalation_type.
+2. **Get the full guard SQL actually running, in a Docker-capable
+   environment.** A scoped, disposable-Postgres test (this session, native
+   `service postgresql`, no Docker available here) already confirmed the
+   251/252 trigger logic itself behaves correctly at runtime — see
+   "Migration 252 — trigger-conflict fix" above. What's still missing is
+   running the *real* `scripts/sql/validate-paid-capability-guards-staging.sql`
+   scenario (with real RLS, real `auth`/`storage` schemas, the full
+   219-migration history applied via `supabase db push`) — that needs
+   either a Docker-capable environment to run `supabase start` locally, or
+   a throwaway Supabase branch/project, or a guarded staging run.
+3. **Review and, if approved, apply all seven staged migrations.** Follow
+   the "Canonical staging preflight plan" above step by step — it
+   specifies exactly how to check what's already applied before touching
+   anything, the dry-run, failure/recovery, security, and test steps, and
+   what access is actually needed (no secrets in chat, ever).
+   (`248_notify_client_on_website_setup_denial.sql`,
+   `249_notify_client_on_commerce_customer_request.sql`,
+   `250_notify_client_on_file_scan_completion.sql`,
+   `251_multi_location_self_serve_addon.sql`,
+   `252_fix_location_addon_trigger_conflict.sql`,
+   `253_restrict_client_notification_recipient_kind.sql`, and
+   `254_deliver_billing_notification_events.sql`) through the
+   normal guarded staging workflow (`validate_prelaunch` / `apply_all`
+   with the exact confirmation phrase), all in **one** run.
+   **251 and 252 must be applied together, in that order** — 251 alone
+   leaves the add-on feature functionally inert. **253 and 254 must be
+   applied together, in that order (253 first — now guaranteed by
+   ascending numbering, not just process discipline), with no
+   interruption between them** — applying 254 without 253 already in
+   place reopens a client-readable path to an owner-facing notification
+   about that same client the moment such a notification is ever created;
+   see "Local-file ordering fix — implemented" above for the exact
+   mechanism and the verification checklist to run before and after the
+   apply. Neither migration's applied status has been independently
+   verified against staging — check
+   `supabase_migrations.schema_migrations` on the real target database
+   first. All seven are currently only staged in the repo, not applied
+   anywhere. Once applied: denied clients, Commerce clients receiving new
+   customer requests, and clients
+   uploading files will get in-app notifications they don't currently
+   receive; Growth/Intelligence clients will be able to self-serve
+   enable/cancel Multi-Location add-ons for real (see "Multi-Location
+   self-serve add-on — implemented" above); and billing events will
+   deliver to the correct recipient with the RLS gap already closed.
+4. Ask the user whether `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` for
+   the staging project may be provided (as container env vars, never
+   pasted into chat/source) so `validate-paid-capability-guards-staging.mjs`,
+   `npm run test:staging-evidence`, and the remainder of
+   `npm run test:release` can actually run to completion. This is a
+   decision point, not an autonomous task — do not proceed past it without
+   an explicit answer.
+5. Consider drafting (only with explicit user approval, never
+   autonomously) a migration to drop or properly lock down
+   `commerce_cart_items` — orphaned schema found this session: granted to
+   `authenticated` but no RLS policy ever written, unreferenced anywhere
+   in `src/` or `supabase/functions/`, superseded by the stateless
+   cart-payload checkout flow since migration 090. Not urgent (fails
+   closed, no live exposure) but worth cleaning up in a future reviewed
+   migration pass. Keep applying the audit technique that found five real
+   fixes this session (2 SSRF gaps, a timing-attack gap across 10
+   functions, a CORS bug, and 3 missing client notifications across the
+   launch flow): pick an established safe pattern already used correctly
+   somewhere in the codebase, then check every place that pattern
+   *should* apply. Treat any remaining older doc claim as unverified
+   until re-checked against current source, not as ground truth.
+
+## Resume instruction for the next Claude session
+
+Before doing anything else: read `CLAUDE.md` in the repository root for
+standing operating rules, then this file for current state. Then verify
+live git state yourself — do not trust this document's SHA blindly:
+`git fetch origin safe/checkpoint-autonomy-wave35-sales`, compare
+`git rev-parse HEAD` against `git rev-parse origin/safe/checkpoint-autonomy-wave35-sales`
+and against `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`.
+Once confirmed current, **first check run #218's actual outcome**
+(see the progress ledger's last entry at the top of this file — do not
+re-dispatch `validate_prelaunch` to get information a completed run
+already has), report its migration-list and project-identity output if
+not already reported, then resume from the "Next highest-priority safe
+tasks" list below, honoring the stop-and-ask gates in `CLAUDE.md`.
