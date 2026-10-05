@@ -34,6 +34,18 @@ workflow edits; no deploy until a batch is approved; compare before/after (test 
    giant pages into components. Behavior-preserving only; verify with the route smoke test.
 6. **CSS last, or never.** Only remove proven-dead rules, with screenshot comparison.
 
+## Progress
+
+- **Step 1 done (2026-10-05):** handoff split. `docs/NXQ_RUNTIME_HANDOFF.md` 2,649 -> 1,201 lines; the
+  moved sections are verbatim in `docs/archive/NXQ_HANDOFF_HISTORY.md` (1,463 lines). A line-by-line
+  check found 0 original lines missing. `scripts/validate-provider-plug-in-readiness-contract.mjs`
+  reads the handoff, so the "Future one-session provider hookup" section and the secret names stay
+  in the live file.
+- **Step 2 not safe as written:** all 26 `scripts/patch-*` files are referenced by workflow files in
+  `.github/workflows/` (one-shot-* and harden-*). Moving them would break those workflows, and
+  workflow files are a stop-and-ask gate. Left in place. Revisit only with approval to edit or retire
+  those workflows.
+
 ## Cost and performance levers already planned elsewhere
 
 AI model routing and caching: `docs/AI_ROUTING_AND_AUTONOMY_PLAN.md`. Per-site costs:
