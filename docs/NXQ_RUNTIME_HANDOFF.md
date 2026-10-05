@@ -16,6 +16,8 @@ state. Update this file, not a new one, at every handoff.
 
 **Draft-PR CI skip (2026-10-05, owner approved workflow edit):** 7 CI workflows (`ci`, `ci-mega-extended`, `security-audit`, `client-canonical-stage-contract`, `client-lead-pagination-contract`, `client-file-domain-isolation-contract`, `portal-scale-contract`) got one job-level line: `if: github.event_name != 'pull_request' || github.event.pull_request.draft == false`. Push runs are unchanged; runs triggered by a DRAFT PR are skipped, so an open draft PR #11 no longer doubles CI. PR #11 was reopened as a draft afterwards (cosmetic: the Claude app shows a red 'closed' badge for a closed PR). If #11 is ever marked ready for review, CI runs on it again.
 
+**Scanii staging proof status (2026-10-05):** CLEAN-file half: owner's unsent chat draft said the clean upload 'came back clean' (not re-confirmed in a later message; treat as reported, not verified by me). INFECTED half: NOT proven. Owner downloaded the EICAR text file; Windows Defender blocked Notepad ('file contains a virus') and then removed the file, so it could not be uploaded (Defender stays ON by owner's choice). Remaining proof: upload EICAR from a machine/VM without real-time AV in the way and confirm it ends infected/blocked and never released. Notes: the client file bucket allows jpeg/png/webp/text-plain (migration 235) and the upload input has no type filter; Scanii scans by content, so image uploads use the same scan path.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
