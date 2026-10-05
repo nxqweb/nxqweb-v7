@@ -73,7 +73,22 @@ for (const file of files) {
     }
   }
 }
-console.log(`Checked ${writes} written columns.`);
+// filters and ordering inside one statement: .from("t") ... .eq("col", ...) / .order("col") / .in("col", ...)
+let filters = 0;
+for (const file of files) {
+  const text = fs.readFileSync(file, "utf8");
+  for (const q of text.matchAll(/\.from\(\s*["'`]([a-z0-9_]+)["'`]\s*\)([^;]{0,1200})/g)) {
+    const table = q[1];
+    if (views.has(table) || !columns.has(table)) continue;
+    const chain = q[2].split(/\.from\(/)[0];
+    if (/\.select\(\s*["'`][^"'`]*\(/.test(chain)) continue; // embedded resources may filter on other tables
+    for (const f of chain.matchAll(/\.(eq|neq|in|is|gt|gte|lt|lte|like|ilike|order|contains)\(\s*["'`]([a-z_][a-z0-9_]*)["'`]/g)) {
+      filters++;
+      if (!columns.get(table).has(f[2])) problems.push(`${file}: .${f[1]}("${f[2]}") on ${table}, which has no such column`);
+    }
+  }
+}
+console.log(`Checked ${writes} written columns and ${filters} filter/order columns.`);
 for (const p of problems) console.log(`FAIL  ${p}`);
 console.log(`\nChecked ${checked} selected columns across ${files.length} files; ${problems.length} problem(s).`);
 process.exit(problems.length ? 1 : 0);
