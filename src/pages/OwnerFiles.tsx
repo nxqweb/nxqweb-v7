@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatDateTimeShort as formatDateTime } from "../lib/format";
 
 type ClientRow = { id: string; business_name: string };
 type ClientFileRow = {
@@ -38,9 +39,6 @@ function formatFileSize(bytes: number | null) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
 }
 function isReleased(scan: FileScanRow | undefined) {
   return scan?.status === "clean" && scan.quarantine_status === "released";

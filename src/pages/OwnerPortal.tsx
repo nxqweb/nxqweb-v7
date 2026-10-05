@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
 
 type ApprovalStatus =
   | "pending"
@@ -92,29 +93,10 @@ type OwnerPortalSummary = {
 const OWNER_PAGE_SIZE = 50;
 const OWNER_UNREAD_PAGE_SIZE = 25;
 
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatStatus(status: string) {
-  return status.replaceAll("_", " ");
-}
-
 function formatClientOnboardingStatus(status: string) {
   if (status === "lead") return "Waiting for client intake";
   if (["intake_received", "needs_owner_review"].includes(status)) return "Ready for owner review";
   return formatStatus(status);
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
 }
 
 function isWebsiteSetupReport(approval: ApprovalRow) {
@@ -931,96 +913,63 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
 
             <div className="owner-message-ping-panel">
 
-
               <div className="owner-message-ping-header">
-
 
                 <strong>Client message pings</strong>
 
-
                 <span>{unreadClientMessageCount} new</span>
-
 
               </div>
 
-
-
               {ownerReviewMessages.length === 0 ? (
-
 
                 <p className="subtle">No client messages need owner review right now.</p>
 
-
               ) : (
-
 
                 <div className="owner-message-ping-list">
 
-
                   {ownerReviewMessages.slice(0, 6).map((message) => {
-
 
                     const client = getClientForMessage(message);
 
-
-
                     return (
-
 
                       <button
 
-
                         className="owner-message-ping"
-
 
                         key={message.id}
 
-
                         type="button"
-
 
                         onClick={() => openClientMessageThread(message.client_id)}
 
-
                       >
-
 
                         <span>
 
-
                           <strong>{client?.business_name || "Unknown client"}</strong>
-
 
                           <small>{formatDateTime(message.created_at)}</small>
 
-
                         </span>
-
 
                         <p>{message.message}</p>
 
-
                       </button>
-
 
                     );
 
-
                   })}
-
 
                 </div>
 
-
               )}
-
 
             </div>
 
-
-
             <div className="chat-feed">
-
 
               <div className="ai-bubble">
                 <strong>NXQ AI</strong>
@@ -1163,7 +1112,6 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
 
                     ) : null}
 
-
                     <div
 
                       className={`approval-actions ${
@@ -1239,7 +1187,6 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                   </div>
                 );
               })}
-
 
               {recentCompletedApprovals.length > 0 ? (
                 <div className="completed-section">
@@ -1528,130 +1475,4 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

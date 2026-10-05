@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus } from "../lib/format";
 
 type SecurityProfile = {
   monitoring_status: string;
@@ -24,10 +25,6 @@ type SecurityOverview = {
   latest_check: HealthCheck | null;
   active_incidents: number;
 };
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
 
 function formatDate(value: string | null) {
   if (!value) return "Not available";

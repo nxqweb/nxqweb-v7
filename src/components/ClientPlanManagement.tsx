@@ -7,6 +7,7 @@ import {
   type ProductTierKey,
 } from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus } from "../lib/format";
 
 type CurrentPlan = {
   clientId: string;
@@ -55,10 +56,6 @@ function formatDateTime(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   });
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
 }
 
 export function ClientPlanManagement() {

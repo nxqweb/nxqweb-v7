@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, ChevronDown, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatMoneyIn as formatMoney } from "../lib/format";
 
 type OrderItem = {
   id: string;
@@ -58,10 +59,6 @@ const statusOptions = [
 
 function humanize(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-function formatMoney(amount: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(amount || 0));
 }
 
 function summaryValue(value: number | undefined, verified: boolean) {

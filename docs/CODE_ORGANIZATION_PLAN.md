@@ -46,6 +46,17 @@ workflow edits; no deploy until a batch is approved; compare before/after (test 
   workflow files are a stop-and-ask gate. Left in place. Revisit only with approval to edit or retire
   those workflows.
 
+- **Step 5, first slice done (2026-10-05):** shared display formatters. New `src/lib/format.ts`
+  (`formatStatus`, `formatDateTimeShort`, `formatUsd`, `formatUsdWhole`, `formatMoneyIn`) replaces
+  byte-for-byte-equivalent local copies in 13 files (-258 lines, +13 import lines; call sites unchanged
+  via import aliases). Variants with page-specific fallback text ("Not set", "Custom", "Not resolved yet")
+  were deliberately left in their pages. `scripts/test-format-helpers.mjs` (10 checks) compares each
+  helper with the original implementation. Before/after: lint, tsc, build pass; JS total 1,040,273 ->
+  1,040,060 bytes (one small shared chunk added); 67/67 routes load with 0 flagged; release gate
+  unchanged (1,273 PASS, stops at `protected-staging-configuration`).
+- **Not started:** the Edge-function helper sharing (step 4) - blocked by having no Deno in this
+  container to type-check edits, and every touched function needs a guarded redeploy.
+
 ## Cost and performance levers already planned elsewhere
 
 AI model routing and caching: `docs/AI_ROUTING_AND_AUTONOMY_PLAN.md`. Per-site costs:

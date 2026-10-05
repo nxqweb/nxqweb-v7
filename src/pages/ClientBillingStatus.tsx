@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, Snowflake } from "lucide-react";
 import { appConfig } from "../lib/appConfig";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus, formatUsd as formatMoney } from "../lib/format";
 
 type ClientBillingRow = {
   business_name: string;
@@ -23,17 +24,6 @@ type LocationAddonSummary = {
 
 function formatCentsMoney(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents || 0) / 100);
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value || 0);
 }
 
 function formatDate(value: string | null) {

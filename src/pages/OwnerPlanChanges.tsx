@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRightLeft, CheckCircle2, RefreshCcw, XCircle } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus } from "../lib/format";
 
 type PlanChangeRequestRow = {
   id: string;
@@ -66,10 +67,6 @@ function formatDateTime(value: string | null) {
     dateStyle: "medium",
     timeStyle: "short",
   });
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
 }
 
 export function OwnerPlanChanges() {

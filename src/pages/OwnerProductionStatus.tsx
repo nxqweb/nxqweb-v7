@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ExternalLink, RefreshCcw, Rocket, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatDateTimeShort as formatDateTime } from "../lib/format";
 
 type LaunchRow = {
   id: string;
@@ -51,10 +52,6 @@ type Diagnostics = {
   productionUrlStatus?: number;
   note?: string;
 };
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
-}
 
 export function OwnerProductionStatus() {
   const [launch, setLaunch] = useState<LaunchRow | null>(null);

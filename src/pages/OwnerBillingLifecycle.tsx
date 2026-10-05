@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, RefreshCcw, Snowflake } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus, formatUsd as formatMoney } from "../lib/format";
 
 type BillingStatus =
   | "not_configured"
@@ -20,17 +21,6 @@ type ClientRow = {
   billing_overdue_since: string | null;
   billing_frozen_at: string | null;
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(value || 0);
-}
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
 
 function formatDate(value: string | null) {
   if (!value) return "Not set";

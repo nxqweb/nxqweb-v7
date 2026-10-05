@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatDateTimeShort as formatDateTime, formatStatus } from "../lib/format";
 
 type ClientRow = {
   id: string;
@@ -73,17 +74,6 @@ type VerificationResult = {
   checks: Record<string, VerificationCheck>;
   note: string;
 };
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 function shortCommit(value: string | null) {
   return value ? value.slice(0, 8) : "None yet";
