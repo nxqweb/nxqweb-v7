@@ -701,6 +701,9 @@ process, all requiring your action outside this session.
   button, client "at a glance" graph) was published as the live `nxqweb-v9-staging.netlify.app`. Builds were set back
   to STOPPED. Still to do by the owner: lock the published deploy; one owner login + client login test on the live
   site. Roll back = Publish deploy on the earlier `main@77e9455` deploy. Do not merge PR #11 until intended.
+- **Promise audit written (`docs/PROMISE_AUDIT.md`):** every public claim mapped to code. Owner's rule: whatever the site
+  promises must be delivered. Gaps: lead-source/funnel insights not found; "live view" is only a table today; preview
+  should be labeled as the Growth-plan view. Planned next: real client dashboard from existing tables (no migration needed).
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
