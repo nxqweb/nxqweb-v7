@@ -697,6 +697,10 @@ process, all requiring your action outside this session.
 - Not done: authenticated portal pages were only checked unauthenticated (their data states), not with real data.
   A real-time chart inside the client portal needs a data source and is a later, approved step.
   Plans for the waitlist and the example page: `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md` (no code).
+- **PUBLISHED (owner, 2026-10-04 11:39 PM local):** the safe-branch branch deploy `@3581cf1` (premium UI, owner Log out
+  button, client "at a glance" graph) was published as the live `nxqweb-v9-staging.netlify.app`. Builds were set back
+  to STOPPED. Still to do by the owner: lock the published deploy; one owner login + client login test on the live
+  site. Roll back = Publish deploy on the earlier `main@77e9455` deploy. Do not merge PR #11 until intended.
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
