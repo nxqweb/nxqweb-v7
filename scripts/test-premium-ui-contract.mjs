@@ -62,6 +62,10 @@ check("founding program numbers come from one config and it can be switched off"
 check("apply is a plain email link to the support address, with no form or tracking", founding.includes("mailto:${appConfig.supportEmail}") && !/fetch\(|supabase|<form/i.test(founding));
 check("home page includes the founding program section", home.includes("<FoundingClientProgram />"));
 
+const ownerGraph = read("src/components/OwnerOverviewGraph.tsx");
+const ownerPortal = read("src/pages/OwnerPortal.tsx");
+check("owner header graph uses the loaded owner summary and shows no invented zeros before it loads", ownerPortal.includes("summary={ownerSummaryLoaded ? ownerSummary : null}") && ownerGraph.includes("Loading your numbers") && !/supabase|fetch\(|Math\.random/.test(ownerGraph));
+
 // ---- safety of the layer itself ----
 check("page wipe only affects same-origin links and always falls back to navigation", wipe.includes("url.origin !== window.location.origin") && wipe.includes("window.location.assign(url.href)") && wipe.includes("event.metaKey"));
 check("wipe is used only on internal path links", [...home.matchAll(/data-px-wipe\s+href="([^"]+)"/g)].every((m) => m[1].startsWith("/")));

@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { OwnerOverviewGraph } from "../components/OwnerOverviewGraph";
 import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
 
 type ApprovalStatus =
@@ -284,6 +285,7 @@ export function OwnerPortal() {
     unread_client_messages: 0,
     pending_approvals: 0,
   });
+  const [ownerSummaryLoaded, setOwnerSummaryLoaded] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
   const [clientHasMore, setClientHasMore] = useState(false);
   const [messageHasMore, setMessageHasMore] = useState(false);
@@ -533,7 +535,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
       if (unreadResult.error) throw unreadResult.error;
 
       const summary = Array.isArray(summaryResult.data) ? summaryResult.data[0] : summaryResult.data;
-      if (summary) setOwnerSummary(summary as OwnerPortalSummary);
+      if (summary) { setOwnerSummary(summary as OwnerPortalSummary); setOwnerSummaryLoaded(true); }
 
       const clientPage = (clientResult.data || []) as ClientRow[];
       setClients(clientPage);
@@ -872,13 +874,11 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
     <main className="nxq-page">
       <section className="portal-shell">
         <div className="portal-header">
-          <div>
-            <p className="eyebrow">Owner Portal</p>
-            <h1>{ownerView === "aps" ? "NXQ approvals" : "NXQ client chat"}</h1>
-            <p className="subtle">
-              {ownerView === "aps" ? "One decision starts the normal autonomous workflow." : "Pick one client and text them directly."}
-            </p>
-          </div>
+          <OwnerOverviewGraph
+            subtitle={ownerView === "aps" ? "One decision starts the normal autonomous workflow." : "Pick one client and text them directly."}
+            summary={ownerSummaryLoaded ? ownerSummary : null}
+            title={ownerView === "aps" ? "NXQ approvals" : "NXQ client chat"}
+          />
 
           <div className="stat-card">
             <span>☰ Owner menu</span>
