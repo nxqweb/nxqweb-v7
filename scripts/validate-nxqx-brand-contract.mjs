@@ -16,7 +16,7 @@ const checks = [
   ["website branch defaults to NXQX-Web", config.includes('VITE_PRODUCT_NAME || "NXQX-Web"')],
   ["support contact defaults to current NXQweb@ inbox (real mailbox; address unchanged)", config.includes('VITE_SUPPORT_EMAIL || "NXQweb@protonmail.com"')],
   ["public metadata identifies NXQX-Web by NXQX", html.includes("NXQX-Web by NXQX") && html.includes("Premium Managed Websites")],
-  ["public header shows parent and branch", home.includes("<strong>NXQX</strong>") && home.includes("<span>NXQX-Web</span>")],
+  ["public header shows NXQX with Web beneath it", home.includes("<strong>NXQX</strong>") && home.includes("<span>Web</span>")],
   ["frontend product catalog uses NXQX-* names", ["NXQX-Business","NXQX-Booking","NXQX-Commerce","NXQX-Menu","NXQX-Property","NXQX-Multi-Location","NXQX-Membership","NXQX-Enterprise Systems"].every((name) => catalog.includes(name))],
   ["public plan cards use NXQX-* names", ["NXQX-Business","NXQX-Booking","NXQX-Commerce","NXQX-Menu","NXQX-Property","NXQX-Multi-Location","NXQX-Membership","NXQX-Enterprise"].every((name) => plans.includes(name))],
   ["generated Business template attributes NXQX-Web", template.includes("Website managed by NXQX-Web")],

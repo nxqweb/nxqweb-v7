@@ -17,7 +17,7 @@ export function PublicPlans() {
           <span className="px-mark">N</span>
           <span className="px-brandtext">
             <strong>NXQX</strong>
-            <span>NXQX-Web systems</span>
+            <span>Web systems</span>
           </span>
         </a>
         <nav className="px-links" aria-label="Main navigation">
