@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { ClientCommercePortalTab } from "./ClientCommercePortalTab";
 import { ClientJourneySummaryCard } from "./ClientJourneySummaryCard";
+import { ClientOverviewGraph } from "./ClientOverviewGraph";
 import type { ClientLaunchJourney } from "../lib/clientJourney";
 
 type BillingSummary = {
@@ -399,6 +400,16 @@ export function ClientPortalTopCards() {
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+      {!denied ? (
+        <ClientOverviewGraph
+          attentionCount={[billingStateLoad, healthStateLoad, journeyStateLoad].includes("loading") ? null : clientActionCount}
+          billingLabel={billingState.title}
+          billingTone={billingState.tone as "success" | "info" | "warning" | "danger"}
+          healthLabel={healthState.title}
+          healthTone={healthState.tone as "success" | "info" | "warning" | "danger"}
+          journey={effectiveJourney}
+        />
+      ) : null}
       <section className="notice-card portal-action-center info" aria-label="NXQ-Web action center">
         <div className="portal-action-center-head">
           <div className="panel-title">

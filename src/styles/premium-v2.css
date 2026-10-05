@@ -254,3 +254,40 @@ a.panel { display: block; }
 body:not([data-nxq-theme="light"]) .portal-shell h1 { font-size: clamp(2rem, 3.6vw, 3rem) !important; }
 /* .portal-grid had no rules of its own; give it a responsive grid so tiles sit side by side. */
 .portal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 16px 0; }
+
+/* ----- Client "at a glance" graph (real journey data) and tidier action rows ----- */
+.px-glance { display: grid; grid-template-columns: 170px 1fr; gap: 28px; align-items: center; padding: 26px 28px; border-radius: 26px; border: 1px solid rgba(217,183,95,.2);
+  background: radial-gradient(520px 220px at 0 0, rgba(217,183,95,.12), transparent 70%), linear-gradient(170deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); box-shadow: 0 24px 70px rgba(0,0,0,.35); }
+.px-glance-ring { position: relative; width: 150px; height: 150px; justify-self: center; }
+.px-glance-ring svg { width: 100%; height: 100%; filter: drop-shadow(0 0 10px rgba(240,200,90,.35)); }
+.px-ring-track { fill: none; stroke: rgba(255,255,255,.09); stroke-width: 9; }
+.px-ring-value { fill: none; stroke: #f0dca0; stroke-width: 9; stroke-linecap: round; transition: stroke-dasharray 1.2s cubic-bezier(.2,.7,.2,1); }
+.px-ring-label { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.px-ring-label strong { font-family: var(--px-serif); font-weight: 500; font-size: 2rem; line-height: 1; }
+.px-ring-label span { color: var(--px-ink-3); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; margin-top: 4px; }
+.px-glance-kicker { color: var(--px-gold); font-size: .72rem; letter-spacing: .22em; text-transform: uppercase; }
+.px-glance-main h2 { font-family: var(--px-serif); font-weight: 500; font-size: clamp(1.4rem, 2.6vw, 2rem); margin: 6px 0 14px; }
+.px-rail { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.px-rail-step { display: grid; gap: 6px; font-size: .74rem; color: var(--px-ink-3); }
+.px-rail-step i { display: block; height: 5px; border-radius: 5px; background: rgba(255,255,255,.1); }
+.px-rail-step.px-complete i { background: #d9b75f; box-shadow: 0 0 10px rgba(217,183,95,.5); }
+.px-rail-step.px-current i { background: linear-gradient(90deg, #f0dca0, rgba(240,220,160,.25)); animation: px-beat var(--px-beat) ease-in-out infinite; }
+.px-rail-step.px-current { color: var(--px-gold-2); }
+.px-rail-step.px-stopped i { background: #e8a08f; }
+.px-glance-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.px-glance-stat { padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.09); border-left-width: 3px; }
+.px-glance-stat small { display: block; color: var(--px-ink-3); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
+.px-glance-stat b { font-weight: 600; font-size: .9rem; }
+.px-glance-stat.px-tone-success { border-left-color: #8fd6a8; }
+.px-glance-stat.px-tone-info { border-left-color: #8aa4d6; }
+.px-glance-stat.px-tone-warning { border-left-color: #e0bb62; }
+.px-glance-stat.px-tone-danger { border-left-color: #e8a08f; }
+@media (max-width: 760px) { .px-glance { grid-template-columns: 1fr; padding: 20px; } .px-glance-stats { grid-template-columns: 1fr; } .px-rail { grid-auto-flow: row; grid-template-columns: repeat(2, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .px-rail-step.px-current i { animation: none; } .px-ring-value { transition: none; } }
+body[data-nxq-theme="light"] .px-glance { background: rgba(255,255,255,.7); border-color: rgba(120,95,30,.25); box-shadow: none; color: #1b1710; }
+body[data-nxq-theme="light"] .px-ring-track { stroke: rgba(0,0,0,.1); } body[data-nxq-theme="light"] .px-ring-value { stroke: #a8863a; }
+body[data-nxq-theme="light"] .px-glance-stat { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.1); } body[data-nxq-theme="light"] .px-glance-stat small, body[data-nxq-theme="light"] .px-ring-label span, body[data-nxq-theme="light"] .px-rail-step { color: #5a5444; }
+
+/* Action-center rows: the small "Your action / NXQ handling" label sat on the same line as the title. */
+.portal-action-copy > span { display: block; margin-bottom: 2px; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--px-gold); }
+body[data-nxq-theme="light"] .portal-action-copy > span { color: #7a5f1a; }

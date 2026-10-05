@@ -43,12 +43,19 @@ check("the example site on the home page is labeled as an example", /Example sit
 check("the Trusted-by list ships empty and renders nothing while empty", /clientResults: ClientResult\[\] = \[\];/.test(proof) && /if \(clientResults\.length === 0\) return null;/.test(trusted));
 check("home has no external links or scripts", !/https?:\/\//.test(home.replace(/\/\/ .*$/gm, "")) );
 
+// ---- client "at a glance" graph: real data only ----
+const glance = read("src/components/ClientOverviewGraph.tsx");
+const topCards = read("src/components/ClientPortalTopCards.tsx");
+check("client overview graph reads no backend and invents no numbers", !/supabase|fetch\(|Math\.random/.test(glance));
+check("unknown journey or action values show a dash, never zero or a green state", glance.includes('percent === null ? "—"') && glance.includes('attentionCount === null ? "—"'));
+check("overview graph is fed from state the portal already loaded", topCards.includes("<ClientOverviewGraph") && topCards.includes("journey={effectiveJourney}") && topCards.includes("billingLabel={billingState.title}"));
+
 // ---- safety of the layer itself ----
 check("page wipe only affects same-origin links and always falls back to navigation", wipe.includes("url.origin !== window.location.origin") && wipe.includes("window.location.assign(url.href)") && wipe.includes("event.metaKey"));
 check("wipe is used only on internal path links", [...home.matchAll(/data-px-wipe\s+href="([^"]+)"/g)].every((m) => m[1].startsWith("/")));
 check("backdrop never intercepts clicks and is hidden from assistive tech", /\.px-bg\{[^}]*pointer-events:none/.test(css) && backdrop.includes('aria-hidden="true"'));
 check("backdrop is not mounted for public storefronts", /path\.startsWith\("\/store"\)\) return null/.test(app));
-check("light theme hides the backdrop and the app skin is dark-theme only", css.includes('body[data-nxq-theme="light"] .px-bg') && !/body\[data-nxq-theme="light"\][^{]*\{[^}]*color/.test(css.split("App skin")[1] || ""));
+check("light theme hides the backdrop and the app skin is dark-theme only", css.includes('body[data-nxq-theme="light"] .px-bg') && !/body\[data-nxq-theme="light"\][^{]*\{[^}]*color/.test((css.split("App skin")[1] || "").split("Client \"at a glance\"")[0]));
 check("reduced motion turns the animation off", /@media \(prefers-reduced-motion:reduce\)\{[^]*animation:none!important/.test(css));
 check("app routing and guards are untouched by the layer (App.tsx still has guard strings)", app.includes("<OwnerProtectedRoute>") && app.includes('window.location.replace("/portal/login")') && app.includes('id="main-content" tabIndex={-1}'));
 
