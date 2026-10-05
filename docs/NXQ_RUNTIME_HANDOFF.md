@@ -636,6 +636,23 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Claude (Anthropic Messages) protocol added to the AI workers — local only, NOT deployed (2026-10-05)
+
+- New shared helper `supabase/functions/_shared/anthropic-messages.ts` and a new protocol value
+  `anthropic_messages` accepted by `generate-business-build-plan` and
+  `classify-business-change-request` (set `NXQ_AI_MODEL_PROVIDER_PROTOCOL=anthropic_messages`,
+  `NXQ_AI_MODEL_PROVIDER_URL=https://api.anthropic.com/v1/messages`, plus token and model, as
+  Supabase secrets by the owner; never in chat). OpenAI protocols unchanged. No new env names.
+- Offline test `npm run test:ai-protocols` (22/22) added and wired into `run-release-gate.mjs`.
+  Edge functions were syntax-checked only (no Deno in this container); not exercised against a
+  live provider.
+- **Open gate:** migration 179's readiness function only treats `openai_responses` and
+  `openai_chat_completions` as a proven protocol (`provider_protocol_proven`). With
+  `anthropic_messages` the workers function, but the AI-readiness check would not become ready
+  until a new migration widens that list (stop-and-ask gate: migration + guarded staging apply).
+  Redeploying the two functions is also a separate guarded step. The 20s/15s request timeouts
+  may need raising for slower thinking models.
+
 ## Cloudmersive status (2026-10-03/04) — malware-scanner key still not obtained
 
 - Free-tier signup worked, but the portal showed "Free-Tier Key Creation Limit Reached" with

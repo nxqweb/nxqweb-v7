@@ -23,6 +23,7 @@ run(npm, ["run", "test:lifecycle"]);
 run(npm, ["run", "test:security"]);
 run(npm, ["run", "test:accessibility"]);
 run(npm, ["run", "test:edge"]);
+run(npm, ["run", "test:ai-protocols"]);
 run(npm, ["run", "lint", "--", "--max-warnings=0"]);
 run(npm, ["audit", "--omit=dev", "--audit-level=high"]);
 run(npm, ["run", "build"]);

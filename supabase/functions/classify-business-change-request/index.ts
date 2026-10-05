@@ -2,10 +2,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 import { classifyCapabilityRequest } from "../_shared/capability-rules.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { ANTHROPIC_PROTOCOL, anthropicHeaders, anthropicOutput, anthropicPayload } from "../_shared/anthropic-messages.ts";
 
 type Job = { id: string; client_id: string; project_id: string; job_type: string; payload?: Record<string, unknown> | null };
 type JsonRecord = Record<string, unknown>;
-type ProviderProtocol = "openai_responses" | "openai_chat_completions";
+type ProviderProtocol = "openai_responses" | "openai_chat_completions" | typeof ANTHROPIC_PROTOCOL;
 type ClassifierResult = { route: "safe_patch" | "needs_info" | "owner_review"; confidence: number; patch?: JsonRecord; question?: string; reason?: string };
 
 const workerName = "classify-business-change-request";
@@ -105,8 +106,8 @@ function deterministicResult(requestedPayload: unknown): ClassifierResult | null
 }
 
 function providerProtocol(value: string): ProviderProtocol {
-  if (value === "openai_responses" || value === "openai_chat_completions") return value;
-  throw new Error("NXQ_AI_MODEL_PROVIDER_PROTOCOL must be openai_responses or openai_chat_completions.");
+  if (value === "openai_responses" || value === "openai_chat_completions" || value === ANTHROPIC_PROTOCOL) return value;
+  throw new Error("NXQ_AI_MODEL_PROVIDER_PROTOCOL must be openai_responses, openai_chat_completions, or anthropic_messages.");
 }
 
 function classificationSchema() {
@@ -140,6 +141,9 @@ function providerPayload(protocol: ProviderProtocol, model: string, input: JsonR
   const schema = classificationSchema();
   const userInput = JSON.stringify({ task: "classify_business_change_request_v3", input });
   if (userInput.length > 64_000) throw new Error("AI classifier input exceeded the 64 KB safety limit.");
+  if (protocol === ANTHROPIC_PROTOCOL) {
+    return anthropicPayload({ model, system: providerInstructions(), user: userInput, schema, maxTokens: 8_000 });
+  }
   if (protocol === "openai_responses") {
     return {
       model,
@@ -197,7 +201,7 @@ async function classify(input: JsonRecord, providerUrlRaw: string, providerToken
     providerResponse = await fetch(providerUrl, {
       method: "POST",
       redirect: "error",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${providerToken}` },
+      headers: protocol === ANTHROPIC_PROTOCOL ? anthropicHeaders(providerToken) : { "Content-Type": "application/json", Authorization: `Bearer ${providerToken}` },
       body: JSON.stringify(providerPayload(protocol, providerModel, input)),
       signal: controller.signal,
     });
@@ -208,7 +212,9 @@ async function classify(input: JsonRecord, providerUrlRaw: string, providerToken
   let providerBody: JsonRecord;
   try { providerBody = record(providerText ? JSON.parse(providerText) : null); }
   catch { throw new Error("AI provider returned invalid JSON."); }
-  const outputText = protocol === "openai_responses" ? responsesOutput(providerBody) : chatOutput(providerBody);
+  const outputText = protocol === ANTHROPIC_PROTOCOL
+    ? anthropicOutput(providerBody, "AI provider refused the classification request.")
+    : protocol === "openai_responses" ? responsesOutput(providerBody) : chatOutput(providerBody);
   if (outputText.length > 16_000) throw new Error("AI classifier structured output exceeded the 16 KB safety limit.");
   let structured: unknown;
   try { structured = JSON.parse(outputText); }

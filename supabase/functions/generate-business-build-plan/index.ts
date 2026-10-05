@@ -1,9 +1,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
+import { ANTHROPIC_PROTOCOL, anthropicHeaders, anthropicOutput, anthropicPayload } from "../_shared/anthropic-messages.ts";
 
 type JsonRecord = Record<string, unknown>;
-type ProviderProtocol = "openai_responses" | "openai_chat_completions";
+type ProviderProtocol = "openai_responses" | "openai_chat_completions" | typeof ANTHROPIC_PROTOCOL;
 type ProviderRoute = "external_provider" | "local_adapter";
 type BuildPlanRequest = {
   task: "enrich_business_build_plan_v1";
@@ -264,14 +265,17 @@ function instructions(request: BuildPlanRequest) {
 }
 
 function providerProtocol(value: string): ProviderProtocol {
-  if (value === "openai_responses" || value === "openai_chat_completions") return value;
-  throw new Error("AI provider protocol must be openai_responses or openai_chat_completions.");
+  if (value === "openai_responses" || value === "openai_chat_completions" || value === ANTHROPIC_PROTOCOL) return value;
+  throw new Error("AI provider protocol must be openai_responses, openai_chat_completions, or anthropic_messages.");
 }
 
 function providerPayload(protocol: ProviderProtocol, model: string, request: BuildPlanRequest) {
   const schema = buildOutputSchema(request);
   const systemInstructions = instructions(request);
   const userInput = JSON.stringify({ task: request.task, input: request.input });
+  if (protocol === ANTHROPIC_PROTOCOL) {
+    return anthropicPayload({ model, system: systemInstructions, user: userInput, schema, maxTokens: 16_000 });
+  }
   if (protocol === "openai_responses") {
     return {
       model,
@@ -517,7 +521,7 @@ Deno.serve(async (request) => {
       providerResponse = await fetch(providerUrl, {
         method: "POST",
         redirect: "error",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${selected.token}` },
+        headers: protocol === ANTHROPIC_PROTOCOL ? anthropicHeaders(selected.token) : { "Content-Type": "application/json", Authorization: `Bearer ${selected.token}` },
         body: JSON.stringify(providerPayload(protocol, selected.model, parsedRequest)),
         signal: controller.signal,
       });
@@ -531,7 +535,9 @@ Deno.serve(async (request) => {
     let providerBody: unknown;
     try { providerBody = providerText ? JSON.parse(providerText) : null; }
     catch { throw new Error("AI provider returned invalid JSON."); }
-    const outputText = protocol === "openai_responses" ? responsesOutput(record(providerBody)) : chatOutput(record(providerBody));
+    const outputText = protocol === ANTHROPIC_PROTOCOL
+      ? anthropicOutput(record(providerBody), "AI provider refused the build-plan request.")
+      : protocol === "openai_responses" ? responsesOutput(record(providerBody)) : chatOutput(record(providerBody));
     if (outputText.length > 64_000) throw new Error("AI structured output exceeded the 64 KB safety limit.");
     let structured: unknown;
     try { structured = JSON.parse(outputText); }
