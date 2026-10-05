@@ -636,6 +636,28 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Outreach delivery orchestration (stage 1, sender logic) — local only, NO Edge function, NOT deployed (2026-10-05)
+
+- New `supabase/functions/_shared/outreach-dispatch.ts`: `runOutreachDispatch` (injected
+  dependencies), `buildOutboundEmail` (plain text + sender identity + postal address + opt-out
+  line + List-Unsubscribe header), `createResendSender` (fixed host `api.resend.com`, no
+  redirects, idempotency key, injected fetch). Uses the EXISTING service-role RPCs
+  (`nxq_queue_sales_delivery`, `nxq_reserve_sales_delivery`, `nxq_record_sales_delivery_event`)
+  as the authority; adds fail-closed holds, a second compliance check, and cap <= 50.
+- Holds everything (queues, reserves and sends nothing) unless: not emergency-stopped, mode
+  `guarded`, database `external_delivery_enabled`, a separate server delivery switch, and an
+  email provider configured. A reserved job always ends sent/failed; a crash leaves it reserved,
+  which cannot send twice. Outcome-recording failure stops the run.
+- `npm run test:outreach-dispatch` (30 checks, in-memory fakes) wired into the release gate.
+- **Deliberately NOT added:** the Edge function wrapper. Registering a new function in
+  `scripts/edge-function-manifest.mjs` / `supabase/config.toml` would make the staging
+  "workers_deployed" check expect it before it exists remotely. Add the wrapper together with a
+  guarded deploy, a cron schedule (migration) and the secrets.
+- **Gaps needing a migration (stop-and-ask):** inbound reply ingestion and automated
+  unsubscribe handling (`owner_record_sales_reply` is owner-only, so a service worker cannot call
+  it), a cron schedule for the sender, and the Claude readiness widening. Still needed outside
+  code: sending domain with SPF/DKIM/DMARC, email provider account, lawyer review of templates.
+
 ## Outreach compliance layer, stage 1 groundwork — local only, NOT deployed, NOT wired to sending (2026-10-05)
 
 - New `supabase/functions/_shared/outreach-compliance.ts` (pure functions): draft validator
