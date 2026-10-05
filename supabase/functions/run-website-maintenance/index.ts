@@ -250,7 +250,7 @@ async function seoCheck(urlText: string) {
 
 async function backupCheck(admin: ReturnType<typeof createClient<DynamicDatabase>>, projectId: string) {
   const config = await admin.from("project_deployment_configs")
-    .select("github_owner,github_repo,production_branch,last_production_commit,last_deployment_status")
+    .select("github_owner,github_repo,production_branch,last_deployed_commit,last_deployment_status")
     .eq("project_id", projectId).maybeSingle();
   if (config.error || !config.data?.github_owner || !config.data?.github_repo) {
     throw new Error("Deployment configuration is missing GitHub backup metadata.");
@@ -266,7 +266,7 @@ async function backupCheck(admin: ReturnType<typeof createClient<DynamicDatabase
   }, 15_000);
   const body = await repoRes.json();
   if (!repoRes.ok || !body?.commit?.sha) throw new Error(`GitHub production branch verification failed (${repoRes.status}).`);
-  const expected = clean(config.data.last_production_commit);
+  const expected = clean(config.data.last_deployed_commit);
   const actual = clean(body.commit.sha);
   return {
     healthy: Boolean(actual) && (!expected || expected === actual),

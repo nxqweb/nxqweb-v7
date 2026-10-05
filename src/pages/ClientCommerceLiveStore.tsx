@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, Save, Store, ToggleLeft, ToggleRight } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { safePaymentUrl } from "../lib/safeUrl";
 
 type LiveProduct = {
   id: string;
@@ -84,6 +85,15 @@ export function ClientCommerceLiveStore() {
         "Open this storefront now? This can make the storefront publicly reachable, but it does not activate a payment provider or charge anyone."
       );
       if (!confirmed) return;
+    }
+
+    // Tell the store owner now if a payment link would be hidden on the public storefront.
+    const badLink = (stripePaymentLink && !safePaymentUrl("stripe", stripePaymentLink) && "Stripe")
+      || (paypalUrl && !safePaymentUrl("paypal", paypalUrl) && "PayPal")
+      || (venmoUrl && !safePaymentUrl("venmo", venmoUrl) && "Venmo");
+    if (badLink) {
+      setError(`The ${badLink} link must be an https link on ${badLink}'s own website (for example buy.stripe.com, paypal.me or venmo.com). Nothing was saved.`);
+      return;
     }
 
     setBusy("settings");

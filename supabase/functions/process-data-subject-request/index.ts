@@ -28,8 +28,8 @@ Deno.serve(async(req)=>{
 
     if(r.request_type==="export"){
       const [account,memberships,client,locations,consents,securityEvents]=await Promise.all([
-        r.nxq_account_id?admin.from("nxq_accounts").select("nxq_id,status,created_at,updated_at").eq("id",r.nxq_account_id).maybeSingle():Promise.resolve({data:null,error:null}),
-        r.nxq_account_id?admin.from("nxq_product_memberships").select("product_key,status,verification_level,created_at,updated_at").eq("nxq_account_id",r.nxq_account_id).limit(100):Promise.resolve({data:[],error:null}),
+        r.nxq_account_id?admin.from("nxq_accounts").select("nxq_id,account_status,assurance_level,primary_email_verified,created_at,updated_at").eq("id",r.nxq_account_id).maybeSingle():Promise.resolve({data:null,error:null}),
+        r.nxq_account_id?admin.from("nxq_product_memberships").select("product_id,membership_status,product_role,enrolled_at,last_accessed_at,created_at,updated_at").eq("nxq_account_id",r.nxq_account_id).limit(100):Promise.resolve({data:[],error:null}),
         r.client_id?admin.from("clients").select("client_code,business_name,status,created_at,updated_at").eq("id",r.client_id).maybeSingle():Promise.resolve({data:null,error:null}),
         r.client_id?admin.from("client_locations").select("location_code,display_name,status,city,state_region,country_code,service_area,seo_slug,created_at,updated_at").eq("client_id",r.client_id).limit(250):Promise.resolve({data:[],error:null}),
         r.nxq_account_id?admin.from("privacy_consents").select("consent_type,policy_version,status,source,granted_at,withdrawn_at,expires_at,created_at").eq("nxq_account_id",r.nxq_account_id).limit(250):Promise.resolve({data:[],error:null}),

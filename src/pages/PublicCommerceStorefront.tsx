@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { safePaymentUrl } from "../lib/safeUrl";
 
 type Variant = { id: string; title: string; price: number; available_quantity: number; inventory_policy: string };
 type Product = { id: string; name: string; slug: string; short_description?: string | null; description?: string | null; base_price: number; compare_at_price?: number | null; image_url?: string | null; variants: Variant[] };
@@ -83,9 +84,9 @@ export function PublicCommerceStorefront() {
         <p>Your total is <strong>{money(order.total, order.currency)}</strong>.</p>
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
         <div className="settings-grid">
-          {order.stripe_payment_link ? <a className="wide-btn" href={order.stripe_payment_link} target="_blank" rel="noreferrer">Continue to Stripe</a> : null}
-          {order.paypal_url ? <a className="wide-btn" href={order.paypal_url} target="_blank" rel="noreferrer">Pay with PayPal</a> : null}
-          {order.venmo_url ? <a className="wide-btn" href={order.venmo_url} target="_blank" rel="noreferrer">Pay with Venmo</a> : null}
+          {safePaymentUrl("stripe", order.stripe_payment_link) ? <a className="wide-btn" href={safePaymentUrl("stripe", order.stripe_payment_link) || undefined} target="_blank" rel="noreferrer">Continue to Stripe</a> : null}
+          {safePaymentUrl("paypal", order.paypal_url) ? <a className="wide-btn" href={safePaymentUrl("paypal", order.paypal_url) || undefined} target="_blank" rel="noreferrer">Pay with PayPal</a> : null}
+          {safePaymentUrl("venmo", order.venmo_url) ? <a className="wide-btn" href={safePaymentUrl("venmo", order.venmo_url) || undefined} target="_blank" rel="noreferrer">Pay with Venmo</a> : null}
         </div>
         <p className="subtle">The business will confirm the payment after it arrives in their account.</p>
       </section> : <>

@@ -21,6 +21,8 @@
     "test:auth-guards": "node scripts/test-auth-guards.mjs",
     "test:premium-ui": "node scripts/test-premium-ui-contract.mjs",
     "test:scanii": "node scripts/test-scanii-scan.mjs",
+    "test:select-columns": "node scripts/test-select-columns-exist.mjs",
+    "test:safe-url": "node scripts/test-safe-url.mjs",
     "test:accessibility": "node scripts/audit-frontend-accessibility.mjs",
     "test:edge": "node scripts/check-edge-functions.mjs",
     "test:routes": "node scripts/validate-public-commerce-route-order.mjs && node scripts/smoke-built-routes.mjs",

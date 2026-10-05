@@ -36,6 +36,10 @@ check("the owner guard does not read billing, plan or payment state (billing can
 const ownerPortal = read("src/pages/OwnerPortal.tsx");
 check("owner portal has a log out button that signs out and returns to the shared sign-in", ownerPortal.includes("handleOwnerLogout") && ownerPortal.includes("supabase.auth.signOut()") && ownerPortal.includes('window.location.replace("/portal/login")') && ownerPortal.includes("<LogOut size={16} /> Log out"));
 
+// ---- 2c. Sensitive account changes re-check the current password ----
+const settings = read("src/pages/ClientSettings.tsx");
+check("email and password changes require the current password first", (settings.match(/confirmCurrentPassword\(/g) || []).length === 3 && settings.includes("signInWithPassword({ email, password })") && settings.indexOf("confirmCurrentPassword(currentPassword)") < settings.indexOf("updateUser({ password: newPassword })") && settings.indexOf("confirmCurrentPassword(emailCurrentPassword)") < settings.indexOf("updateUser({ email: cleanEmail })"));
+
 // ---- 3. Client pages ----
 const clientPages = fs.readdirSync("src/pages").filter((n) => /^Client.*\.tsx$/.test(n));
 // Pages that rely on server-enforced RPCs (current_client_*, which reject unauthenticated callers)

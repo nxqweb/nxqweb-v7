@@ -557,7 +557,7 @@ Deno.serve(async (request) => {
 
     const ownerAccess = await admin
       .from("owner_users")
-      .select("id,role")
+      .select("id")
       .eq("auth_user_id", userData.user.id)
       .maybeSingle();
     if (ownerAccess.error || !ownerAccess.data) {
