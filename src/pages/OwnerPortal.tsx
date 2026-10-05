@@ -3,6 +3,7 @@ import {
   Bot,
   CheckCircle2,
   Clock,
+  LogOut,
   MessageSquareText,
   RefreshCcw,
   ShoppingBag,
@@ -856,6 +857,17 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
       build_plan: client.build_plan,
     } satisfies ProjectRow));
 
+  async function handleOwnerLogout() {
+    // Same behavior as the client portal: sign out, but never hang if the network is slow.
+    if (supabase) {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((resolve) => window.setTimeout(resolve, 800)),
+      ]);
+    }
+    window.location.replace("/portal/login");
+  }
+
   return (
     <main className="nxq-page">
       <section className="portal-shell">
@@ -886,6 +898,9 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
             </button>
             <button className="wide-btn nxq-theme-toggle" onClick={toggleNxqTheme} type="button">
               {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
+            </button>
+            <button className="wide-btn" onClick={handleOwnerLogout} type="button">
+              <LogOut size={16} /> Log out
             </button>
             <div className="owner-revenue-stack">
               <small>Active MRR: {formatMoney(activeMonthlyIncome)}/mo</small>

@@ -32,6 +32,10 @@ check("a query error or a missing owner row denies access", guard.includes("setI
 check("access is granted only after an owner row is found", /if \(!ownerResult\.data\) \{[\s\S]*?return;\s*\}\s*setIsOwner\(true\)/.test(guard));
 check("the owner guard does not read billing, plan or payment state (billing cannot lock the owner out)", !/billing|subscription|payment|plan_/i.test(guard));
 
+// ---- 2b. Owner portal log out ----
+const ownerPortal = read("src/pages/OwnerPortal.tsx");
+check("owner portal has a log out button that signs out and returns to the shared sign-in", ownerPortal.includes("handleOwnerLogout") && ownerPortal.includes("supabase.auth.signOut()") && ownerPortal.includes('window.location.replace("/portal/login")') && ownerPortal.includes("<LogOut size={16} /> Log out"));
+
 // ---- 3. Client pages ----
 const clientPages = fs.readdirSync("src/pages").filter((n) => /^Client.*\.tsx$/.test(n));
 // Pages that rely on server-enforced RPCs (current_client_*, which reject unauthenticated callers)
