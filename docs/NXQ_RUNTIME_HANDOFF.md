@@ -438,7 +438,8 @@ this ledger before re-running any investigation**:
   exact phrase. Pre-check: owner queries showed 223 applied versions, latest 256 (rows 001-233 matched
   the repo exactly). Dry run: "Would push these migrations: 257_repair_pgcrypto_search_path.sql" (only).
   Apply: "Applying migration 257_repair_pgcrypto_search_path.sql... Finished supabase db push". No
-  function deploys, no secrets, no billing. Job result: success. Not yet verified by a runtime call.
+  function deploys, no secrets, no billing. Job result: success. Follow-up: the owner's `pg_proc` query confirmed all seven functions now carry
+  `search_path=public, extensions`. Not yet verified by a runtime call.
 
 ## Missing staging Edge secrets — private setup checklist (values never printed)
 
@@ -603,7 +604,8 @@ in run #220, 255 in run #223, 256 in run #228, 257 in run #232. Not applied to p
   re-run in run #229 (56/56)
 - [x] 257 — repairs the pinned `search_path` of 7 functions that call pgcrypto unqualified (pgcrypto is in
   the `extensions` schema on staging); applied to staging in run #232 (dry run listed only 257; apply
-  succeeded). **Applied, not yet exercised at runtime**; verify with the read-only query in the handoff.
+  succeeded). **Setting verified on staging** (owner's read-only `pg_proc` query, 2026-10-05: all seven
+  functions show `search_path=public, extensions`). Not yet exercised by calling the functions.
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
