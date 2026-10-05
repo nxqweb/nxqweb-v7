@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NXQX - NXQ-Web | Premium managed website systems (design prototype)</title>
+<!-- DESIGN PROTOTYPE ONLY. Static, self-contained, not part of the app build, no external requests.
+     Direction: "Obsidian & Champagne". Fonts use system stacks here; a self-hosted display face is proposed in
+     docs/UI_REDESIGN_PLAN.md. -->
+<style>
+:root{
+  --bg:#07080b; --bg-2:#0c0e13; --ink:#f4f1ea; --ink-2:#b9bcc4; --ink-3:#8a8e98;
+  --gold:#d9b75f; --gold-2:#f0dca0; --gold-deep:#a8863a; --line:rgba(255,255,255,.09); --line-gold:rgba(217,183,95,.38);
+  --glass:rgba(255,255,255,.045); --glass-2:rgba(255,255,255,.08); --radius:22px;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:
+  radial-gradient(900px 520px at 78% -8%,rgba(217,183,95,.16),transparent 60%),
+  radial-gradient(760px 480px at 6% 18%,rgba(120,140,190,.10),transparent 62%),
+  radial-gradient(1000px 600px at 50% 112%,rgba(217,183,95,.08),transparent 60%),var(--bg)}
+a{color:inherit;text-decoration:none} .wrap{width:min(1180px,100% - 48px);margin:0 auto}
+:focus-visible{outline:2px solid var(--gold-2);outline-offset:3px;border-radius:10px}
+/* nav */
+.nav{position:sticky;top:14px;z-index:20;margin:14px auto 0;width:min(1180px,100% - 48px);display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 12px 18px;border-radius:999px;background:rgba(14,16,22,.62);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4);
+  border:1px solid var(--line);box-shadow:0 10px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.06)}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-family:var(--serif);font-weight:700;color:#14110a;
+  background:linear-gradient(145deg,var(--gold-2),var(--gold) 55%,var(--gold-deep));box-shadow:0 4px 16px rgba(217,183,95,.35)}
+.brand b{letter-spacing:.22em;font-size:.82rem}.brand small{display:block;color:var(--ink-3);font-size:.68rem;letter-spacing:.08em;margin-top:-2px}
+.links{display:flex;gap:6px;align-items:center}.links a{padding:9px 16px;border-radius:999px;color:var(--ink-2);font-size:.9rem;transition:.25s}
+.links a:hover{color:var(--ink);background:var(--glass)} .links .cta{color:#17130a;background:linear-gradient(145deg,var(--gold-2),var(--gold));font-weight:600}
+.links .cta:hover{filter:brightness(1.07);color:#17130a}
+/* hero */
+.hero{display:grid;grid-template-columns:1.08fr .92fr;gap:56px;align-items:center;padding:96px 0 72px}
+.eyebrow{display:inline-flex;gap:10px;align-items:center;font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-2);
+  padding:8px 16px;border:1px solid var(--line-gold);border-radius:999px;background:rgba(217,183,95,.07)}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+h1{font-family:var(--serif);font-weight:500;font-size:clamp(2.5rem,5.6vw,4.7rem);line-height:1.04;letter-spacing:-.02em;margin:26px 0 22px}
+h1 em{font-style:italic;color:transparent;background:linear-gradient(100deg,var(--gold-2),var(--gold) 45%,#e9e4d6);-webkit-background-clip:text;background-clip:text}
+.lede{font-size:1.14rem;color:var(--ink-2);max-width:34em;margin:0 0 34px}
+.btns{display:flex;gap:14px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 26px;border-radius:999px;font-weight:600;font-size:.97rem;transition:.28s;border:1px solid var(--line)}
+.btn.gold{color:#17130a;border-color:transparent;background:linear-gradient(145deg,var(--gold-2),var(--gold) 58%,var(--gold-deep));box-shadow:0 12px 34px rgba(217,183,95,.28)}
+.btn.gold:hover{transform:translateY(-2px);box-shadow:0 16px 42px rgba(217,183,95,.38)}
+.btn.ghost{background:var(--glass)} .btn.ghost:hover{background:var(--glass-2);border-color:var(--line-gold)}
+.proof{display:flex;gap:28px;margin-top:40px;color:var(--ink-3);font-size:.84rem;flex-wrap:wrap}.proof b{display:block;color:var(--ink);font-family:var(--serif);font-size:1.35rem;font-weight:500}
+/* glass workspace */
+.panel{position:relative;border-radius:28px;padding:26px;background:linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
+  border:1px solid var(--line);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);box-shadow:0 40px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.1)}
+.panel::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(150deg,rgba(240,220,160,.65),transparent 38%,transparent 62%,rgba(217,183,95,.35));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.dots{display:flex;gap:7px;margin-bottom:20px}.dots i{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.18)}
+.panel h3{font-family:var(--serif);font-weight:500;font-size:1.55rem;margin:0 0 4px}.panel p{color:var(--ink-3);font-size:.92rem;margin:0 0 20px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:16px;border-radius:16px;background:var(--glass);border:1px solid var(--line)}
+.stat small{color:var(--ink-3);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}.stat b{display:block;font-family:var(--serif);font-size:1.7rem;font-weight:500;margin-top:4px}
+.stat span{font-size:.76rem;color:#8fd6a8}
+.bars{display:flex;align-items:flex-end;gap:8px;height:74px;margin:18px 0 6px}.bars i{flex:1;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,var(--gold),rgba(217,183,95,.14));opacity:.9}
+.row{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;margin-top:12px;border-radius:14px;background:var(--glass);border:1px solid var(--line);font-size:.9rem}
+.pill{padding:5px 12px;border-radius:999px;font-size:.74rem;background:rgba(143,214,168,.12);color:#8fd6a8;border:1px solid rgba(143,214,168,.3)}
+/* sections */
+section{padding:84px 0}.kicker{color:var(--gold);font-size:.76rem;letter-spacing:.22em;text-transform:uppercase}
+h2{font-family:var(--serif);font-weight:500;font-size:clamp(1.9rem,3.6vw,3rem);line-height:1.1;letter-spacing:-.015em;margin:14px 0 14px;max-width:18em}
+.sub{color:var(--ink-2);max-width:40em;font-size:1.05rem}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px}
+.card{padding:28px;border-radius:var(--radius);background:linear-gradient(170deg,var(--glass-2),var(--glass));border:1px solid var(--line);transition:.35s;position:relative}
+.card:hover{transform:translateY(-4px);border-color:var(--line-gold);box-shadow:0 24px 60px rgba(0,0,0,.45)}
+.num{font-family:var(--serif);color:var(--gold);font-size:.95rem;letter-spacing:.1em}.card h3{font-family:var(--serif);font-weight:500;font-size:1.4rem;margin:18px 0 8px}.card p{color:var(--ink-2);font-size:.95rem;margin:0}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:50px;border-top:1px solid var(--line)}
+.step{padding:28px 26px 0 0}.step b{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid var(--line-gold);color:var(--gold-2);font-family:var(--serif);margin-top:-52px;background:var(--bg)}
+.step h3{margin:18px 0 8px;font-family:var(--serif);font-weight:500;font-size:1.3rem}.step p{color:var(--ink-2);font-size:.94rem;margin:0}
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px;align-items:stretch}
+.tier{padding:30px 26px;border-radius:var(--radius);background:linear-gradient(170deg,var(--glass-2),var(--glass));border:1px solid var(--line);display:flex;flex-direction:column}
+.tier.featured{border-color:var(--line-gold);background:linear-gradient(170deg,rgba(217,183,95,.16),rgba(217,183,95,.04));box-shadow:0 30px 80px rgba(217,183,95,.12);position:relative}
+.tier .badge{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-2)}
+.tier h3{font-family:var(--serif);font-weight:500;font-size:1.6rem;margin:10px 0 4px}.price{font-family:var(--serif);font-size:2.4rem}.price small{font-family:var(--sans);font-size:.85rem;color:var(--ink-3)}
+.tier ul{list-style:none;padding:0;margin:20px 0 26px;color:var(--ink-2);font-size:.93rem;display:grid;gap:10px;flex:1}
+.tier li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold);margin-right:12px;vertical-align:middle}
+.cta-band{margin:30px 0 90px;padding:64px 48px;border-radius:32px;text-align:center;border:1px solid var(--line-gold);
+  background:radial-gradient(600px 260px at 50% 0,rgba(217,183,95,.2),transparent 70%),linear-gradient(170deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
+.cta-band h2{margin:0 auto 14px;max-width:16em}.cta-band .btns{justify-content:center;margin-top:28px}
+footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--ink-3);font-size:.85rem}.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+/* motion */
+.rise{opacity:0;transform:translateY(18px);animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}.d1{animation-delay:.08s}.d2{animation-delay:.2s}.d3{animation-delay:.32s}.d4{animation-delay:.46s}
+@keyframes rise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rise{animation:none;opacity:1;transform:none}.card,.btn{transition:none}html{scroll-behavior:auto}}
+@media (max-width:980px){.hero{grid-template-columns:1fr;padding:64px 0 40px;gap:40px}.grid4,.tiers{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr);row-gap:40px}.links a:not(.cta){display:none}}
+@media (max-width:620px){.grid4,.tiers,.steps{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr 1fr}.stat b{font-size:1.3rem}.cta-band{padding:44px 24px}section{padding:60px 0}.nav{top:8px}.proof{gap:20px}}
+</style>
+</head>
+<body>
+<header class="nav" aria-label="Primary">
+  <a class="brand" href="#top" aria-label="NXQX NXQ-Web home"><span class="mark">N</span><span><b>NXQX</b><small>NXQ-Web</small></span></a>
+  <nav class="links" aria-label="Sections"><a href="#systems">Systems</a><a href="#pricing">Pricing</a><a href="#process">Process</a><a class="cta" href="#portal">Client portal</a></nav>
+</header>
+
+<main id="top">
+<div class="wrap hero">
+  <div>
+    <span class="eyebrow rise"><i></i>Premium managed website systems</span>
+    <h1 class="rise d1">Your website should work <em>as hard</em> as your business.</h1>
+    <p class="lede rise d2">NXQ-Web builds, manages, improves and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates and growth work stay connected in one managed system.</p>
+    <div class="btns rise d3"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#process">See how NXQ works</a></div>
+    <div class="proof rise d4"><div><b>5 pages</b>premium starter build</div><div><b>24/7</b>managed hosting + SSL</div><div><b>1 portal</b>for every update</div></div>
+  </div>
+  <aside class="panel rise d2" aria-label="Example workspace preview">
+    <div class="dots"><i></i><i></i><i></i></div>
+    <h3>Build. Grow. Convert. Maintain.</h3>
+    <p>One premium website operation, organized around your client workspace.</p>
+    <div class="stats"><div class="stat"><small>Health</small><b>98</b><span>Managed</span></div><div class="stat"><small>Leads</small><b>24</b><span>this month</span></div><div class="stat"><small>Updates</small><b>3</b><span>in review</span></div></div>
+    <div class="bars" aria-hidden="true"><i style="height:38%"></i><i style="height:52%"></i><i style="height:45%"></i><i style="height:68%"></i><i style="height:60%"></i><i style="height:82%"></i><i style="height:100%"></i></div>
+    <div class="row"><span>Website health</span><span class="pill">Managed</span></div>
+    <div class="row"><span>Next improvement cycle</span><span style="color:var(--gold-2)">Scheduled</span></div>
+  </aside>
+</div>
+
+<section id="systems"><div class="wrap">
+  <span class="kicker">One system. Your website operation.</span>
+  <h2>A premium site is only the beginning.</h2>
+  <p class="sub">Everything around the site is handled in the same managed workspace, so nothing slips between tools.</p>
+  <div class="grid4">
+    <article class="card"><span class="num">01</span><h3>Build</h3><p>Premium responsive presentation, secure client access, clear structure and a managed setup process.</p></article>
+    <article class="card"><span class="num">02</span><h3>Get found</h3><p>SEO foundations, service-area structure, stronger pages and ongoing content opportunities.</p></article>
+    <article class="card"><span class="num">03</span><h3>Convert</h3><p>Lead capture, stronger calls to action, conversion-focused layouts and clearer customer paths.</p></article>
+    <article class="card"><span class="num">04</span><h3>Improve</h3><p>Higher tiers add behavior insights, performance review and an ongoing optimization cycle.</p></article>
+  </div>
+</div></section>
+
+<section id="process"><div class="wrap">
+  <span class="kicker">How NXQ-Web works</span>
+  <h2>Simple for the client. Controlled behind the scenes.</h2>
+  <p class="sub">The client gets a clean guided experience while project approval and higher-impact decisions stay protected.</p>
+  <div class="steps">
+    <div class="step"><b>1</b><h3>Choose</h3><p>Select the website family and service tier that match the business.</p></div>
+    <div class="step"><b>2</b><h3>Tell us what matters</h3><p>Complete a project form that adapts to the family and tier you chose.</p></div>
+    <div class="step"><b>3</b><h3>Review</h3><p>NXQ reviews the setup before protected build automation moves forward.</p></div>
+    <div class="step"><b>4</b><h3>Build + launch</h3><p>Approved projects move through the managed workflow into ongoing care.</p></div>
+  </div>
+</div></section>
+
+<section id="pricing"><div class="wrap">
+  <span class="kicker">Pricing</span>
+  <h2>Pick where you want your business to go.</h2>
+  <div class="tiers">
+    <article class="tier"><span class="badge">Foundation</span><h3>Starter</h3><div class="price">$50<small> /mo</small></div>
+      <ul><li>Premium 1-3 page website</li><li>Mobile-first responsive design</li><li>Hosting, SSL and baseline maintenance</li><li>Lead and contact form</li></ul><a class="btn ghost" href="#portal">Choose Starter</a></article>
+    <article class="tier featured"><span class="badge">Most chosen</span><h3>Growth</h3><div class="price">$100<small> /mo</small></div>
+      <ul><li>Everything in Starter</li><li>Up to 5 core pages</li><li>Service-area and local SEO structure</li><li>Monthly improvements</li></ul><a class="btn gold" href="#portal">Choose Growth</a></article>
+    <article class="tier"><span class="badge">Insight</span><h3>Intelligence</h3><div class="price">$150<small> /mo</small></div>
+      <ul><li>Everything in Growth</li><li>Click and scroll insights</li><li>Conversion review</li><li>Monthly optimization cycle</li></ul><a class="btn ghost" href="#portal">Choose Intelligence</a></article>
+    <article class="tier"><span class="badge">Custom</span><h3>Enterprise</h3><div class="price">$150+<small> /mo</small></div>
+      <ul><li>Custom page and location scope</li><li>Advanced reporting and workflows</li><li>Team permissions</li><li>Custom integrations when approved</li></ul><a class="btn ghost" href="#portal">Talk to us</a></article>
+  </div>
+</div></section>
+
+<div class="wrap" id="portal"><div class="cta-band">
+  <span class="kicker">Stop treating your website like a one-time project</span>
+  <h2>Choose the system and tier that fit your business.</h2>
+  <p class="sub" style="margin:0 auto">NXQ-Web keeps the website, project workflow, updates and growth work connected after launch.</p>
+  <div class="btns"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#top">Back to top</a></div>
+</div></div>
+</main>
+<footer><div class="wrap foot"><span>NXQX · NXQ-Web</span><span>Premium managed website systems</span></div></footer>
+</body>
+</html>

@@ -1,10 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>document.documentElement.className="js"</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NXQX - NXQ-Web | Premium managed website systems (design prototype)</title>
-<!-- DESIGN PROTOTYPE ONLY. Static, self-contained, not part of the app build, no external requests.
+<!-- DESIGN PROTOTYPE ONLY. Static, self-contained, not part of the app build, no external requests (loads only the local nxqx-logo-bg.webp).
      Direction: "Obsidian & Champagne". Fonts use system stacks here; a self-hosted display face is proposed in
      docs/UI_REDESIGN_PLAN.md. -->
 <style>
@@ -17,10 +18,6 @@
 }
 *{box-sizing:border-box} html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-body::before{content:"";position:fixed;inset:0;z-index:-1;background:
-  radial-gradient(900px 520px at 78% -8%,rgba(217,183,95,.16),transparent 60%),
-  radial-gradient(760px 480px at 6% 18%,rgba(120,140,190,.10),transparent 62%),
-  radial-gradient(1000px 600px at 50% 112%,rgba(217,183,95,.08),transparent 60%),var(--bg)}
 a{color:inherit;text-decoration:none} .wrap{width:min(1180px,100% - 48px);margin:0 auto}
 :focus-visible{outline:2px solid var(--gold-2);outline-offset:3px;border-radius:10px}
 /* nav */
@@ -89,9 +86,91 @@ footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--ink-3);f
 @media (prefers-reduced-motion:reduce){.rise{animation:none;opacity:1;transform:none}.card,.btn{transition:none}html{scroll-behavior:auto}}
 @media (max-width:980px){.hero{grid-template-columns:1fr;padding:64px 0 40px;gap:40px}.grid4,.tiers{grid-template-columns:repeat(2,1fr)}.steps{grid-template-columns:repeat(2,1fr);row-gap:40px}.links a:not(.cta){display:none}}
 @media (max-width:620px){.grid4,.tiers,.steps{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr 1fr}.stat b{font-size:1.3rem}.cta-band{padding:44px 24px}section{padding:60px 0}.nav{top:8px}.proof{gap:20px}}
+
+/* ===== v2 motion layer ===== */
+:root{--p:0;--beat:5.2s}
+.bg{position:fixed;inset:0;z-index:-1;overflow:hidden;background:var(--bg);pointer-events:none}
+.bg .logo{position:absolute;inset:-4%;background:url("nxqx-logo-bg.webp") center/cover no-repeat;
+  opacity:calc(1 - var(--p)*.62);transform:translate3d(0,calc(var(--p)*-90px),0) scale(1.04);transform-origin:50% 50%;will-change:transform,opacity}
+.bg .logo i{position:absolute;inset:0;background:inherit;mix-blend-mode:screen;animation:beat var(--beat) cubic-bezier(.45,0,.2,1) infinite}
+@keyframes beat{0%{opacity:.0;transform:scale(1)}14%{opacity:.85;transform:scale(1.035)}28%{opacity:.15;transform:scale(1.012)}42%{opacity:.6;transform:scale(1.026)}100%{opacity:0;transform:scale(1)}}
+.bg .glow{position:absolute;left:50%;top:50%;width:70vmin;height:70vmin;margin:-35vmin 0 0 -35vmin;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,200,70,.34),rgba(255,170,30,.12) 40%,transparent 68%);mix-blend-mode:screen;animation:glow var(--beat) cubic-bezier(.45,0,.2,1) infinite;opacity:calc(1 - var(--p)*.5)}
+@keyframes glow{0%,100%{transform:scale(.82);opacity:.15}14%{transform:scale(1.18);opacity:1}28%{transform:scale(.95);opacity:.35}42%{transform:scale(1.1);opacity:.8}}
+.bg .rings{position:absolute;left:50%;top:50%;width:min(110vmin,1100px);height:min(110vmin,1100px);margin:calc(min(110vmin,1100px)/-2) 0 0 calc(min(110vmin,1100px)/-2);
+  transform:rotate(calc(var(--p)*260deg));opacity:calc(.95 - var(--p)*.55)}
+.bg .rings svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 6px rgba(255,190,50,.55))}
+.r1{animation:spin 70s linear infinite}.r2{animation:spin 46s linear infinite reverse}.r3{animation:spin 120s linear infinite}.r4{animation:spin 28s linear infinite reverse}
+.rings g{transform-origin:50% 50%;transform-box:fill-box}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rings .pulse{animation:ringpulse var(--beat) ease-in-out infinite;transform-origin:50% 50%;transform-box:fill-box}
+@keyframes ringpulse{0%,100%{opacity:.35}14%{opacity:1}28%{opacity:.5}42%{opacity:.9}}
+.bg .scrim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 0,rgba(7,8,11,.35) 55%,rgba(7,8,11,.8) 100%),linear-gradient(180deg,transparent 40%,rgba(7,8,11,calc(.15 + var(--p)*.7)))}
+.bg .grain{position:absolute;inset:0;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+.progress{position:fixed;top:0;left:0;height:2px;width:100%;z-index:50;transform-origin:0 50%;transform:scaleX(var(--p));background:linear-gradient(90deg,var(--gold-deep),var(--gold-2));box-shadow:0 0 12px var(--gold)}
+/* hero upgrades */
+.hero{min-height:calc(100vh - 80px)}
+h1 em{background-size:220% 100%;animation:shine 6s ease-in-out infinite}
+@keyframes shine{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.eyebrow i{animation:dot var(--beat) ease-in-out infinite}
+@keyframes dot{0%,100%{transform:scale(1);opacity:.6}14%{transform:scale(1.7);opacity:1}42%{transform:scale(1.3)}}
+.panel{transform:perspective(1100px) rotateX(var(--tx,0deg)) rotateY(var(--ty,0deg));transition:transform .25s ease-out;animation:floaty 7s ease-in-out infinite}
+@keyframes floaty{0%,100%{translate:0 0}50%{translate:0 -10px}}
+.panel::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:radial-gradient(420px circle at var(--mx,50%) var(--my,0%),rgba(240,220,160,.16),transparent 60%)}
+.bars i{transform-origin:50% 100%;animation:grow 1.4s cubic-bezier(.2,.7,.2,1) both,bar 5.2s ease-in-out infinite}
+.bars i:nth-child(2){animation-delay:.08s,.2s}.bars i:nth-child(3){animation-delay:.16s,.4s}.bars i:nth-child(4){animation-delay:.24s,.6s}.bars i:nth-child(5){animation-delay:.32s,.8s}.bars i:nth-child(6){animation-delay:.4s,1s}.bars i:nth-child(7){animation-delay:.48s,1.2s}
+@keyframes grow{from{transform:scaleY(0)}}@keyframes bar{0%,100%{filter:brightness(1)}50%{filter:brightness(1.35)}}
+/* scroll reveal (only when JS is on) */
+.js .reveal{opacity:0;transform:translateY(34px) scale(.985);filter:blur(6px);transition:opacity .9s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1),filter .9s;transition-delay:calc(var(--i,0)*90ms)}
+.js .reveal.in{opacity:1;transform:none;filter:none}
+.card,.tier{overflow:hidden}
+.card::after,.tier::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(360px circle at var(--mx,50%) var(--my,50%),rgba(240,220,160,.14),transparent 60%)}
+.card:hover::after,.tier:hover::after{opacity:1}
+.tier{position:relative;transition:transform .35s,border-color .35s}.tier:hover{transform:translateY(-6px)}
+.tier.featured{animation:featured var(--beat) ease-in-out infinite}
+@keyframes featured{0%,100%{box-shadow:0 30px 80px rgba(217,183,95,.10)}14%{box-shadow:0 30px 110px rgba(217,183,95,.34)}}
+.steps{position:relative}.steps::before{content:"";position:absolute;top:-1px;left:0;height:1px;width:100%;transform-origin:0 50%;transform:scaleX(var(--line,0));background:linear-gradient(90deg,var(--gold-deep),var(--gold-2));box-shadow:0 0 14px var(--gold)}
+.step b{transition:.5s}.step.in b{background:var(--gold);color:#17130a;box-shadow:0 0 22px rgba(217,183,95,.6)}
+.marquee{overflow:hidden;border-block:1px solid var(--line);padding:16px 0;background:rgba(7,8,11,.55);backdrop-filter:blur(8px);mask:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.marquee div{display:flex;gap:56px;width:max-content;animation:marq 38s linear infinite;color:var(--ink-3);letter-spacing:.32em;text-transform:uppercase;font-size:.78rem}
+.marquee span::after{content:"•";margin-left:56px;color:var(--gold)}
+@keyframes marq{to{transform:translateX(-50%)}}
+section{position:relative}
+.sec-glass{background:linear-gradient(180deg,transparent,rgba(7,8,11,.55) 18%,rgba(7,8,11,.55) 82%,transparent)}
+.cta-band{animation:ctaglow var(--beat) ease-in-out infinite}
+@keyframes ctaglow{0%,100%{border-color:rgba(217,183,95,.3)}14%{border-color:rgba(240,220,160,.8)}}
+@media (prefers-reduced-motion:reduce){
+  .bg .logo i,.bg .glow,.r1,.r2,.r3,.r4,.rings .pulse,.panel,.bars i,h1 em,.eyebrow i,.tier.featured,.cta-band,.marquee div{animation:none!important}
+  .js .reveal{opacity:1;transform:none;filter:none;transition:none}.bg .logo i{opacity:.25}.rings{transform:none!important}.bg .logo{transform:scale(1.04)!important}}
+@media (max-width:620px){.bg .rings{width:150vmin;height:150vmin;margin:-75vmin 0 0 -75vmin}.hero{min-height:auto}}
+
+/* v2.1: emblem to the right of the hero text, baked-in tagline masked out */
+:root{--cx:68%}
+.bg .logo{left:calc(var(--cx) - 50% - 4%);right:auto;width:108%;-webkit-mask-image:linear-gradient(180deg,#000 0,#000 76%,transparent 86%);mask-image:linear-gradient(180deg,#000 0,#000 76%,transparent 86%)}
+.bg .glow,.bg .rings{left:var(--cx)}
+.hero{grid-template-columns:minmax(0,600px) 1fr}
+.bg .scrim{background:linear-gradient(90deg,rgba(7,8,11,.88) 0,rgba(7,8,11,.55) 34%,transparent 62%),radial-gradient(ellipse at var(--cx) 42%,transparent 0,rgba(7,8,11,.3) 55%,rgba(7,8,11,.8) 100%),linear-gradient(180deg,transparent 40%,rgba(7,8,11,calc(.15 + var(--p)*.7)))}
+.ws{display:grid;grid-template-columns:1fr minmax(0,520px);gap:56px;align-items:center}
+.bg .rings{opacity:calc(1 - var(--p)*.5)}
+@media (max-width:980px){:root{--cx:50%}.ws{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.bg .scrim{background:linear-gradient(180deg,rgba(7,8,11,.6),rgba(7,8,11,.35) 40%,rgba(7,8,11,calc(.4 + var(--p)*.5)))}}
 </style>
 </head>
 <body>
+<div class="bg" aria-hidden="true">
+  <div class="logo"><i></i></div>
+  <div class="glow"></div>
+  <div class="rings">
+    <svg viewBox="0 0 1000 1000" fill="none" stroke="#f0b93a" stroke-linecap="round">
+      <g class="r1"><polygon points="970.0,500.0 735.0,907.0 265.0,907.0 30.0,500.0 265.0,93.0 735.0,93.0" stroke-width="1.2" stroke-dasharray="3 14" opacity=".7"/></g>
+      <g class="r2"><polygon points="900.0,500.0 700.0,846.4 300.0,846.4 100.0,500.0 300.0,153.6 700.0,153.6" stroke-width="1.6" stroke-dasharray="90 40 6 40" opacity=".8" class="pulse"/></g>
+      <g class="r3"><circle cx="500" cy="500" r="345" stroke-width="1" stroke-dasharray="1 9" opacity=".8"/></g>
+      <g class="r4"><polygon points="800.0,500.0 650.0,759.8 350.0,759.8 200.0,500.0 350.0,240.2 650.0,240.2" stroke-width="1.4" stroke-dasharray="40 24" opacity=".7"/>
+        <circle cx="800" cy="500" r="5" fill="#ffd36a" stroke="none"/><circle cx="200" cy="500" r="5" fill="#ffd36a" stroke="none"/></g>
+    </svg>
+  </div>
+  <div class="scrim"></div><div class="grain"></div>
+</div>
+<div class="progress" aria-hidden="true"></div>
 <header class="nav" aria-label="Primary">
   <a class="brand" href="#top" aria-label="NXQX NXQ-Web home"><span class="mark">N</span><span><b>NXQX</b><small>NXQ-Web</small></span></a>
   <nav class="links" aria-label="Sections"><a href="#systems">Systems</a><a href="#pricing">Pricing</a><a href="#process">Process</a><a class="cta" href="#portal">Client portal</a></nav>
@@ -100,13 +179,17 @@ footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--ink-3);f
 <main id="top">
 <div class="wrap hero">
   <div>
-    <span class="eyebrow rise"><i></i>Premium managed website systems</span>
+    <span class="eyebrow rise"><i></i>One vision. Limitless future.</span>
     <h1 class="rise d1">Your website should work <em>as hard</em> as your business.</h1>
     <p class="lede rise d2">NXQ-Web builds, manages, improves and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates and growth work stay connected in one managed system.</p>
     <div class="btns rise d3"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#process">See how NXQ works</a></div>
     <div class="proof rise d4"><div><b>5 pages</b>premium starter build</div><div><b>24/7</b>managed hosting + SSL</div><div><b>1 portal</b>for every update</div></div>
   </div>
-  <aside class="panel rise d2" aria-label="Example workspace preview">
+</div>
+
+<section id="workspace" class="sec-glass"><div class="wrap ws">
+  <div><span class="kicker reveal">Your client workspace</span><h2 class="reveal">Everything about your site, in one calm place.</h2><p class="sub reveal">Health, leads, update requests and the next improvement cycle, organized in a single portal instead of scattered across tools.</p></div>
+  <aside class="panel reveal" aria-label="Example workspace preview">
     <div class="dots"><i></i><i></i><i></i></div>
     <h3>Build. Grow. Convert. Maintain.</h3>
     <p>One premium website operation, organized around your client workspace.</p>
@@ -115,54 +198,73 @@ footer{border-top:1px solid var(--line);padding:34px 0 50px;color:var(--ink-3);f
     <div class="row"><span>Website health</span><span class="pill">Managed</span></div>
     <div class="row"><span>Next improvement cycle</span><span style="color:var(--gold-2)">Scheduled</span></div>
   </aside>
-</div>
+</div></section>
 
-<section id="systems"><div class="wrap">
-  <span class="kicker">One system. Your website operation.</span>
-  <h2>A premium site is only the beginning.</h2>
-  <p class="sub">Everything around the site is handled in the same managed workspace, so nothing slips between tools.</p>
+<div class="marquee" aria-hidden="true"><div><span>Build</span><span>Innovate</span><span>Protect</span><span>Connect</span><span>Expand</span><span>Build</span><span>Innovate</span><span>Protect</span><span>Connect</span><span>Expand</span></div></div>
+
+<section id="systems" class="sec-glass"><div class="wrap">
+  <span class="kicker reveal">One system. Your website operation.</span>
+  <h2 class="reveal">A premium site is only the beginning.</h2>
+  <p class="sub reveal">Everything around the site is handled in the same managed workspace, so nothing slips between tools.</p>
   <div class="grid4">
-    <article class="card"><span class="num">01</span><h3>Build</h3><p>Premium responsive presentation, secure client access, clear structure and a managed setup process.</p></article>
-    <article class="card"><span class="num">02</span><h3>Get found</h3><p>SEO foundations, service-area structure, stronger pages and ongoing content opportunities.</p></article>
-    <article class="card"><span class="num">03</span><h3>Convert</h3><p>Lead capture, stronger calls to action, conversion-focused layouts and clearer customer paths.</p></article>
-    <article class="card"><span class="num">04</span><h3>Improve</h3><p>Higher tiers add behavior insights, performance review and an ongoing optimization cycle.</p></article>
+    <article class="card reveal"><span class="num">01</span><h3>Build</h3><p>Premium responsive presentation, secure client access, clear structure and a managed setup process.</p></article>
+    <article class="card reveal"><span class="num">02</span><h3>Get found</h3><p>SEO foundations, service-area structure, stronger pages and ongoing content opportunities.</p></article>
+    <article class="card reveal"><span class="num">03</span><h3>Convert</h3><p>Lead capture, stronger calls to action, conversion-focused layouts and clearer customer paths.</p></article>
+    <article class="card reveal"><span class="num">04</span><h3>Improve</h3><p>Higher tiers add behavior insights, performance review and an ongoing optimization cycle.</p></article>
   </div>
 </div></section>
 
-<section id="process"><div class="wrap">
-  <span class="kicker">How NXQ-Web works</span>
-  <h2>Simple for the client. Controlled behind the scenes.</h2>
-  <p class="sub">The client gets a clean guided experience while project approval and higher-impact decisions stay protected.</p>
+<section id="process" class="sec-glass"><div class="wrap">
+  <span class="kicker reveal">How NXQ-Web works</span>
+  <h2 class="reveal">Simple for the client. Controlled behind the scenes.</h2>
+  <p class="sub reveal">The client gets a clean guided experience while project approval and higher-impact decisions stay protected.</p>
   <div class="steps">
-    <div class="step"><b>1</b><h3>Choose</h3><p>Select the website family and service tier that match the business.</p></div>
-    <div class="step"><b>2</b><h3>Tell us what matters</h3><p>Complete a project form that adapts to the family and tier you chose.</p></div>
-    <div class="step"><b>3</b><h3>Review</h3><p>NXQ reviews the setup before protected build automation moves forward.</p></div>
-    <div class="step"><b>4</b><h3>Build + launch</h3><p>Approved projects move through the managed workflow into ongoing care.</p></div>
+    <div class="step reveal"><b>1</b><h3>Choose</h3><p>Select the website family and service tier that match the business.</p></div>
+    <div class="step reveal"><b>2</b><h3>Tell us what matters</h3><p>Complete a project form that adapts to the family and tier you chose.</p></div>
+    <div class="step reveal"><b>3</b><h3>Review</h3><p>NXQ reviews the setup before protected build automation moves forward.</p></div>
+    <div class="step reveal"><b>4</b><h3>Build + launch</h3><p>Approved projects move through the managed workflow into ongoing care.</p></div>
   </div>
 </div></section>
 
-<section id="pricing"><div class="wrap">
-  <span class="kicker">Pricing</span>
-  <h2>Pick where you want your business to go.</h2>
+<section id="pricing" class="sec-glass"><div class="wrap">
+  <span class="kicker reveal">Pricing</span>
+  <h2 class="reveal">Pick where you want your business to go.</h2>
   <div class="tiers">
-    <article class="tier"><span class="badge">Foundation</span><h3>Starter</h3><div class="price">$50<small> /mo</small></div>
+    <article class="reveal tier"><span class="badge">Foundation</span><h3>Starter</h3><div class="price">$50<small> /mo</small></div>
       <ul><li>Premium 1-3 page website</li><li>Mobile-first responsive design</li><li>Hosting, SSL and baseline maintenance</li><li>Lead and contact form</li></ul><a class="btn ghost" href="#portal">Choose Starter</a></article>
-    <article class="tier featured"><span class="badge">Most chosen</span><h3>Growth</h3><div class="price">$100<small> /mo</small></div>
+    <article class="reveal tier featured"><span class="badge">Most chosen</span><h3>Growth</h3><div class="price">$100<small> /mo</small></div>
       <ul><li>Everything in Starter</li><li>Up to 5 core pages</li><li>Service-area and local SEO structure</li><li>Monthly improvements</li></ul><a class="btn gold" href="#portal">Choose Growth</a></article>
-    <article class="tier"><span class="badge">Insight</span><h3>Intelligence</h3><div class="price">$150<small> /mo</small></div>
+    <article class="reveal tier"><span class="badge">Insight</span><h3>Intelligence</h3><div class="price">$150<small> /mo</small></div>
       <ul><li>Everything in Growth</li><li>Click and scroll insights</li><li>Conversion review</li><li>Monthly optimization cycle</li></ul><a class="btn ghost" href="#portal">Choose Intelligence</a></article>
-    <article class="tier"><span class="badge">Custom</span><h3>Enterprise</h3><div class="price">$150+<small> /mo</small></div>
+    <article class="reveal tier"><span class="badge">Custom</span><h3>Enterprise</h3><div class="price">$150+<small> /mo</small></div>
       <ul><li>Custom page and location scope</li><li>Advanced reporting and workflows</li><li>Team permissions</li><li>Custom integrations when approved</li></ul><a class="btn ghost" href="#portal">Talk to us</a></article>
   </div>
 </div></section>
 
-<div class="wrap" id="portal"><div class="cta-band">
+<div class="wrap" id="portal"><div class="cta-band reveal">
   <span class="kicker">Stop treating your website like a one-time project</span>
-  <h2>Choose the system and tier that fit your business.</h2>
+  <h2 class="reveal">Choose the system and tier that fit your business.</h2>
   <p class="sub" style="margin:0 auto">NXQ-Web keeps the website, project workflow, updates and growth work connected after launch.</p>
   <div class="btns"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#top">Back to top</a></div>
 </div></div>
 </main>
 <footer><div class="wrap foot"><span>NXQX · NXQ-Web</span><span>Premium managed website systems</span></div></footer>
+<script>
+(function(){
+  var root=document.documentElement,reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function scroll(){var h=document.documentElement.scrollHeight-innerHeight;var p=h>0?Math.min(1,Math.max(0,scrollY/h)):0;root.style.setProperty("--p",p.toFixed(4));
+    var st=document.querySelector(".steps");if(st){var r=st.getBoundingClientRect();var l=Math.min(1,Math.max(0,(innerHeight*.85-r.top)/(innerHeight*.5)));root.style.setProperty("--line",l.toFixed(3))}}
+  var tick=false;addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(function(){scroll();tick=false})}},{passive:true});addEventListener("resize",scroll);scroll();
+  var items=[].slice.call(document.querySelectorAll(".reveal"));
+  items.forEach(function(el,i){var sib=el.parentElement?[].indexOf.call(el.parentElement.children,el):0;el.style.setProperty("--i",Math.min(sib,5))});
+  if("IntersectionObserver" in window&&!reduce){var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}})},{threshold:.12,rootMargin:"0px 0px -6% 0px"});items.forEach(function(el){io.observe(el)})}
+  else items.forEach(function(el){el.classList.add("in")});
+  if(reduce)return;
+  document.addEventListener("pointermove",function(e){var t=e.target.closest&&e.target.closest(".card,.tier,.panel");if(!t)return;var b=t.getBoundingClientRect();var x=(e.clientX-b.left),y=(e.clientY-b.top);
+    t.style.setProperty("--mx",x+"px");t.style.setProperty("--my",y+"px");
+    if(t.classList.contains("panel")){t.style.setProperty("--ty",((x/b.width-.5)*8).toFixed(2)+"deg");t.style.setProperty("--tx",((.5-y/b.height)*6).toFixed(2)+"deg")}});
+  var pn=document.querySelector(".panel");if(pn)pn.addEventListener("pointerleave",function(){pn.style.setProperty("--tx","0deg");pn.style.setProperty("--ty","0deg")});
+})();
+</script>
 </body>
 </html>

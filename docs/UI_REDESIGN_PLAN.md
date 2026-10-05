@@ -50,3 +50,18 @@ and a self-hosted display font licence. Placeholder visuals should be replaced a
 - Before/after: lint, tsc, build, the 67-route browser smoke test (0 flagged), bundle budget, screenshots.
 - The live site changes only when the owner enables builds and publishes on Netlify.
 - Never touch migrations, workflows or secrets for UI work.
+
+## Prototype v2 (2026-10-05, after owner feedback)
+
+Owner liked the direction and asked for more motion plus the NXQX emblem as a pulsing background.
+`docs/design/premium-home/index.html` is now v2 (v1 kept as `index-v1-static.html`). Still static and
+outside the app build; loads only the local `nxqx-logo-bg.webp` (the owner's uploaded emblem).
+- Emblem sits behind the hero on the right, with a heartbeat pulse (5.2 s, double-beat), a gold glow
+  that breathes in sync, and four counter-rotating hexagon/dotted rings; rings rotate further as you scroll.
+- Scroll: progress bar, blur-to-sharp staggered reveals, background dims and drifts with scroll so text
+  stays readable, process line draws itself, marquee (Build / Innovate / Protect / Connect / Expand),
+  pointer spotlight on cards, 3D tilt on the workspace panel, pulsing featured plan.
+- The tagline baked into the emblem image is masked out (it collided with page text).
+- `prefers-reduced-motion` turns the animation off; content is visible without JavaScript only partly
+  (reveals need JS; a production version should use a no-JS fallback).
+- Checked: no horizontal overflow at 1440 and 390 px, no console errors, reduced-motion shows all content.
