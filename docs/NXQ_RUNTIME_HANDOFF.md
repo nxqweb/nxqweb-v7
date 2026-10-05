@@ -654,6 +654,19 @@ distance to launch, and none of it is something local code work can close —
 it is credentials, external provider setup, and the 10-run QA/signoff
 process, all requiring your action outside this session.
 
+## Code organization + security check (2026-10-05, local only)
+
+- Shared display formatters in `src/lib/format.ts` replace 13 local copies (tested equivalent; routes
+  67/67 OK; frontend only reaches the live site on the next Netlify publish).
+- Session-guard sharing was deliberately NOT done (about 8 different shapes, lockout-risk zone). Instead
+  `npm run test:auth-guards` pins the access guards (owner routes wrapped, owner check shape, client
+  redirects, no service-role key in `src/`); mutation-checked.
+- `docs/SECURITY_CHECK_2026-10-05.md`: results, residual risks, and the owner-lockout analysis (owner
+  access = sign-in + an `owner_users` row; billing is never consulted). Recommended follow-ups there:
+  owner-run authenticated login test on staging after the next publish; optional anon revokes (needs a
+  migration and approval); a backup owner account (later, with approval).
+- Release gate unchanged: 1,273 PASS, stops at `protected-staging-configuration`.
+
 ## Routing, auto-approval engine, drafted SQL, and a suspected pgcrypto runtime bug (local only, 2026-10-05)
 
 - Pure libraries with offline tests, wired into the release gate, NOT deployed, NOT called by any

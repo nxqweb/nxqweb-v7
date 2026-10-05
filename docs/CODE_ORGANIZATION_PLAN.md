@@ -54,6 +54,13 @@ workflow edits; no deploy until a batch is approved; compare before/after (test 
   helper with the original implementation. Before/after: lint, tsc, build pass; JS total 1,040,273 ->
   1,040,060 bytes (one small shared chunk added); 67/67 routes load with 0 flagged; release gate
   unchanged (1,273 PASS, stops at `protected-staging-configuration`).
+- **Precision on the formatters change:** 258 deleted lines = 19 helper lines in `OwnerPortal.tsx` plus
+  ~160 blank lines that a whitespace-collapse step removed there, and the other helper copies. A transpile
+  comparison of all 13 files against a no-whitespace-collapse variant produced identical output, so the
+  blank-line removal is inert.
+- **Session-guard sharing (Option A) deliberately NOT done:** the sign-in redirect code has about eight
+  different shapes across 38 call sites and sits in the lockout-risk zone, so it was left untouched. Instead
+  `scripts/test-auth-guards.mjs` pins the access guards (see `docs/SECURITY_CHECK_2026-10-05.md`).
 - **Not started:** the Edge-function helper sharing (step 4) - blocked by having no Deno in this
   container to type-check edits, and every touched function needs a guarded redeploy.
 
