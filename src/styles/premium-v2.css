@@ -291,3 +291,13 @@ body[data-nxq-theme="light"] .px-glance-stat { background: rgba(0,0,0,.04); bord
 /* Action-center rows: the small "Your action / NXQ handling" label sat on the same line as the title. */
 .portal-action-copy > span { display: block; margin-bottom: 2px; font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--px-gold); }
 body[data-nxq-theme="light"] .portal-action-copy > span { color: #7a5f1a; }
+
+.px-id-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin-top: 12px; }
+.px-id-chip { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 12px; border: 1px dashed rgba(217,183,95,.35); background: rgba(217,183,95,.06); }
+.px-id-chip small { color: var(--px-ink-3); font-size: .66rem; letter-spacing: .1em; text-transform: uppercase; }
+.px-id-chip code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem; color: var(--px-gold-2); user-select: all; }
+.px-id-copy { border: 1px solid rgba(217,183,95,.4); background: transparent; color: var(--px-gold-2); border-radius: 999px; padding: 2px 10px; font-size: .72rem; cursor: pointer; }
+.px-id-copy:hover { background: rgba(217,183,95,.12); }
+.px-id-note { flex-basis: 100%; margin: 0; color: var(--px-ink-3); font-size: .78rem; }
+body[data-nxq-theme="light"] .px-id-chip code, body[data-nxq-theme="light"] .px-id-copy { color: #7a5f1a; }
+body[data-nxq-theme="light"] .px-id-chip small, body[data-nxq-theme="light"] .px-id-note { color: #5a5444; }

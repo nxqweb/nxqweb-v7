@@ -12,7 +12,7 @@ const manualSupabase = read(".github/workflows/manual-supabase-stage.yml");
 
 const checks = [
   [
-    "Public pricing remains exactly Starter $50, Growth $100, Intelligence $150, Enterprise $150+",
+    "Public pricing remains exactly Starter $50, Growth $100, Intelligence $150, Enterprise $300+",
     catalog.includes('key: "starter"') &&
       catalog.includes('priceLabel: "$50/mo"') &&
       catalog.includes('key: "growth"') &&
@@ -20,7 +20,7 @@ const checks = [
       catalog.includes('key: "intelligence"') &&
       catalog.includes('priceLabel: "$150/mo"') &&
       catalog.includes('key: "enterprise"') &&
-      catalog.includes('priceLabel: "$150+/mo"'),
+      catalog.includes('priceLabel: "$300+/mo"'),
   ],
   [
     "Business is the only currently public family while Commerce stays guarded/planned",

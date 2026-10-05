@@ -50,6 +50,9 @@ check("client overview graph reads no backend and invents no numbers", !/supabas
 check("unknown journey or action values show a dash, never zero or a green state", glance.includes('percent === null ? "—"') && glance.includes('attentionCount === null ? "—"'));
 check("overview graph is fed from state the portal already loaded", topCards.includes("<ClientOverviewGraph") && topCards.includes("journey={effectiveJourney}") && topCards.includes("billingLabel={billingState.title}"));
 
+check("clients see their NXQ ID and client ID, with a pending state, from already-loaded health data", glance.includes("Your NXQ ID") && glance.includes("NXQ-Web client ID") && glance.includes('"Pending setup"') && topCards.includes("clientCode={health?.client_code") && topCards.includes("nxqId={health?.nxq_id"));
+check("Enterprise public price is $300+ and it lists Everything in Intelligence", read("src/lib/productCatalog.ts").includes('priceLabel: "$300+/mo"') && /key: "enterprise"[\s\S]*?"Everything in Intelligence"/.test(read("src/lib/productCatalog.ts")));
+
 // ---- safety of the layer itself ----
 check("page wipe only affects same-origin links and always falls back to navigation", wipe.includes("url.origin !== window.location.origin") && wipe.includes("window.location.assign(url.href)") && wipe.includes("event.metaKey"));
 check("wipe is used only on internal path links", [...home.matchAll(/data-px-wipe\s+href="([^"]+)"/g)].every((m) => m[1].startsWith("/")));

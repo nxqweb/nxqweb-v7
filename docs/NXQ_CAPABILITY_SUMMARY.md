@@ -45,7 +45,7 @@ Hard rules in the code (README + migrations):
 | NXQ-Enterprise Systems | private (custom quote) |
 
 Plan tiers: **Starter $50/mo**, **Growth $100/mo**, **Intelligence $150/mo**,
-**Enterprise $150+/mo**. Tier limits are enforced on the server, not just in the UI
+**Enterprise $300+/mo** (public starting price; the database floor stays $150). Tier limits are enforced on the server, not just in the UI
 (migrations "server_side_tier_entitlements", "enforce_paid_capability_boundaries",
 "enforce_economic_hard_ceiling").
 

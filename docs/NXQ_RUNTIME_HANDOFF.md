@@ -713,6 +713,10 @@ process, all requiring your action outside this session.
   with the current password first (frontend; Supabase "secure password change" setting is an external-service gate). (4) Owner
   idea "export only after 5 years" - advised against (privacy-law access/portability rights, trust, own domain policy);
   alternatives: free export + paid migration/handoff service, annual prepay, setup fee. Needs a decision + lawyer review.
+- **Enterprise public price changed to $300+/mo (owner decision, code only, NOT published):** `productCatalog.ts` now says
+  `$300+/mo` and lists "Everything in Intelligence" first; two validators and the capability summary updated. The database
+  floor (`nxq_enforce_enterprise_price_floor`, migration 246) is still $150 - raising it is an optional migration (gate).
+  Clients now also see their NXQ ID and client ID (with Copy) in the portal "At a glance" card, from the existing health RPC.
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.

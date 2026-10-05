@@ -398,11 +398,12 @@ export const productTiers: ProductTierDefinition[] = [
   {
     key: "enterprise",
     name: "Enterprise",
-    priceLabel: "$150+/mo",
+    priceLabel: "$300+/mo",
     description: "Custom systems for multi-location companies, larger teams, and advanced operational requirements.",
     badge: "Custom",
     outcome: "Custom scale",
     features: [
+      "Everything in Intelligence",
       "Custom page and location scope",
       "Advanced reporting and workflows",
       "Multi-location and team requirements",

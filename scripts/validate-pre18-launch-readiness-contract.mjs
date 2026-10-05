@@ -32,7 +32,7 @@ const checks = [
   ["Client portal exposes Business leads, changes, locations, analytics, SEO and reports", ["/client/business/leads", "/client/business/changes", "/client/business/locations", "/client/business/analytics", "/client/business/seo", "/client/business/reports"].every((route) => businessDashboard.includes(route))],
   ["Business workspace does not surface provider error text", !businessDashboard.includes("problem.message") && businessDashboard.includes("could not be verified right now")],
   ["Client action center preserves denial hard stop", clientTopCards.includes("Website setup was not approved") && clientTopCards.includes("!denied")],
-  ["Public pricing remains 50 / 100 / 150 / 150+", ["$50/mo", "$100/mo", "$150/mo", "$150+/mo"].every((price) => productCatalog.includes(price))],
+  ["Public pricing remains 50 / 100 / 150 / 300+", ["$50/mo", "$100/mo", "$150/mo", "$300+/mo"].every((price) => productCatalog.includes(price))],
   ["Only launch-authorized product-family statuses are publicly selectable", productCatalog.includes('family.status === "available" || family.status === "beta"')],
   ["Public frontend is using the NXQX neural-glass theme", app.includes('import "./styles/nxqx-neural-glass.css"') && neuralGlass.includes("NXQX Neural Glass") && neuralGlass.includes("nxq-metal-edge")],
   ["Public experience keeps the managed lifecycle story", ["Build", "Get found", "Convert", "Understand", "Improve"].every((label) => publicHome.includes(label))],

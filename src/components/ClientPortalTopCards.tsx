@@ -30,6 +30,7 @@ type HealthSummary = {
   open_alerts?: number;
   deployment_status?: string | null;
   nxq_id?: string | null;
+  client_code?: string | null;
 };
 
 type PortalAction = {
@@ -407,7 +408,9 @@ export function ClientPortalTopCards() {
           billingTone={billingState.tone as "success" | "info" | "warning" | "danger"}
           healthLabel={healthState.title}
           healthTone={healthState.tone as "success" | "info" | "warning" | "danger"}
+          clientCode={health?.client_code ?? null}
           journey={effectiveJourney}
+          nxqId={health?.nxq_id ?? null}
         />
       ) : null}
       <section className="notice-card portal-action-center info" aria-label="NXQ-Web action center">

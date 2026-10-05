@@ -345,7 +345,7 @@ export function ClientPlanManagement() {
                     </option>
                   ))}
                 </select>
-                <small className="subtle">Enterprise is custom and starts at $150+/mo.</small>
+                <small className="subtle">Enterprise is custom and starts at $300+/mo.</small>
               </label>
             </div>
 
