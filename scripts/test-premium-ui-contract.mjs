@@ -53,6 +53,15 @@ check("overview graph is fed from state the portal already loaded", topCards.inc
 check("clients see their NXQ ID and client ID, with a pending state, from already-loaded health data", glance.includes("Your NXQ ID") && glance.includes("NXQ-Web client ID") && glance.includes('"Pending setup"') && topCards.includes("clientCode={health?.client_code") && topCards.includes("nxqId={health?.nxq_id"));
 check("Enterprise public price is $300+ and it lists Everything in Intelligence", read("src/lib/productCatalog.ts").includes('priceLabel: "$300+/mo"') && /key: "enterprise"[\s\S]*?"Everything in Intelligence"/.test(read("src/lib/productCatalog.ts")));
 
+// ---- founding-client program: honest, text only ----
+const founding = read("src/components/FoundingClientProgram.tsx");
+const foundingCfg = read("src/lib/foundingProgram.ts");
+check("founding program shows no counter or invented scarcity", !/spots? (?:left|remaining)|only \d+ left|hurry|last chance|\d+ of \d+ (?:taken|claimed)/i.test(founding));
+check("founding program says terms apply and spots are hand-approved", /Terms apply/.test(founding) && /approved by hand/.test(founding));
+check("founding program numbers come from one config and it can be switched off", /testerSpots: 5/.test(foundingCfg) && /testerDiscountPercent: 50/.test(foundingCfg) && /testerMonths: 12/.test(foundingCfg) && /freeSpots: 10/.test(foundingCfg) && /enabled: true/.test(foundingCfg) && founding.includes("if (!foundingProgram.enabled) return null"));
+check("apply is a plain email link to the support address, with no form or tracking", founding.includes("mailto:${appConfig.supportEmail}") && !/fetch\(|supabase|<form/i.test(founding));
+check("home page includes the founding program section", home.includes("<FoundingClientProgram />"));
+
 // ---- safety of the layer itself ----
 check("page wipe only affects same-origin links and always falls back to navigation", wipe.includes("url.origin !== window.location.origin") && wipe.includes("window.location.assign(url.href)") && wipe.includes("event.metaKey"));
 check("wipe is used only on internal path links", [...home.matchAll(/data-px-wipe\s+href="([^"]+)"/g)].every((m) => m[1].startsWith("/")));

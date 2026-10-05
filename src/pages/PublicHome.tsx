@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { FoundingClientProgram } from "../components/FoundingClientProgram";
 import { PortalPreviewDemo } from "../components/PortalPreviewDemo";
 import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSelector";
 import { SecurityBand } from "../components/SecurityBand";
@@ -276,6 +277,8 @@ export function PublicHome() {
           </div>
         </div>
       </section>
+
+      <FoundingClientProgram />
 
       <section id="process">
         <div className="px-wrap">

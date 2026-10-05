@@ -301,3 +301,4 @@ body[data-nxq-theme="light"] .portal-action-copy > span { color: #7a5f1a; }
 .px-id-note { flex-basis: 100%; margin: 0; color: var(--px-ink-3); font-size: .78rem; }
 body[data-nxq-theme="light"] .px-id-chip code, body[data-nxq-theme="light"] .px-id-copy { color: #7a5f1a; }
 body[data-nxq-theme="light"] .px-id-chip small, body[data-nxq-theme="light"] .px-id-note { color: #5a5444; }
+.px-card > .px-btn { margin-top: 16px; }

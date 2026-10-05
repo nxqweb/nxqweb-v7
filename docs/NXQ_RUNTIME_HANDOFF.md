@@ -717,6 +717,10 @@ process, all requiring your action outside this session.
   `$300+/mo` and lists "Everything in Intelligence" first; two validators and the capability summary updated. The database
   floor (`nxq_enforce_enterprise_price_floor`, migration 246) is still $150 - raising it is an optional migration (gate).
   Clients now also see their NXQ ID and client ID (with Copy) in the portal "At a glance" card, from the existing health RPC.
+- **Founding-client program (owner decision, text-only section built, NOT published):** 5 testers at 50% off for 12 months,
+  10 free founding spots under written terms, closes when filled or at 10,000 clients. See
+  `docs/FOUNDING_CLIENT_PROGRAM_PLAN.md`. No counter or automatic discount exists; terms need a lawyer; billing, a grants
+  migration and free-spot budget handling are later gated steps.
 - Netlify (owner, 2026-10-04 evening): builds were ACTIVATED and auto publishing UNLOCKED on `nxqweb-v9-staging`;
   a "Production: main@HEAD" deploy published `main` (old look). Production branch is `main`: merging PR #11 would
   publish everything in it immediately. When done viewing, the owner should Stop builds and Lock the published deploy.
