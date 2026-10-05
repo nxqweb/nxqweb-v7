@@ -71,3 +71,18 @@ Owner: centre the emblem, remove the spinning rings, make the emblem the solid b
 spotlight. Done in `docs/design/premium-home/index.html` (the rings version is kept as `index-v2-rings.html`).
 First screen is the emblem only (pulsing, centred, tagline pill, scroll cue); the headline, intro text and
 buttons follow as the emblem dims on scroll so text stays readable. Emblem is embedded in the file.
+
+## Prototype v4 (2026-10-05, owner feedback round 3)
+Owner wanted: start with the headline (emblem quiet behind it, "One vision. Limitless future." badge), a much
+longer page that carries everything the current site has, plus the agreed motion ideas and a live graph in
+the client-portal look. `docs/design/premium-home/index.html` is now v4 (about 11,400 px tall; v3 kept as
+`index-v3-emblem-first.html`). Self-contained; emblem embedded.
+Sections: hero, marquee, lifecycle cards + sticky five-stage story, client portal preview with live
+animated chart / KPIs / activity feed, device preview (auto-scrolling sample site on laptop + phone),
+product families (real list; only NXQ-Business open), pricing (real tiers, features, comparison table),
+process (line draws as you scroll), managed-vs-DIY, FAQ (answers taken from the existing site's own claims),
+final call to action. Motion: pointer parallax on the emblem, heartbeat ripple and light sweep, count-up numbers,
+gold edge that traces around a hovered plan, gold page wipe on primary buttons, reduced-motion support.
+All portal/graph numbers are ILLUSTRATIVE sample data; a real live graph needs a data source (the client
+analytics pages exist; real-time updates would need polling or Supabase Realtime - a later, approved step).
+Content source: `src/pages/PublicHome.tsx`, `PublicPlans.tsx`, `src/lib/productCatalog.ts`.
