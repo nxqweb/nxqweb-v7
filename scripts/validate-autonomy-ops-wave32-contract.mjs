@@ -25,10 +25,10 @@ const checks = [
   ["Six launch milestones are returned", ["'setup'","'review'","'plan'","'build'","'launch'","'care'"].every((key) => migration.includes(key))],
   ["Function permission excludes anonymous callers", migration.includes("revoke all on function public.current_client_launch_journey() from public, anon") && migration.includes("grant execute on function public.current_client_launch_journey() to authenticated, service_role")],
   ["Portal summary uses the server journey model", topCards.includes('supabase.rpc("current_client_launch_journey")') && topCards.includes("ClientJourneySummaryCard")],
-  ["Summary clearly separates client work from NXQ work", summary.includes("Your next step") && summary.includes("NXQ is handling this")],
+  ["Summary clearly separates client work from NXQX work", summary.includes("Your next step") && summary.includes("NXQX is handling this")],
   ["Full journey renders truthful milestones and requirements", page.includes("journey.milestones.map") && page.includes("journey.requirements.map") && page.includes("Progress changes only when the real workflow evidence changes")],
   ["Journey has a dedicated client route", app.includes('path === "/client/journey"') && app.includes("ClientLaunchJourneyPage")],
-  ["Tutorial teaches the action-ownership model", tutorial.includes("separates the exact actions we need from you from work NXQ is already handling")],
+  ["Tutorial teaches the action-ownership model", tutorial.includes("separates the exact actions we need from you from work NXQX is already handling")],
   ["Existing frontend direct-mutation security gate remains active", security.includes("Frontend has no direct Supabase table mutations")],
 ];
 

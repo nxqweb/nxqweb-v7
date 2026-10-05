@@ -93,7 +93,7 @@ function parseSignedSetupReport(value: unknown) {
   const fields = new Map<string, string>();
   if (!notes.includes("NXQ WEB WEBSITE SETUP REPORT")) return fields;
 
-  const reportOnly = notes.split("NXQX MORE INFO REQUEST")[0] || notes;
+  const reportOnly = notes.split("NXQ MORE INFO REQUEST")[0] || notes;
   let activeLabel = "";
   let activeValue: string[] = [];
   const save = () => {

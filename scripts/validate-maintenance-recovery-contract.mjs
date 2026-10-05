@@ -25,7 +25,7 @@ const checks = [
   ['Broken-link scan is bounded', worker.includes('links.size < 20') && worker.includes('scan_limit: 20')],
   ['Security scan is explicitly non-destructive', worker.includes('destructive_scan_performed: false') && worker.includes('not a penetration test')],
   ['SEO check verifies title description H1 and noindex', worker.includes('title_present') && worker.includes('description_present') && worker.includes('h1_present') && worker.includes('noindex_detected')],
-  ['Backup check verifies GitHub production branch commit', worker.includes('repository_verified: true') && worker.includes('actual_commit') && worker.includes('last_production_commit')],
+  ['Backup check verifies GitHub production branch commit', worker.includes('repository_verified: true') && worker.includes('actual_commit') && worker.includes('last_deployed_commit')],
   ['Monthly report is generated from real maintenance task records', worker.includes('generated_from_real_checks: true') && worker.includes('website_monthly_reports')],
   ['Unhealthy uptime SSL backup checks enter retry path', worker.includes('["uptime_check", "ssl_check", "backup_check"].includes(task.task_type)')],
 ];

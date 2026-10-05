@@ -7,7 +7,7 @@ const topCards = fs.readFileSync('src/components/ClientPortalTopCards.tsx', 'utf
 const checks = [
   ['Tutorial is versioned for future reruns', /nxq-client-portal-tutorial-v\d+-complete/.test(tutorial)],
   ['Tutorial appears only until completion', tutorial.includes('window.localStorage.getItem') && tutorial.includes('window.localStorage.setItem')],
-  ['Tutorial explains NXQ ID', tutorial.includes('NXQ ID')],
+  ['Tutorial explains NXQX ID', tutorial.includes('NXQX ID')],
   ['Tutorial explains domain action-required behavior', tutorial.includes('action-required')],
   ['Tutorial is mounted on main client portal', app.includes('<ClientPortalTutorialOverlay />')],
   ['Denied clients get a clear hard-stop notice', topCards.includes('Website setup was not approved')],

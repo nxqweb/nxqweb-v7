@@ -161,7 +161,7 @@ const completedSetupStatuses = [
 function getLatestMoreInfoRequest(notes: string | null | undefined) {
   if (!notes) return "";
 
-  const marker = "NXQX MORE INFO REQUEST";
+  const marker = "NXQ MORE INFO REQUEST";
   const sections = notes.split(marker);
   const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
   const requestedInfoLine = latestSection
@@ -181,7 +181,7 @@ type TargetedMoreInfoRequest = {
 function getLatestTargetedMoreInfoRequest(notes: string | null | undefined): TargetedMoreInfoRequest | null {
   if (!notes) return null;
 
-  const marker = "NXQX TARGETED MORE INFO REQUEST";
+  const marker = "NXQ TARGETED MORE INFO REQUEST";
   const sections = notes.split(marker);
   const latestSection = sections.length > 1 ? sections[sections.length - 1] : "";
 
@@ -210,7 +210,7 @@ function parseClientSetupReport(notes: string | null | undefined) {
     return new Map<string, string>();
   }
 
-  const reportOnly = notes.split("NXQX MORE INFO REQUEST")[0] || notes;
+  const reportOnly = notes.split("NXQ MORE INFO REQUEST")[0] || notes;
   const lines = reportOnly.split("\n");
   const fields = new Map<string, string>();
   let activeLabel = "";

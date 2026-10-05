@@ -111,5 +111,7 @@ equivalent:
 - Do not report a feature, migration, or contract as "not implemented" or
   "not on this branch" without grepping/reading the actual files first —
   a prior session's assumption here did not match the repository state.
+- Before every push, run `npm run test:ci-parity` (the exact commands GitHub CI runs). `npm run test:*` and
+  `eslint --quiet` are not a substitute; a red push emails the owner once per failing workflow.
 - Local lifecycle simulations and contract validators are not external QA
   evidence; do not conflate them with staging/production readiness.

@@ -111,7 +111,7 @@ export function OwnerLaunchReadiness() {
 
   async function bootstrapRuntime() {
     if (!supabase) return;
-    const requiredConfirmation = "CONFIGURE-NXQX-STAGING-RUNTIME";
+    const requiredConfirmation = "CONFIGURE-NXQ-STAGING-RUNTIME";
     const confirmation = window.prompt(
       `Configure protected staging runtime routes now?\n\nNXQX will derive this staging project's Edge Function URLs and copy the already-configured internal worker token into Supabase Vault. It will not display secret values, deploy functions, create client infrastructure, touch billing, or change production.\n\nType ${requiredConfirmation} exactly to continue.`
     );
@@ -145,7 +145,7 @@ export function OwnerLaunchReadiness() {
 
   async function approveLaunchReadiness() {
     if (!supabase) return;
-    const requiredConfirmation = "APPROVE-NXQX-AUTONOMOUS-LAUNCH";
+    const requiredConfirmation = "APPROVE-NXQ-AUTONOMOUS-LAUNCH";
     const confirmation = window.prompt(
       `Record your final NXQX autonomous-launch readiness approval?\n\nThis records the human governance signoff only. It does not merge code, deploy production, change domains, create billing, or contact customers. If any required readiness check later regresses, this approval is automatically invalidated.\n\nType ${requiredConfirmation} exactly to continue.`
     );

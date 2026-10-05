@@ -15,9 +15,9 @@ function localDay(date: Date) {
 }
 
 // One entry per calendar day ending today. A day with no stored rollup is plotted as 0.
-function lastDays(count: number) {
+function lastDays(count: number, nowMs: number) {
   const days: string[] = [];
-  const today = new Date();
+  const today = new Date(nowMs);
   for (let offset = count - 1; offset >= 0; offset -= 1) {
     days.push(localDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset)));
   }
@@ -124,7 +124,7 @@ export function ClientBusinessAnalytics() {
   }, [projectId, refreshRollups]);
 
   const hourKey = Math.floor(now / 3600000);
-  const days = useMemo(() => lastDays(range), [range, hourKey]);
+  const days = useMemo(() => lastDays(range, hourKey * 3600000), [range, hourKey]);
   const series = useMemo(() => {
     const byDay = new Map(rows.map((row) => [row.rollup_date, row]));
     return days.map((day) => ({ day, row: byDay.get(day) }));

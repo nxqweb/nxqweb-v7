@@ -13,7 +13,7 @@ const chart = read("src/components/DailyTrendChart.tsx");
 const css = read("src/styles/trend-chart.css");
 
 check("analytics page renders page-view and click charts from the daily rollups", page.includes("DailyTrendChart") && page.includes("Page views per day") && page.includes("Clicks per day") && page.includes("website_analytics_daily_rollups"));
-check("date range presets (30 and 90 days) scope the charts and totals", page.includes("([30, 90] as const)") && page.includes("aria-pressed") && page.includes("lastDays(range)"));
+check("date range presets (30 and 90 days) scope the charts and totals", page.includes("([30, 90] as const)") && page.includes("aria-pressed") && page.includes("lastDays(range,"));
 check("freshness is a polled 'Updated N min ago' label, not a live badge", page.includes("updatedLabel") && page.includes("REFRESH_MS") && !/>\s*Live\s*</i.test(page) && !/live badge|is live|real-time/i.test(page));
 check("a failed refresh is disclosed and earlier data is kept", page.includes("Could not refresh"));
 check("empty state is honest (no invented values)", page.includes("No charts yet") && page.includes("drawn as 0"));
