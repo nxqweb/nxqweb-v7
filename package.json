@@ -20,6 +20,7 @@
     "test:format-helpers": "node scripts/test-format-helpers.mjs",
     "test:auth-guards": "node scripts/test-auth-guards.mjs",
     "test:premium-ui": "node scripts/test-premium-ui-contract.mjs",
+    "test:analytics-chart": "node scripts/test-analytics-chart-contract.mjs",
     "test:scanii": "node scripts/test-scanii-scan.mjs",
     "test:select-columns": "node scripts/test-select-columns-exist.mjs",
     "test:safe-url": "node scripts/test-safe-url.mjs",

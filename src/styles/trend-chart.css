@@ -1,0 +1,142 @@
+/* Single-series daily trend chart (client Analytics). Marks use the series ink; text uses text tokens only. */
+.nxq-trend {
+  --trend-ink: var(--nxq-gold, #f7c948);
+  --trend-surface: #14120d;
+  --trend-grid: rgba(226, 232, 240, 0.12);
+  margin: 0 0 18px;
+}
+
+body[data-nxq-theme="light"] .nxq-trend {
+  --trend-ink: #8a5a00;
+  --trend-surface: #ffffff;
+  --trend-grid: rgba(15, 23, 42, 0.12);
+}
+
+.nxq-trend figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.nxq-trend figcaption strong {
+  color: var(--nxq-text);
+  font-size: 0.95rem;
+}
+
+.nxq-trend figcaption span {
+  color: var(--nxq-muted);
+  font-size: 0.85rem;
+}
+
+.nxq-trend-frame {
+  position: relative;
+}
+
+.nxq-trend svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.nxq-trend svg:focus-visible {
+  outline: 2px solid var(--trend-ink);
+  outline-offset: 4px;
+}
+
+.nxq-trend-grid {
+  stroke: var(--trend-grid);
+  stroke-width: 1;
+}
+
+.nxq-trend-tick {
+  fill: var(--nxq-soft);
+  font-size: 11px;
+}
+
+.nxq-trend-line {
+  fill: none;
+  stroke: var(--trend-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nxq-trend-area {
+  fill: var(--trend-ink);
+  opacity: 0.1;
+}
+
+.nxq-trend-cross {
+  stroke: var(--nxq-soft);
+  stroke-width: 1;
+}
+
+.nxq-trend-ring {
+  fill: var(--trend-surface);
+}
+
+.nxq-trend-dot {
+  fill: var(--trend-ink);
+}
+
+.nxq-trend-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.nxq-trend-tip {
+  position: absolute;
+  top: 14px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--trend-surface);
+  border: 1px solid var(--trend-grid);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.nxq-trend-tip b {
+  color: var(--nxq-text);
+  font-size: 1rem;
+}
+
+.nxq-trend-tip span {
+  color: var(--nxq-muted);
+  font-size: 0.8rem;
+}
+
+.nxq-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.nxq-range button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--trend-grid, rgba(226, 232, 240, 0.2));
+  background: transparent;
+  color: var(--nxq-muted);
+  cursor: pointer;
+}
+
+.nxq-range button[aria-pressed="true"] {
+  color: var(--nxq-text);
+  border-color: var(--nxq-gold, #f7c948);
+}
+
+.nxq-range .nxq-updated {
+  margin-left: auto;
+  color: var(--nxq-soft);
+  font-size: 0.85rem;
+}

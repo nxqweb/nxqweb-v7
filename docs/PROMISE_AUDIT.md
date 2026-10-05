@@ -20,13 +20,13 @@ Rule going forward: nothing goes on the public site unless a row here says "In c
 | Conversion / page-interaction review | Thin | Raw rollups only; no review view |
 | Lead-source and funnel insights | Not found | No client page reads lead source or funnel data |
 | Monthly optimization cycle | Partly | Reports/recommendations tables; no visible schedule or cycle status |
-| "A live view of how your site is performing" (home preview) | Thin | Real rollup data exists, but the client portal shows a table, not a chart, and it is Growth+/tier-gated. The home preview is labeled illustrative sample data |
+| "A live view of how your site is performing" (home preview) | In code (not yet proven with real traffic) | `ClientBusinessAnalytics` now draws daily page-view and click charts from `website_analytics_daily_rollups` (30/90 days, keyboard/tooltip, honest empty state, "Updated N min ago" polled every 5 min; no "live" badge). Still Growth+/tier-gated; the home preview stays labeled illustrative. Guarded by `npm run test:analytics-chart`. |
 | Multi-location (Enterprise) | In code | `ClientBusinessLocations`, tier-gated |
 
 ## Fix list (smallest first)
 1. Label the home-page preview "Growth plan view" so Starter buyers are not promised charts they will not get.
 2. Reword or remove "Lead-source and funnel insights" until a view exists (or build it).
-3. Build the real dashboard in the client portal: daily page-view/click chart from `website_analytics_daily_rollups`,
+3. (Chart part DONE 2026-10-05 on the Analytics page; dashboard cards for leads/health/changes already exist; combining a mini-trend onto `/client/business` is still open.) Build the real dashboard in the client portal: daily page-view/click chart from `website_analytics_daily_rollups`,
    leads from `current_client_leads_page`, health from `current_client_operational_health`, change requests; honest empty
    states; "updated N minutes ago" (polling) instead of a fake "live" badge.
 4. Add a visible monthly-cycle status on the reports page.
