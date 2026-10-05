@@ -86,3 +86,9 @@ gold edge that traces around a hovered plan, gold page wipe on primary buttons, 
 All portal/graph numbers are ILLUSTRATIVE sample data; a real live graph needs a data source (the client
 analytics pages exist; real-time updates would need polling or Supabase Realtime - a later, approved step).
 Content source: `src/pages/PublicHome.tsx`, `PublicPlans.tsx`, `src/lib/productCatalog.ts`.
+
+## Rollout status (2026-10-05)
+Step 1 (public home + plans + families, new stylesheet, backdrop) and step 2 (shared portal/sign-in skin) are in
+`src/`, committed, not published. See `docs/NXQ_RUNTIME_HANDOFF.md` ("Premium UI is now IN THE CODE").
+Still to do: real-data chart in the client portal, owner-portal-specific polish with real data, self-hosted fonts,
+removal of dead old CSS (only with screenshot comparison; several validators pin old files), waitlist and example page.

@@ -9,6 +9,8 @@ import "./styles/final-frontend-polish.css";
 import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import "./styles/nxqx-neural-glass.css";
+import "./styles/premium-v2.css";
+import { PremiumBackdrop } from "./components/PremiumBackdrop";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";
 import { OwnerCommandCenter } from "./components/OwnerCommandCenter";
@@ -157,8 +159,20 @@ function AppRoutes() {
   return <PublicHome />;
 }
 
+// The emblem backdrop sits behind every page except public storefronts, which keep their own look.
+function backdropVariant(path: string): "home" | "app" | null {
+  if (path.startsWith("/store")) return null;
+  return path === "/" || path === "/plans" ? "home" : "app";
+}
+
 function App() {
-  return <div id="main-content" tabIndex={-1}><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQ…</div></main>}><AppRoutes /></Suspense></div>;
+  const variant = backdropVariant(window.location.pathname);
+  return (
+    <>
+      {variant ? <PremiumBackdrop variant={variant} /> : null}
+      <div id="main-content" tabIndex={-1}><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQ…</div></main>}><AppRoutes /></Suspense></div>
+    </>
+  );
 }
 
 export default App;

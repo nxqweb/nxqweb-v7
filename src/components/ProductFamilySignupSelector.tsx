@@ -8,16 +8,14 @@ export function ProductFamilySignupSelector() {
   const visibleFamilies = PRODUCT_FAMILIES.filter((family) => family.status !== "private");
 
   return (
-    <div className="lux-card lux-family-shell">
-      <div className="lux-section-head">
-        <span>Choose your website system</span>
-        <h2>Start with the system that matches how your business actually works.</h2>
-        <p>
-          NXQ-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
-        </p>
-      </div>
+    <div>
+      <span className="px-kicker" data-px-reveal>Choose your website system</span>
+      <h2 data-px-reveal>Start with the system that matches how your business actually works.</h2>
+      <p className="px-sub" data-px-reveal>
+        NXQ-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
+      </p>
 
-      <div className="lux-family-grid">
+      <div className="px-grid4">
         {visibleFamilies.map((family, index) => {
           const isSelectable = isPubliclySelectableFamily(family);
           const featured = family.slug === "business";
@@ -26,11 +24,12 @@ export function ProductFamilySignupSelector() {
             return (
               <article
                 aria-disabled="true"
-                className={`lux-card lux-family-card muted ${featured ? "featured" : ""}`}
+                className={`px-card px-fam px-muted ${featured ? "px-live-fam" : ""}`}
+                data-px-reveal
                 key={family.slug}
               >
-                <div className="lux-family-meta">
-                  <span className="lux-plan-badge">
+                <div className="px-fam-meta">
+                  <span className="px-st">
                     {family.eyebrow} <Clock3 size={13} />
                   </span>
                 </div>
@@ -43,13 +42,15 @@ export function ProductFamilySignupSelector() {
 
           return (
             <a
-              className={`lux-card lux-family-card ${featured ? "featured" : ""}`}
+              className={`px-card px-fam ${featured ? "px-live-fam" : ""}`}
+              data-px-reveal
+              data-px-spot
               href={`/portal/signup?family=${encodeURIComponent(family.slug)}`}
               key={family.slug}
               aria-label={`Choose ${family.name}`}
             >
-              <div className="lux-family-meta">
-                <span className="lux-plan-badge">
+              <div className="px-fam-meta">
+                <span className="px-st">
                   {family.eyebrow} {index === 0 ? <Sparkles size={13} /> : null}
                 </span>
                 <ArrowRight size={18} />

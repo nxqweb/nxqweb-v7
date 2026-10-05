@@ -1,76 +1,93 @@
 import { ArrowLeft, ArrowRight, Clock3 } from "lucide-react";
 import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSelector";
 import { productTiers } from "../lib/productCatalog";
+import { usePremiumRoot, usePointerSpotlight, useScrollReveal } from "../lib/premiumMotion";
+import { usePageWipe } from "../lib/usePageWipe";
 
 export function PublicPlans() {
+  usePremiumRoot();
+  useScrollReveal();
+  usePointerSpotlight();
+  usePageWipe();
+
   return (
-    <main className="lux-home">
-      <section className="lux-page">
-        <div className="lux-nav lux-card">
-          <a className="lux-brand" href="/">
-            <div className="lux-logo">N</div>
-            <div>
-              <strong>NXQX</strong>
-              <span>NXQ-Web systems</span>
-            </div>
-          </a>
-          <a className="lux-btn lux-btn-secondary" href="/">
-            <ArrowLeft size={16} /> Back home
-          </a>
-        </div>
-
-        <section className="lux-section">
-          <div className="lux-section-head">
+    <main className="px">
+      <header className="px-nav" aria-label="Primary">
+        <a className="px-brand" href="/" aria-label="NXQX NXQ-Web home">
+          <span className="px-mark">N</span>
+          <span className="px-brandtext">
+            <strong>NXQX</strong>
             <span>NXQ-Web systems</span>
-            <h2>Choose the website system first. Then choose how far you want it to go.</h2>
-            <p>
-              Product families define the kind of website experience your business needs. Tiers define the level of ongoing service, growth, measurement, and optimization.
-            </p>
-          </div>
+          </span>
+        </a>
+        <nav className="px-links" aria-label="Main navigation">
+          <a href="/"><ArrowLeft size={16} /> Back home</a>
+          <a className="px-cta" data-px-wipe href="/portal">Client portal</a>
+        </nav>
+      </header>
 
+      <section className="px-sec-glass">
+        <div className="px-wrap">
           <ProductFamilySignupSelector />
-        </section>
+        </div>
+      </section>
 
-        <section className="lux-section" id="tiers">
-          <div className="lux-section-head">
-            <span>Service tiers</span>
-            <h2>Four clear service levels, from a polished managed site to a custom growth system.</h2>
-          </div>
-
-          <div className="lux-grid lux-pricing-grid">
+      <section id="tiers">
+        <div className="px-wrap">
+          <span className="px-kicker" data-px-reveal>Service tiers</span>
+          <h2 data-px-reveal>Four clear service levels, from a polished managed site to a custom growth system.</h2>
+          <p className="px-sub" data-px-reveal>
+            Product families define the kind of website experience your business needs. Tiers define the level of ongoing service, growth, measurement, and optimization.
+          </p>
+          <div className="px-tiers">
             {productTiers.map((tier) => {
               const featured = tier.key === "growth";
               return (
-                <article className={`lux-card lux-price ${featured ? "lux-featured" : ""}`} key={tier.key}>
-                  <span className="lux-plan-badge">{tier.badge}</span>
+                <article className={`px-tier ${featured ? "px-featured" : ""}`} data-px-reveal data-px-spot key={tier.key}>
+                  <span className="px-badge">{tier.badge}</span>
                   <h3>{tier.name}</h3>
                   <p>{tier.description}</p>
-                  <strong>{tier.priceLabel}</strong>
-                  <ul className="lux-plan-list">
+                  <div className="px-price">{tier.priceLabel}</div>
+                  <ul>
                     {tier.features.map((feature) => <li key={feature}>{feature}</li>)}
                   </ul>
-                  <small>{tier.outcome}</small>
-                  <a className={`lux-btn ${featured ? "lux-btn-primary" : "lux-btn-secondary"}`} href={`/portal/signup?family=business&tier=${tier.key}`}>
+                  <div className="px-out">{tier.outcome}</div>
+                  <a
+                    className={`px-btn ${featured ? "px-gold" : "px-ghost"}`}
+                    data-px-wipe
+                    href={`/portal/signup?family=business&tier=${tier.key}`}
+                  >
                     Choose {tier.name} <ArrowRight size={16} />
                   </a>
                 </article>
               );
             })}
           </div>
-        </section>
-
-        <section className="lux-card lux-final">
-          <div>
-            <Clock3 size={24} />
-            <h2>More NXQ-Web systems are on the way.</h2>
-            <p>Planned families stay visible so you can see what is coming, but signup stays closed until each experience is ready for clients.</p>
-            <p>
-              Coming next: NXQ-Booking, NXQ-Commerce, NXQ-Menu, NXQ-Property, NXQ-Multi-Location, NXQ-Membership, and NXQ-Enterprise.
-            </p>
-          </div>
-          <a className="lux-btn lux-btn-primary" href="/portal/signup?family=business&tier=growth">Start NXQ-Business <ArrowRight size={16} /></a>
-        </section>
+        </div>
       </section>
+
+      <div className="px-wrap">
+        <div className="px-cta-band" data-px-reveal>
+          <Clock3 size={26} />
+          <h2>More NXQ-Web systems are on the way.</h2>
+          <p className="px-sub">Planned families stay visible so you can see what is coming, but signup stays closed until each experience is ready for clients.</p>
+          <p className="px-sub">
+            Coming next: NXQ-Booking, NXQ-Commerce, NXQ-Menu, NXQ-Property, NXQ-Multi-Location, NXQ-Membership, and NXQ-Enterprise.
+          </p>
+          <div className="px-btns">
+            <a className="px-btn px-gold" data-px-wipe href="/portal/signup?family=business&tier=growth">
+              Start NXQ-Business <ArrowRight size={16} />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <div className="px-wrap px-foot">
+          <span>NXQX · NXQ-Web</span>
+          <span>Premium managed website systems</span>
+        </div>
+      </footer>
     </main>
   );
 }

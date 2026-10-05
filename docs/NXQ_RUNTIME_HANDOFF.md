@@ -677,6 +677,29 @@ process, all requiring your action outside this session.
 - UI redesign exploration: `docs/UI_REDESIGN_PLAN.md` + static prototype `docs/design/premium-home/`
   (not in the build, no `src/` changes). Waiting on the owner's review of the direction.
 
+## Premium UI is now IN THE CODE (2026-10-05, committed on the safe branch; NOT published)
+
+- Owner approved the "Obsidian & Champagne" direction and asked for it to replace the UI while every button keeps
+  its destination. Done in `src/`: new `PublicHome.tsx` and `PublicPlans.tsx`, restyled
+  `ProductFamilySignupSelector.tsx`, new `PremiumBackdrop` (pulsing NXQX emblem, mounted in `App.tsx` for every
+  route except `/store/*`), `PortalPreviewDemo` (illustrative sample data, no backend), `SecurityBand`,
+  `TrustedBy` (empty by design, fed by `src/lib/socialProof.ts`), hooks in `src/lib/premiumMotion.ts` and
+  `usePageWipe.ts`, and one stylesheet `src/styles/premium-v2.css` loaded last. The same file holds an "app skin"
+  for the portals and sign-in pages (dark theme only; light theme and its toggle are unchanged). No routing,
+  guard, data-access or form-handling file was touched. Old stylesheets are still in place (validators pin them).
+- Checks (all pass): `npm run lint`, `tsc -b`, build, `npm run test:premium-ui` (24 checks: every old
+  destination preserved, no guarantee/certification claims, Trusted-by empty, light-theme escape hatch, backdrop
+  not on storefronts), `test:auth-guards`, `test:routes`, `test:accessibility` (19/19), brand and launch-truth
+  validators, bundle budget, `test:security`; browser check of 68 routes: 0 errors, 0 horizontal overflow.
+  Release gate unchanged (1,273 PASS, stops at `protected-staging-configuration`).
+- It is NOT live. Netlify builds are stopped; to see it live: set Active builds, let one safe-branch deploy build,
+  Publish deploy, stop builds again. After publishing, the owner should do one login test.
+- Not done: authenticated portal pages were only checked unauthenticated (their data states), not with real data.
+  A real-time chart inside the client portal needs a data source and is a later, approved step.
+  Plans for the waitlist and the example page: `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md` (no code).
+- Found while testing (pre-existing, now fixed by CSS only): `.portal-grid` had no rules and link-panels were
+  inline, so the Business workspace tiles overlapped.
+
 ## Routing, auto-approval engine, drafted SQL, and a suspected pgcrypto runtime bug (local only, 2026-10-05)
 
 - Pure libraries with offline tests, wired into the release gate, NOT deployed, NOT called by any
