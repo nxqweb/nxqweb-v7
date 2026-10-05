@@ -190,3 +190,50 @@ body[data-nxq-theme="light"] .nxq-funnel {
     gap: 8px;
   }
 }
+
+/* Monthly report cycle (client Reports page). Status is always spelled out in text; the border is only a hint. */
+.nxq-cycle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nxq-cycle li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px dashed var(--nxq-soft);
+  border-radius: 10px;
+}
+
+.nxq-cycle li strong {
+  color: var(--nxq-text);
+}
+
+.nxq-cycle li span {
+  color: var(--nxq-muted);
+  font-size: 0.85rem;
+}
+
+.nxq-cycle li[data-status="delivered"],
+.nxq-cycle li[data-status="ready"] {
+  border: 1px solid var(--nxq-gold, #f7c948);
+}
+
+.nxq-cycle li[data-status="draft"],
+.nxq-cycle li[data-status="blocked"] {
+  border-style: solid;
+  border-color: var(--nxq-soft);
+}
+
+.nxq-cycle li[data-status="failed"] {
+  border: 1px solid #ef4444;
+}
+
+body[data-nxq-theme="light"] .nxq-cycle li[data-status="delivered"],
+body[data-nxq-theme="light"] .nxq-cycle li[data-status="ready"] {
+  border-color: #8a5a00;
+}

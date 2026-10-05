@@ -23,6 +23,7 @@
     "test:analytics-chart": "node scripts/test-analytics-chart-contract.mjs",
     "test:ci-parity": "node scripts/run-ci-parity.mjs",
     "test:lead-funnel": "node scripts/test-lead-funnel.mjs",
+    "test:report-cycle": "node scripts/test-report-cycle.mjs",
     "test:scanii": "node scripts/test-scanii-scan.mjs",
     "test:select-columns": "node scripts/test-select-columns-exist.mjs",
     "test:safe-url": "node scripts/test-safe-url.mjs",
