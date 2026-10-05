@@ -153,30 +153,21 @@ section{position:relative}
 .ws{display:grid;grid-template-columns:1fr minmax(0,520px);gap:56px;align-items:center}
 .bg .rings{opacity:calc(1 - var(--p)*.5)}
 @media (max-width:980px){:root{--cx:50%}.ws{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.bg .scrim{background:linear-gradient(180deg,rgba(7,8,11,.6),rgba(7,8,11,.35) 40%,rgba(7,8,11,calc(.4 + var(--p)*.5)))}}
-
-/* v3: centered emblem, no rings, emblem-only first screen */
-:root{--cx:50%;--h:0}
-.bg .logo{opacity:calc(1 - var(--h)*.68);transform:translate3d(0,calc(var(--h)*-40px),0) scale(calc(1.02 + var(--h)*.05))}
-.bg .glow{left:50%;opacity:calc(1 - var(--h)*.8)}
-.bg .scrim{background:radial-gradient(ellipse at 50% 46%,transparent 0,rgba(7,8,11,.18) 58%,rgba(7,8,11,.78) 100%),linear-gradient(180deg,rgba(7,8,11,.35),transparent 18%,transparent 70%,rgba(7,8,11,calc(.2 + var(--p)*.6)))}
-.hero{display:grid;grid-template-columns:1fr;min-height:100vh;padding:0;align-items:end}
-.hero-foot{display:flex;flex-direction:column;align-items:center;gap:26px;padding-bottom:44px}
-.cue{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:.7rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-3)}
-.cue span{width:1px;height:44px;background:linear-gradient(var(--gold),transparent);transform-origin:50% 0;animation:cue 2.4s ease-in-out infinite}
-@keyframes cue{0%{transform:scaleY(0)}50%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
-.intro{padding:120px 0 90px;background:linear-gradient(180deg,transparent,rgba(7,8,11,.62) 25%)}
-.center{text-align:center;display:flex;flex-direction:column;align-items:center}
-.center .lede{margin-inline:auto}.center .btns,.center .proof{justify-content:center}
-.intro h1{max-width:14em}
-@media (max-width:620px){.hero{min-height:88vh}.intro{padding:70px 0 50px}}
-@media (prefers-reduced-motion:reduce){.cue span{animation:none!important;transform:none}}
-.bg .logo{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 68%,transparent 78%);mask-image:linear-gradient(180deg,#000 0,#000 68%,transparent 78%)}
 </style>
 </head>
 <body>
 <div class="bg" aria-hidden="true">
   <div class="logo"><i></i></div>
   <div class="glow"></div>
+  <div class="rings">
+    <svg viewBox="0 0 1000 1000" fill="none" stroke="#f0b93a" stroke-linecap="round">
+      <g class="r1"><polygon points="970.0,500.0 735.0,907.0 265.0,907.0 30.0,500.0 265.0,93.0 735.0,93.0" stroke-width="1.2" stroke-dasharray="3 14" opacity=".7"/></g>
+      <g class="r2"><polygon points="900.0,500.0 700.0,846.4 300.0,846.4 100.0,500.0 300.0,153.6 700.0,153.6" stroke-width="1.6" stroke-dasharray="90 40 6 40" opacity=".8" class="pulse"/></g>
+      <g class="r3"><circle cx="500" cy="500" r="345" stroke-width="1" stroke-dasharray="1 9" opacity=".8"/></g>
+      <g class="r4"><polygon points="800.0,500.0 650.0,759.8 350.0,759.8 200.0,500.0 350.0,240.2 650.0,240.2" stroke-width="1.4" stroke-dasharray="40 24" opacity=".7"/>
+        <circle cx="800" cy="500" r="5" fill="#ffd36a" stroke="none"/><circle cx="200" cy="500" r="5" fill="#ffd36a" stroke="none"/></g>
+    </svg>
+  </div>
   <div class="scrim"></div><div class="grain"></div>
 </div>
 <div class="progress" aria-hidden="true"></div>
@@ -187,17 +178,14 @@ section{position:relative}
 
 <main id="top">
 <div class="wrap hero">
-  <div class="hero-foot">
+  <div>
     <span class="eyebrow rise"><i></i>One vision. Limitless future.</span>
-    <a class="cue rise d2" href="#intro" aria-label="Scroll to introduction"><span></span>Scroll</a>
+    <h1 class="rise d1">Your website should work <em>as hard</em> as your business.</h1>
+    <p class="lede rise d2">NXQ-Web builds, manages, improves and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates and growth work stay connected in one managed system.</p>
+    <div class="btns rise d3"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#process">See how NXQ works</a></div>
+    <div class="proof rise d4"><div><b>5 pages</b>premium starter build</div><div><b>24/7</b>managed hosting + SSL</div><div><b>1 portal</b>for every update</div></div>
   </div>
 </div>
-<section id="intro" class="intro"><div class="wrap center">
-    <h1 class="reveal">Your website should work <em>as hard</em> as your business.</h1>
-    <p class="lede reveal">NXQ-Web builds, manages, improves and grows premium websites for businesses that do not want to babysit technology. Your site, client portal, updates and growth work stay connected in one managed system.</p>
-    <div class="btns reveal"><a class="btn gold" href="#pricing">Build my website <span aria-hidden="true">→</span></a><a class="btn ghost" href="#process">See how NXQ works</a></div>
-    <div class="proof reveal"><div><b>5 pages</b>premium starter build</div><div><b>24/7</b>managed hosting + SSL</div><div><b>1 portal</b>for every update</div></div>
-</div></section>
 
 <section id="workspace" class="sec-glass"><div class="wrap ws">
   <div><span class="kicker reveal">Your client workspace</span><h2 class="reveal">Everything about your site, in one calm place.</h2><p class="sub reveal">Health, leads, update requests and the next improvement cycle, organized in a single portal instead of scattered across tools.</p></div>
@@ -264,7 +252,7 @@ section{position:relative}
 <script>
 (function(){
   var root=document.documentElement,reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function scroll(){var h=document.documentElement.scrollHeight-innerHeight;var p=h>0?Math.min(1,Math.max(0,scrollY/h)):0;root.style.setProperty("--p",p.toFixed(4));root.style.setProperty("--h",Math.min(1,scrollY/(innerHeight*.9)).toFixed(4));
+  function scroll(){var h=document.documentElement.scrollHeight-innerHeight;var p=h>0?Math.min(1,Math.max(0,scrollY/h)):0;root.style.setProperty("--p",p.toFixed(4));
     var st=document.querySelector(".steps");if(st){var r=st.getBoundingClientRect();var l=Math.min(1,Math.max(0,(innerHeight*.85-r.top)/(innerHeight*.5)));root.style.setProperty("--line",l.toFixed(3))}}
   var tick=false;addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(function(){scroll();tick=false})}},{passive:true});addEventListener("resize",scroll);scroll();
   var items=[].slice.call(document.querySelectorAll(".reveal"));

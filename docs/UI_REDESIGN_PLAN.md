@@ -65,3 +65,9 @@ outside the app build; loads only the local `nxqx-logo-bg.webp` (the owner's upl
 - `prefers-reduced-motion` turns the animation off; content is visible without JavaScript only partly
   (reveals need JS; a production version should use a no-JS fallback).
 - Checked: no horizontal overflow at 1440 and 390 px, no console errors, reduced-motion shows all content.
+
+## Prototype v3 (2026-10-05, owner feedback round 2)
+Owner: centre the emblem, remove the spinning rings, make the emblem the solid background, keep the mouse
+spotlight. Done in `docs/design/premium-home/index.html` (the rings version is kept as `index-v2-rings.html`).
+First screen is the emblem only (pulsing, centred, tagline pill, scroll cue); the headline, intro text and
+buttons follow as the emblem dims on scroll so text stays readable. Emblem is embedded in the file.
