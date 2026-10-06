@@ -17,7 +17,8 @@ const internalSecretNames = runtimeSecretProfiles["business-internal-provider-ad
 const externalSecretNames = [
   "NXQ_RESEND_API_KEY",
   "NXQ_NOTIFICATION_FROM_EMAIL",
-  "NXQ_CLOUDMERSIVE_API_KEY",
+  "NXQ_SCANII_API_KEY",
+  "NXQ_SCANII_API_SECRET",
   "NXQ_AI_MODEL_PROVIDER_URL",
   "NXQ_AI_MODEL_PROVIDER_TOKEN",
   "NXQ_AI_MODEL_PROVIDER_MODEL",

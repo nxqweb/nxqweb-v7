@@ -34,7 +34,8 @@ export const providerSetupGroups: readonly ProviderSetupGroup[] = [
       "NXQ_MALWARE_SCAN_ADAPTER_TOKEN",
     ],
     accountSecretNames: [
-      "NXQ_CLOUDMERSIVE_API_KEY",
+      "NXQ_SCANII_API_KEY",
+      "NXQ_SCANII_API_SECRET",
     ],
     proof: "Scan one safe staging fixture and verify its checksum-bound clean result and release evidence.",
   },
