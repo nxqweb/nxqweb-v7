@@ -46,9 +46,9 @@ export function OwnerStorefrontProvisioning() {
     return Object.fromEntries(clients.map((client) => [client.id, client.business_name]));
   }, [clients]);
 
-  async function loadJobs() {
+  async function loadJobs(keepMessages = false) {
     setLoading(true);
-    setError("");
+    if (!keepMessages) setError("");
 
     if (!isSupabaseConfigured || !supabase) {
       setError("Supabase is not configured yet.");
@@ -85,9 +85,14 @@ export function OwnerStorefrontProvisioning() {
     setWorkerBusy(false);
 
     if (result.error) {
-      const functionMessage = typeof result.data?.error === "string" ? result.data.error : result.error.message;
+      // On a non-2xx reply the function's own message is in the response body, not in result.data.
+      let functionMessage = typeof result.data?.error === "string" ? result.data.error : result.error.message;
+      try {
+        const body = await (result.error as { context?: Response }).context?.json();
+        if (body && typeof body.error === "string") functionMessage = body.error;
+      } catch { /* keep the generic message */ }
       setError(`Provisioning worker failed: ${functionMessage}`);
-      await loadJobs();
+      await loadJobs(true);
       return false;
     }
 
@@ -96,7 +101,7 @@ export function OwnerStorefrontProvisioning() {
     if (status) setMessage(`Worker completed: ${readableStatus(status)}.`);
     else if (showEmptyMessage) setMessage(workerMessage || "Provisioning worker checked the queue.");
 
-    await loadJobs();
+    await loadJobs(true);
     return true;
   }
 
