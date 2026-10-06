@@ -40,6 +40,8 @@ state. Update this file, not a new one, at every handoff.
 
 **MIGRATIONS 258-260 PROMOTED (2026-10-06, owner approved 'apply migrations 04-06'); NOT YET APPLIED to staging when this note was written:** drafts 04/05/06 became real migrations `258_nxqx_display_names`, `259_client_lead_sources` (`current_client_lead_sources(days)`), `260_monthly_report_covers_previous_month` (replaces `queue_due_website_maintenance()`); their tests moved to `scripts/sql/local-full-schema/regression/`. Local proof: migration integrity 227/227, full-schema harness 18/18 against all 227 migrations, 64/64 CI commands, lint/tsc/build clean. Apply plan: (1) read-only `validate_foundation` run whose dry-run must list EXACTLY 258, 259, 260 as pending; (2) only then `apply_migrations` with the confirmation phrase, owner approves the `nxq-staging` environment; (3) wire the Source/campaign panel into `ClientBusinessFunnel.tsx` (UI must NOT call `current_client_lead_sources` before 259 is on staging); (4) re-run the staging checks. Result will be recorded below when done.
 
+**MIGRATIONS 258-260 APPLIED TO STAGING + LEAD-SOURCE PANEL WIRED (2026-10-06):** guarded `apply_migrations` run #235 (owner approved the `nxq-staging` environment) succeeded; the log shows 258, 259 and 260 applied. `ClientBusinessFunnel.tsx` now calls `current_client_lead_sources` (`{ target_days: 90 }`) and shows a 'Where your leads come from' panel (by source / medium / campaign; untagged leads show as 'Not tagged'; a hint on how to add UTM tags when none are tagged). Parsing is in `src/lib/leadSources.ts` (defensive: caps 10 rows, clamps counts, never renders HTML); if the source function fails the funnel still renders and the panel says it could not load. Visual check done locally in three states (tagged, untagged, source error) plus 360px width (no horizontal overflow). Covered by `npm run test:lead-funnel`. NOT published to Netlify yet: the owner must publish for the panel to show. Not yet exercised against real staging data (staging leads are not tagged, so expect 'Not tagged'). Still true: nothing writes `client_monthly_business_reports`, and DB-generated journey text (migrations 190/218) still says NXQ.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
@@ -706,8 +708,8 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-257 — all applied to staging (`nxqweb-staging`): 248-254
-in run #220, 255 in run #223, 256 in run #228, 257 in run #232. Not applied to production
+**B. Migrations 248-260 — all applied to staging (`nxqweb-staging`): 248-254
+in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235. Not applied to production
 (production is not launched):**
 
 - [x] 248 — client notification on website-setup denial
@@ -732,6 +734,9 @@ in run #220, 255 in run #223, 256 in run #228, 257 in run #232. Not applied to p
   the `extensions` schema on staging); applied to staging in run #232 (dry run listed only 257; apply
   succeeded). **Setting verified on staging** (owner's read-only `pg_proc` query, 2026-10-05: all seven
   functions show `search_path=public, extensions`). Not yet exercised by calling the functions.
+- [x] 258 — NXQ-* to NXQX-* display names in stored product/outreach names (ids untouched); applied to staging in run #235
+- [x] 259 — `current_client_lead_sources(target_days)`: aggregated, sanitized UTM counts for the signed-in client; applied in run #235; now called by the funnel page
+- [x] 260 — monthly report covers the previous complete month (`queue_due_website_maintenance()`); applied in run #235
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**

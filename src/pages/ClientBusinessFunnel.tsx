@@ -4,6 +4,8 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { DailyTrendChart } from "../components/DailyTrendChart";
 import { buildFunnel, percent } from "../lib/leadFunnel";
 import type { FunnelLead } from "../lib/leadFunnel";
+import { parseLeadSources } from "../lib/leadSources";
+import type { SourceRow, SourcesSummary } from "../lib/leadSources";
 
 type LeadPage = { rows?: FunnelLead[]; has_more?: boolean; next_offset?: number };
 
@@ -19,6 +21,7 @@ function updatedLabel(fetchedAt: number | null, now: number) {
 export function ClientBusinessFunnel() {
   const [leads, setLeads] = useState<FunnelLead[]>([]);
   const [truncated, setTruncated] = useState(false);
+  const [sources, setSources] = useState<SourcesSummary | null>(null);
   const [verified, setVerified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -59,6 +62,10 @@ export function ClientBusinessFunnel() {
       if (!more) break;
       offset = Number(data.next_offset ?? offset + (data.rows || []).length);
     }
+
+    // Source / campaign counts come from a separate aggregate function; if it fails the funnel above still shows.
+    const sourcesResult = await supabase.rpc("current_client_lead_sources", { target_days: 90 });
+    setSources(sourcesResult.error ? null : parseLeadSources(sourcesResult.data));
 
     setLeads(collected);
     setTruncated(more);
@@ -168,8 +175,38 @@ export function ClientBusinessFunnel() {
             )}
 
             <section className="panel panel-wide">
-              <h2>Lead sources</h2>
-              <p className="subtle">Right now every lead comes from your website form, so there is nothing to compare yet. Per-source and campaign breakdowns are not part of this view.</p>
+              <h2>Where your leads come from</h2>
+              {sources === null ? (
+                <p className="subtle">Lead source details could not be loaded right now. The funnel above is not affected.</p>
+              ) : sources.total === 0 ? (
+                <p className="subtle">No leads in the last {sources.days} days to break down yet.</p>
+              ) : (
+                <>
+                  <p className="subtle">
+                    {sources.tagged.toLocaleString()} of {sources.total.toLocaleString()} leads in the last {sources.days} days came with campaign tags.
+                    Leads without tags show as "Not tagged".
+                  </p>
+                  {sources.tagged === 0 ? (
+                    <p className="subtle">
+                      None of your recent leads carried tags yet. Add tags to links that point to your website, for example
+                      ?utm_source=google&amp;utm_campaign=spring, and they will appear here.
+                    </p>
+                  ) : null}
+                  {([["By source", sources.sources], ["By medium", sources.mediums], ["By campaign", sources.campaigns]] as [string, SourceRow[]][]).map(([title, rows]) =>
+                    rows.length === 0 ? null : (
+                      <div key={title}>
+                        <h3>{title}</h3>
+                        {rows.map((row) => (
+                          <div className="owner-message-card" key={`${title}-${row.label}`}>
+                            <strong>{row.label}</strong>
+                            <span className="subtle">{row.leads} {row.leads === 1 ? "lead" : "leads"} · {row.won} won</span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </>
+              )}
             </section>
           </>
         ) : null}
