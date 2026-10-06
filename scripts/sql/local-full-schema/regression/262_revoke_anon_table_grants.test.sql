@@ -1,4 +1,4 @@
--- Sidecar test for 05. Rolled back. Proves the anonymous role has no privilege (table or column level) on the seven tables, and that
+-- Regression test for migration 262. Rolled back. Proves the anonymous role has no privilege (table or column level) on the seven tables, and that
 -- logged-in (authenticated) and service-role access to them is untouched.
 begin;
 do $$ declare t text; p text; tables text[] := array['activity_logs','client_intakes','client_messages','clients','owner_ai_messages','owner_approval_requests','projects']; begin

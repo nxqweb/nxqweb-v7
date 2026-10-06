@@ -1,4 +1,4 @@
--- DRAFT (not applied): remove the anonymous-role grants that migration 003 ("v7 dev" convenience) put on seven core tables.
+-- Remove the anonymous-role grants that migration 003 ("v7 dev" convenience) put on seven core tables (promoted from draft 05 on 2026-10-06, owner approved).
 -- No policy on these tables allows anonymous access, so row-level security already blocks every anonymous request today; this removes the
 -- grant itself (defense in depth, so a future permissive policy by mistake cannot expose a logged-out visitor). Logged-in clients, owners and the
 -- service role are untouched: only the `anon` role loses access. Public pages reach data through Edge functions / RPCs, not these tables.
