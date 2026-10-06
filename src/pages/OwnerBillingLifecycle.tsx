@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, RefreshCcw, Snowflake } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatStatus, formatUsd as formatMoney } from "../lib/format";
+import { OwnerStripeCustomerLinks } from "../components/OwnerStripeCustomerLinks";
 
 type BillingStatus =
   | "not_configured"
@@ -339,6 +340,8 @@ export function OwnerBillingLifecycle() {
           </section>
         ) : null}
         {/* TEMPORARY-TEST-ACTIVATION (end) */}
+
+        {!loading ? <OwnerStripeCustomerLinks clients={clients} /> : null}
 
         <section className="panel panel-wide">
           <div className="panel-title">
