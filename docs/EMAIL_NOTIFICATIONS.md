@@ -11,7 +11,7 @@ in-app notice.
 ## What happens now (only after the owner switches it on)
 1. When the sender delivers an in-app notice whose template is on the allow-list, it first creates an **email copy** with the address filled in
    (idempotent: never twice for the same recipient), then marks the in-app notice delivered. A failure creating the copy never blocks the in-app notice.
-   - Client allow-list: `billing_payment_succeeded`, `billing_payment_failed`, `billing_past_due_reminder`, `business_setup_denied`, `client_file_quarantined`, `new_commerce_request`.
+   - Client allow-list: `billing_payment_succeeded`, `billing_payment_failed`, `billing_past_due_reminder`, `client_file_quarantined`, `new_commerce_request`.
    - Owner allow-list (one copy per distinct valid owner address, at most 5): `billing_freeze_review_owner_attention`, `billing_processor_connection_required`.
    - Everything else stays in-app. Extend the lists deliberately in `notification-email.ts`.
 2. The existing preference rules still apply to every email row (client email off, quiet hours, digest batching, via `notification_delivery_decision`).
@@ -36,3 +36,11 @@ Set `NXQ_EMAIL_NOTIFICATIONS_ENABLED` to anything but `true` (or delete it). Tak
 ## Not covered yet
 Real delivery, bounce, unsubscribe-link and complaint handling for these emails (provider-side events) are not proven; the Resend sender domain and the From address
 must be verified in Resend before real clients are emailed.
+
+## Live test finding (2026-10-06, staging)
+
+First live run: a denied test client got an email copy (queued) but it was never sent. The database paid-capability guard (migration 246, `nxq_guard_notification_transition`) refuses to move any non-in-app notification to `sending` unless the client is approved with active billing (billing/security/privacy/account templates are checked against platform usage instead). So:
+
+- `business_setup_denied` was removed from the email list: a denied client can never pass the guard. Telling a denied client by email would need a deliberate migration (a product decision), not a code tweak.
+- A send the guard refuses is now recorded as `blocked` with the reason instead of being skipped silently and retried forever.
+- To prove delivery end to end, use an event for a client that is approved with active billing and whose contact email is the Resend test address (for example an infected test upload, `client_file_quarantined`).

@@ -59,7 +59,8 @@ check("owner alerts are capped", MAX_OWNER_RECIPIENTS === 5 && (await ensureEmai
 check("an owner alert about a QA-only client stays in-app", (await ensureEmailCopies(makeStore({ clients: { c1: { ...real, qa_only: true } }, owners: ["boss@gmail.com"] }), ownerAlert(), true)).skipped === "qa_only_client");
 check("no valid owner address means nothing is created", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["nope"] }), ownerAlert(), true)).skipped === "no_deliverable_owner_email");
 check("a client template is not emailed to an owner row and vice versa", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["boss@gmail.com"] }), ownerAlert({ template_key: "billing_payment_failed" }), true)).skipped === "template_not_emailed" && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "billing_freeze_review_owner_attention" }), true)).skipped === "template_not_emailed");
-check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 6 && OWNER_EMAIL_TEMPLATES.size === 2);
+check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 5 && OWNER_EMAIL_TEMPLATES.size === 2);
+check("a denied-setup notice is never emailed (the billing guard would always refuse it)", !CLIENT_EMAIL_TEMPLATES.has("business_setup_denied") && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "business_setup_denied" }), true)).skipped === "template_not_emailed");
 
 // ---- address for an email row about to be sent
 const emailRow = (extra = {}) => ({ ...inApp({ channel: "email", id: "e1" }), recipient_reference: null, ...extra });
@@ -75,6 +76,7 @@ check("the email copy is created before the in-app row is marked delivered, and 
 check("email rows are blocked when the switch is off, before any address lookup or provider call", sender.indexOf("if (!emailCopiesEnabled)") > 0 && sender.indexOf("if (!emailCopiesEnabled)") < sender.indexOf("resolveRecipientEmail(emailStore, current)") && sender.indexOf("resolveRecipientEmail(emailStore, current)") < sender.indexOf("providerCallAttempted = true;\n        const result"));
 check("a row with no deliverable address is blocked with a reason, not retried forever", sender.includes("No deliverable recipient email address (") && /status: "blocked", last_error: `No deliverable/.test(sender));
 check("the adapter receives the resolved address", sender.includes("postAdapter({ ...current, recipient_reference: recipient.email })"));
+check("a send refused by the billing guard is recorded as blocked with the reason, not skipped silently", sender.includes("capability denied|usage limit") && sender.includes("Send refused by billing guard:") && sender.indexOf("Send refused by billing guard:") < sender.indexOf("if (claim.error || !claim.data) continue;"));
 check("no secret or key is logged by the new code", !/console\.(log|error)\([^)]*(token|secret|key)/i.test(sender.slice(sender.indexOf("makeEmailStore"))));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll notification email checks passed.");

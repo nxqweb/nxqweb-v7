@@ -166,6 +166,12 @@ Deno.serve(async (req) => {
       if(decision.decision!=="immediate")throw new Error(`Unsupported notification policy decision: ${String(decision.decision||"missing")}`);
 
       const claim = await admin.from("notification_deliveries").update({ status: "sending", attempts: Number(delivery.attempts || 0) + 1, updated_at: new Date().toISOString() }).eq("id", delivery.id).in("status", ["queued", "failed"]).select("*").maybeSingle();
+      if (claim.error && /capability denied|usage limit/i.test(claim.error.message)) {
+        // The database's paid-capability guard refused the send (e.g. client not approved with active billing). Record it so the row stops being retried silently.
+        const refused = await admin.from("notification_deliveries").update({ status: "blocked", last_error: `Send refused by billing guard: ${claim.error.message}`.slice(0, 2000), updated_at: new Date().toISOString() }).eq("id", delivery.id).in("status", ["queued", "failed"]);
+        if (refused.error) throw new Error(`Notification guard-block persistence failed: ${refused.error.message}`);
+        blocked++; continue;
+      }
       if (claim.error || !claim.data) continue;
       const current = claim.data as Delivery;
       let providerAccepted = false;

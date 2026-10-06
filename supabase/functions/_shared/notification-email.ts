@@ -44,13 +44,13 @@ export type EmailStore = {
   insertEmailDelivery: (row: EmailDeliveryInsert) => Promise<void>;
 };
 
-// Conservative on purpose: money events, a setup decision, a file that was held back, a customer request, and the owner alerts that need a human.
-// Extend this list deliberately; everything else stays in-app.
+// Conservative on purpose: money events, a file that was held back, a customer request, and the owner alerts that need a human.
+// Extend this list deliberately; everything else stays in-app. business_setup_denied is NOT here: the database paid-capability guard (migration 246) refuses
+// every external send for a client that is not approved with active billing, and a denied client never is, so that email could never be sent.
 export const CLIENT_EMAIL_TEMPLATES: ReadonlySet<string> = new Set([
   "billing_payment_succeeded",
   "billing_payment_failed",
   "billing_past_due_reminder",
-  "business_setup_denied",
   "client_file_quarantined",
   "new_commerce_request",
 ]);
