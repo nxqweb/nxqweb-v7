@@ -31,6 +31,19 @@ in `README.md`; live operational state lives in
 - Allowed autonomous scope: local application source, scripts, tests,
   documentation, and commits/pushes to the current safe branch.
 
+## Workflow dispatch (owner request, 2026-10-06)
+
+The owner asked not to fill in GitHub's "Run workflow" form by hand. So:
+
+- Claude MAY start `manual-supabase-stage.yml` (and similar manual staging workflows) itself through the GitHub tool, **only** for an action the owner has
+  explicitly approved in the current chat (the specific migration number or function deploy, plus the exact confirmation phrase for mutations).
+- For migrations: always run the read-only `validate_foundation` first, read the "Migration dry run" log myself, and apply only if it lists exactly the approved
+  migration(s). Anything else, stop and ask.
+- After dispatching, give the owner the direct run URL (`https://github.com/<owner>/<repo>/actions/runs/<id>`, found by listing the newest run). The owner's
+  "Review deployments -> nxq-staging -> Approve and deploy" click is theirs and is never done or worked around by Claude.
+- After the run, read the log and report what actually happened ("Applying migration ..." lines, pass/fail), not just the green check.
+- Nothing here widens the hard stop-and-ask gates above: new approvals are still needed for new migrations, deploys, secrets, billing or production.
+
 ## Hard stop-and-ask gates
 
 Stop and ask for an explicit decision before touching any of the following,

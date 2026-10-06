@@ -29,7 +29,7 @@ is the command or test named.
    session behaves. Recommended: owner-run login test on staging after the next publish (needs the owner's
    login; never share credentials).
 2. **Anonymous table grants (7 tables)** have no anonymous policy, so RLS blocks them today; revoking is
-   defense in depth. Needs a migration and approval. **Update 2026-10-06:** draft migration `docs/drafts/migrations/05_revoke_anon_table_grants.sql` written and locally tested (not applied; needs approval). (activity_logs, client_intakes, client_messages,
+   defense in depth. Needs a migration and approval. **Update 2026-10-06:** FIXED on staging: migration `262_revoke_anon_table_grants` applied in run #240 (read-only dry run #239 listed exactly 262). Not applied to production (production is not launched). (activity_logs, client_intakes, client_messages,
    clients, owner_ai_messages, owner_approval_requests, projects.)
 3. **RLS policy logic** is checked for presence (178/178) and by earlier tenant-isolation validators, not
    re-reviewed line by line today.
