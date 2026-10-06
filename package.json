@@ -25,6 +25,7 @@
     "test:lead-funnel": "node scripts/test-lead-funnel.mjs",
     "test:report-cycle": "node scripts/test-report-cycle.mjs",
     "test:upload-feedback": "node scripts/test-client-upload-feedback.mjs",
+    "test:notification-email": "node scripts/test-notification-email.mjs",
     "test:malware-readiness-profiles": "node scripts/test-malware-readiness-profiles.mjs",
     "test:privacy-no-internal-errors": "node scripts/test-privacy-no-internal-errors.mjs",
     "test:owner-stripe-link-ui": "node scripts/test-owner-stripe-link-ui.mjs",

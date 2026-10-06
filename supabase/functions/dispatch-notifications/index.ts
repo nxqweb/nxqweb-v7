@@ -1,6 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { emailNotificationsEnabled, ensureEmailCopies, resolveRecipientEmail } from "../_shared/notification-email.ts";
+import type { ClientContact, EmailDeliveryInsert, EmailStore } from "../_shared/notification-email.ts";
 
 type Delivery = {
   id: string;
@@ -90,12 +92,47 @@ async function postAdapter(delivery: Delivery) {
   } finally { clearTimeout(timeout); }
 }
 
+// Database access for the email recipient logic (kept here so the shared module stays pure and testable).
+function makeEmailStore(admin: ReturnType<typeof createClient>): EmailStore {
+  return {
+    async getClient(clientId: string): Promise<ClientContact | null> {
+      const res = await admin.from("clients").select("contact_email,qa_only,status").eq("id", clientId).maybeSingle();
+      if (res.error) throw new Error(`Client contact lookup failed: ${res.error.message}`);
+      return (res.data as ClientContact | null) ?? null;
+    },
+    async listOwnerEmails(): Promise<string[]> {
+      const owners = await admin.from("owner_users").select("auth_user_id").limit(10);
+      if (owners.error) throw new Error(`Owner lookup failed: ${owners.error.message}`);
+      const emails: string[] = [];
+      for (const row of (owners.data || []) as { auth_user_id: string | null }[]) {
+        if (!row.auth_user_id) continue;
+        const user = await admin.auth.admin.getUserById(row.auth_user_id);
+        const email = user.data?.user?.email;
+        if (email) emails.push(email);
+      }
+      return emails;
+    },
+    async hasEmailCopy(sourceDeliveryId: string, recipient: string): Promise<boolean> {
+      const res = await admin.from("notification_deliveries").select("id").eq("channel", "email").eq("recipient_reference", recipient).contains("metadata", { email_of_delivery_id: sourceDeliveryId }).limit(1);
+      if (res.error) throw new Error(`Email copy lookup failed: ${res.error.message}`);
+      return (res.data || []).length > 0;
+    },
+    async insertEmailDelivery(row: EmailDeliveryInsert): Promise<void> {
+      const res = await admin.from("notification_deliveries").insert(row);
+      if (res.error) throw new Error(`Email copy insert failed: ${res.error.message}`);
+    },
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return response({ ok: false, error: "Method not allowed." }, 405);
   if (!(await constantTimeEqual(req.headers.get("x-nxq-worker-token") || "", secret("NXQ_AUTOMATION_WORKER_TOKEN")))) return response({ ok: false, error: "Unauthorized." }, 401);
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
   const adapterConfigured = Boolean(Deno.env.get("NXQ_NOTIFICATION_ADAPTER_URL")?.trim() && Deno.env.get("NXQ_NOTIFICATION_ADAPTER_TOKEN")?.trim());
   const deliveryMode = adapterConfigured ? "external_and_in_app" : "in_app_only";
+  // Off unless the owner sets NXQ_EMAIL_NOTIFICATIONS_ENABLED=true AND the provider adapter is configured.
+  const emailCopiesEnabled = adapterConfigured && emailNotificationsEnabled(Deno.env.get("NXQ_EMAIL_NOTIFICATIONS_ENABLED"));
+  const emailStore = makeEmailStore(admin);
   try {
     const heartbeat = await admin.rpc("record_worker_heartbeat", {
       target_worker_key: workerName,
@@ -136,6 +173,11 @@ Deno.serve(async (req) => {
       let providerCallAttempted = false;
       try {
         if (current.channel === "in_app") {
+          if (emailCopiesEnabled) {
+            // Email copy first (idempotent), so a crash here is retried instead of losing the email; a failure never blocks the in-app notice.
+            try { await ensureEmailCopies(emailStore, current, true); }
+            catch (copyError) { console.error("Email copy creation failed", copyError instanceof Error ? copyError.message : "unknown"); }
+          }
           const done = await admin.from("notification_deliveries").update({ status: "delivered", delivered_at: new Date().toISOString(), last_error: null, updated_at: new Date().toISOString() }).eq("id", current.id).eq("status","sending");
           if (done.error) throw new Error(done.error.message); delivered++; continue;
         }
@@ -145,8 +187,19 @@ Deno.serve(async (req) => {
           if(blockedWrite.error)throw new Error(`Notification adapter-block persistence failed: ${blockedWrite.error.message}`);
           blocked++; continue;
         }
+        if (!emailCopiesEnabled) {
+          const off = await admin.from("notification_deliveries").update({ status: "blocked", last_error: "Email notifications are switched off (NXQ_EMAIL_NOTIFICATIONS_ENABLED is not true). In-app notifications are unaffected.", updated_at: new Date().toISOString() }).eq("id", current.id).eq("status", "sending");
+          if (off.error) throw new Error(`Notification email-off persistence failed: ${off.error.message}`);
+          blocked++; continue;
+        }
+        const recipient = await resolveRecipientEmail(emailStore, current);
+        if (!recipient.email) {
+          const noAddress = await admin.from("notification_deliveries").update({ status: "blocked", last_error: `No deliverable recipient email address (${recipient.reason}).`, updated_at: new Date().toISOString() }).eq("id", current.id).eq("status", "sending");
+          if (noAddress.error) throw new Error(`Notification recipient-block persistence failed: ${noAddress.error.message}`);
+          blocked++; continue;
+        }
         providerCallAttempted = true;
-        const result = await postAdapter(current);
+        const result = await postAdapter({ ...current, recipient_reference: recipient.email });
         providerAccepted = true;
         acceptedProviderMessageId = result.provider_message_id;
         const deliveredWrite=await admin.from("notification_deliveries").update({
