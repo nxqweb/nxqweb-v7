@@ -21,6 +21,8 @@ check("stored customer IDs are only ever shown masked (last 4 only)", (ui.match(
 check("linking and turning off both ask for confirmation first", (ui.match(/window\.confirm/g) || []).length === 2 && ui.indexOf("window.confirm(`Link") < ui.indexOf('rpc("owner_link_stripe_customer"') && ui.indexOf("window.confirm(`Turn off") < ui.indexOf('rpc("owner_disable_stripe_customer_link"'));
 check("a failed action keeps its error visible (the reload does not clear messages)", !/async function loadLinks\(\) \{\s*setError\(""\)/.test(ui) && !ui.slice(ui.indexOf("const loadLinks"), ui.indexOf("useEffect")).includes('setError("")'));
 check("errors are announced and nothing is rendered as HTML", ui.includes('role="alert"') && !ui.includes("dangerouslySetInnerHTML") && !ui.includes("innerHTML"));
+const css = read("src/styles/stripe-links.css");
+check("dropdown options and the success message have explicit, readable colours in dark and light", css.includes(".nxq-stripe-form select option") && css.includes('body[data-nxq-theme="light"] .nxq-stripe-form select option') && css.includes(".nxq-stripe-message") && ui.includes('className="nxq-stripe-message" role="status"') && css.includes("::placeholder"));
 check("the screen never touches keys, prices or billing state", !/STRIPE_SECRET|sk_live|sk_test|whsec_|owner_set_client_billing_state|monthly_price/.test(ui));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll owner Stripe link UI checks passed.");

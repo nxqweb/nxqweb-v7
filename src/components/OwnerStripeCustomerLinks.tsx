@@ -92,7 +92,7 @@ export function OwnerStripeCustomerLinks({ clients }: { clients: LinkableClient[
       </div>
 
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
-      {message ? <p className="status-message" role="status">{message}</p> : null}
+      {message ? <p className="nxq-stripe-message" role="status">{message}</p> : null}
 
       <div className="nxq-stripe-form">
         <label>

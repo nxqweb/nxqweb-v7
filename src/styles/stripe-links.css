@@ -22,3 +22,38 @@
 .nxq-stripe-form button {
   justify-self: start;
 }
+
+/* Contrast: the browser draws the open dropdown list itself, so give its options explicit colours instead of inheriting the light text. */
+.nxq-stripe-form select,
+.nxq-stripe-form input {
+  color: var(--nxq-text, #f8fafc);
+}
+
+.nxq-stripe-form select option {
+  background: #14120d;
+  color: #f8fafc;
+}
+
+.nxq-stripe-form input::placeholder {
+  color: var(--nxq-muted, rgba(226, 232, 240, 0.72));
+  opacity: 1;
+}
+
+body[data-nxq-theme="light"] .nxq-stripe-form select option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Result message: full-strength text plus a visible edge, so success is not a faint grey line. */
+.nxq-stripe-message {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--nxq-gold, #f7c948);
+  border-radius: 6px;
+  color: var(--nxq-text, #f8fafc);
+  font-weight: 600;
+}
+
+body[data-nxq-theme="light"] .nxq-stripe-message {
+  border-left-color: #8a5a00;
+}
