@@ -5,7 +5,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 type EventRow = { id: string; event_type: string; severity: string; trusted: boolean; device_reference: string | null; created_at: string };
 type Credential = { id: string; credential_type: string; display_name: string | null; assurance_level: number; status: string; last_used_at: string | null; created_at: string };
 type Consent = { id: string; consent_type: string; policy_version: string; status: string; created_at: string };
-type Request = { id: string; request_code: string; request_type: string; status: string; requested_at: string; due_at: string | null; result: Record<string, unknown> | null; last_error: string | null };
+type Request = { id: string; request_code: string; request_type: string; status: string; requested_at: string; due_at: string | null; result: Record<string, unknown> | null };
 
 export function ClientSecurityPrivacy() {
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -31,7 +31,7 @@ export function ClientSecurityPrivacy() {
       supabase.from("account_security_events").select("id,event_type,severity,trusted,device_reference,created_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("nxq_trusted_credentials").select("id,credential_type,display_name,assurance_level,status,last_used_at,created_at").order("created_at", { ascending: false }),
       supabase.from("privacy_consents").select("id,consent_type,policy_version,status,created_at").order("created_at", { ascending: false }).limit(50),
-      supabase.from("data_subject_requests").select("id,request_code,request_type,status,requested_at,due_at,result,last_error").order("requested_at", { ascending: false }).limit(20),
+      supabase.from("data_subject_requests").select("id,request_code,request_type,status,requested_at,due_at,result").order("requested_at", { ascending: false }).limit(20),
     ]);
 
     const loadError = eventResult.error || credentialResult.error || consentResult.error || requestResult.error;
@@ -128,7 +128,7 @@ export function ClientSecurityPrivacy() {
                   <div><strong>{requestRow.request_code} · {requestRow.request_type}</strong><p className="subtle">{requestRow.status} · submitted {new Date(requestRow.requested_at).toLocaleString()}</p></div>
                   {requestRow.request_type === "export" && requestRow.status === "ready" && requestRow.result ? <button className="icon-btn" type="button" onClick={() => downloadExport(requestRow)}><Download size={15} /> Download export</button> : null}
                 </div>
-                {requestRow.last_error ? <div className="auth-error">This request needs another review. Detailed internal error information is not exposed in the client portal.</div> : null}
+                {requestRow.status === "failed" ? <div className="auth-error">This request needs another review. Detailed internal error information is not exposed in the client portal.</div> : null}
                 {requestRow.status === "identity_check" ? <p className="subtle">NXQX is waiting for the required identity re-verification before any destructive action.</p> : null}
               </div>
             ))}

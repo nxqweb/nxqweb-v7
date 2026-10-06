@@ -12,6 +12,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 |---|---|---|
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
 | `03_malware_provider_scanii_readiness.sql` | Malware readiness accepts clean scans from Cloudmersive or Scanii; provider row made provider-neutral | `docs/MALWARE_PROVIDER_SCANII_PLAN.md` |
+| `05_hide_data_request_internal_errors.sql` | Replace table-level SELECT on `data_subject_requests` with a column grant that excludes `last_error` (internal worker error text); APPLY ONLY AFTER the front-end change is published | handoff Open findings (1) |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
