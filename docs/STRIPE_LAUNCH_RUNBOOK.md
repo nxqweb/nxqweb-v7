@@ -31,7 +31,7 @@ Price IDs should be stored as protected plan configuration when products are cre
 3. Create the webhook endpoint for `ingest-stripe-webhook`.
 4. Subscribe only to invoice and customer subscription events used by the adapter.
 5. Add the test secret and webhook signing secret.
-6. Link a test Stripe Customer ID to a non-QA NXQ staging client in `billing_provider_customer_links`.
+6. Link a test Stripe Customer ID to a non-QA NXQ staging client in `billing_provider_customer_links`. (Today this is hand-written SQL; draft `docs/drafts/migrations/04_owner_link_stripe_customer.sql` adds owner-only functions for it, written and locally tested 2026-10-06 but NOT applied: it needs owner approval to promote and apply, and an owner screen is wired only after that.)
 7. Set `NXQ_BILLING_ENABLED=true` in staging only.
 8. Send signed test events and verify idempotency, out-of-order handling, recovery, and failure behavior.
 9. Confirm the billing readiness check becomes ready.
