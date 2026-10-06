@@ -50,3 +50,5 @@ be lost: losing access to the owner email account, deleting the auth user or the
 changing Supabase auth settings. Recommendations: keep the email account's recovery options current, and
 later (with approval) add a second owner account as a backup. No refactor in this session touched the
 owner guard; `test:auth-guards` now fails if its shape changes.
+
+**Update 2026-10-06 (data request errors):** clients could read their own `data_subject_requests.last_error` through the API; fixed on staging by migration `264_hide_data_request_internal_errors` (applied in run #244) after the portal page stopped selecting it.
