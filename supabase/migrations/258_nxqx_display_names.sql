@@ -1,4 +1,4 @@
--- DRAFT 04 (not applied; migrations are a hard stop-and-ask gate). Forward-only.
+-- Forward-only.
 -- Purpose: owner decision 2026-10-05 - every customer-facing "NXQ" brand name becomes "NXQX".
 -- Migration 232 stored NXQ-* display names; this renames the DISPLAY values only.
 -- Stable identifiers (slugs, ids, table/column names, secret names, nxq_accounts) do NOT change.

@@ -1,4 +1,4 @@
--- Sidecar test for 05. Rolled back. Proves the lead-source function returns correct, sanitized, aggregated counts for the
+-- Regression test for migration 259. Rolled back. Proves the lead-source function returns correct, sanitized, aggregated counts for the
 -- signed-in client only, returns no personal data, clamps its window, and stays authenticated-only.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);

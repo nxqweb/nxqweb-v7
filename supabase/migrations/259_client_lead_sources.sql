@@ -1,4 +1,4 @@
--- DRAFT 05 (not applied; migrations are a hard stop-and-ask gate). Additive: one new read-only function, no table or column changes.
+-- Additive: one new read-only function, no table or column changes.
 -- Purpose: let a client see WHERE their leads come from (UTM source / medium / campaign) without exposing any personal data.
 -- client_leads.source is always 'website' (hard-coded by ingest-business-lead) and client_leads.utm is stored but never returned
 -- by any client RPC; this function returns aggregated, sanitized counts only.

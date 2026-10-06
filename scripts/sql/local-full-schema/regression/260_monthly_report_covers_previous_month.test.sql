@@ -1,4 +1,4 @@
--- Sidecar test for 06. Rolled back. Runs the scheduler against a fixture plan and proves the monthly report row and the queued
+-- Regression test for migration 260. Rolled back. Runs the scheduler against a fixture plan and proves the monthly report row and the queued
 -- task both cover the PREVIOUS month, the schedule advances, a re-run is idempotent, and privileges are unchanged.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);

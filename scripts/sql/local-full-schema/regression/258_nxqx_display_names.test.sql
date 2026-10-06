@@ -1,4 +1,4 @@
--- Sidecar test for 04. Rolled back. Proves the NXQX display names are in place, stable identifiers did not change,
+-- Regression test for migration 258. Rolled back. Proves the NXQX display names are in place, stable identifiers did not change,
 -- and the outreach rewrite only touches unsent drafts and is safe to apply twice.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);

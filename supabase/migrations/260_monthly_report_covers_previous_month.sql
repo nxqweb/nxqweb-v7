@@ -1,4 +1,4 @@
--- DRAFT 06 (not applied; migrations are a hard stop-and-ask gate). Replaces ONE function; no table changes.
+-- Replaces ONE function; no table changes.
 -- Purpose: a monthly report was created on the 1st for the CURRENT month and summarised that same month's tasks (which
 -- had barely started), so a generated report would be almost empty. Now the report created on the 1st is for the PREVIOUS
 -- month, which is complete. report_month therefore means "the month this report covers" (the worker, run-website-maintenance
