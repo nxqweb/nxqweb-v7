@@ -1,4 +1,4 @@
--- DRAFT (not applied): owner-only way to link / unlink / list a Stripe customer for an NXQX client.
+-- Owner-only link / unlink / list of a Stripe customer for an NXQX client (promoted from draft 04 on 2026-10-06, owner approved).
 -- Today billing_provider_customer_links can only be written by the service role, so linking a Stripe customer to a
 -- client needs hand-written SQL. The Stripe webhook (ingest-stripe-webhook) only accepts events from customers that have an
 -- ACTIVE link here, and the billing readiness check counts active links, so this is the missing owner step in

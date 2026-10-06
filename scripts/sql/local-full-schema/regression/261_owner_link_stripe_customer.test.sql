@@ -1,4 +1,4 @@
--- Sidecar test for 04. Rolled back. Proves link / unlink / list are owner-only, validate the customer id, refuse QA-only and
+-- Regression test for migration 261. Rolled back. Proves link / unlink / list are owner-only, validate the customer id, refuse QA-only and
 -- cross-client links, are idempotent, keep one row per client, and produce links the Stripe webhook can look up.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
