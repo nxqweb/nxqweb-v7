@@ -1,4 +1,4 @@
--- Sidecar test for 05. Rolled back. Proves a signed-in client can still read their own request (all normal columns) but not last_error, `select *` is refused,
+-- Regression test for migration 264. Rolled back. Proves a signed-in client can still read their own request (all normal columns) but not last_error, `select *` is refused,
 -- INSERT/service-role access is unchanged, and no column other than last_error lost client visibility.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);

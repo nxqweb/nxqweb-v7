@@ -1,4 +1,4 @@
--- DRAFT (not applied): stop logged-in clients reading data_subject_requests.last_error (internal worker error text) through the API.
+-- Stop logged-in clients reading data_subject_requests.last_error (internal worker error text) through the API (promoted from draft 05 on 2026-10-06, owner approved).
 -- Today authenticated users hold table-level SELECT, row security limits them to their own rows, but that still includes last_error. The portal page
 -- never shows the text (only a generic "needs another review" notice, now driven by status = 'failed'), so the column is replaced here by a column-level
 -- grant that lists every column EXCEPT last_error. INSERT is unchanged (requests are created through submit_current_account_data_request, security definer).
