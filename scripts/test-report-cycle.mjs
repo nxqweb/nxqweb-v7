@@ -51,7 +51,8 @@ check("the page builds its cycle from the tested library", page.includes("buildC
 check("the page reads the client's own plan and monthly reports (RLS-protected tables)", page.includes('"website_maintenance_plans"') && page.includes('"website_monthly_reports"'));
 check("a failed cycle read says so and shows no dates", page.includes("Monthly cycle could not be verified"));
 check("the page states when reports are prepared and never says live", page.includes("first of each month") && !/\blive\b/i.test(page.replace(/Open live website/g, "")));
-check("the combined business summary list no longer pretends reports are coming", page.includes("No business summary reports yet"));
+check("the unused combined business-summary list is gone (nothing writes that table)", !page.includes("client_monthly_business_reports") && !page.includes("Business summary reports") && !page.includes("No business summary reports yet"));
+check("the page subtitle only promises what is shown", page.includes("Your monthly report schedule and the improvements recommended for your website.") && !page.includes("usage summaries"));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll report cycle checks passed.");
 process.exit(failures ? 1 : 0);
