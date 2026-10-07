@@ -1,4 +1,4 @@
--- Draft 03 (NOT applied anywhere): let NXQ-owned QA-only clients pass the managed-website feature check.
+-- Migration 265: let NXQ-owned QA-only clients pass the managed-website feature check (applied only after owner approval).
 --
 -- Why: migration 246's client_feature_access() requires billing_status in ('active','past_due'). QA-only clients are permanently locked to
 -- 'not_configured' billing by migration 181 (enforce_qa_client_nonbillable), so since 246 every QA build-plan job fails with
