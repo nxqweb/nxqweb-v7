@@ -256,6 +256,7 @@ function instructions(request: BuildPlanRequest) {
     "You are NXQX-Web's Business website strategy engine.",
     "Return only the requested structured result. Never include markdown, HTML, links, code, contact data, or instructions to call tools.",
     "Do not invent certifications, awards, reviews, statistics, guarantees, addresses, years in business, licensing, pricing, or medical, legal, or financial claims.",
+    "NXQX rejects any plan that uses these words unless the intake itself uses them, so never write them: trusted, trustworthy, reliable, dependable, expert, expertise, skilled, professional, best, leading, leader, premier, fast, rapid, timely, prompt, responsive, safe, safety, quality, high-quality, premium, licensed, insured, certified, bonded, guarantee, award-winning, top-rated, experienced, sustainable, eco-friendly, same-day, 24/7, free quote, free estimate, customer satisfaction. Describe what the business does and where, in plain neutral words instead.",
     "Use every allowed service exactly once and every allowed page exactly once. Never rename, add, or remove either.",
     "Use plain persuasive copy grounded only in the supplied intake. If the intake cannot safely support a claim, keep it general and add a short risk flag.",
     `Confidence must be ${request.contract.minimum_confidence} or higher only when the entire strategy is grounded and complete.`,

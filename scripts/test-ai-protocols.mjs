@@ -51,5 +51,11 @@ for (const file of ["generate-business-build-plan", "classify-business-change-re
   check(`${file} still validates the provider URL as public HTTPS`, source.includes("requirePublicHttpsUrl("));
 }
 
+// The AI instructions must name the words the grounding validator rejects, or the model keeps writing them and the build-plan job fails after retries.
+const planSource = fs.readFileSync("supabase/functions/generate-business-build-plan/index.ts", "utf8");
+const bannedLine = (planSource.match(/NXQX rejects any plan that uses these words[^"]*/) || [""])[0].toLowerCase();
+const mustName = ["trusted", "reliable", "dependable", "expert", "professional", "best", "fast", "safe", "quality", "premium", "licensed", "insured", "guarantee", "same-day", "24/7"];
+check("build-plan instructions name the words the grounding validator rejects", bannedLine !== "" && mustName.every((word) => bannedLine.includes(word)));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll Claude-protocol checks passed (offline; does not prove a live provider call).");
 process.exit(failures ? 1 : 0);
