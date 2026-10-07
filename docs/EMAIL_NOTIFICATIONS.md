@@ -44,3 +44,8 @@ First live run: a denied test client got an email copy (queued) but it was never
 - `business_setup_denied` was removed from the email list: a denied client can never pass the guard. Telling a denied client by email would need a deliberate migration (a product decision), not a code tweak.
 - A send the guard refuses is now recorded as `blocked` with the reason instead of being skipped silently and retried forever.
 - To prove delivery end to end, use an event for a client that is approved with active billing and whose contact email is the Resend test address (for example an infected test upload, `client_file_quarantined`).
+
+
+## Result (2026-10-06)
+
+Proven on staging: an infected test upload for an approved, billing-active, non-QA test client produced a real email in the owner's inbox. Resend's free test sender only delivers to the Resend account's own email (HTTP 403 otherwise), so real customers need a verified sending domain. Not proven: bounces, complaints, unsubscribe link.
