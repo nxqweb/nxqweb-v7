@@ -56,7 +56,7 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
       {
         key: "services",
         label: "What services should the website sell?",
-        placeholder: "Tree removal, trimming, stump grinding, emergency storm cleanup...",
+        placeholder: "The main services or products you want the website to feature...",
         required: true,
         multiline: true,
       },

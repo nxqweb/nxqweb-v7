@@ -352,7 +352,8 @@ export function ClientPortalTopCards() {
         tone: effectiveJourney.next_action.owner === "client" ? "warning" : "info",
         title: effectiveJourney.next_action.title,
         detail: effectiveJourney.next_action.detail,
-        href: effectiveJourney.next_action.href,
+        // The setup sheet is on this same page, so jump straight to it (no effect if the sheet is not shown).
+        href: effectiveJourney.next_action.href === "/client" ? "/client#website-setup-sheet" : effectiveJourney.next_action.href,
         label: effectiveJourney.next_action.owner === "client" ? "Take action" : "View progress",
       });
     }

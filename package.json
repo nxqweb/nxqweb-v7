@@ -47,7 +47,8 @@
     "test:paid-capabilities": "node scripts/validate-paid-capability-enforcement-contract.mjs",
     "test:brand": "node scripts/validate-nxqx-brand-contract.mjs",
     "test:staging-evidence": "node scripts/validate-staging-evidence-runtime.mjs",
-    "test:release": "node scripts/run-release-gate.mjs"
+    "test:release": "node scripts/run-release-gate.mjs",
+    "test:neutral-form-wording": "node scripts/test-neutral-form-wording.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

@@ -118,7 +118,7 @@ const packageOptions: Record<
       "AI-assisted SEO/content suggestions",
     ],
     serviceRules: [
-      "Best for contractors, tree services, cleaning companies, and local service teams",
+      "Best for contractors, home-service companies, clinics, restaurants, and other local service teams",
       "AI may suggest SEO sections, service-area copy, and monthly content improvements",
       "Behavior insights and click/scroll reporting are not included unless upgraded",
       "Owner approval is required before major changes and launch",
@@ -699,13 +699,13 @@ export function ClientPortal() {
       case "preferred_contact_method":
         return { label: "Preferred contact method", value: preferredContactMethod, onChange: setPreferredContactMethod, placeholder: "Example: Phone calls for urgent jobs, text for quick questions, email for non-urgent follow-up." };
       case "emergency_availability":
-        return { label: "Emergency / after-hours availability", value: emergencyAvailability, onChange: setEmergencyAvailability, placeholder: "Example: 24/7 storm cleanup available. Sunday emergency calls accepted for dangerous trees." };
+        return { label: "Emergency / after-hours availability", value: emergencyAvailability, onChange: setEmergencyAvailability, placeholder: "Example: 24/7 emergency calls available, or no emergency service." };
       case "business_hours":
         return { label: "Business hours", value: businessHours, onChange: setBusinessHours, placeholder: "Example: Monday-Friday 8am-5pm, Saturday by appointment, Sunday closed except emergencies." };
       case "locations":
-        return { label: "Locations or service areas", value: locations, onChange: setLocations, placeholder: "Example: Oroville, Chico, Paradise, Gridley, Butte County, and nearby areas." };
+        return { label: "Locations or service areas", value: locations, onChange: setLocations, placeholder: "Example: Sacramento CA, Roseville CA, Folsom CA, and nearby areas." };
       case "services":
-        return { label: "Services / products", value: services, onChange: setServices, placeholder: "Example: Tree removal, trimming, storm cleanup, land clearing, stump grinding." };
+        return { label: "Services / products", value: services, onChange: setServices, placeholder: "Example: List each service, product, or offer the website should explain." };
       case "pages_needed":
         return { label: "Pages or sections needed", value: pagesNeeded, onChange: setPagesNeeded, placeholder: "Example: Home, About, Services, Gallery, Reviews, Service Areas, Contact, Request a Quote." };
       case "style_direction":
@@ -1144,7 +1144,7 @@ export function ClientPortal() {
               <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)} type="button">{isSubmittingSetup ? "Submitting update..." : "Submit requested update"}</button>
             </section>
           ) : !setupComplete ? (
-            <section className="panel panel-wide">
+            <section className="panel panel-wide" id="website-setup-sheet">
               <div className="panel-title"><Send size={20} /><h2>Website setup sheet</h2></div>
               <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
 
@@ -1167,7 +1167,7 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="business-address">Business address</label><input className="auth-input" id="business-address" onChange={(event) => setBusinessAddress(event.target.value)} placeholder="Example: 123 Main St, Sacramento CA" value={businessAddress} />
               <label className="auth-label" htmlFor="business-hours">Business hours</label><textarea id="business-hours" onChange={(event) => setBusinessHours(event.target.value)} placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed." value={businessHours} />
               <label className="auth-label" htmlFor="emergency-availability">Emergency / after-hours availability</label><textarea id="emergency-availability" onChange={(event) => setEmergencyAvailability(event.target.value)} placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc." value={emergencyAvailability} />
-              <label className="auth-label" htmlFor="industry">Industry</label><input className="auth-input" id="industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Tree service, dental office, restaurant group, enterprise retail, security company" value={industry} />
+              <label className="auth-label" htmlFor="industry">Industry</label><input className="auth-input" id="industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
               <label className="auth-label" htmlFor="services">Services/products the website needs to explain</label><textarea id="services" onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
               <label className="auth-label" htmlFor="pages-needed">Pages or sections needed</label><textarea id="pages-needed" onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
               <label className="auth-label" htmlFor="style-direction">Website style direction</label><textarea id="style-direction" onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
@@ -1176,9 +1176,9 @@ export function ClientPortal() {
 
               <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
               <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
-              <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Storm damage, emergency removals, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
+              <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
               <label className="auth-label" htmlFor="rejected-jobs">Jobs or customers to reject</label><textarea id="rejected-jobs" onChange={(event) => setRejectedJobs(event.target.value)} placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area." value={rejectedJobs} />
-              <label className="auth-label" htmlFor="areas-not-served">Areas not served</label><textarea id="areas-not-served" onChange={(event) => setAreasNotServed(event.target.value)} placeholder="Example: We do not serve Chico, Bay Area, out-of-county jobs, or locations more than 50 miles away." value={areasNotServed} />
+              <label className="auth-label" htmlFor="areas-not-served">Areas not served</label><textarea id="areas-not-served" onChange={(event) => setAreasNotServed(event.target.value)} placeholder="Example: We do not serve out-of-state jobs or locations more than 50 miles away." value={areasNotServed} />
 
               <div className="setup-section-divider"><span>Website assistant rules</span><p>These rules help your website team prepare the future website assistant so it knows what it can say safely.</p></div>
               <label className="auth-label" htmlFor="ai-can-answer">What can the website assistant answer?</label><textarea id="ai-can-answer" onChange={(event) => setAiCanAnswer(event.target.value)} placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs." value={aiCanAnswer} />

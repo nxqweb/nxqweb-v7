@@ -226,7 +226,7 @@ export function PortalSignup() {
             <div className="premium-form-grid">
               <label>
                 <span>Business name</span>
-                <input autoComplete="organization" className="auth-input" onChange={(event) => setBusinessName(event.target.value)} placeholder="Smith Tree Service" type="text" value={businessName} />
+                <input autoComplete="organization" className="auth-input" onChange={(event) => setBusinessName(event.target.value)} placeholder="Smith Plumbing" type="text" value={businessName} />
               </label>
 
               <label>
@@ -264,7 +264,7 @@ export function PortalSignup() {
 
               <label>
                 <span>Primary service area or market</span>
-                <input className="auth-input" onChange={(event) => setServiceArea(event.target.value)} placeholder="Chico, CA and nearby communities" type="text" value={serviceArea} />
+                <input className="auth-input" onChange={(event) => setServiceArea(event.target.value)} placeholder="Sacramento, CA and nearby communities" type="text" value={serviceArea} />
               </label>
 
               <label>
