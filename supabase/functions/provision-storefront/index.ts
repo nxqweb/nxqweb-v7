@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+import { ensureNetlifyBuildsStopped } from "../_shared/netlify-builds.ts";
 
 
 type ProviderMetadata = {
@@ -729,6 +730,12 @@ Deno.serve(async (request) => {
         error_step: null,
         updated_at: new Date().toISOString(),
       }).eq("id", job.id).eq("lock_token", workerToken);
+      // Netlify ignores stop_builds inside the repo object above, so a new site deploys to production by itself (15 credits each).
+      // Stop builds for real now that the site id is saved (a failure here must not lose the id and create a duplicate site on retry).
+      await ensureNetlifyBuildsStopped(String(site.id), async (url, init) => {
+        const res = await timedFetch(url, { method: init?.method || "GET", headers: netlifyHeaders(requiredSecret("NETLIFY_ACCESS_TOKEN")), ...(init?.body ? { body: init.body } : {}) });
+        return { ok: res.ok, status: res.status, json: await readJson(res) };
+      });
       return response({ ok: true, job_id: job.id, status: "netlify_site_created" });
     }
 

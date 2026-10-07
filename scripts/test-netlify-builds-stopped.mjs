@@ -59,5 +59,11 @@ const stopAt = infra.indexOf("await ensureNetlifyBuildsStopped(netlifySiteId");
 const checkpointAt = infra.indexOf("netlify_builds_stopped: true");
 check("provisioning stops builds after binding and before it records builds as stopped", verifyAt > 0 && stopAt > verifyAt && checkpointAt > stopAt);
 
+const storefront = fs.readFileSync("supabase/functions/provision-storefront/index.ts", "utf8");
+const savedAt = storefront.indexOf('netlify_site_id: String(site.id)');
+const sfStopAt = storefront.indexOf("await ensureNetlifyBuildsStopped(String(site.id)");
+const sfReturnAt = storefront.indexOf('status: "netlify_site_created" });');
+check("Commerce storefront also stops builds for real, after the site id is saved and before it returns", savedAt > 0 && sfStopAt > savedAt && sfReturnAt > sfStopAt);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll Netlify builds-stopped checks passed (offline; does not prove a live Netlify call).");
 process.exit(failures ? 1 : 0);
