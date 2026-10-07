@@ -16,9 +16,14 @@ export async function ensureNetlifyBuildsStopped(siteId: string, request: Netlif
 
   const patched = await request(base, {
     method: "PATCH",
-    body: JSON.stringify({ build_settings: { ...existing, stop_builds: true } }),
+    // Send ONLY the field being changed. Echoing the whole existing build_settings back makes Netlify answer 400 (read-only fields),
+    // which is what run #4 hit; build-business-website's activatePreviewBuilds already patches partially and works.
+    body: JSON.stringify({ build_settings: { stop_builds: true } }),
   });
-  if (!patched.ok) throw new Error(`Netlify could not stop builds for the new site (${patched.status}).`);
+  if (!patched.ok) {
+    const detail = String(asRecord(patched.json).message || asRecord(patched.json).error || "").slice(0, 200);
+    throw new Error(`Netlify could not stop builds for the new site (${patched.status})${detail ? `: ${detail}` : ""}.`);
+  }
 
   const verified = await request(base);
   if (!verified.ok || asRecord(asRecord(verified.json).build_settings).stop_builds !== true) {
