@@ -83,7 +83,7 @@ async function postAdapter(delivery: Delivery) {
     });
     const text = await res.text(); let body: AdapterResponse = {};
     try { body = text ? asAdapterResponse(JSON.parse(text) as unknown) : {}; } catch { body = { message: text }; }
-    if (!res.ok) throw new Error(`Notification adapter failed (${res.status}): ${String(body.message || "unknown")}`);
+    if (!res.ok) throw new Error(`Notification adapter failed (${res.status}): ${String(body.message || body.error || "unknown").slice(0, 300)}`);
     const echoedKey = String(body.idempotency_key || "");
     if (echoedKey !== idempotencyKey) throw new Error("Notification adapter did not confirm the NXQX idempotency key.");
     const providerMessageId = String(body.provider_message_id || body.id || "");

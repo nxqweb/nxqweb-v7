@@ -77,6 +77,7 @@ check("email rows are blocked when the switch is off, before any address lookup 
 check("a row with no deliverable address is blocked with a reason, not retried forever", sender.includes("No deliverable recipient email address (") && /status: "blocked", last_error: `No deliverable/.test(sender));
 check("the adapter receives the resolved address", sender.includes("postAdapter({ ...current, recipient_reference: recipient.email })"));
 check("a send refused by the billing guard is recorded as blocked with the reason, not skipped silently", sender.includes("capability denied|usage limit") && sender.includes("Send refused by billing guard:") && sender.indexOf("Send refused by billing guard:") < sender.indexOf("if (claim.error || !claim.data) continue;"));
+check("an adapter failure shows the adapter's own error text (it uses the error field), not just \"unknown\"", sender.includes("body.message || body.error || \"unknown\""));
 check("no secret or key is logged by the new code", !/console\.(log|error)\([^)]*(token|secret|key)/i.test(sender.slice(sender.indexOf("makeEmailStore"))));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll notification email checks passed.");
