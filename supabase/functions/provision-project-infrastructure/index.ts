@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { ensureNetlifyBuildsStopped } from "../_shared/netlify-builds.ts";
 
 type AutomationJob = {
   id: string;
@@ -488,6 +489,10 @@ Deno.serve(async (request) => {
 
     await assertProviderMutationAllowed(admin, job);
     await verifyNetlifySiteBinding(netlifySiteId, repositoryFullName);
+    await ensureNetlifyBuildsStopped(netlifySiteId, async (url, init) => {
+      const res = await timedFetch(url, { method: init?.method || "GET", headers: netlifyHeaders(requiredSecret("NETLIFY_ACCESS_TOKEN")), ...(init?.body ? { body: init.body } : {}) });
+      return { ok: res.ok, status: res.status, json: await readJson(res) };
+    });
     await upsertNetlifyEnv(netlifySiteId, {
       VITE_SUPABASE_URL: requiredSecret("PUBLIC_SUPABASE_URL"),
       VITE_SUPABASE_ANON_KEY: requiredSecret("PUBLIC_SUPABASE_ANON_KEY"),
