@@ -110,6 +110,8 @@ state. Update this file, not a new one, at every handoff.
 
 **QA RUN #3 CORRECTION — REAL ROOT CAUSE (2026-10-07):** the `5cf8bab` instruction change did NOT fix the build-plan failure (run #3 `prepare_build_plan` failed 3 attempts with the same error after the staging deploy #250). Real cause: staging has NO AI provider key, so `generate-business-build-plan` returns its canned `stagingFallback` plan, whose copy contained words the grounding validator rejects (dependable, professional, responsive, safety-minded, premium, fast, timely). The validator was added after the fallback and the fallback was never updated. Fix: fallback moved to `supabase/functions/_shared/build-plan-staging-fallback.ts` with claim-free copy; new `scripts/test-build-plan-fallback.mjs` (`npm run test:build-plan-fallback`, wired into `scripts/run-release-gate.mjs`) runs the fallback through the real `findUnsupportedMarketingClaims` for 3 inputs (negative control verified: 3 fails with the old wording). Needs another `deploy_functions` to staging, then a retry of the failed job or a fresh QA run. Run #3 (`QA-E45F85D69C9A`) already created its repo and Netlify site (provision job completed), so its failed job can be retried after the deploy WITHOUT spending more site-creation credits. Do not dispatch more workers until the deploy lands (each wake retries the failing job).
 
+**QA RUN #3 PASSED — FIRST CLEAN APPROVE RUN (2026-10-07):** `QA-E45F85D69C9A` (`business-launch-20261007` #3) ended `strict_evidence_passed` / `passed`, completed 20:36 UTC. All jobs completed: ensure_project_workspace, create_onboarding_welcome, prepare_build_plan (attempt 5), provision_project_infrastructure, website_prepare_safe_branch, website_check_preview, website_promote_production, website_check_production. What it took: migration 265 (QA clients pass feature access), then deploy #251 (`b5d72cb`) of the claim-free `stagingFallback` (no AI key on staging, so the canned plan is used; the old canned copy failed the grounding validator). Earlier hypothesis (AI writing banned words; `5cf8bab` instruction edit) was wrong; the instruction edit is harmless and stays for when a key exists. Netlify cost: balance 210 -> 105 across run #2 alone (2 production deploys per new QA site at 15 credits each, because `stop_builds: true` is sent inside the `repo` object in `provision-project-infrastructure` and Netlify does not honor it; the DB still records `netlify_builds_stopped: true`, which is untrue). OPEN: confirm Netlify credits after run #3; fix the site-creation `stop_builds` call (needs Netlify API docs check + approval) before more runs; runs 4-10 need about 45 credits each and the free plan gives 300/month (cycle resets Oct 23). Dispatcher wakes #870-#875 and deploys #250/#251 were all owner-approved.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
@@ -829,8 +831,10 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — not started; this is the
-  actual production-deploy gate, independent of everything else above
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **1 of 10 done** (run #3
+  `QA-E45F85D69C9A`, 2026-10-07, `strict_evidence_passed`; runs #1/#2
+  failed and are not counted); this is the actual production-deploy
+  gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits
   previously exhausted, not confirmed restored (needs live check)
 - [ ] Owner pages with the **escalations panel** live on nxqweb-v9-staging —
