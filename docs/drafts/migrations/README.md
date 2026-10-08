@@ -12,7 +12,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 |---|---|---|
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
-| `03_claim_next_job_skips_guard_denied.sql` | `claim_next_external_automation_job_v2` skips a candidate the paid-capability guard refuses (records why, pushes it back 15 min) instead of blocking the whole queue | QA work 2026-10-07 (stuck `prepare_build_plan` jobs) |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -30,4 +29,5 @@ Draft 05 (hide `data_subject_requests.last_error` from clients) was promoted on 
 
 Draft 03 (QA-only clients pass `client_feature_access`) was promoted on 2026-10-07 (owner approved) to real migration `265_qa_clients_pass_feature_access`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.
 
-A NEW draft 03 (`03_claim_next_job_skips_guard_denied`) was added on 2026-10-08 (the number is reused; the earlier draft 03 became migration 265). Harness-tested with a negative control (old function reproduces `Paid capability denied by billing state.`). NOT promoted: needs owner approval.
+
+The claim-skip draft (`03_claim_next_job_skips_guard_denied`) was promoted on 2026-10-08 (owner approved) to real migration `266_claim_next_job_skips_guard_denied`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.

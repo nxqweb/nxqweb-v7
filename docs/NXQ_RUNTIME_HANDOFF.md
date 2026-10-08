@@ -124,6 +124,8 @@ state. Update this file, not a new one, at every handoff.
 
 **DRAFT 03 (HEAD-OF-LINE FIX) WRITTEN, NOT PROMOTED (2026-10-08):** `docs/drafts/migrations/03_claim_next_job_skips_guard_denied.sql` + sidecar test. The claim function now tries up to 25 candidates; if the guard refuses one (message matches capability denied, METERING_POLICY_BLOCKER, PLATFORM_COST_BLOCKER, usage limit, capability, entitlement) it records `Skipped by billing guard: ...` in `last_error`, pushes `run_after` 15 minutes ahead (status and attempts untouched) and tries the next; any other error is re-raised. Local full-schema harness 24/24; negative control (the old 208 function) fails with `Paid capability denied by billing state.`, the exact staging error. Test note: QA-only clients draw on the platform cost budget, which ships locked, so the test unlocks it inside its rolled-back transaction.
 
+**DRAFT 03 PROMOTED TO MIGRATION 266 (2026-10-08, owner approved 'Apply the queue fix'):** `supabase/migrations/266_claim_next_job_skips_guard_denied.sql` + `scripts/sql/local-full-schema/regression/266_claim_next_job_skips_guard_denied.test.sql`; harness 23/23, migration integrity 233, parity 64/64. NOT applied yet: next is the read-only `validate_foundation` run (must list exactly 266), then `apply_migrations`.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was

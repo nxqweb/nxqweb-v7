@@ -1,4 +1,4 @@
--- DRAFT (not a real migration). One paid-capability denial must not block the whole external job queue.
+-- One paid-capability denial must not block the whole external job queue.
 --
 -- Problem (seen 2026-10-07): claim_next_external_automation_job_v2 picks the front job, then sets it to 'running'. Migration 246's trigger
 -- nxq_guard_external_job_transition refuses that transition for a client without paid capability (e.g. a real client with billing not active).
