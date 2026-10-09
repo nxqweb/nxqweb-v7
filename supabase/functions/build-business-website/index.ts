@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shared/business-industry-presets.ts";
+import * as defaultCopy from "../_shared/business-default-copy.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type AutomationJob = {
@@ -266,7 +267,7 @@ function textList(value: unknown, max: number) {
 }
 
 function serviceDescription(service: string, businessType: string) {
-  return `${service} from a professional ${businessType || "local service"} team, with clear communication and a straightforward path to getting started.`;
+  return defaultCopy.defaultServiceDescription(service, businessType);
 }
 
 function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
@@ -315,9 +316,9 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       serviceArea,
     },
     brand: {
-      eyebrow: clean(hero.eyebrow) || industryPreset?.heroEyebrow(serviceArea) || (serviceArea ? `Serving ${serviceArea}` : "Trusted local service"),
-      headline: clean(hero.headline) || industryPreset?.heroHeadline(businessName) || `${businessName}. Professional service. Clear results.`,
-      subheadline: clean(hero.subheadline) || goals || industryPreset?.heroSubheadline || `Premium ${businessType} services with clear communication and dependable support.`,
+      eyebrow: clean(hero.eyebrow) || industryPreset?.heroEyebrow(serviceArea) || defaultCopy.defaultEyebrow(serviceArea),
+      headline: clean(hero.headline) || industryPreset?.heroHeadline(businessName) || defaultCopy.defaultHeadline(businessName),
+      subheadline: clean(hero.subheadline) || goals || industryPreset?.heroSubheadline || defaultCopy.defaultSubheadline(businessType),
       primaryCta: clean(architecture.primary_cta) || industryPreset?.primaryCta || primaryCta,
       secondaryCta: clean(architecture.secondary_cta) || industryPreset?.secondaryCta || secondaryCta,
       styleDirection: desiredStyle,
@@ -329,17 +330,17 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       title: service,
       description: serviceCopyLookup.get(service.toLowerCase()) || getPresetServiceDescription(industryPreset, service) || serviceDescription(service, businessType),
     })) : [
-      { title: "Professional Service", description: serviceDescription("Professional service", businessType) },
+      { title: defaultCopy.defaultFallbackServiceTitle, description: serviceDescription(defaultCopy.defaultFallbackServiceTitle, businessType) },
     ],
     trust: {
-      heading: industryPreset?.trustHeading || "Built around trust and reliable service",
+      heading: industryPreset?.trustHeading || defaultCopy.defaultTrustHeading,
       points: textList(contentStrategy.trust_points, 6).length >= 3
         ? textList(contentStrategy.trust_points, 6)
-        : industryPreset?.trustPoints || ["Clear communication", "Professional service", serviceArea ? `Local to ${serviceArea}` : "Local support", "Straightforward next steps"],
+        : industryPreset?.trustPoints || defaultCopy.defaultTrustPoints(serviceArea),
     },
     about: {
-      heading: `${businessName} is focused on doing the job right`,
-      body: clean(contentStrategy.about_summary) || goals || industryPreset?.aboutBody(businessName, serviceArea) || `${businessName} provides ${businessType} services with a focus on reliable work, clear communication, and a strong customer experience.`,
+      heading: defaultCopy.defaultAboutHeading(businessName),
+      body: clean(contentStrategy.about_summary) || goals || industryPreset?.aboutBody(businessName, serviceArea) || defaultCopy.defaultAboutBody(businessName, businessType),
     },
     seo: {
       title: clean(strategySeo.title) || `${businessName} | ${businessType}`,

@@ -17,6 +17,7 @@
     "test:netlify-builds-stopped": "node scripts/test-netlify-builds-stopped.mjs",
     "test:home-honest-copy": "node scripts/test-home-honest-copy.mjs",
     "test:dashboard-trend": "node scripts/test-dashboard-trend.mjs",
+    "test:business-default-copy": "node scripts/test-business-default-copy.mjs",
     "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:outreach-dispatch": "node scripts/test-outreach-dispatch.mjs",
     "test:ai-routing": "node scripts/test-ai-routing.mjs",
