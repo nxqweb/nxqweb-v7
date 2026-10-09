@@ -58,7 +58,8 @@ if (enabled) {
 
 function startAnalytics() {
   const sessionKey = getSessionKey();
-  const path = `${window.location.pathname}${window.location.search}`.slice(0, 500);
+  // Path only: query strings and fragments can contain personal data, so they are never recorded.
+  const path = window.location.pathname.slice(0, 500);
   const queue = [];
   let flushTimer = null;
 
