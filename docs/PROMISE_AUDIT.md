@@ -26,7 +26,7 @@ Rule going forward: nothing goes on the public site unless a row here says "In c
 ## Fix list (smallest first)
 1. (Done 2026-10-09, not published) Home-page preview now says "Growth plan view" with example data, the badge reads Sample instead of Live, and the "live view" claim is gone (`npm run test:home-honest-copy`).
 2. (Done 2026-10-06) Lead-source panel now exists in code; public copy is accurate once published.
-3. (Chart part DONE 2026-10-05 on the Analytics page; dashboard cards for leads/health/changes already exist; combining a mini-trend onto `/client/business` is still open.) Build the real dashboard in the client portal: daily page-view/click chart from `website_analytics_daily_rollups`,
+3. (Chart part DONE 2026-10-05 on the Analytics page; dashboard cards for leads/health/changes already exist; the mini-trend on `/client/business` was DONE 2026-10-09, not published: 'Last 14 days' page-view trend with week-over-week change, only for plans that include analytics, honest empty state, no percentage unless the previous week has data; `src/lib/dashboardTrend.ts`, `npm run test:dashboard-trend`.) Build the real dashboard in the client portal: daily page-view/click chart from `website_analytics_daily_rollups`,
    leads from `current_client_leads_page`, health from `current_client_operational_health`, change requests; honest empty
    states; "updated N minutes ago" (polling) instead of a fake "live" badge.
 4. Add a visible monthly-cycle status on the reports page.

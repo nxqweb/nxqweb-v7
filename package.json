@@ -16,6 +16,7 @@
     "test:build-plan-fallback": "node scripts/test-build-plan-fallback.mjs",
     "test:netlify-builds-stopped": "node scripts/test-netlify-builds-stopped.mjs",
     "test:home-honest-copy": "node scripts/test-home-honest-copy.mjs",
+    "test:dashboard-trend": "node scripts/test-dashboard-trend.mjs",
     "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:outreach-dispatch": "node scripts/test-outreach-dispatch.mjs",
     "test:ai-routing": "node scripts/test-ai-routing.mjs",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, BarChart3, MousePointer2, ShieldCheck } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { DailyTrendChart } from "../components/DailyTrendChart";
+import { lastDays } from "../lib/dashboardTrend";
 
 type Profile = { status:string;mouse_tracking_enabled:boolean;retention_days:number;consent_mode:string };
 type Rollup = { rollup_date:string;page_views:number;clicks:number;max_scroll_depth:number|null;heatpoint_count:number };
@@ -9,20 +10,6 @@ type Access = { allowed?:boolean;tier_key?:string;reason?:string };
 
 const ROLLUP_COLUMNS = "rollup_date,page_views,clicks,max_scroll_depth,heatpoint_count";
 const REFRESH_MS = 5 * 60 * 1000;
-
-function localDay(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-// One entry per calendar day ending today. A day with no stored rollup is plotted as 0.
-function lastDays(count: number, nowMs: number) {
-  const days: string[] = [];
-  const today = new Date(nowMs);
-  for (let offset = count - 1; offset >= 0; offset -= 1) {
-    days.push(localDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset)));
-  }
-  return days;
-}
 
 function updatedLabel(fetchedAt: number | null, now: number) {
   if (fetchedAt === null) return "";
