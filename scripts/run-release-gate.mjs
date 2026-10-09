@@ -31,6 +31,7 @@ run(npm, ["run", "test:dashboard-trend"]);
 run(npm, ["run", "test:business-default-copy"]);
 run(npm, ["run", "test:business-template-copy"]);
 run(npm, ["run", "test:analytics-path-privacy"]);
+run(npm, ["run", "test:top-pages"]);
 run(npm, ["run", "test:outreach-compliance"]);
 run(npm, ["run", "test:outreach-dispatch"]);
 run(npm, ["run", "test:ai-routing"]);
