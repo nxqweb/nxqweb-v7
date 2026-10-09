@@ -136,6 +136,8 @@ state. Update this file, not a new one, at every handoff.
 
 **DRAFT 03 (TOP PAGES) PROMOTED TO MIGRATION 267 (2026-10-09, owner approved 'promote and apply 267'):** `supabase/migrations/267_rollup_top_pages.sql` + `scripts/sql/local-full-schema/regression/267_rollup_top_pages.test.sql`. APPLIED to staging: dry run #255 listed exactly 267; apply run #256 (owner approved `nxq-staging`, head `87986db`), log shows 'Applying migration 267_rollup_top_pages.sql...'. Not on production. The summary.top_pages data appears only for days rolled up AFTER this (the scheduled daily rollup), and the client table needs a publish after Oct 22.
 
+**FREE-PREVIEW #2 (2026-10-08 evening PT, builds activated again, Auto Publishing LOCKED):** this commit triggers a BRANCH preview of everything since `4790006`: honest home copy, Business dashboard 14-day trend, claim-free template copy, analytics path privacy, and the new Top pages table on `/client/business/analytics` (empty state expected: no real visits on staging). Owner looks, then clicks Stop builds. NEVER Publish deploy. Credit check: Production deploys must still read 21 deploys / 315 credits.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
