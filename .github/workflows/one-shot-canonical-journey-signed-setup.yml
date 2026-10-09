@@ -1,0 +1,49 @@
+name: One-shot Canonical Journey Signed Setup
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-canonical-journey-signed-setup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Generate forward-only canonical journey migration
+        run: node scripts/generate-canonical-journey-signed-setup-migration.mjs
+      - name: Verify dual setup evidence contract
+        shell: bash
+        run: |
+          grep -q 'NXQ WEB WEBSITE SETUP REPORT' supabase/migrations/218_canonical_journey_signed_setup_evidence.sql
+          grep -q 'exists(select 1 from public.client_intakes' supabase/migrations/218_canonical_journey_signed_setup_evidence.sql
+          grep -q 'current_client_launch_journey' supabase/migrations/218_canonical_journey_signed_setup_evidence.sql
+          grep -q 'set search_path = public' supabase/migrations/218_canonical_journey_signed_setup_evidence.sql
+      - name: Migration integrity
+        run: npm run test:migrations
+      - name: Production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit canonical journey hardening
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add supabase/migrations/218_canonical_journey_signed_setup_evidence.sql
+          git diff --cached --quiet && { echo "No canonical journey migration to commit."; exit 1; }
+          git commit -m "fix: treat signed setup reports as canonical journey intake evidence"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

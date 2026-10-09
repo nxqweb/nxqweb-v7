@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { ArrowLeft, CheckCircle2, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatMoneyIn as formatMoney } from "../lib/format";
 
 type CheckoutVariant = {
   id: string;
@@ -51,10 +52,6 @@ type CheckoutResult = {
   message?: string;
 };
 
-function formatMoney(value: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(Number(value || 0));
-}
-
 function createIdempotencyKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -80,7 +77,7 @@ export function PublicCommerceCheckout() {
   const [customerNote, setCustomerNote] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
 
-  useEffect(() => { void loadCheckout(); }, []);
+  useEffect(() => { void loadCheckout(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial checkout bootstrap only
 
   async function loadCheckout() {
     setLoading(true);

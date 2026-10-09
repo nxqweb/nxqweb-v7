@@ -22,7 +22,7 @@ export function OwnerCommerceReviews() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial owner review load only
 
   async function load() {
     setLoading(true);
@@ -58,7 +58,7 @@ export function OwnerCommerceReviews() {
             <ShieldCheck size={20} />
             <div>
               <h2>Privacy-first management</h2>
-              <p className="subtle">Products, images, prices, categories, inventory, and normal edits remain client-managed. NXQ only surfaces account status and actions that require owner authority.</p>
+              <p className="subtle">Products, images, prices, categories, inventory, and normal edits remain client-managed. NXQX only surfaces account status and actions that require owner authority.</p>
             </div>
           </div>
         </div>

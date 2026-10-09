@@ -1,0 +1,358 @@
+/* Final frontend consistency pass: mobile resilience, overflow safety, touch targets, and shared visual rhythm. */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body,
+#root,
+#main-content,
+.nxq-page,
+.portal-shell,
+.lux-home,
+.lux-page {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.lux-page,
+.portal-shell {
+  overflow-wrap: anywhere;
+}
+
+.lux-card,
+.portal-shell .panel,
+.portal-shell .notice-card,
+.portal-shell .stat-card,
+.portal-shell .approval-card,
+.portal-shell .mini-client-card,
+.owner-command-center,
+.plan-state-card,
+.plan-history-card {
+  min-width: 0;
+}
+
+.lux-btn,
+.portal-shell button,
+.portal-shell a.icon-btn,
+.portal-shell a.wide-btn,
+.portal-shell .primary-btn,
+.portal-shell .secondary-btn {
+  min-height: 44px;
+}
+
+.lux-btn:focus-visible,
+.lux-links a:focus-visible,
+.portal-shell a:focus-visible,
+.portal-shell button:focus-visible,
+.portal-shell input:focus-visible,
+.portal-shell textarea:focus-visible,
+.portal-shell select:focus-visible {
+  outline: 2px solid rgba(244, 207, 100, .9);
+  outline-offset: 3px;
+}
+
+.lux-section-head p,
+.lux-hero-copy > p,
+.portal-shell .subtle,
+.portal-shell p {
+  text-wrap: pretty;
+}
+
+.lux-section-head h2,
+.lux-hero h1,
+.portal-header h1,
+.portal-shell h1,
+.portal-shell h2 {
+  text-wrap: balance;
+}
+
+.lux-comparison-wrap,
+.portal-shell .table-wrap,
+.portal-shell .table-scroll,
+.portal-shell [class*="table-container"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.portal-shell pre,
+.portal-shell code {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.portal-shell input,
+.portal-shell textarea,
+.portal-shell select,
+.portal-shell .auth-input {
+  max-width: 100%;
+  font-size: 16px;
+}
+
+.portal-shell textarea {
+  resize: vertical;
+}
+
+.owner-command-center,
+.client-portal-top-cards,
+.portal-header,
+.owner-grid,
+.client-grid {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .lux-page {
+    width: min(100%, 100vw);
+  }
+
+  .lux-nav {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .lux-links {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .lux-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .lux-links a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .lux-hero,
+  .lux-value-panel,
+  .lux-lifecycle-story {
+    gap: clamp(22px, 5vw, 40px);
+  }
+
+  .owner-command-center {
+    margin-inline: 0;
+  }
+
+  .portal-header .stat-card,
+  .owner-revenue-stack {
+    width: 100%;
+  }
+
+  .portal-shell .panel-title-row,
+  .journey-summary-heading,
+  .owner-message-ping-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 680px) {
+  .lux-page {
+    padding-inline: 14px;
+  }
+
+  .lux-nav {
+    position: relative;
+    top: auto;
+    flex-direction: column;
+    border-radius: 22px;
+    padding: 15px;
+  }
+
+  .lux-links {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .lux-links a {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 12px;
+  }
+
+  .lux-hero {
+    padding-top: 34px;
+  }
+
+  .lux-hero h1 {
+    font-size: clamp(2.65rem, 15vw, 4.8rem);
+    line-height: .95;
+  }
+
+  .lux-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .lux-actions .lux-btn,
+  .lux-final .lux-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lux-preview,
+  .lux-browser,
+  .lux-inner-panel,
+  .lux-value-panel,
+  .lux-final,
+  .lux-comparison-wrap {
+    border-radius: 22px;
+  }
+
+  .lux-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lux-trust-strip {
+    margin-inline: 0;
+  }
+
+  .lux-section {
+    padding-inline: 0;
+  }
+
+  .portal-header,
+  .portal-shell .panel,
+  .portal-shell .notice-card,
+  .portal-shell .approval-card,
+  .portal-shell .stat-card,
+  .portal-shell .mini-client-card {
+    max-width: 100%;
+  }
+
+  .portal-shell .panel-title-row,
+  .journey-summary-heading,
+  .journey-next-action,
+  .plan-pending-review {
+    flex-direction: column;
+  }
+
+  .portal-shell .panel-title-row > .icon-btn,
+  .journey-summary-heading > .icon-btn,
+  .journey-next-action > .icon-btn,
+  .client-portal-top-cards .icon-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-shell .client-control-row,
+  .portal-shell .message-filter-row,
+  .owner-client-search-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .portal-shell .client-control-row > *,
+  .portal-shell .message-filter-row > *,
+  .owner-client-search-row > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .owner-message-ping,
+  .owner-message-card,
+  .build-plan-card,
+  .plan-history-card {
+    overflow: hidden;
+  }
+
+  .portal-shell table {
+    min-width: 620px;
+  }
+}
+
+@media (max-width: 430px) {
+  .nxq-page {
+    padding-inline: 10px;
+  }
+
+  .lux-page {
+    padding-inline: 10px;
+  }
+
+  .lux-brand {
+    min-width: 0;
+  }
+
+  .lux-brand > div:last-child,
+  .lux-brand strong,
+  .lux-brand span {
+    min-width: 0;
+  }
+
+  .lux-tag,
+  .lux-hero-proof span,
+  .lux-trust-strip span {
+    font-size: .72rem;
+  }
+
+  .lux-hero h1 {
+    font-size: clamp(2.35rem, 15vw, 3.65rem);
+  }
+
+  .portal-header {
+    padding: 16px;
+  }
+
+  .portal-header h1 {
+    font-size: clamp(2rem, 12vw, 3rem);
+  }
+
+  .portal-shell .panel,
+  .portal-shell .approval-card,
+  .portal-shell .notice-card,
+  .plan-management-builder,
+  .plan-state-card {
+    padding: 16px;
+  }
+
+  .portal-shell .approval-actions,
+  .portal-shell .client-control-row,
+  .owner-command-center-actions,
+  .owner-command-center-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (hover: none) {
+  .lux-card:hover,
+  .lux-process-step:hover,
+  .lux-value-grid > div:hover,
+  .portal-shell .panel:hover,
+  .portal-shell .glass-card:hover,
+  .portal-shell .approval-card:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

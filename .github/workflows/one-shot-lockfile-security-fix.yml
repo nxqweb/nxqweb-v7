@@ -1,0 +1,52 @@
+name: One-shot Lockfile Security Fix
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-lockfile-security-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Patch vulnerable transitive lockfile entries only
+        shell: bash
+        run: |
+          cp package.json /tmp/package.json.before
+          npm audit fix --package-lock-only --ignore-scripts
+          cmp -s package.json /tmp/package.json.before || { echo 'package.json changed unexpectedly'; exit 1; }
+          git diff --exit-code -- package.json
+      - name: Verify clean dependency graph
+        run: npm audit --audit-level=high
+      - name: Verify locked install
+        run: npm ci
+      - name: Targeted production build
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit lockfile-only security update
+        shell: bash
+        run: |
+          test -z "$(git status --porcelain -- package.json)"
+          git status --short -- package-lock.json
+          if git diff --quiet -- package-lock.json; then
+            echo 'No lockfile change needed.'
+            exit 0
+          fi
+          git config user.name 'nxqweb'
+          git config user.email 'NXQweb@protonmail.com'
+          git add package-lock.json
+          git commit -m 'security: patch vulnerable transitive dependencies'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

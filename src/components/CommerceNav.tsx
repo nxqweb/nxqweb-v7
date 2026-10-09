@@ -1,10 +1,13 @@
-import { Boxes, CircleHelp, ClipboardCheck, ClipboardList, Eye, Gauge, Images, LayoutDashboard, MessageSquareText, PackagePlus, ShoppingBag, Tags } from "lucide-react";
+import { Boxes, CircleHelp, ClipboardCheck, ClipboardList, Eye, FileText, Gauge, Images, LayoutDashboard, MessageSquareText, PackagePlus, ShoppingBag, Store, Tags } from "lucide-react";
 
 const links = [
   { href: "/client/commerce", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/client/commerce/live", label: "Live store", icon: Store },
   { href: "/client/commerce/tutorial", label: "Tutorial", icon: CircleHelp },
   { href: "/client/commerce/readiness", label: "Readiness", icon: ClipboardCheck },
   { href: "/client/commerce/products", label: "Products", icon: PackagePlus },
+  { href: "/client/commerce/images", label: "Photos", icon: Images },
+  { href: "/client/commerce/content", label: "Website content", icon: FileText },
   { href: "/client/commerce/catalog", label: "Catalog", icon: Images },
   { href: "/client/commerce/preview", label: "Preview", icon: Eye },
   { href: "/client/commerce/categories", label: "Categories", icon: Tags },
@@ -23,7 +26,7 @@ export function CommerceNav() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(108px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(138px, 1fr))",
           gap: "0.75rem",
           width: "100%",
         }}
@@ -33,10 +36,18 @@ export function CommerceNav() {
             className={path === href ? "wide-btn" : "icon-btn"}
             href={href}
             key={href}
-            style={{ justifyContent: "center", minWidth: 0, whiteSpace: "nowrap" }}
+            style={{
+              justifyContent: "center",
+              minWidth: 0,
+              minHeight: "48px",
+              paddingInline: "0.85rem",
+              textAlign: "center",
+              whiteSpace: "normal",
+              lineHeight: 1.15,
+            }}
           >
-            <Icon size={16} />
-            {label}
+            <Icon size={16} style={{ flexShrink: 0 }} />
+            <span>{label}</span>
           </a>
         ))}
       </div>

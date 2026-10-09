@@ -9,7 +9,6 @@ as $$
 declare
   owner_exists boolean;
   client_name text;
-  deleted_ai_outputs integer := 0;
   deleted_approvals integer := 0;
   deleted_projects integer := 0;
   deleted_messages integer := 0;
@@ -36,10 +35,6 @@ begin
   if client_name is null then
     raise exception 'Client record was not found.';
   end if;
-
-  delete from public.ai_task_outputs
-  where client_id = target_client_id;
-  get diagnostics deleted_ai_outputs = row_count;
 
   delete from public.owner_approval_requests
   where client_id = target_client_id;
@@ -88,7 +83,6 @@ begin
     'client_workspace_reset',
     jsonb_build_object(
       'client_name', client_name,
-      'deleted_ai_outputs', deleted_ai_outputs,
       'deleted_approvals', deleted_approvals,
       'deleted_projects', deleted_projects,
       'deleted_messages', deleted_messages,
@@ -106,7 +100,6 @@ begin
     'client_id', target_client_id,
     'client_name', client_name,
     'deleted', jsonb_build_object(
-      'ai_outputs', deleted_ai_outputs,
       'approvals', deleted_approvals,
       'projects', deleted_projects,
       'messages', deleted_messages,
@@ -118,4 +111,5 @@ begin
 end;
 $$;
 
-grant execute on function public.reset_client_workspace(uuid) to authenticated;
+revoke all on function public.reset_client_workspace(uuid)
+from public,anon,authenticated,service_role;
