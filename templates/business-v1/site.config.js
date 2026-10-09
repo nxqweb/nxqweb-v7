@@ -8,9 +8,9 @@ export const siteConfig = {
     serviceArea: "",
   },
   brand: {
-    eyebrow: "Trusted local service",
-    headline: "Professional service. Clear results.",
-    subheadline: "A premium local business website managed by NXQX-Web.",
+    eyebrow: "Local business",
+    headline: "Clear services. Simple next steps.",
+    subheadline: "A local business website managed by NXQX-Web, with clear information and an easy way to get in touch.",
     primaryCta: "Request a Quote",
     secondaryCta: "View Services",
   },
@@ -20,16 +20,16 @@ export const siteConfig = {
     { title: "Additional Service", description: "Add another service or specialty offered by the business." },
   ],
   trust: {
-    heading: "Built around trust and reliable service",
-    points: ["Clear communication", "Professional workmanship", "Local service", "Straightforward next steps"],
+    heading: "Clear information and simple next steps",
+    points: ["Clear communication", "Straightforward service information", "Local support", "Simple next steps"],
   },
   about: {
-    heading: "A local team focused on doing the job right",
+    heading: "About the business",
     body: "Use the approved NXQX-Web intake and build plan to tell the business story, explain what makes it different, and give customers a clear reason to reach out.",
   },
   seo: {
-    title: "Your Business | Local Professional Services",
-    description: "Professional local services with clear communication and dependable support.",
+    title: "Your Business | Local Services",
+    description: "Local services with clear information and an easy way to get in touch.",
   },
   leads: {
     enabled: false,

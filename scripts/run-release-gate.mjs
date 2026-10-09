@@ -29,6 +29,7 @@ run(npm, ["run", "test:netlify-builds-stopped"]);
 run(npm, ["run", "test:home-honest-copy"]);
 run(npm, ["run", "test:dashboard-trend"]);
 run(npm, ["run", "test:business-default-copy"]);
+run(npm, ["run", "test:business-template-copy"]);
 run(npm, ["run", "test:outreach-compliance"]);
 run(npm, ["run", "test:outreach-dispatch"]);
 run(npm, ["run", "test:ai-routing"]);

@@ -13,7 +13,7 @@ function render() {
   const themeKey = allowedThemes.has(design?.themeKey) ? design.themeKey : 'midnight_blue';
   document.documentElement.dataset.theme = themeKey;
 
-  document.title = seo?.title || `${business.name} | Professional Services`;
+  document.title = seo?.title || `${business.name} | Local Services`;
   const description = document.querySelector('meta[name="description"]');
   if (description) description.setAttribute('content', seo?.description || brand.subheadline || '');
 
