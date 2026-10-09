@@ -1,4 +1,4 @@
--- DRAFT. Daily analytics rollups also store the day's top pages (docs/PAGE_INTERACTION_REVIEW_PLAN.md, option 1, owner chose it 2026-10-09).
+-- Daily analytics rollups also store the day's top pages (docs/PAGE_INTERACTION_REVIEW_PLAN.md, option 1, owner chose it 2026-10-09).
 -- Replaces public.rollup_website_analytics_day(date) from migration 131. The daily totals are computed exactly as before; the only addition is
 -- summary.top_pages: up to 10 pages for the day, each { path, views, clicks, max_scroll }, ordered by views.
 --  * Only pages with at least 3 views that day are listed (summary.top_pages_min_views), so one visitor cannot be singled out by a rare path.

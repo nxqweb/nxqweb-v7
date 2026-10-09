@@ -11,7 +11,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | Draft | Purpose | Plan |
 |---|---|---|
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
-| `03_rollup_top_pages.sql` | `rollup_website_analytics_day` also stores the day's top 10 pages (3-view minimum, query strings cut) in the rollup `summary` | `docs/PAGE_INTERACTION_REVIEW_PLAN.md` |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
@@ -32,3 +31,5 @@ Draft 03 (QA-only clients pass `client_feature_access`) was promoted on 2026-10-
 
 
 The claim-skip draft (`03_claim_next_job_skips_guard_denied`) was promoted on 2026-10-08 (owner approved) to real migration `266_claim_next_job_skips_guard_denied`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.
+
+The top-pages draft (`03_rollup_top_pages`) was promoted on 2026-10-09 (owner approved) to real migration `267_rollup_top_pages`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.

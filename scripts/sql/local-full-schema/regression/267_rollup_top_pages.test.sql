@@ -1,4 +1,4 @@
--- Sidecar test for draft 03 (rollup top pages). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 267 (rollup top pages). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data) values

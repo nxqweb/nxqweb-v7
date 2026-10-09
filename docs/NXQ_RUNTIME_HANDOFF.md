@@ -134,6 +134,8 @@ state. Update this file, not a new one, at every handoff.
 
 **PAGE-INTERACTION REVIEW BUILT LOCALLY (2026-10-09, owner chose Option 1 / Growth and up / views+clicks+scroll / 3-view minimum):** draft migration `docs/drafts/migrations/03_rollup_top_pages.sql` replaces `rollup_website_analytics_day` so each daily rollup's `summary.top_pages` lists up to 10 pages (path cut at ?/#, min 3 views). Sidecar test passes in the local harness (25/25) and FAILS on the old function with 'summary.top_pages is missing' (a first version of the test passed vacuously on NULL comparisons; fixed with explicit null guards). Client side: `src/lib/topPages.ts`, 'Top pages' panel on `/client/business/analytics`, `src/styles/top-pages.css`, `npm run test:top-pages` (negative control verified). NOT promoted, NOT deployed, NOT published. NEXT: owner approval to promote to migration 267 and apply (dry-run first), then a free branch preview to look at the panel, then publish after Oct 22.
 
+**DRAFT 03 (TOP PAGES) PROMOTED TO MIGRATION 267 (2026-10-09, owner approved 'promote and apply 267'):** `supabase/migrations/267_rollup_top_pages.sql` + `scripts/sql/local-full-schema/regression/267_rollup_top_pages.test.sql`. NOT applied yet: next is the read-only `validate_foundation` dry run (must list exactly 267), then `apply_migrations`.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
