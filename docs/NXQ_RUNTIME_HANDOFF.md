@@ -134,7 +134,7 @@ state. Update this file, not a new one, at every handoff.
 
 **PAGE-INTERACTION REVIEW BUILT LOCALLY (2026-10-09, owner chose Option 1 / Growth and up / views+clicks+scroll / 3-view minimum):** draft migration `docs/drafts/migrations/03_rollup_top_pages.sql` replaces `rollup_website_analytics_day` so each daily rollup's `summary.top_pages` lists up to 10 pages (path cut at ?/#, min 3 views). Sidecar test passes in the local harness (25/25) and FAILS on the old function with 'summary.top_pages is missing' (a first version of the test passed vacuously on NULL comparisons; fixed with explicit null guards). Client side: `src/lib/topPages.ts`, 'Top pages' panel on `/client/business/analytics`, `src/styles/top-pages.css`, `npm run test:top-pages` (negative control verified). NOT promoted, NOT deployed, NOT published. NEXT: owner approval to promote to migration 267 and apply (dry-run first), then a free branch preview to look at the panel, then publish after Oct 22.
 
-**DRAFT 03 (TOP PAGES) PROMOTED TO MIGRATION 267 (2026-10-09, owner approved 'promote and apply 267'):** `supabase/migrations/267_rollup_top_pages.sql` + `scripts/sql/local-full-schema/regression/267_rollup_top_pages.test.sql`. NOT applied yet: next is the read-only `validate_foundation` dry run (must list exactly 267), then `apply_migrations`.
+**DRAFT 03 (TOP PAGES) PROMOTED TO MIGRATION 267 (2026-10-09, owner approved 'promote and apply 267'):** `supabase/migrations/267_rollup_top_pages.sql` + `scripts/sql/local-full-schema/regression/267_rollup_top_pages.test.sql`. APPLIED to staging: dry run #255 listed exactly 267; apply run #256 (owner approved `nxq-staging`, head `87986db`), log shows 'Applying migration 267_rollup_top_pages.sql...'. Not on production. The summary.top_pages data appears only for days rolled up AFTER this (the scheduled daily rollup), and the client table needs a publish after Oct 22.
 
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
@@ -797,7 +797,7 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-266 — all applied to staging (`nxqweb-staging`): 248-254
+**B. Migrations 248-267 — all applied to staging (`nxqweb-staging`): 248-254
 in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production
 (production is not launched):**
 
@@ -836,6 +836,7 @@ in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #
 code work; confirmed blocked in this container as of this checklist:**
 
 - [x] 266 — claim_next_external_automation_job_v2 skips a candidate the paid-capability guard refuses (records `Skipped by billing guard: ...`, pushes run_after 15 min, status/attempts untouched) instead of blocking the whole queue; dry run #253 listed exactly 266, apply run #254 (owner approved `nxq-staging`), log shows 'Applying migration 266_claim_next_job_skips_guard_denied.sql...'
+- [x] 267 — `rollup_website_analytics_day` also stores each day's top 10 pages (3-view minimum, path cut at ?/#, additive) in the rollup `summary` for the client Top pages table; dry run #255 listed exactly 267, apply run #256 (owner approved `nxq-staging`), log shows 'Applying migration 267_rollup_top_pages.sql...'
 - [ ] `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` — absent (`env` check
   above); without these, `validate-paid-capability-guards-staging.mjs`
   and everything after it in `test:release` cannot run
