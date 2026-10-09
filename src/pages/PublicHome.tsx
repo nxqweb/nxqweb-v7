@@ -183,7 +183,7 @@ export function PublicHome() {
           <span className="px-kicker" data-px-reveal>Your client portal</span>
           <h2 data-px-reveal>See your website working, as it happens.</h2>
           <p className="px-sub" data-px-reveal>
-            Health, leads, update requests, and the next improvement cycle in one calm workspace, with a live view of how your site is performing.
+            Health, leads, update requests, and the next improvement cycle in one calm workspace. The preview below shows the Growth plan view with example data.
           </p>
           <PortalPreviewDemo />
         </div>

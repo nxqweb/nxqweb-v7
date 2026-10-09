@@ -119,7 +119,7 @@ export function PortalPreviewDemo() {
       <div className="px-main">
         <div className="px-top">
           <h3>Dashboard</h3>
-          <span className="px-live"><i />Live</span>
+          <span className="px-live"><i />Sample</span>
         </div>
         <div className="px-tabs" role="tablist" aria-label="Example chart series">
           {(Object.keys(SERIES) as SeriesKey[]).map((key) => (
@@ -142,7 +142,7 @@ export function PortalPreviewDemo() {
           </span>
         </div>
         <div className="px-chart">
-          <svg aria-label="Live example chart" preserveAspectRatio="none" role="img" viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
+          <svg aria-label="Example chart with sample data" preserveAspectRatio="none" role="img" viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
             <defs>
               <linearGradient id="px-area" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0" stopColor="#f0dca0" stopOpacity=".32" />
@@ -169,7 +169,7 @@ export function PortalPreviewDemo() {
             <div key={item.id}>{item.text}<span>{item.time}</span></div>
           ))}
         </div>
-        <p className="px-note">Illustrative sample data for this design preview. Real figures come from your own site once connected.</p>
+        <p className="px-note">Growth plan view, shown with illustrative sample data. Real figures come from your own site once connected.</p>
       </div>
     </div>
   );

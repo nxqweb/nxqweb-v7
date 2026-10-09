@@ -26,6 +26,7 @@ run(npm, ["run", "test:edge"]);
 run(npm, ["run", "test:ai-protocols"]);
 run(npm, ["run", "test:build-plan-fallback"]);
 run(npm, ["run", "test:netlify-builds-stopped"]);
+run(npm, ["run", "test:home-honest-copy"]);
 run(npm, ["run", "test:outreach-compliance"]);
 run(npm, ["run", "test:outreach-dispatch"]);
 run(npm, ["run", "test:ai-routing"]);

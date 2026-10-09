@@ -24,7 +24,7 @@ Rule going forward: nothing goes on the public site unless a row here says "In c
 | Multi-location (Enterprise) | In code | `ClientBusinessLocations`, tier-gated |
 
 ## Fix list (smallest first)
-1. Label the home-page preview "Growth plan view" so Starter buyers are not promised charts they will not get.
+1. (Done 2026-10-09, not published) Home-page preview now says "Growth plan view" with example data, the badge reads Sample instead of Live, and the "live view" claim is gone (`npm run test:home-honest-copy`).
 2. (Done 2026-10-06) Lead-source panel now exists in code; public copy is accurate once published.
 3. (Chart part DONE 2026-10-05 on the Analytics page; dashboard cards for leads/health/changes already exist; combining a mini-trend onto `/client/business` is still open.) Build the real dashboard in the client portal: daily page-view/click chart from `website_analytics_daily_rollups`,
    leads from `current_client_leads_page`, health from `current_client_operational_health`, change requests; honest empty
