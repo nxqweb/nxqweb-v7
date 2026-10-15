@@ -22,6 +22,7 @@
     "test:analytics-path-privacy": "node scripts/test-analytics-path-privacy.mjs",
     "test:top-pages": "node scripts/test-top-pages.mjs",
     "test:commerce-launch-guide": "node scripts/test-commerce-launch-guide.mjs",
+    "test:store-white-label": "node scripts/test-store-white-label.mjs",
     "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:outreach-dispatch": "node scripts/test-outreach-dispatch.mjs",
     "test:ai-routing": "node scripts/test-ai-routing.mjs",

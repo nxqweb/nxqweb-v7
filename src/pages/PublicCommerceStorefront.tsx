@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
+import { StoreCredit } from "../components/StoreCredit";
 
 type Variant = { id: string; title: string; price: number; available_quantity: number; inventory_policy: string };
 type Product = { id: string; name: string; slug: string; short_description?: string | null; description?: string | null; base_price: number; compare_at_price?: number | null; image_url?: string | null; variants: Variant[] };
@@ -126,6 +127,7 @@ export function PublicCommerceStorefront() {
           <button className="wide-btn" disabled={busy} onClick={() => void placeOrder()} type="button">{busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </section> : null}
       </>}
+      <StoreCredit />
     </section></main>
   );
 }

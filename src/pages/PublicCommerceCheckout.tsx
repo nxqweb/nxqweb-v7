@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { ArrowLeft, CheckCircle2, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
+import { StoreCredit } from "../components/StoreCredit";
 
 type CheckoutVariant = {
   id: string;
@@ -254,6 +255,7 @@ export function PublicCommerceCheckout() {
           </>
         ) : null}
       </section>
+      <StoreCredit />
     </main>
   );
 }
