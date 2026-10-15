@@ -3,6 +3,7 @@ import { ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } from "l
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
+import { withCommerceReason } from "../lib/commerceRpcReason";
 
 type LiveProduct = {
   id: string;
@@ -130,9 +131,12 @@ export function ClientCommerceLiveStore() {
 
     if (result.error) {
       setError(
-        makeLive
-          ? "Storefront activation could not be completed. The previously verified storefront state remains in place."
-          : "Storefront settings could not be saved. The previously verified storefront state remains in place."
+        withCommerceReason(
+          makeLive
+            ? "Storefront activation could not be completed. The previously verified storefront state remains in place."
+            : "Storefront settings could not be saved. The previously verified storefront state remains in place.",
+          result.error
+        )
       );
       setBusy("");
       return;
@@ -169,7 +173,7 @@ export function ClientCommerceLiveStore() {
     });
 
     if (result.error) {
-      setError("Product visibility could not be changed. The previous verified product state remains in place.");
+      setError(withCommerceReason("Product visibility could not be changed. The previous verified product state remains in place.", result.error));
       setBusy("");
       return;
     }

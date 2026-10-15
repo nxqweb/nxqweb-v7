@@ -22,6 +22,7 @@
     "test:analytics-path-privacy": "node scripts/test-analytics-path-privacy.mjs",
     "test:top-pages": "node scripts/test-top-pages.mjs",
     "test:commerce-launch-guide": "node scripts/test-commerce-launch-guide.mjs",
+    "test:commerce-rpc-reason": "node scripts/test-commerce-rpc-reason.mjs",
     "test:store-white-label": "node scripts/test-store-white-label.mjs",
     "test:shopper-account": "node scripts/test-shopper-account.mjs",
     "test:payment-links": "node scripts/test-payment-links.mjs",
