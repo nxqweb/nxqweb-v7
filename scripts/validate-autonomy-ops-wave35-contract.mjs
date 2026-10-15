@@ -23,7 +23,7 @@ const checks=[
   ["Owner pipeline uses protected RPC writes",page.includes('supabase.rpc(name, args)')&&!/\.from\([^)]*\)\.(?:insert|update|delete|upsert)/.test(page)],
   ["Sales route is protected and smoke tested",app.includes('path === "/owner/sales"')&&read("scripts/smoke-built-routes.mjs").includes('"/owner/sales"')],
   ["Tree Services preset is deterministic",preset.includes('key: "tree_services_v1"')&&preset.includes("getBusinessIndustryPreset")],
-  ["Tree preset does not invent safety or response guarantees",preset.includes("without promising availability")&&preset.includes("no remote safety guarantee")],
+  ["Tree preset does not invent safety or response guarantees",preset.includes("without promising availability")&&!/guarantee/i.test(preset)],
   ["Business worker applies the industry preset",worker.includes("getBusinessIndustryPreset")&&worker.includes("industryPresetKey")&&worker.includes("getPresetServiceDescription")],
   ["Flagship demo is explicitly fictional and offline-safe",demo.includes("fictional: true")&&demo.includes("liveLeadCapture: false")&&demo.includes("liveAnalytics: false")],
 ];
