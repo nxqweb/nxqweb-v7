@@ -819,7 +819,7 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-267 — all applied to staging (`nxqweb-staging`): 248-254
+**B. Migrations 248-268 — 248-267 applied to staging (`nxqweb-staging`), 268 pending apply (see its row): 248-254
 in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production
 (production is not launched):**
 
@@ -859,6 +859,7 @@ code work; confirmed blocked in this container as of this checklist:**
 
 - [x] 266 — claim_next_external_automation_job_v2 skips a candidate the paid-capability guard refuses (records `Skipped by billing guard: ...`, pushes run_after 15 min, status/attempts untouched) instead of blocking the whole queue; dry run #253 listed exactly 266, apply run #254 (owner approved `nxq-staging`), log shows 'Applying migration 266_claim_next_job_skips_guard_denied.sql...'
 - [x] 267 — `rollup_website_analytics_day` also stores each day's top 10 pages (3-view minimum, path cut at ?/#, additive) in the rollup `summary` for the client Top pages table; dry run #255 listed exactly 267, apply run #256 (owner approved `nxq-staging`), log shows 'Applying migration 267_rollup_top_pages.sql...'
+- [ ] 268 — `268_shopper_accounts`: optional per-store shopper accounts (deny-by-default profile table, saved name/phone/address, order history by confirmed email, owner on/off switch, public on/off status; no card data, order-creation functions untouched). Promoted from draft 04 on 2026-10-15 (owner approved in chat); regression test `scripts/sql/local-full-schema/regression/268_shopper_accounts.test.sql` (negative controls: skipping the email-confirmation check and dropping the per-store order filter each fail it). NOT applied yet: needs read-only validate_foundation listing exactly 268, then apply_migrations, each with the owner clicking Approve and deploy on `nxq-staging`.
 - [ ] `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF` — absent (`env` check
   above); without these, `validate-paid-capability-guards-staging.mjs`
   and everything after it in `test:release` cannot run

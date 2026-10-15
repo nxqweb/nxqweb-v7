@@ -1,4 +1,4 @@
--- Sidecar test for draft 04 (shopper accounts). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 268 (shopper accounts). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

@@ -13,7 +13,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
 | `03_journey_nxqx_wording.sql` | Client journey text says NXQX instead of NXQ, and the denied-client support link points at NXQweb@protonmail.com (the old address was lost); logic unchanged | owner request 2026-10-15 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
-| `04_shopper_accounts.sql` | Optional shopper accounts per store (saved name/phone/address, order history by confirmed email, owner on/off switch, public on/off status); deny-by-default profile table, no change to order creation, no card data | owner request 2026-10-15 (guest checkout stays) |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -35,3 +34,5 @@ Draft 03 (QA-only clients pass `client_feature_access`) was promoted on 2026-10-
 The claim-skip draft (`03_claim_next_job_skips_guard_denied`) was promoted on 2026-10-08 (owner approved) to real migration `266_claim_next_job_skips_guard_denied`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.
 
 The top-pages draft (`03_rollup_top_pages`) was promoted on 2026-10-09 (owner approved) to real migration `267_rollup_top_pages`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only drafts 01 and 02 remain.
+
+The shopper-accounts draft (`04_shopper_accounts`) was promoted on 2026-10-15 (owner approved in chat) to real migration `268_shopper_accounts`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only the journey-wording draft (03) remains here.

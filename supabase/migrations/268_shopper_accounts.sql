@@ -1,4 +1,4 @@
--- DRAFT (not applied): optional shopper accounts for NXQX-Commerce stores (owner request 2026-10-15; guest checkout stays as is).
+-- Migration 268: optional shopper accounts for NXQX-Commerce stores (owner request 2026-10-15; guest checkout stays as is; applied only after owner approval).
 --
 -- What this adds, per store, only where the store opts in (commerce_storefronts.customer_accounts_enabled, default false):
 --  * a saved profile for a signed-in shopper (name, phone, shipping address) so checkout can autofill
