@@ -11,6 +11,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | Draft | Purpose | Plan |
 |---|---|---|
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
+| `03_journey_nxqx_wording.sql` | Client journey text says NXQX instead of NXQ, and the denied-client support link points at NXQweb@protonmail.com (the old address was lost); logic unchanged | owner request 2026-10-15 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
