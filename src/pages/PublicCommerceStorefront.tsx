@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
+import { orderPaymentHref } from "../lib/paymentLinks";
 import { StoreCredit } from "../components/StoreCredit";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 
@@ -109,11 +110,20 @@ export function PublicCommerceStorefront() {
         <h2>Order {order.order_number} created</h2>
         <p>Your total is <strong>{money(order.total, order.currency)}</strong>.</p>
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
-        <div className="settings-grid">
-          {safePaymentUrl("stripe", order.stripe_payment_link) ? <a className="wide-btn" href={safePaymentUrl("stripe", order.stripe_payment_link) || undefined} target="_blank" rel="noreferrer">Continue to Stripe</a> : null}
-          {safePaymentUrl("paypal", order.paypal_url) ? <a className="wide-btn" href={safePaymentUrl("paypal", order.paypal_url) || undefined} target="_blank" rel="noreferrer">Pay with PayPal</a> : null}
-          {safePaymentUrl("venmo", order.venmo_url) ? <a className="wide-btn" href={safePaymentUrl("venmo", order.venmo_url) || undefined} target="_blank" rel="noreferrer">Pay with Venmo</a> : null}
-        </div>
+        {(() => {
+          const context = { orderNumber: order.order_number, total: Number(order.total), currency: order.currency, email: form.email };
+          const stripeHref = orderPaymentHref("stripe", safePaymentUrl("stripe", order.stripe_payment_link), context);
+          const paypalHref = orderPaymentHref("paypal", safePaymentUrl("paypal", order.paypal_url), context);
+          const venmoHref = orderPaymentHref("venmo", safePaymentUrl("venmo", order.venmo_url), context);
+          return <>
+            <div className="settings-grid">
+              {stripeHref ? <a className="wide-btn" href={stripeHref} target="_blank" rel="noreferrer">Continue to Stripe</a> : null}
+              {paypalHref ? <a className="wide-btn" href={paypalHref} target="_blank" rel="noreferrer">Pay with PayPal</a> : null}
+              {venmoHref ? <a className="wide-btn" href={venmoHref} target="_blank" rel="noreferrer">Pay with Venmo</a> : null}
+            </div>
+            {stripeHref ? <p className="subtle">On the payment page, please pay exactly {money(order.total, order.currency)} for order {order.order_number}.</p> : null}
+          </>;
+        })()}
         <p className="subtle">The business will confirm the payment after it arrives in their account.</p>
       </section> : <>
         <section className="settings-grid">

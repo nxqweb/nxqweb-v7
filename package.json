@@ -24,6 +24,7 @@
     "test:commerce-launch-guide": "node scripts/test-commerce-launch-guide.mjs",
     "test:store-white-label": "node scripts/test-store-white-label.mjs",
     "test:shopper-account": "node scripts/test-shopper-account.mjs",
+    "test:payment-links": "node scripts/test-payment-links.mjs",
     "test:outreach-compliance": "node scripts/test-outreach-compliance.mjs",
     "test:outreach-dispatch": "node scripts/test-outreach-dispatch.mjs",
     "test:ai-routing": "node scripts/test-ai-routing.mjs",

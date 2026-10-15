@@ -35,6 +35,7 @@ run(npm, ["run", "test:top-pages"]);
 run(npm, ["run", "test:commerce-launch-guide"]);
 run(npm, ["run", "test:store-white-label"]);
 run(npm, ["run", "test:shopper-account"]);
+run(npm, ["run", "test:payment-links"]);
 run(npm, ["run", "test:outreach-compliance"]);
 run(npm, ["run", "test:outreach-dispatch"]);
 run(npm, ["run", "test:ai-routing"]);
