@@ -1323,35 +1323,19 @@ From this session's explicit approval (now encoded in `CLAUDE.md`):
   action requiring an explicit decision, not something to do autonomously.
   Whether the gate is fully green beyond that point remains unverified.
 
-## Next highest-priority safe tasks (rewritten 2026-10-05; the 2026-10-01 version is in the archive)
+## Next highest-priority safe tasks (rewritten 2026-10-15, end of the Commerce/candle-client session; the 2026-10-05 version is in git history)
 
-Already done since the old list: the two systemic gaps are closed (client billing notifications via
-migrations 253/254; `automation_escalations` now read by the Owner Exception Center), and migrations
-248-256 are applied to staging (runs #220, #223, #228). `provision-storefront` was redeployed (run #231).
+1. **When the candle-business friend signs up** (the owner sent her the signup link; owner is waiting): walk the owner through, one click or statement at a time: Supabase Auth Users shows her confirmed email -> approve her website setup in the owner portal -> complimentary billing per `docs/OWNER_COMPLIMENTARY_BILLING_ACTIVATION.md` -> approve her Commerce Growth plan change at `/owner/plan-changes` ($0 fee, owner note) -> she follows the launch guide. Record friction in this file.
+2. **Oct 22 or later, after the owner reads a FRESH Netlify credit number:** one Supabase `deploy_functions` run (Netlify `stop_builds` for Business/Commerce, claim-free copy, analytics-ingest privacy), one main-site production deploy (launch guide, white-label credit, shopper accounts, per-order payment links, earlier pending UI), retry QA run #4 (`QA-16A49D9B4A3E`; do NOT dispatch workers before the function deploy), then QA runs 5-10; real shopper sign-up test in a private window; owner adds the shopper account URL pattern in Supabase Auth -> URL Configuration.
+3. **Safe local work while waiting:** shopper "forgot password" flow; show the real reason on Live-store errors and find why a payment link in the product image box made "Make visible" fail (generic 400); only with a fresh explicit yes: promote/apply draft `03_journey_nxqx_wording`. HELD by owner decision (2026-10-15, Option B): draft `04_store_order_number_prefix` (do not promote or apply until asked).
 
-**Waiting on outside parties or the owner (no Claude action possible):**
-- Malware scanner key: Cloudmersive support requests sent 2026-10-02 and 2026-10-03/04, account
-  showed "User Blocked". Decide around 2026-10-07/08 whether to switch (Scanii has a free trial with
-  no card; see `docs/UNIT_ECONOMICS_AND_SCALE.md` section 5).
-- **The owner has no payment card.** Anything that needs one is blocked: buying a domain (needed for
-  sending email), paid Supabase/Netlify plans, prepaid AI API credits, and similar. Free tiers that
-  take no card are fine.
-- AI provider key, email domain + Resend, Stripe test mode, Netlify credits, 10 clean external QA
-  runs and owner signoff, company name/domain decision, lawyer review of outreach templates.
-- Netlify builds are STOPPED by the owner. To publish current code: set "Active builds", let one
-  safe-branch deploy build, click "Publish deploy", then stop builds again.
+Full portable summary for a new chat: `docs/HANDOFF_FOR_NEW_CHAT.md` (written 2026-10-15).
 
-**Safe local work available now (no gate), suggested order (refreshed 2026-10-05; items 1-3 of the old list are done):**
-1. Real client dashboard (see "START HERE" next tasks).
-2. Lead-source view or reword the Intelligence promise (`docs/PROMISE_AUDIT.md`).
-3. Outreach dispatch/unsubscribe function code held behind the emergency stop (no deploy).
-4. Frontend data-layer split of `OwnerPortal.tsx` / `ClientPortal.tsx` (`docs/CODE_ORGANIZATION_PLAN.md`).
-
-**Gated (explicit approval + guarded workflow where applicable):** applying any migration (257, 258,
-widening migration 179 for `anthropic_messages`), deploying any function (the AI workers and
-`draft-sales-outreach-ai` changed locally), Netlify builds/publish, secrets, any real email, billing.
+**Gated (explicit approval + guarded workflow where applicable):** applying any migration, deploying any function, Netlify builds/publish, secrets, any real email, billing, any Supabase Auth setting.
 
 ## Resume instruction for the next Claude session
+
+**Updated 2026-10-15:** read `CLAUDE.md`, then `docs/HANDOFF_FOR_NEW_CHAT.md` (short, current) and the newest dated entries of this file (2026-10-15, above the 'LATEST UPDATE - 2026-10-05' heading). Verify git against origin. First ask the owner whether the candle friend signed up and whether it is Oct 22 or later. The paragraph below is the older 2026-10-05 instruction, kept for the general verification routine.
 
 Read `CLAUDE.md`, then this file. Verify live git state yourself (`git fetch origin
 safe/checkpoint-autonomy-wave35-sales`, compare `git rev-parse HEAD`, `origin/<branch>` and
