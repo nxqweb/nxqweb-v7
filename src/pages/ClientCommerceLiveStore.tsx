@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Save, Store, ToggleLeft, ToggleRight } from "lucide-react";
+import { ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
@@ -35,6 +35,7 @@ export function ClientCommerceLiveStore() {
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState("");
+  const [accountsOn, setAccountsOn] = useState<boolean | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -75,6 +76,24 @@ export function ClientCommerceLiveStore() {
     setImages(Object.fromEntries((next.products || []).map((product) => [product.id, product.image_url || ""])));
     setVerified(true);
     setLoading(false);
+    const accounts = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: next.store_slug });
+    setAccountsOn(accounts.error ? null : Boolean((accounts.data as { accounts_enabled?: boolean } | null)?.accounts_enabled));
+  }
+
+  async function toggleAccounts() {
+    if (!supabase || !verified || accountsOn === null) return;
+    const turningOn = !accountsOn;
+    const confirmed = window.confirm(turningOn
+      ? "Let shoppers create accounts on your store? They can save their name, phone and address and see their order history. Guest checkout stays available. No card details are stored."
+      : "Turn off shopper accounts? Shoppers will see guest checkout only. Saved details and order history are kept, not deleted.");
+    if (!confirmed) return;
+    setBusy("accounts");
+    setError("");
+    setMessage("");
+    const result = await supabase.rpc("set_my_customer_accounts_enabled", { enable_accounts: turningOn });
+    if (result.error) setError("Shopper accounts could not be changed right now. Nothing was changed.");
+    else { setAccountsOn(turningOn); setMessage(turningOn ? "Shopper accounts are on." : "Shopper accounts are off."); }
+    setBusy("");
   }
 
   async function save(makeLive: boolean) {
@@ -204,6 +223,17 @@ export function ClientCommerceLiveStore() {
               <label><span>Primary product image URL</span><input className="auth-input" placeholder="https://..." value={images[product.id] || ""} onChange={(e) => setImages((current) => ({ ...current, [product.id]: e.target.value }))} /></label>
             </article>
           ))}
+        </section>
+
+        <section className="panel panel-wide">
+          <div className="panel-title panel-title-row">
+            <div className="panel-title"><UserRound size={20} /><div><h2>Shopper accounts</h2><p className="subtle">Optional. Shoppers can create an account to save their details and see their orders. Guest checkout always stays available, and no card details are stored.</p></div></div>
+            <button className="icon-btn" disabled={Boolean(busy) || accountsOn === null} onClick={() => void toggleAccounts()} type="button">
+              {accountsOn ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+              {busy === "accounts" ? "Saving..." : accountsOn === null ? "Unavailable" : accountsOn ? "On (tap to turn off)" : "Off (tap to turn on)"}
+            </button>
+          </div>
+          {data.status !== "active" ? <p className="subtle">Shoppers see this once your storefront is open.</p> : null}
         </section>
       </> : null}
     </section></main>

@@ -3,6 +3,7 @@ import { Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { StoreCredit } from "../components/StoreCredit";
+import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 
 type Variant = { id: string; title: string; price: number; available_quantity: number; inventory_policy: string };
 type Product = { id: string; name: string; slug: string; short_description?: string | null; description?: string | null; base_price: number; compare_at_price?: number | null; image_url?: string | null; variants: Variant[] };
@@ -18,10 +19,10 @@ export function PublicCommerceStorefront() {
   const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
   const [data, setData] = useState<StoreData | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
+  const [accountsEnabled, setAccountsEnabled] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [saveToAccount, setSaveToAccount] = useState(true);
   const [note, setNote] = useState("");
   const [order, setOrder] = useState<OrderResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,6 +37,23 @@ export function PublicCommerceStorefront() {
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);
+    if (!result.error && result.data) void loadAccountHelp();
+  }
+
+  // Optional shopper accounts: never blocks guest checkout. Any failure here is ignored on purpose.
+  async function loadAccountHelp() {
+    if (!supabase) return;
+    try {
+      const status = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: slug });
+      if (!(status.data as { accounts_enabled?: boolean } | null)?.accounts_enabled) return;
+      setAccountsEnabled(true);
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) return;
+      const profile = await supabase.rpc("get_my_shopper_profile", { store_slug_value: slug });
+      if (profile.error || !profile.data) return;
+      setSignedIn(true);
+      setForm((current) => mergeCheckoutAutofill(current, profileToCheckoutFields(profile.data as ShopperProfileRow)));
+    } catch { /* guest checkout continues */ }
   }
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- storefront slug is fixed for this mounted route
@@ -60,15 +78,22 @@ export function PublicCommerceStorefront() {
       store_slug_value: slug,
       items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
       customer_payload: {
-        name,
-        email,
-        phone,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
         note,
-        shipping_address: { address },
+        shipping_address: { address: form.address },
       },
     });
     if (result.error) setError(result.error.message);
-    else { setOrder(result.data as OrderResult); setCart([]); }
+    else {
+      setOrder(result.data as OrderResult);
+      setCart([]);
+      if (signedIn && saveToAccount) {
+        const saved = normalizeProfileInput({ fullName: form.name, phone: form.phone, address: form.address });
+        if (saved.ok) await supabase.rpc("save_my_shopper_profile", { store_slug_value: slug, profile_payload: saved.payload });
+      }
+    }
     setBusy(false);
   }
 
@@ -77,7 +102,7 @@ export function PublicCommerceStorefront() {
 
   return (
     <main className="nxq-page"><section className="portal-shell">
-      <div className="panel-title panel-title-row"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div><ShoppingCart size={20} /> {cart.reduce((sum, item) => sum + item.quantity, 0)}</div></div>
+      <div className="panel-title panel-title-row"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <ShoppingCart size={20} /> {cart.reduce((sum, item) => sum + item.quantity, 0)}</div></div>
       {error ? <div className="auth-error">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
@@ -118,12 +143,13 @@ export function PublicCommerceStorefront() {
         {cart.length > 0 ? <section className="panel panel-wide">
           <h2>Customer details</h2>
           <div className="setup-form-grid">
-            <label><span>Name</span><input className="auth-input" value={name} onChange={(e) => setName(e.target.value)} /></label>
-            <label><span>Email</span><input className="auth-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-            <label><span>Phone</span><input className="auth-input" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
-            <label><span>Shipping address</span><input className="auth-input" value={address} onChange={(e) => setAddress(e.target.value)} /></label>
+            <label><span>Name</span><input className="auth-input" autoComplete="name" value={form.name} onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))} /></label>
+            <label><span>Email</span><input className="auth-input" type="email" autoComplete="email" value={form.email} onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))} /></label>
+            <label><span>Phone</span><input className="auth-input" autoComplete="tel" value={form.phone} onChange={(e) => setForm((current) => ({ ...current, phone: e.target.value }))} /></label>
+            <label><span>Shipping address</span><input className="auth-input" autoComplete="street-address" value={form.address} onChange={(e) => setForm((current) => ({ ...current, address: e.target.value }))} /></label>
           </div>
           <label><span>Order note</span><textarea className="auth-input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
           <button className="wide-btn" disabled={busy} onClick={() => void placeOrder()} type="button">{busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </section> : null}
       </>}

@@ -8,6 +8,7 @@ const pages = {
   storefront: "src/pages/PublicCommerceStorefront.tsx",
   checkout: "src/pages/PublicCommerceCheckout.tsx",
   request: "src/pages/PublicCommerceRequest.tsx",
+  account: "src/pages/PublicShopperAccount.tsx",
 };
 const source = Object.fromEntries(Object.entries(pages).map(([key, file]) => [key, fs.readFileSync(file, "utf8")]));
 const credit = fs.readFileSync("src/components/StoreCredit.tsx", "utf8");
@@ -20,6 +21,7 @@ check("credit line reads 'Website by NXQX-Web'", credit.includes("Website by NXQ
 check("credit line is small and centred, not a banner", /fontSize: "0\.8rem"/.test(credit) && /textAlign: "center"/.test(credit));
 check("storefront page shows the credit last, inside the page", /<StoreCredit \/>\s*<\/section><\/main>/.test(source.storefront));
 check("checkout page shows the credit last, inside the page", /<StoreCredit \/>\s*<\/main>/.test(source.checkout));
+check("shopper account page shows the credit line too", (source.account.match(/<StoreCredit \/>/g) || []).length === 2);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store white-label checks passed (offline).");
 process.exit(failures ? 1 : 0);

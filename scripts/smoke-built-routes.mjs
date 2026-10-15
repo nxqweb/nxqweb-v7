@@ -34,7 +34,7 @@ async function waitForReady() {
 const routes = [
   "/", "/plans", "/portal", "/portal/login", "/client", "/client/journey", "/client/history", "/client/business",
   "/client/business/analytics", "/owner", "/owner/exceptions", "/owner/launch-readiness", "/owner/sales",
-  "/store/demo", "/store/checkout", "/store/request",
+  "/store/demo", "/store/demo/account", "/store/checkout", "/store/request",
 ];
 
 try {

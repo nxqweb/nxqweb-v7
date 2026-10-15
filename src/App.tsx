@@ -81,6 +81,7 @@ const PortalSignup = named(() => import("./pages/PortalSignup"), "PortalSignup")
 const PublicCommerceCheckout = named(() => import("./pages/PublicCommerceCheckout"), "PublicCommerceCheckout");
 const PublicCommerceRequest = named(() => import("./pages/PublicCommerceRequest"), "PublicCommerceRequest");
 const PublicCommerceStorefront = named(() => import("./pages/PublicCommerceStorefront"), "PublicCommerceStorefront");
+const PublicShopperAccount = named(() => import("./pages/PublicShopperAccount"), "PublicShopperAccount");
 const PublicHome = named(() => import("./pages/PublicHome"), "PublicHome");
 const PublicPlans = named(() => import("./pages/PublicPlans"), "PublicPlans");
 const ResetPassword = named(() => import("./pages/ResetPassword"), "ResetPassword");
@@ -150,6 +151,7 @@ function AppRoutes() {
   if (path === "/store/checkout") return <PublicCommerceCheckout />;
   if (path === "/store/request") return <PublicCommerceRequest />;
   if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
+  if (/^\/store\/[^/]+\/account\/?$/.test(path)) return <PublicShopperAccount />;
   if (path === "/plans") return <PublicPlans />;
   if (path === "/portal/login") return <PortalLogin />;
   if (path === "/portal/signup") return <PortalSignup />;
