@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, LogOut, Package, Save, Trash2, UserRound } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { StoreCredit } from "../components/StoreCredit";
+import { deleteShopperProfile, fetchShopperOrders, fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
 import {
   formatOrderTotal, friendlyShopperError, normalizeProfileInput, orderStatusLabel, profileToCheckoutFields, shopperLimits,
   storeSlugFromPath, validateCredentials, type ShopperOrderRow, type ShopperProfileRow,
@@ -27,10 +28,7 @@ export function PublicShopperAccount() {
 
   async function loadAccount() {
     if (!supabase) return;
-    const [profileResult, ordersResult] = await Promise.all([
-      supabase.rpc("get_my_shopper_profile", { store_slug_value: slug }),
-      supabase.rpc("list_my_shopper_orders", { store_slug_value: slug }),
-    ]);
+    const [profileResult, ordersResult] = await Promise.all([fetchShopperProfile(slug), fetchShopperOrders(slug)]);
     if (profileResult.error || ordersResult.error) {
       setError(friendlyShopperError(profileResult.error?.message || ordersResult.error?.message));
       setAccountLoaded(false);
@@ -93,7 +91,7 @@ export function PublicShopperAccount() {
     const input = normalizeProfileInput({ fullName, phone, address });
     if (!input.ok) { setError(input.error); return; }
     setBusy("save");
-    const result = await supabase.rpc("save_my_shopper_profile", { store_slug_value: slug, profile_payload: input.payload });
+    const result = await saveShopperProfile(slug, input.payload);
     if (result.error) setError(friendlyShopperError(result.error.message));
     else setMessage("Saved. We will fill these in for you at checkout.");
     setBusy("");
@@ -103,7 +101,7 @@ export function PublicShopperAccount() {
     if (!supabase) return;
     if (!window.confirm("Delete your saved name, phone and address for this store? Your past orders stay in your history.")) return;
     setError(""); setMessage(""); setBusy("delete");
-    const result = await supabase.rpc("delete_my_shopper_profile", { store_slug_value: slug });
+    const result = await deleteShopperProfile(slug);
     if (result.error) setError(friendlyShopperError(result.error.message));
     else { setFullName(""); setPhone(""); setAddress(""); setMessage("Your saved details were deleted."); }
     setBusy("");

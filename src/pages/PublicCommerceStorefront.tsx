@@ -3,6 +3,7 @@ import { Minus, Plus, ShoppingCart, Store } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
+import { fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
 import { StoreCredit } from "../components/StoreCredit";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 
@@ -50,7 +51,7 @@ export function PublicCommerceStorefront() {
       setAccountsEnabled(true);
       const session = await supabase.auth.getSession();
       if (!session.data.session) return;
-      const profile = await supabase.rpc("get_my_shopper_profile", { store_slug_value: slug });
+      const profile = await fetchShopperProfile(slug);
       if (profile.error || !profile.data) return;
       setSignedIn(true);
       setForm((current) => mergeCheckoutAutofill(current, profileToCheckoutFields(profile.data as ShopperProfileRow)));
@@ -92,7 +93,7 @@ export function PublicCommerceStorefront() {
       setCart([]);
       if (signedIn && saveToAccount) {
         const saved = normalizeProfileInput({ fullName: form.name, phone: form.phone, address: form.address });
-        if (saved.ok) await supabase.rpc("save_my_shopper_profile", { store_slug_value: slug, profile_payload: saved.payload });
+        if (saved.ok) await saveShopperProfile(slug, saved.payload);
       }
     }
     setBusy(false);

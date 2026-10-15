@@ -59,20 +59,24 @@ const storefront = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "ut
 const live = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
 const app = fs.readFileSync("src/App.tsx", "utf8");
 const migration = fs.readFileSync("supabase/migrations/268_shopper_accounts.sql", "utf8");
+const api = fs.readFileSync("src/lib/shopperApi.ts", "utf8");
 
 const rpcNames = (text) => [...text.matchAll(/\.rpc\(\s*"([a-z_]+)"/g)].map((m) => m[1]);
 const definedIn268 = new Set([...migration.matchAll(/create or replace function public\.([a-z_]+)\(/g)].map((m) => m[1]));
 const allowedOutside = new Set(["get_public_stripe_ready_commerce_storefront", "create_public_stripe_ready_direct_payment_order", "get_my_stripe_ready_storefront_settings", "save_my_stripe_ready_storefront_settings", "set_my_commerce_product_live"]);
-const shopperRpcs = [...new Set([...rpcNames(account), ...rpcNames(storefront), ...rpcNames(live)])].filter((n) => !allowedOutside.has(n));
+const shopperRpcs = [...new Set([...rpcNames(account), ...rpcNames(storefront), ...rpcNames(live), ...rpcNames(api)])].filter((n) => !allowedOutside.has(n));
 check("every shopper database call is a real function from migration 268", shopperRpcs.length >= 6 && shopperRpcs.every((n) => definedIn268.has(n)), shopperRpcs.filter((n) => !definedIn268.has(n)).join(","));
-check("account page calls all four shopper functions", ["get_my_shopper_profile", "save_my_shopper_profile", "delete_my_shopper_profile", "list_my_shopper_orders"].every((n) => account.includes(`"${n}"`)));
+const signedInOnly = ["get_my_shopper_profile", "save_my_shopper_profile", "delete_my_shopper_profile", "list_my_shopper_orders"];
+check("the shopper module wraps all four signed-in functions", signedInOnly.every((n) => api.includes(`"${n}"`)));
+check("the account page uses all four wrappers", ["fetchShopperProfile(", "fetchShopperOrders(", "saveShopperProfile(", "deleteShopperProfile("].every((n) => account.includes(n)));
+check("no signed-in-only database call sits inside an anonymous-facing Public* page (the local schema harness treats Public* files as anonymous)", signedInOnly.every((n) => !account.includes(`"${n}"`) && !storefront.includes(`"${n}"`)));
 
 const signUpCall = account.slice(account.indexOf("auth.signUp("), account.indexOf("auth.signUp(") + 260);
 check("sign-up sends NO user metadata (a shopper must never become a business client)", signUpCall.includes("auth.signUp(") && !/\bdata\s*:/.test(signUpCall) && !/business_name|product_family|product_tier/.test(account));
 check("no card fields anywhere on the shopper page", !/cc-number|cardnumber|card number|cvc|cvv|card_number/i.test(account) && account.includes("We never ask for or store card details here"));
 check("account page never shows raw error text (every message goes through friendlyShopperError)", account.includes("friendlyShopperError(") && !/\.message/.test(account.replace(/friendlyShopperError\([^()]*\)/g, "")));
 check("account page has a guest-friendly 'not offered' state", account.includes("does not offer customer accounts right now") && account.includes("check out as a guest"));
-check("account page offers delete-my-saved-details with a confirm", account.includes("delete_my_shopper_profile") && account.includes("window.confirm"));
+check("account page offers delete-my-saved-details with a confirm", account.includes("deleteShopperProfile(") && account.includes("window.confirm"));
 
 check("the account route is registered", app.includes("<PublicShopperAccount />") && app.includes('"PublicShopperAccount"'));
 check("the account route cannot be swallowed by the generic store matcher", !/^\/store\/[^/]+\/?$/.test("/store/x/account") && app.indexOf("<PublicShopperAccount />") > 0);
