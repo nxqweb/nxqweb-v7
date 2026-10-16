@@ -12,6 +12,9 @@ Owner style: gen-z, nice, honest, smart, helpful; concise; no long outros; real 
 ## What this project is (one paragraph)
 NXQX-Web: a Vite+React+TS app on Netlify (`nxqweb-v9-staging`) with a Supabase staging project (`nxqweb-staging`) and GitHub Actions for guarded staging changes. Clients sign up, get a website built (Business plans) or an online store (Commerce plans). The owner has NO payment card, so anything needing one is blocked (verified email domain, paid plans, AI key, Stripe billing).
 
+## Update 2026-10-16, night (read this first)
+The public store was rebuilt as a real shop (product detail dialog with photo gallery, badges, stock limits, remembered cart, checkout help, calm errors, share, skeleton), the app got an error safety net and an accessibility pass, and manual browser tools live in `scripts/manual/`. `npm run test:store` now runs 16 test files; CI still does not run them (workflow step awaiting the owner's approval). Details: `docs/NXQ_RUNTIME_HANDOFF.md`, section "Store experience, resilience and accessibility pass".
+
 ## Update 2026-10-16, evening (read this first)
 Migration `269_store_profile` is PROMOTED (owner approved) but NOT applied to staging: applying needs a separate explicit yes + the guarded workflow. An independent code review of the whole session found ten issues (two security) and all are fixed. IMPORTANT: GitHub CI and `npm run test:ci-parity` do NOT run the Commerce/store tests; run `npm run test:store` before every push (plus parity and the schema harness). A workflow step to run it in CI is proposed and needs the owner's approval. Manual test plan: `docs/COMMERCE_TEST_PLAN.md`. Details in `docs/NXQ_RUNTIME_HANDOFF.md`, section "Migration 269 promoted, store profile UI, independent review fixes, test plan".
 

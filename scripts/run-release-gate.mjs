@@ -45,6 +45,8 @@ run(npm, ["run", "test:client-wording"]);
 run(npm, ["run", "test:links"]);
 run(npm, ["run", "test:app-resilience"]);
 run(npm, ["run", "test:a11y-basics"]);
+run(npm, ["run", "test:store-catalog"]);
+run(npm, ["run", "test:store-experience"]);
 run(npm, ["run", "test:store-white-label"]);
 run(npm, ["run", "test:shopper-account"]);
 run(npm, ["run", "test:payment-links"]);

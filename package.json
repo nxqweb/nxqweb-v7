@@ -34,6 +34,8 @@
     "test:links": "node scripts/test-link-integrity.mjs",
     "test:app-resilience": "node scripts/test-app-resilience.mjs",
     "test:a11y-basics": "node scripts/test-a11y-basics.mjs",
+    "test:store-catalog": "node scripts/test-store-catalog.mjs",
+    "test:store-experience": "node scripts/test-store-experience.mjs",
     "test:store": "node scripts/run-store-tests.mjs",
     "test:store-white-label": "node scripts/test-store-white-label.mjs",
     "test:shopper-account": "node scripts/test-shopper-account.mjs",

@@ -18,6 +18,14 @@ for (const file of files) {
 }
 check("no div or span has an aria-label without a role (screen readers ignore it)", bad.length === 0, bad.slice(0, 3).join(" | "));
 
+// a link or a button with a status/alert role loses its meaning for screen readers (axe: link-name); announcements belong in a separate live region
+const wrongRole = [];
+for (const file of files) {
+  const text = fs.readFileSync(file, "utf8");
+  for (const m of text.matchAll(/<(a|button)\b([^>]*)>/g)) if (/\brole="(status|alert|log|region)"/.test(m[2])) wrongRole.push(`${file}: <${m[1]} ${m[2].trim().slice(0, 60)}`);
+}
+check("no link or button carries a status, alert, log or region role", wrongRole.length === 0, wrongRole.slice(0, 3).join(" | "));
+
 const css = fs.readFileSync("src/styles/final-frontend-polish.css", "utf8");
 check("a screen-reader-only text class exists", /\.sr-only \{[^}]*clip: rect\(0, 0, 0, 0\);[^}]*\}/.test(css));
 check("the plans page and the signup page have a page heading", /<h1 className="sr-only">NXQX-Web service levels and plans<\/h1>/.test(fs.readFileSync("src/pages/PublicPlans.tsx", "utf8")) && /<h1 className="sr-only">Create your NXQX-Web client account<\/h1>/.test(fs.readFileSync("src/pages/PortalSignup.tsx", "utf8")));

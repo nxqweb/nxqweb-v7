@@ -12,7 +12,7 @@ const credit = fs.readFileSync("src/components/StoreCredit.tsx", "utf8");
 const app = fs.readFileSync("src/App.tsx", "utf8");
 
 // ---- scoping: every selector in the file must live under .store-theme
-const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+const bare = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/@keyframes [\w-]+ \{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, "");
 const preludes = [...bare.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim()).filter((p) => p && !p.startsWith("@"));
 const unscoped = preludes.flatMap((p) => p.split(",").map((x) => x.trim())).filter((sel) => sel && !sel.includes(".store-theme"));
 check("every selector is scoped to .store-theme (nothing else in the app changes)", preludes.length > 20 && unscoped.length === 0, unscoped.slice(0, 3).join(" | "));
@@ -20,12 +20,14 @@ check("the stylesheet is loaded by the app", /import "\.\/styles\/storefront-the
 
 // ---- pages opt in
 const mains = (page) => [...page.matchAll(/<main className="([^"]*)"/g)].map((m) => m[1]);
-check("every main element on the store and the shopper account pages uses the theme", mains(store).length >= 3 && mains(store).every((c) => c.includes("store-theme")) && mains(account).length >= 3 && mains(account).every((c) => c.includes("store-theme")));
+const skeleton = fs.readFileSync("src/components/store/StoreSkeleton.tsx", "utf8");
+check("every main element on the store, its loading skeleton and the shopper account pages uses the theme", mains(store).length >= 2 && mains(store).every((c) => c.includes("store-theme")) && mains(skeleton).length === 1 && mains(skeleton).every((c) => c.includes("store-theme")) && mains(account).length >= 3 && mains(account).every((c) => c.includes("store-theme")));
 check("no other page opts into the store theme", fs.readdirSync("src/pages").filter((f) => f.endsWith(".tsx") && !["PublicCommerceStorefront.tsx", "PublicShopperAccount.tsx"].includes(f)).every((f) => !fs.readFileSync(`src/pages/${f}`, "utf8").includes("store-theme")));
 
 // ---- layout
 check("products sit in an equal-card responsive grid", /store-product-grid/.test(store) && /grid-template-columns: repeat\(auto-fill, minmax\(230px, 1fr\)\)/.test(css));
-check("a product without a photo gets a placeholder so cards line up", /store-product-photo-empty/.test(store) && /store-product-photo-empty/.test(css) && /aspect-ratio: 4 \/ 3/.test(css));
+const cardSource = fs.readFileSync("src/components/store/StoreProductCard.tsx", "utf8");
+check("a product without a photo gets a placeholder so cards line up", /store-product-photo-empty/.test(cardSource) && /store-product-photo-empty/.test(css) && /aspect-ratio: 4 \/ 3/.test(css));
 check("phones get one column and tighter padding", /@media \(max-width: 560px\)/.test(css) && /grid-template-columns: 1fr/.test(css));
 check("the credit line is centered and quiet", /store-credit/.test(credit) && /\.store-theme \.store-credit/.test(css) && /Website by NXQX-Web/.test(credit));
 
