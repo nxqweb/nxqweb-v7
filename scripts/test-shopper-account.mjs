@@ -4,7 +4,7 @@ import fs from "node:fs";
 import {
   formatOrderTotal, friendlyShopperError, isShopperAccountPath, mergeCheckoutAutofill, normalizeProfileInput, orderStatusLabel,
   profileToCheckoutFields, shopperAccountPath, shopperLimits, storeSlugFromPath, validateCredentials,
-  forgotPasswordSentMessage, isRecoveryUrl, resetRedirectUrl, tooManyAttemptsMessage, validateEmailOnly, validateNewPassword,
+  forgotPasswordSentMessage, isRecoveryUrl, markRecoveryPending, isRecoveryPending, clearRecoveryPending, recoveryPendingKey, resetRedirectUrl, tooManyAttemptsMessage, validateEmailOnly, validateNewPassword,
 } from "../src/lib/shopperAccount.ts";
 
 let failures = 0;
@@ -29,6 +29,13 @@ check("forgot form needs a real-looking email", validateEmailOnly("jo@shop.com")
 check("new password must be long enough and typed twice the same", validateNewPassword("longenough1", "longenough1").ok && !validateNewPassword("short", "short").ok && !validateNewPassword("longenough1", "longenough2").ok);
 check("same-password and rate-limit errors get plain sentences", /not used before/.test(friendlyShopperError("New password should be different from the old password.")) && friendlyShopperError("email rate limit exceeded") === tooManyAttemptsMessage);
 check("the forgot-password confirmation never says whether the email has an account", /^If that email has an account/.test(forgotPasswordSentMessage) && !/not found|no account|does not exist/i.test(forgotPasswordSentMessage));
+
+// ---- a reset link that is opened and then abandoned must not leave the shopper signed in
+function memStore() { const d = {}; return { getItem: (k) => (k in d ? d[k] : null), setItem: (k, v) => { d[k] = String(v); }, removeItem: (k) => { delete d[k]; } }; }
+const rs = memStore();
+check("a pending recovery is remembered, read back and cleared", isRecoveryPending(rs) === false && (markRecoveryPending(rs), isRecoveryPending(rs) === true) && (clearRecoveryPending(rs), isRecoveryPending(rs) === false) && recoveryPendingKey.includes("recovery"));
+const brokenStore = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); } };
+check("blocked or missing browser storage never crashes the page", (markRecoveryPending(brokenStore), isRecoveryPending(brokenStore) === false) && (clearRecoveryPending(brokenStore), true) && isRecoveryPending(null) === false);
 
 // ---- autofill
 const saved = profileToCheckoutFields({ email: "a@b.co", full_name: "Jo", phone: "555", shipping_address: { address: "1 Main St", extra: "ignored" } });
@@ -101,6 +108,8 @@ check("page switches to a new-password form on recovery (URL on first render and
 check("a recovery visit does not show the signed-in account view before the password is changed", /recovering \? <section[\s\S]*Change password[\s\S]*: !signedInEmail && mode === "forgot"/.test(account) && account.includes("if (enabled && recovering)"));
 check("a dead reset link asks for a fresh one instead of a blank page", account.includes("This reset link is invalid or has expired. Request a new one."));
 check("sign-in screen offers 'Forgot your password?' only on sign-in", account.includes('mode === "signin" ? <button') && account.includes("Forgot your password?"));
+check("an abandoned reset link signs the shopper out on the next visit", /else if \(isRecoveryPending\(\)\) \{[\s\S]{0,260}await supabase\.auth\.signOut\(\);\s*clearRecoveryPending\(\);/.test(account) && /markRecoveryPending\(\);\s*if \(!user\)/.test(account) && /event === "PASSWORD_RECOVERY"\) \{ markRecoveryPending\(\)/.test(account));
+check("choosing a new password or cancelling clears the pending flag, and the form has a Cancel and sign out button", /clearRecoveryPending\(\);\s*setNewPassword\(""\); setConfirmPassword\(""\); setRecovering\(false\);\s*window\.history/.test(account) && /Cancel and sign out/.test(account) && /async function cancelRecovery\(\) \{[\s\S]{0,200}await supabase\.auth\.signOut\(\);\s*clearRecoveryPending\(\);/.test(account));
 check("the recovery listener is cleaned up on unmount", account.includes("subscription.unsubscribe()"));
 
 check("owner switch asks for confirmation and calls the owner function", live.includes("set_my_customer_accounts_enabled") && /toggleAccounts\(\)[\s\S]*window\.confirm/.test(live) && live.includes("No card details are stored"));

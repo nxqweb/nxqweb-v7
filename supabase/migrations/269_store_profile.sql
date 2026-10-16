@@ -11,7 +11,7 @@
 --
 -- Where it lives: commerce_storefronts.settings -> 'profile' (jsonb). The existing payment-settings function merges into settings with ||,
 -- so saving payment links keeps the profile; the draft test proves it.
--- Validation keeps junk and markup out: About max 600 chars; email must look like an email; phone digits and + ( ) - . only, max 40; the
+-- Validation keeps junk and markup out: About max 600 chars; email must be plain letters, digits and . _ + - (no ? & % = so it cannot carry extra mail fields into a mailto: link); phone digits and + ( ) - . only, max 40; the
 -- social link must be https:// with no spaces or angle brackets, max 300. The page renders everything as plain text.
 
 create or replace function public.get_my_store_profile()
@@ -66,7 +66,7 @@ begin
   if client_uuid is null then raise exception 'Client workspace not found.'; end if;
 
   if clean_about is not null and length(clean_about) > 600 then raise exception 'About text must be 600 characters or fewer.'; end if;
-  if clean_email is not null and (length(clean_email) > 254 or clean_email !~ '^[^@\s<>"]+@[^@\s<>"]+\.[^@\s<>"]+$') then raise exception 'Enter a valid contact email.'; end if;
+  if clean_email is not null and (length(clean_email) > 254 or clean_email !~ '^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') then raise exception 'Enter a valid contact email.'; end if;
   if clean_phone is not null and (length(clean_phone) > 40 or clean_phone !~ '^[0-9+()\-.\s]+$') then raise exception 'Enter a valid contact phone number.'; end if;
   if clean_social is not null and (length(clean_social) > 300 or clean_social !~* '^https://[^\s<>"]+$') then raise exception 'Enter a social link that starts with https://.'; end if;
 

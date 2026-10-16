@@ -91,6 +91,15 @@ export function isRecoveryUrl(hash: string, search = ""): boolean {
   return /(?:^|[#&?])type=recovery(?:&|$)/.test(hash) || /(?:^|[?&])type=recovery(?:&|$)/.test(search);
 }
 
+// A reset link signs the shopper in so they can choose a new password. If they leave without choosing one, that session must not stay
+// usable: the page remembers "a recovery is pending" (in the same browser storage as the session) and signs out on the next visit.
+export const recoveryPendingKey = "nxq-shopper-recovery-pending-v1";
+type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+function browserStorage(): StorageLike | null { try { return typeof window === "undefined" ? null : window.localStorage; } catch { return null; } }
+export function markRecoveryPending(storage: StorageLike | null = browserStorage()) { try { storage?.setItem(recoveryPendingKey, "1"); } catch { /* best effort */ } }
+export function isRecoveryPending(storage: StorageLike | null = browserStorage()): boolean { try { return storage?.getItem(recoveryPendingKey) === "1"; } catch { return false; } }
+export function clearRecoveryPending(storage: StorageLike | null = browserStorage()) { try { storage?.removeItem(recoveryPendingKey); } catch { /* best effort */ } }
+
 export function validateEmailOnly(email: string): SignUpCheck {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return { ok: false, error: "Enter a valid email address." };
   return { ok: true };

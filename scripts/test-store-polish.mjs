@@ -39,5 +39,10 @@ const readiness = fs.readFileSync("src/pages/ClientCommerceReadiness.tsx", "utf8
 check("making a $0 product visible asks first and names the problem", /const zeroPrice = makingLive && !\(Number\(product\.base_price\) > 0\);/.test(live) && /has a price of \$0, so customers would see it for free\. Make it visible anyway\?/.test(live) && /window\.confirm\(\s*zeroPrice/.test(live));
 check("the readiness page says it is optional preparation", /data-testid="readiness-optional-note"/.test(readiness) && /You can open your store and take orders without filling it in/.test(readiness));
 
+const tutorial = fs.readFileSync("src/pages/ClientCommerceTutorial.tsx", "utf8");
+const dashboardPage = fs.readFileSync("src/pages/ClientCommerceDashboard.tsx", "utf8");
+check("the header cart link only shows while browsing (after an order there is no cart to jump to)", /\{!order \? <a className="store-cart-link" href="#store-cart"/.test(store));
+check("the guide's step count in the intro text follows the real number of steps", /\{launchGuideSteps\.length\} short steps from an empty store/.test(tutorial) && /\{launchGuideSteps\.length\} short steps, from an empty store/.test(dashboardPage) && !/Six short steps/.test(tutorial + dashboardPage));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store-polish checks passed (offline).");
 process.exit(failures ? 1 : 0);

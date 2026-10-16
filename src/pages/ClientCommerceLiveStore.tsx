@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -39,6 +39,7 @@ export function ClientCommerceLiveStore() {
   const [accountsOn, setAccountsOn] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<StoreProfile>(emptyStoreProfile);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const profileFetched = useRef(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -79,8 +80,11 @@ export function ClientCommerceLiveStore() {
     setVerified(true);
     setLoading(false);
     // The About and contact form is optional: if it cannot load, the rest of the page still works.
-    const profileResult = await supabase.rpc("get_my_store_profile");
-    if (!profileResult.error && profileResult.data) { setProfile(profileFromRow(profileResult.data)); setProfileLoaded(true); } else { setProfileLoaded(false); }
+    // Fetched once: later reloads (after saving or making a product visible) must never replace text the owner is typing.
+    if (!profileFetched.current) {
+      const profileResult = await supabase.rpc("get_my_store_profile");
+      if (!profileResult.error && profileResult.data) { setProfile(profileFromRow(profileResult.data)); setProfileLoaded(true); profileFetched.current = true; } else { setProfileLoaded(false); }
+    }
     const accounts = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: next.store_slug });
     setAccountsOn(accounts.error ? null : Boolean((accounts.data as { accounts_enabled?: boolean } | null)?.accounts_enabled));
   }

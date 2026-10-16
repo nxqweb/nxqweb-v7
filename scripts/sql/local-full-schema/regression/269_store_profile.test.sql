@@ -93,6 +93,8 @@ begin
   if not pg_temp.fails(format($q$select public.save_my_store_profile(%L)$q$, repeat('a', 601)), '600') then raise exception 'overlong about must be refused'; end if;
   if not pg_temp.fails($q$select public.save_my_store_profile(null, 'not-an-email')$q$, 'valid contact email') then raise exception 'bad email must be refused'; end if;
   if not pg_temp.fails($q$select public.save_my_store_profile(null, 'a<b>@example.com')$q$, 'valid contact email') then raise exception 'markup in email must be refused'; end if;
+  if not pg_temp.fails($q$select public.save_my_store_profile(null, 'a@b.co?bcc=x@evil.com')$q$, 'valid contact email') then raise exception 'extra mail fields (?bcc=) in an email must be refused'; end if;
+  if not pg_temp.fails($q$select public.save_my_store_profile(null, 'a@b.co&body=hi')$q$, 'valid contact email') then raise exception 'extra mail fields (&body=) in an email must be refused'; end if;
   if not pg_temp.fails($q$select public.save_my_store_profile(null, null, 'call me maybe')$q$, 'valid contact phone') then raise exception 'letters in phone must be refused'; end if;
   if not pg_temp.fails($q$select public.save_my_store_profile(null, null, null, 'http://insecure.example.com')$q$, 'https://') then raise exception 'non-https social link must be refused'; end if;
   if not pg_temp.fails($q$select public.save_my_store_profile(null, null, null, 'https://x.example.com/"><script>')$q$, 'https://') then raise exception 'markup in social link must be refused'; end if;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { OptionalSection } from "../components/OptionalSection";
 import { ArrowLeft, CheckCircle2, MonitorPlay, Save, ShoppingBag } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -144,10 +145,7 @@ export function ClientCommerceSetup() {
     if (result.error) {
       setError("Commerce setup could not be verified right now. Unverified setup fields are not shown.");
     } else {
-      const loaded = { ...initialIntake, ...((result.data || {}) as Partial<CommerceIntake>) };
-      // A new client has not chosen yet. "Let NXQX recommend" is the safest option, so it is the starting point and can be changed.
-      if (loaded.website_transition_mode === "not_selected") loaded.website_transition_mode = "nxq_review";
-      setIntake(loaded);
+      setIntake({ ...initialIntake, ...((result.data || {}) as Partial<CommerceIntake>) });
       setVerified(true);
     }
 
@@ -175,16 +173,17 @@ export function ClientCommerceSetup() {
       return;
     }
 
-    if (submitForReview && intake.website_transition_mode === "not_selected") {
-      setError("Choose how NXQX should handle the current website before submitting.");
-      return;
-    }
-
     setSaving(true);
     setMessage("");
     setError("");
 
     const payload = { ...intake };
+    // Saving a draft keeps "not chosen yet". Only when the client sends this for review and skipped the choice do we use the safest option
+    // ("let NXQX recommend the path"), so a skipped optional box never blocks sending and nothing is recorded as chosen for a draft.
+    if (submitForReview && payload.website_transition_mode === "not_selected") {
+      payload.website_transition_mode = "nxq_review";
+      setIntake((current) => ({ ...current, website_transition_mode: "nxq_review" }));
+    }
     delete payload.id;
     delete payload.status;
 
@@ -251,13 +250,12 @@ export function ClientCommerceSetup() {
             <section className="panel panel-wide">
               <div className="panel-title"><MonitorPlay size={20} /><div><h2>Existing website and migration</h2><p className="subtle">NXQX detected what it could from the account. Choose the safest transition path.</p></div></div>
               {intake.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {(intake.detected_site_source || "account data").replaceAll("_", " ")}.</p></div> : <div className="notice-card">No reliable website was detected from the client profile, domain records, or monitoring data.</div>}
-              <label className="auth-label"><span>How should NXQX handle the website? <em className="required-mark">(only needed if you send this for review)</em></span><select className="auth-input" value={intake.website_transition_mode} disabled={isLocked} onChange={(event) => updateField("website_transition_mode", event.target.value)}><option value="not_selected">Choose a transition path</option>{transitionOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label className="auth-label"><span>How should NXQX handle the website? <em className="optional-tag">(optional: if you skip it, we pick the safest path)</em></span><select className="auth-input" value={intake.website_transition_mode} disabled={isLocked} onChange={(event) => updateField("website_transition_mode", event.target.value)}><option value="not_selected">Choose a transition path</option>{transitionOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label className="auth-label"><span>Current store URL</span><input className="auth-input" value={intake.current_store_url} disabled={isLocked} onChange={(event) => updateField("current_store_url", event.target.value)} placeholder="Only needed when NXQX could not detect it" /></label>
               <label className="auth-label"><span>Where is your product data now?</span><textarea className="auth-input" rows={3} value={intake.product_data_source} disabled={isLocked} onChange={(event) => updateField("product_data_source", event.target.value)} placeholder="Spreadsheet, Shopify, Square, handwritten list, etc." /></label>
             </section>
 
-            <details className="panel panel-wide optional-section" open={designHasContent}>
-              <summary className="optional-summary"><MonitorPlay size={20} /><span><strong>Storefront design and motion</strong> <em className="optional-tag">optional</em><small>Choose the default visual system. NXQX can refine it during review. Skip this if you are unsure.</small></span></summary>
+            <OptionalSection className="panel panel-wide" defaultOpen={designHasContent} title="Storefront design and motion" hint="Choose the default visual system. NXQX can refine it during review. Skip this if you are unsure." icon={<MonitorPlay size={20} />}>
               <div className="setup-form-grid">
                 <label><span>Layout style</span><select className="auth-input" value={intake.layout_style} disabled={isLocked} onChange={(event) => updateField("layout_style", event.target.value)}><option value="modern_grid">Modern product grid</option><option value="editorial">Editorial / story-led</option><option value="minimal">Minimal</option><option value="luxury">Luxury</option><option value="bold">Bold / high-energy</option><option value="custom">Custom direction</option></select></label>
                 <label><span>Scroll behavior</span><select className="auth-input" value={intake.scroll_behavior} disabled={isLocked} onChange={(event) => updateField("scroll_behavior", event.target.value)}><option value="standard">Standard scrolling</option><option value="smooth">Smooth scrolling</option><option value="section_snap">Section snap</option><option value="custom">Custom scrolling</option></select></label>
@@ -275,7 +273,7 @@ export function ClientCommerceSetup() {
               <label className="auth-label"><span>Storefront style direction</span><textarea className="auth-input" rows={3} value={intake.storefront_style} disabled={isLocked} onChange={(event) => updateField("storefront_style", event.target.value)} placeholder="Colors, fonts, spacing, mood, product-card style, homepage priorities, mobile direction." /></label>
               <label className="auth-label"><span>Animation and scrolling notes</span><textarea className="auth-input" rows={3} value={intake.animation_notes} disabled={isLocked} onChange={(event) => updateField("animation_notes", event.target.value)} placeholder="Example: Keep the hero pinned while featured products rise into view, then fade categories in softly." /></label>
               <label className="auth-label"><span>Inspiration URLs</span><textarea className="auth-input" rows={3} value={intake.inspiration_urls} disabled={isLocked} onChange={(event) => updateField("inspiration_urls", event.target.value)} placeholder="Add one website per line and say what you like or dislike about it." /></label>
-            </details>
+            </OptionalSection>
 
             <section className="panel panel-wide">
               <div className="panel-title"><ShoppingBag size={20} /><div><h2>Fulfillment and checkout <em className="optional-tag">optional</em></h2><p className="subtle">Define how customers receive orders and how checkout should behave.</p></div></div>
@@ -288,8 +286,7 @@ export function ClientCommerceSetup() {
               <label className="auth-label"><span>Preferred payment provider</span><input className="auth-input" value={intake.requested_payment_provider} disabled={isLocked} onChange={(event) => updateField("requested_payment_provider", event.target.value)} placeholder="Example: Stripe, Square, not sure" /></label>
             </section>
 
-            <details className="panel panel-wide optional-section" open={policiesHaveContent}>
-              <summary className="optional-summary"><ShoppingBag size={20} /><span><strong>Policies, content, and launch</strong> <em className="optional-tag">optional</em><small>Returns, refunds, pages, launch date and notes. You can add these any time.</small></span></summary>
+            <OptionalSection className="panel panel-wide" defaultOpen={policiesHaveContent} title="Policies, content, and launch" hint="Returns, refunds, pages, launch date and notes. You can add these any time." icon={<ShoppingBag size={20} />}>
               <label className="auth-label"><span>Returns policy</span><textarea className="auth-input" rows={3} value={intake.returns_policy} disabled={isLocked} onChange={(event) => updateField("returns_policy", event.target.value)} /></label>
               <label className="auth-label"><span>Refund policy</span><textarea className="auth-input" rows={3} value={intake.refund_policy} disabled={isLocked} onChange={(event) => updateField("refund_policy", event.target.value)} /></label>
               <label className="auth-label"><span>Required integrations</span><textarea className="auth-input" rows={3} value={intake.integrations} disabled={isLocked} onChange={(event) => updateField("integrations", event.target.value)} /></label>
@@ -298,7 +295,7 @@ export function ClientCommerceSetup() {
               <label className="auth-label"><span>Special features</span><textarea className="auth-input" rows={3} value={intake.special_features} disabled={isLocked} onChange={(event) => updateField("special_features", event.target.value)} /></label>
               <label className="auth-label"><span>Launch priority or target date</span><input className="auth-input" value={intake.launch_priority} disabled={isLocked} onChange={(event) => updateField("launch_priority", event.target.value)} /></label>
               <label className="auth-label"><span>Anything else NXQX should know?</span><textarea className="auth-input" rows={4} value={intake.additional_notes} disabled={isLocked} onChange={(event) => updateField("additional_notes", event.target.value)} /></label>
-            </details>
+            </OptionalSection>
 
             <section className="panel panel-wide">
               <div className="panel-title"><CheckCircle2 size={20} /><div><h2>Save or submit</h2><p className="subtle">Press Save draft to keep what you have. Sending to NXQX for review is optional and is not needed to open your store.</p></div></div>

@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { StoreCredit } from "../components/StoreCredit";
 import { deleteShopperProfile, fetchShopperOrders, fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
 import {
-  forgotPasswordSentMessage, formatOrderTotal, friendlyShopperError, isRecoveryUrl, normalizeProfileInput, orderStatusLabel, profileToCheckoutFields,
+  clearRecoveryPending, forgotPasswordSentMessage, formatOrderTotal, isRecoveryPending, markRecoveryPending, friendlyShopperError, isRecoveryUrl, normalizeProfileInput, orderStatusLabel, profileToCheckoutFields,
   resetRedirectUrl, shopperLimits, storeSlugFromPath, tooManyAttemptsMessage, validateCredentials, validateEmailOnly, validateNewPassword, type ShopperOrderRow, type ShopperProfileRow,
 } from "../lib/shopperAccount";
 
@@ -63,12 +63,17 @@ export function PublicShopperAccount() {
       const user = session.data.session?.user;
       if (enabled && recovering) {
         // Opened from a reset email: show the new-password form, or ask for a fresh link if the session did not form.
-        if (!user) { setRecovering(false); setMode("forgot"); setError("This reset link is invalid or has expired. Request a new one."); }
+        markRecoveryPending();
+        if (!user) { clearRecoveryPending(); setRecovering(false); setMode("forgot"); setError("This reset link is invalid or has expired. Request a new one."); }
+      } else if (isRecoveryPending()) {
+        // The shopper opened a reset link earlier and left without choosing a password: end that sign-in instead of treating it as a normal one.
+        await supabase.auth.signOut();
+        clearRecoveryPending();
       } else if (enabled && user?.email) { setSignedInEmail(user.email); await loadAccount(); }
     }
     void start();
     const listener = supabase?.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") { setRecovering(true); setSignedInEmail(""); setAccountLoaded(false); }
+      if (event === "PASSWORD_RECOVERY") { markRecoveryPending(); setRecovering(true); setSignedInEmail(""); setAccountLoaded(false); }
     });
     return () => { cancelled = true; listener?.data.subscription.unsubscribe(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- slug is fixed for this mounted route
@@ -126,11 +131,20 @@ export function PublicShopperAccount() {
     const result = await supabase.auth.updateUser({ password: newPassword });
     if (result.error) { setError(friendlyShopperError(result.error.message)); setBusy(""); return; }
     const userResult = await supabase.auth.getUser();
+    clearRecoveryPending();
     setNewPassword(""); setConfirmPassword(""); setRecovering(false);
     window.history.replaceState(null, "", window.location.pathname);
     if (userResult.data.user?.email) { setSignedInEmail(userResult.data.user.email); await loadAccount(); }
     setMessage("Your password was changed. You are signed in.");
     setBusy("");
+  }
+
+  async function cancelRecovery() {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    clearRecoveryPending();
+    setNewPassword(""); setConfirmPassword(""); setRecovering(false); setSignedInEmail(""); setAccountLoaded(false); setMode("signin");
+    window.history.replaceState(null, "", window.location.pathname);
   }
 
   async function saveDetails(event: FormEvent) {
@@ -191,6 +205,7 @@ export function PublicShopperAccount() {
           </div>
           <button className="wide-btn" type="submit" disabled={busy === "auth"}>{busy === "auth" ? "One moment..." : "Change password"}</button>
         </form>
+        <button className="icon-btn" type="button" onClick={() => void cancelRecovery()}>Cancel and sign out</button>
       </section> : !signedInEmail && mode === "forgot" ? <section className="panel panel-wide">
         <form onSubmit={(event) => void submitForgot(event)}>
           <div className="setup-form-grid">

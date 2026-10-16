@@ -39,11 +39,13 @@ export function PublicCommerceStorefront() {
 
   async function load() {
     if (!isSupabaseConfigured || !supabase) { setError("Storefront is unavailable."); setLoading(false); return; }
+    // The About block and the sign-in option do not depend on the store response, so they load alongside it (no late layout jump).
+    void loadAccountHelp();
+    void loadProfile();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);
-    if (!result.error && result.data) { void loadAccountHelp(); void loadProfile(); }
   }
 
   async function copyOrderNumber() {
@@ -146,7 +148,7 @@ export function PublicCommerceStorefront() {
 
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
-      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a></div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} {!order ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">

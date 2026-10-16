@@ -34,7 +34,7 @@ export function ClientCommerceTutorial() {
             <CircleHelp size={24} />
             <div>
               <h1>Launch your store, step by step</h1>
-              <p className="subtle">Six short steps from an empty store to your first order. Replay it any time.</p>
+              <p className="subtle">{launchGuideSteps.length} short steps from an empty store to your first order. Replay it any time.</p>
             </div>
           </div>
           <a className="icon-btn" href="/client/commerce"><ArrowLeft size={16} /> Back to Commerce</a>

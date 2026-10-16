@@ -12,6 +12,7 @@ import {
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { signupPrefillForSetup } from "../lib/signupPrefill";
+import { OptionalSection } from "../components/OptionalSection";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import type { ClientLaunchJourney } from "../lib/clientJourney";
 
@@ -1187,8 +1188,7 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
               <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
 
-              <details className="optional-section" open={leadAndAssistantHaveContent}>
-                <summary className="optional-summary"><span><strong>Lead handling and website assistant rules</strong> <em className="optional-tag">optional</em><small>How to treat urgent leads and what the website assistant may say. You can add these later.</small></span></summary>
+              <OptionalSection defaultOpen={leadAndAssistantHaveContent} title="Lead handling and website assistant rules" hint="How to treat urgent leads and what the website assistant may say. You can add these later.">
               <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
               <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
               <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
@@ -1200,7 +1200,7 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="ai-never-promise">What should it never promise?</label><textarea id="ai-never-promise" onChange={(event) => setAiNeverPromise(event.target.value)} placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review." value={aiNeverPromise} />
               <label className="auth-label" htmlFor="escalation-rules">When should it escalate to support or the owner?</label><textarea id="escalation-rules" onChange={(event) => setEscalationRules(event.target.value)} placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services." value={escalationRules} />
 
-              </details>
+              </OptionalSection>
 
               <div className="agreement-box">
                 <label><input checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} type="checkbox" /><span><em className="required-mark">(required)</em> I acknowledge and agree that my website team will use the information I submit to prepare a brand-new website project. I understand that agreement acceptance and billing activation are required before final website access/live service.</span></label>

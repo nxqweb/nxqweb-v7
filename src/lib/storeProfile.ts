@@ -8,7 +8,8 @@ export const emptyStoreProfile: StoreProfile = { about: "", contactEmail: "", co
 export type StoreProfileArgs = { about_value: string; contact_email_value: string; contact_phone_value: string; social_url_value: string };
 export type StoreProfileCheck = { ok: true; args: StoreProfileArgs } | { ok: false; error: string };
 
-const emailPattern = /^[^@\s<>"]+@[^@\s<>"]+\.[^@\s<>"]+$/;
+// Letters, digits and . _ + - only: no ? & % = or quotes, so an email can never carry extra mail fields (bcc, body) into a mailto: link.
+const emailPattern = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const phonePattern = /^[0-9+()\-.\s]+$/;
 const httpsPattern = /^https:\/\/[^\s<>"]+$/i;
 
