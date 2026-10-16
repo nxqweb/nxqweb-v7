@@ -181,6 +181,12 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Store tests now run in GitHub CI (2026-10-16; owner said "I approve" to the workflow edit)
+
+- `.github/workflows/ci.yml` (NXQ Safe CI) got one new step, "Commerce and store tests" (`node scripts/run-store-tests.mjs`, 20 test files), following the file's existing pattern: `continue-on-error` with an id, and `store_tests` added to the final "Fail if validation failed" gate and its message. Nothing else in the workflow changed. `npm run test:ci-parity` now counts 65 commands and passes.
+- Still not done (owner has not asked): a line in `CLAUDE.md` telling future sessions this is now in CI.
+- First GitHub run of the new step is the real confirmation; see the next handoff entry.
+
 ## Mega Extended CI failure found and fixed (2026-10-16; local, pushed; no deploy needed)
 
 - Reproduced locally with `npm run test:edge` (the failing CI step "Edge function type checks"): `supabase/functions/dispatch-notifications/index.ts` typed its helper's Supabase client as plain `ReturnType<typeof createClient>`, which Deno's type checker rejects (TS2345 twice). Fix: use the repo's existing pattern `ReturnType<typeof createClient<DynamicDatabase>>` (type only, same as `run-website-maintenance`). No runtime change, so NO Edge function deploy is needed for this.

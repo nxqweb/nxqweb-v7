@@ -1,6 +1,6 @@
 // Runs every offline Commerce, store and onboarding test in one go and prints a clear summary. These tests are registered as npm scripts and in
-// the release gate, but the release gate stops earlier (at its expected protected-staging-configuration stop), and GitHub CI only runs commands
-// listed in the workflow files, so run this before every push: `npm run test:store`. Read-only: it edits nothing.
+// the release gate, and since 2026-10-16 GitHub CI (NXQ Safe CI, step "Commerce and store tests") runs this file on every push to safe/** branches.
+// Run it before every push too: `npm run test:store`. Read-only: it edits nothing.
 import { spawnSync } from "node:child_process";
 
 const tests = [
