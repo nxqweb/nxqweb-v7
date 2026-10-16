@@ -19,6 +19,8 @@ export const commerceReasonMessages: Record<string, string> = {
   "Enter a valid contact phone number.": "Enter a valid contact phone number.",
   "Enter a social link that starts with https://.": "Enter a social link that starts with https://.",
   "Create your storefront first.": "Create your storefront first.",
+  "Add a contact email before taking orders by email.": "Add a contact email before taking orders by email. Type it in About and contact, save it, then try again.",
+  "Choose online payment or orders by email.": "Choose online payment or orders by email.",
 };
 
 export function commerceRpcReason(error: { message?: string | null } | null | undefined): string | null {

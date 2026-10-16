@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
 import { fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
+import { buildEmailOrder, emailOrderHref, onlineMode, orderModeFromRow, type OrderMode } from "../lib/emailOrder";
 import { StoreCredit } from "../components/StoreCredit";
 import { StoreProductCard } from "../components/store/StoreProductCard";
 import { StoreProductDialog } from "../components/store/StoreProductDialog";
@@ -35,6 +36,10 @@ export function PublicCommerceStorefront() {
   const [error, setError] = useState("");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
+  // "Order by email" stores (draft migration 05): the checkout builds an email to the shop instead of creating an online order.
+  const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
+  const [emailOrder, setEmailOrder] = useState<{ href: string; text: string } | null>(null);
+  const [emailCopied, setEmailCopied] = useState(false);
   const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
   const [toast, setToast] = useState("");
   const toastTimer = useRef<number | undefined>(undefined);
@@ -56,6 +61,7 @@ export function PublicCommerceStorefront() {
     // The About block and the sign-in option do not depend on the store response, so they load alongside it (no late layout jump).
     void loadAccountHelp();
     void loadProfile();
+    void loadOrderMode();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
@@ -66,6 +72,45 @@ export function PublicCommerceStorefront() {
     if (!order) return;
     try { await navigator.clipboard.writeText(order.order_number); setOrderCopied(true); window.setTimeout(() => setOrderCopied(false), 2500); }
     catch { setError("Could not copy automatically. Please write down your order number."); }
+  }
+
+  // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
+  async function loadOrderMode() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
+      if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
+    } catch { /* online ordering */ }
+  }
+
+  function sendEmailOrder() {
+    if (cart.length === 0) return;
+    const problems = validateCheckout(form, needsShipping);
+    setFieldErrors(problems);
+    if (Object.keys(problems).length > 0) {
+      setError("Please check the details marked below.");
+      const first = (["name", "email", "address"] as const).find((key) => problems[key]);
+      if (first) window.setTimeout(() => document.getElementById(`field-${first}`)?.focus(), 0);
+      return;
+    }
+    setError("");
+    const built = buildEmailOrder({ storeName: data?.store.name || "the shop", lines: cart, currency: data?.store.currency || "USD", customer: form, note, needsShipping });
+    const href = emailOrderHref(orderMode.email, built.subject, built.body);
+    if (!href) { setError("This store cannot take email orders right now. Please contact the shop."); return; }
+    setEmailOrder({ href, text: `To: ${orderMode.email}\nSubject: ${built.subject}\n\n${built.body}` });
+    window.setTimeout(() => document.getElementById("email-order-panel")?.scrollIntoView({ block: "center" }), 0);
+  }
+
+  async function copyEmailOrder() {
+    if (!emailOrder) return;
+    try { await navigator.clipboard.writeText(emailOrder.text); setEmailCopied(true); window.setTimeout(() => setEmailCopied(false), 2500); }
+    catch { setError("Could not copy automatically. Please select the text and copy it."); }
+  }
+
+  function finishEmailOrder() {
+    setCart([]);
+    setEmailOrder(null);
+    showToast("Thank you! The shop will reply by email.");
   }
 
   // Optional About and contact. Any failure (including the function not existing yet) just hides the block.
@@ -128,6 +173,9 @@ export function PublicCommerceStorefront() {
     if (!cartReady) return;
     try { if (cart.length === 0) window.localStorage.removeItem(cartStorageKey(slug)); else window.localStorage.setItem(cartStorageKey(slug), serializeCart(cart)); } catch { /* cosmetic */ }
   }, [cart, cartReady, slug]);
+
+  // An email order built from an older cart would be wrong, so any cart change removes it and the shopper presses the button again.
+  useEffect(() => { setEmailOrder(null); }, [cart]);
 
   // A product link (#product-name) opens that product, and the browser's back button closes it.
   useEffect(() => {
@@ -214,7 +262,7 @@ export function PublicCommerceStorefront() {
 
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
-      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
@@ -243,6 +291,20 @@ export function PublicCommerceStorefront() {
         })()}
         <p className="subtle">The business will confirm the payment after it arrives in their account.</p>
       </section> : <>
+        {emailOrder ? <section className="panel panel-wide" id="email-order-panel" data-testid="email-order-panel">
+          <h2>Almost done: send your order email</h2>
+          <ol className="store-next-steps">
+            <li>Press <strong>Open my email app</strong>. Your email opens with the order already written. Press send.</li>
+            <li>If nothing opens, press <strong>Copy order text</strong> and paste it into an email to <strong>{orderMode.email}</strong>.</li>
+            <li>The shop replies with how to pay and when to expect your order.</li>
+          </ol>
+          <div className="settings-grid">
+            <a className="wide-btn" href={emailOrder.href} data-testid="email-order-link">Open my email app</a>
+            <button className="icon-btn" type="button" onClick={() => void copyEmailOrder()}>{emailCopied ? "Order text copied" : "Copy order text"}</button>
+            <button className="icon-btn" type="button" onClick={finishEmailOrder}>I sent it, clear my cart</button>
+          </div>
+          <p className="subtle">Nothing is charged and no stock is held until the shop confirms your order by email.</p>
+        </section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
           <p className="store-hero-text">{tagline}</p>
           <a className="wide-btn store-hero-cta" href="#products">Shop now</a>
@@ -254,7 +316,7 @@ export function PublicCommerceStorefront() {
         </section>
 
         <section className="panel panel-wide" id="store-cart" style={{ marginTop: "1rem" }}>
-          <div className="panel-title"><ShoppingCart size={20} /><div><h2>Your cart</h2><p className="subtle">Prices are verified by the store before the order is created.</p></div></div>
+          <div className="panel-title"><ShoppingCart size={20} /><div><h2>Your cart</h2><p className="subtle">{orderMode.mode === "email" ? "The shop confirms prices and availability when it replies." : "Prices are verified by the store before the order is created."}</p></div></div>
           {cart.length === 0 ? <div className="empty-state">Your cart is empty.</div> : cart.map((item) => {
             const max = variantStock(item.variant).max;
             return <article className="settings-card store-cart-line" key={item.variant.id}>
@@ -271,7 +333,7 @@ export function PublicCommerceStorefront() {
           <h3>Total: {formatMoney(total, currency)}</h3>
         </section>
 
-        {cart.length > 0 ? <form className="panel panel-wide" noValidate onSubmit={(event) => { event.preventDefault(); void placeOrder(); }}>
+        {cart.length > 0 ? <form className="panel panel-wide" noValidate onSubmit={(event) => { event.preventDefault(); if (orderMode.mode === "email") sendEmailOrder(); else void placeOrder(); }}>
           <h2>Customer details</h2>
           <div className="setup-form-grid">
             <label><span>Name <em className="required-mark">(required)</em></span><input className="auth-input" id="field-name" autoComplete="name" value={form.name} aria-invalid={fieldErrors.name ? true : undefined} aria-describedby={fieldErrors.name ? "err-name" : undefined} onChange={(e) => setField("name", e.target.value)} />{fieldErrors.name ? <small className="store-field-error" id="err-name">{fieldErrors.name}</small> : null}</label>
@@ -281,7 +343,7 @@ export function PublicCommerceStorefront() {
           </div>
           <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
           {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
-          <button className="wide-btn" disabled={busy} type="submit">{busy ? "Creating order..." : "Place order and continue to payment"}</button>
+          <button className="wide-btn" disabled={busy} type="submit">{orderMode.mode === "email" ? "Email my order" : busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </form> : null}
       </>}
       {!order && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}

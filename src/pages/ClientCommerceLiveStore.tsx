@@ -40,6 +40,10 @@ export function ClientCommerceLiveStore() {
   const [profile, setProfile] = useState<StoreProfile>(emptyStoreProfile);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const profileFetched = useRef(false);
+  // How customers order: null means this database does not have the feature yet (the choice is simply not shown).
+  const [orderMode, setOrderMode] = useState<"online" | "email" | null>(null);
+  const [orderChoice, setOrderChoice] = useState<"online" | "email">("online");
+  const modeFetched = useRef(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -85,6 +89,13 @@ export function ClientCommerceLiveStore() {
       const profileResult = await supabase.rpc("get_my_store_profile");
       if (!profileResult.error && profileResult.data) { setProfile(profileFromRow(profileResult.data)); setProfileLoaded(true); profileFetched.current = true; } else { setProfileLoaded(false); }
     }
+    if (!modeFetched.current) {
+      const modeResult = await supabase.rpc("get_my_store_order_mode");
+      if (!modeResult.error && modeResult.data) {
+        const mode = (modeResult.data as { order_mode?: string }).order_mode === "email" ? "email" : "online";
+        setOrderMode(mode); setOrderChoice(mode); modeFetched.current = true;
+      }
+    }
     const accounts = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: next.store_slug });
     setAccountsOn(accounts.error ? null : Boolean((accounts.data as { accounts_enabled?: boolean } | null)?.accounts_enabled));
   }
@@ -99,6 +110,27 @@ export function ClientCommerceLiveStore() {
     const result = await supabase.rpc("save_my_store_profile", check.args);
     if (result.error) setError(withCommerceReason("Your About and contact details could not be saved. Nothing was changed.", result.error));
     else { setProfile(profileFromRow(result.data)); setMessage(data?.status === "active" ? "Saved. It now shows at the bottom of your store." : "Saved. It will show at the bottom of your store once the store is open."); }
+    setBusy("");
+  }
+
+  async function saveOrderMode(makeLive: boolean) {
+    if (!supabase || !verified || orderMode === null) return;
+    if (orderChoice === "email" && !profile.contactEmail.trim()) {
+      setMessage("");
+      setError("Type your contact email in the About and contact box below and press Save About and contact first. Orders will be sent to that email.");
+      return;
+    }
+    if (makeLive && !window.confirm("Open this store now? Customers will be able to see it and send you orders by email. Nothing is charged online.")) return;
+    setBusy("mode");
+    setError("");
+    setMessage("");
+    const result = await supabase.rpc("save_my_store_order_mode", { order_mode_value: orderChoice, make_live: makeLive });
+    if (result.error) setError(withCommerceReason("We could not save how customers order. Nothing was changed.", result.error));
+    else {
+      setOrderMode(orderChoice);
+      setMessage(orderChoice === "email" ? (makeLive ? "Your store is open. Customers send you their orders by email." : "Saved. Customers will send you their orders by email once your store is open.") : "Saved. Customers will pay online with your payment link.");
+      await load();
+    }
     setBusy("");
   }
 
@@ -149,6 +181,12 @@ export function ClientCommerceLiveStore() {
       payment_note_value: paymentNote || null,
       make_live: makeLive,
     });
+
+    // In email mode saving the name must not close an open store (the save above puts a store without a payment link back to private).
+    if (!result.error && orderMode === "email" && data.status === "active" && !makeLive) {
+      const reopen = await supabase.rpc("save_my_store_order_mode", { order_mode_value: "email", make_live: true });
+      if (reopen.error) { setError("Saved, but your store went back to private. Press Open my store in How do customers order?"); setBusy(""); await load(); return; }
+    }
 
     if (result.error) {
       setError(
@@ -231,21 +269,37 @@ export function ClientCommerceLiveStore() {
       {!loading && !verified ? <div className="empty-state">Storefront settings could not be verified, so publishing controls are unavailable.</div> : null}
 
       {!loading && verified && data ? <>
+        {orderMode !== null ? <section className="panel panel-wide" data-testid="order-mode-panel">
+          <div className="panel-title"><Store size={20} /><div><h2>How do customers order?</h2><p className="subtle">Pick one. You can change it any time.</p></div></div>
+          <div role="radiogroup" aria-label="How customers order" className="order-mode-choices">
+            <label className="settings-card order-mode-option"><input type="radio" name="order-mode" checked={orderChoice === "online"} onChange={() => setOrderChoice("online")} /><span><strong>Online, with a payment link</strong><small>Customers place the order on your store, then pay with your Venmo, PayPal or Stripe link.</small></span></label>
+            <label className="settings-card order-mode-option"><input type="radio" name="order-mode" checked={orderChoice === "email"} onChange={() => setOrderChoice("email")} /><span><strong>By email</strong><small>Customers fill in their cart and press Email my order. You get an email with everything and reply with how to pay. No payment link needed.</small></span></label>
+          </div>
+          {orderChoice === "email" ? <p className="subtle">Orders are sent to your contact email{profile.contactEmail.trim() ? <>: <strong>{profile.contactEmail.trim()}</strong></> : " (type it in About and contact below first)"}. Nothing is reserved in your stock until you confirm an order.</p> : null}
+          <div className="settings-grid">
+            <button className="wide-btn" disabled={busy === "mode"} onClick={() => void saveOrderMode(false)} type="button">{busy === "mode" ? "Saving..." : "Save ordering choice"}</button>
+            {orderChoice === "email" ? <button className="wide-btn" disabled={busy === "mode"} onClick={() => void saveOrderMode(true)} type="button">{busy === "mode" ? "Saving..." : "Open my store"}</button> : null}
+          </div>
+        </section> : null}
+
         <section className="panel panel-wide">
           <div className="panel-title"><Save size={20} /><div><h2>Store and payment handoff</h2><p className="subtle">A public payment link can be recorded here later, but this page does not create a payment account, store secrets, charge customers, or connect payouts.</p></div></div>
-          <p className="subtle" data-testid="payment-link-hint">You only need one payment link: Stripe, PayPal or Venmo. Fill in just the one you use and leave the others empty. PayPal and Venmo links carry the exact order total.</p>
+          {orderMode === "email" ? <p className="subtle">Your store takes orders by email, so no payment link is needed. Just set the store name.</p> : null}
+          {orderMode === "email" ? null : <p className="subtle" data-testid="payment-link-hint">You only need one payment link: Stripe, PayPal or Venmo. Fill in just the one you use and leave the others empty. PayPal and Venmo links carry the exact order total.</p>}
           <div className="setup-form-grid">
             <label><span>Store name</span><input className="auth-input" value={storeName} onChange={(e) => setStoreName(e.target.value)} /></label>
+            {orderMode === "email" ? null : <>
             <label><span>Stripe Payment Link</span><input className="auth-input" placeholder="https://buy.stripe.com/... public link only" value={stripePaymentLink} onChange={(e) => setStripePaymentLink(e.target.value)} /></label>
             <label><span>PayPal link (optional)</span><input className="auth-input" placeholder="https://paypal.me/yourname" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
             <label><span>Venmo link (optional)</span><input className="auth-input" placeholder="https://venmo.com/u/yourname" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
             <label><span>Payment instructions</span><input className="auth-input" placeholder="Public customer-facing instructions only" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} /></label>
+            </>}
           </div>
           <div className="settings-grid">
             <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(false)} type="button">{busy === "settings" ? "Saving..." : "Save private draft"}</button>
-            <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>
+            {orderMode === "email" ? null : <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>}
           </div>
-          <p className="subtle" style={{ marginTop: ".75rem" }}>How amounts work: a Stripe Payment Link has its price set inside Stripe, and a store link cannot change it. If your orders can have different totals, create the link in Stripe with the option that lets customers choose what to pay (if your Stripe account offers it); customers are told the exact amount to enter. PayPal.me and Venmo links get each order's exact total added automatically. Every order number appears in your Orders page so you can match payments.</p>
+          {orderMode === "email" ? null : <p className="subtle" style={{ marginTop: ".75rem" }}>How amounts work: a Stripe Payment Link has its price set inside Stripe, and a store link cannot change it. If your orders can have different totals, create the link in Stripe with the option that lets customers choose what to pay (if your Stripe account offers it); customers are told the exact amount to enter. PayPal.me and Venmo links get each order's exact total added automatically. Every order number appears in your Orders page so you can match payments.</p>}
           <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a Stripe secret key, webhook secret, password, bank account, login code, or other protected credential here. Only a public Stripe Payment Link (https://buy.stripe.com/...) belongs in this field.</p>
           {data.status === "active" ? <a className="wide-btn" href={liveUrl} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open verified storefront</a> : null}
           {data.status === "active" ? <div data-testid="store-link-box">
