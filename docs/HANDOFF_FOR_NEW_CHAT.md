@@ -12,6 +12,9 @@ Owner style: gen-z, nice, honest, smart, helpful; concise; no long outros; real 
 ## What this project is (one paragraph)
 NXQX-Web: a Vite+React+TS app on Netlify (`nxqweb-v9-staging`) with a Supabase staging project (`nxqweb-staging`) and GitHub Actions for guarded staging changes. Clients sign up, get a website built (Business plans) or an online store (Commerce plans). The owner has NO payment card, so anything needing one is blocked (verified email domain, paid plans, AI key, Stripe billing).
 
+## Update 2026-10-16 (read this first)
+The candle client signed up and is onboarded on STAGING (billing active, plan NXQX-Commerce Intelligence at $0 / complimentary, live store opened, no products yet, he adds products and photos from Oct 17). All details, the friction list with what is fixed vs open, the failing `NXQ Mega Extended CI` finding, and the exact Oct 22+ sequence are in `docs/NXQ_RUNTIME_HANDOFF.md`, section "Candle client onboarded on staging + onboarding polish + Oct 22 sequence". Do NOT approve the pending "Commerce intake ready for review" item. Local code since this file was first written (all pushed, none deployed): plain Live-store errors, shopper forgot-password, Commerce setup form simplification, setup sheet prefill, launch guide Photos + add-more steps, light store theme. Open owner decisions: delete the product image box, invite-only Commerce signup (migration), per-store branding, investigate the failing Mega Extended CI.
+
 ## Where things stand (2026-10-15)
 **Migrations 248–268 are all applied to staging.** 268 (shopper accounts) was applied today: dry run #257 listed exactly 268, apply #258 log shows "Applying migration 268_shopper_accounts.sql... Finished supabase db push." Remaining drafts in `docs/drafts/migrations/` (the older `01_outreach_inbound_and_unsubscribe` and `02_owner_client_directory_v2` are also still unpromoted): `03_journey_nxqx_wording` (visible text NXQ→NXQX + new support address; tested, awaiting owner approval, would be the next number) and `04_store_order_number_prefix` (customer-facing order numbers use the store's own prefix instead of `NXQ-`; tested; **owner chose to HOLD it until the candle client is set up; do not promote or apply without a fresh explicit yes**).
 
@@ -48,7 +51,7 @@ Free plan, 300 credits/month; a production deploy costs 15; the cycle resets **O
 - Owner hardening: GitHub passkey done; secondary email, recovery codes, and checking team lists for the lost Proton address on GitHub/Netlify/Supabase/Resend are still open. Recovered, usable: NXQweb@protonmail.com (owner login, support address), Nxqwebtester@protonmail.com.
 
 ## Next 3 highest-priority safe tasks
-1. **When the candle friend signs up:** run the five-step onboarding above, one click at a time; write friction found into the handoff.
+1. **Candle client (already onboarded, see Update 2026-10-16):** help with his first products and photos, the practice order after the deploy, and keep friction notes in the handoff.
 2. **On Oct 22 or later (after the owner reads fresh credits):** the deploy sequence above, then a real shopper sign-up/sign-in test in a private window and set the Supabase redirect URL (owner's decision).
 3. **Safe local work while waiting:** (done: shopper forgot-password flow, real reason on Live-store errors) (done: image-box root cause found and fixed in code); (only with a fresh yes) promote/apply `03_journey_nxqx_wording`.
 

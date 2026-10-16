@@ -157,11 +157,11 @@ export function PublicShopperAccount() {
 
   const backLink = <a className="icon-btn" href={storePath}><ArrowLeft size={16} /> Back to {storeName}</a>;
 
-  if (accountsEnabled === null) return <main className="nxq-page"><div className="empty-state">Loading...</div></main>;
+  if (accountsEnabled === null) return <main className="nxq-page store-theme"><div className="empty-state">Loading...</div></main>;
 
   if (!accountsEnabled) {
     return (
-      <main className="nxq-page"><section className="portal-shell">
+      <main className="nxq-page store-theme"><section className="portal-shell">
         <div className="panel-title panel-title-row"><div className="panel-title"><UserRound size={24} /><div><h1>Accounts</h1><p className="subtle">{storeName} does not offer customer accounts right now.</p></div></div>{backLink}</div>
         <section className="panel panel-wide"><p>You can still shop and check out as a guest.</p></section>
         <StoreCredit />
@@ -170,7 +170,7 @@ export function PublicShopperAccount() {
   }
 
   return (
-    <main className="nxq-page"><section className="portal-shell">
+    <main className="nxq-page store-theme"><section className="portal-shell">
       <div className="panel-title panel-title-row"><div className="panel-title"><UserRound size={24} /><div><h1>{recovering ? "Choose a new password" : signedInEmail ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset your password" : "Sign in"}</h1><p className="subtle">{storeName} · saved details and order history</p></div></div>{backLink}</div>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {message ? <div className="auth-success" role="status">{message}</div> : null}

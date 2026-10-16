@@ -10,6 +10,7 @@ import "./styles/deployments.css";
 import "./styles/plan-forms.css";
 import "./styles/nxqx-neural-glass.css";
 import "./styles/premium-v2.css";
+import "./styles/storefront-theme.css";
 import { PremiumBackdrop } from "./components/PremiumBackdrop";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
 import { ClientPortalTutorialOverlay } from "./components/ClientPortalTutorialOverlay";

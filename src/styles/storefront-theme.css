@@ -1,0 +1,137 @@
+/* Public store pages (/store/<slug> and /store/<slug>/account) get a light, warm, natural look so a client's shop does not look
+   like the dark NXQX product. Everything is scoped to .store-theme, so no other page changes. */
+body:has(.store-theme),
+html.px-has-bg body:has(.store-theme) {
+  background: #faf6ef !important;
+}
+
+.store-theme {
+  --store-bg: #faf6ef;
+  --store-surface: #ffffff;
+  --store-tint: #f3ebdf;
+  --store-ink: #3a2e27;
+  --store-muted: #6b5d52;
+  --store-line: #e6dccd;
+  --store-accent: #8a5a3c;
+  --store-accent-dark: #6f4630;
+  --nxq-text: var(--store-ink);
+  --nxq-muted: var(--store-muted);
+  --nxq-soft: var(--store-muted);
+  --nxq-gold: var(--store-accent);
+  --nxq-rich-gold: var(--store-accent);
+  --nxq-platinum: var(--store-ink);
+  --nxq-glass-border: var(--store-line);
+  --nxq-card-shadow: 0 6px 24px rgba(90, 60, 30, 0.08);
+  min-height: 100vh;
+  padding: 0 !important;
+  background: var(--store-bg) !important;
+  color: var(--store-ink) !important;
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.store-theme::before, .store-theme::after { display: none !important; }
+.store-theme .portal-shell { width: min(1080px, 100%); padding: 28px 20px 56px; }
+
+/* every text element follows the store ink colour unless it is a button */
+.store-theme h1, .store-theme h2, .store-theme h3, .store-theme h4, .store-theme p, .store-theme span, .store-theme label,
+.store-theme strong, .store-theme small, .store-theme li { color: var(--store-ink) !important; }
+.store-theme .subtle, .store-theme small, .store-theme .subtle * { color: var(--store-muted) !important; }
+.store-theme h1 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; font-size: clamp(1.7rem, 4.5vw, 2.6rem); letter-spacing: -0.01em; line-height: 1.15; }
+.store-theme h2 { font-family: Georgia, "Times New Roman", serif; font-weight: 600; }
+.store-theme svg { color: var(--store-accent) !important; }
+
+/* header */
+.store-theme .store-header { align-items: center; gap: 16px; padding: 8px 0 22px; margin-bottom: 22px; border-bottom: 1px solid var(--store-line); flex-wrap: wrap; }
+.store-theme .store-header > div:last-child { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+
+/* cards and panels */
+.store-theme .panel, .store-theme .settings-card, .store-theme .notice-card, .store-theme .empty-state, .store-theme .auth-card {
+  background: var(--store-surface) !important;
+  border: 1px solid var(--store-line) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--nxq-card-shadow) !important;
+  backdrop-filter: none !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+.store-theme .empty-state, .store-theme .empty-state * { color: var(--store-muted) !important; }
+.store-theme .empty-state { background: var(--store-tint) !important; box-shadow: none !important; text-align: center; padding: 18px !important; margin-bottom: 14px; }
+.store-theme .notice-card { background: var(--store-tint) !important; box-shadow: none !important; }
+
+/* product grid: equal cards, photo on top, works from phone to desktop */
+.store-theme .store-product-grid { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; align-items: stretch; margin-bottom: 8px; }
+.store-theme .store-product-grid > .empty-state { grid-column: 1 / -1; }
+.store-theme .store-product-card { display: flex; flex-direction: column; padding: 0 !important; overflow: hidden; margin: 0 !important; }
+.store-theme .store-product-photo { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 0 !important; margin: 0 !important; background: var(--store-tint); }
+.store-theme .store-product-photo-empty { display: flex; align-items: center; justify-content: center; }
+.store-theme .store-product-photo-empty svg { width: 34px; height: 34px; opacity: .55; }
+.store-theme .store-product-body { display: flex; flex-direction: column; gap: 6px; padding: 16px; flex: 1; }
+.store-theme .store-product-body h2 { margin: 0; font-size: 1.15rem; }
+.store-theme .store-product-body p { margin: 0 0 4px; color: var(--store-muted) !important; font-size: .92rem; line-height: 1.45; }
+.store-theme .store-variant-row { margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--store-line); }
+.store-theme .store-variant-row .panel-title-row { align-items: baseline; gap: 10px; }
+.store-theme .store-variant-row strong { font-size: 1.05rem; }
+
+/* buttons and inputs */
+.store-theme .wide-btn {
+  background: var(--store-accent) !important;
+  color: #fff !important;
+  border: 1px solid var(--store-accent) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  min-height: 44px;
+  font-weight: 600;
+}
+.store-theme .wide-btn:hover:not(:disabled) { background: var(--store-accent-dark) !important; }
+.store-theme .wide-btn:disabled { background: #cdbfae !important; border-color: #cdbfae !important; color: #fff !important; cursor: not-allowed; }
+.store-theme .wide-btn, .store-theme .wide-btn * { color: #fff !important; }
+.store-theme .icon-btn {
+  background: var(--store-surface) !important;
+  color: var(--store-ink) !important;
+  border: 1px solid var(--store-line) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  min-height: 40px;
+}
+.store-theme .icon-btn:hover { border-color: var(--store-accent) !important; }
+.store-theme .icon-btn, .store-theme .icon-btn * { color: var(--store-ink) !important; }
+.store-theme .auth-input, .store-theme input, .store-theme textarea, .store-theme select {
+  background: #fff !important;
+  color: var(--store-ink) !important;
+  border: 1px solid var(--store-line) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+.store-theme input::placeholder, .store-theme textarea::placeholder { color: #a99b8d !important; }
+.store-theme input:focus, .store-theme textarea:focus { outline: 2px solid var(--store-accent); outline-offset: 1px; }
+.store-theme .auth-error { background: #fdecea !important; border: 1px solid #f2b8b0 !important; color: #8a1f11 !important; border-radius: 12px; }
+.store-theme .auth-error * { color: #8a1f11 !important; }
+.store-theme .auth-success { background: #eaf4ea !important; border: 1px solid #b9d9b9 !important; border-radius: 12px; }
+.store-theme .auth-success * { color: #1f5a2a !important; }
+.store-theme a.wide-btn, .store-theme a.icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+
+/* credit line stays small and quiet */
+.store-theme .store-credit, .store-theme .store-credit * { color: var(--store-muted) !important; font-size: .8rem; }
+.store-theme .store-credit { max-width: none !important; width: 100%; text-align: center; }
+
+@media (max-width: 560px) {
+  .store-theme .portal-shell { padding: 18px 14px 44px; }
+  .store-theme .store-product-grid { grid-template-columns: 1fr; gap: 16px; }
+  .store-theme .store-header > div:last-child { margin-left: 0; width: 100%; }
+}
+
+/* form labels: the app's gold label colour is unreadable on cream, so labels use the ink colour here */
+.store-theme .portal-shell label span,
+.store-theme .portal-shell label > span,
+.store-theme .portal-shell .auth-label,
+.store-theme .portal-shell .auth-label span {
+  color: var(--store-ink) !important;
+  font-weight: 600;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: .9rem;
+}
+.store-theme .portal-shell label { display: block; margin-top: 10px; }
+.store-theme .portal-shell label span { display: block; margin-bottom: 6px; }
+.store-theme .portal-shell label:has(input[type="checkbox"]) span { display: inline; margin: 0; }
+.store-theme .portal-shell .panel > .icon-btn, .store-theme .portal-shell .panel > form + .icon-btn { margin: 10px 10px 0 0; }
+.store-theme .portal-shell .panel > p.subtle { margin-top: 14px; }

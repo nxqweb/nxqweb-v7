@@ -99,12 +99,12 @@ export function PublicCommerceStorefront() {
     setBusy(false);
   }
 
-  if (loading) return <main className="nxq-page"><div className="empty-state">Loading store...</div></main>;
-  if (!data) return <main className="nxq-page"><div className="auth-error">{error || "Store unavailable."}</div></main>;
+  if (loading) return <main className="nxq-page store-theme"><div className="empty-state">Loading store...</div></main>;
+  if (!data) return <main className="nxq-page store-theme"><div className="auth-error">{error || "Store unavailable."}</div></main>;
 
   return (
-    <main className="nxq-page"><section className="portal-shell">
-      <div className="panel-title panel-title-row"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <ShoppingCart size={20} /> {cart.reduce((sum, item) => sum + item.quantity, 0)}</div></div>
+    <main className="nxq-page store-theme"><section className="portal-shell">
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <ShoppingCart size={20} /> {cart.reduce((sum, item) => sum + item.quantity, 0)}</div></div>
       {error ? <div className="auth-error">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
@@ -127,17 +127,19 @@ export function PublicCommerceStorefront() {
         })()}
         <p className="subtle">The business will confirm the payment after it arrives in their account.</p>
       </section> : <>
-        <section className="settings-grid">
+        <section className="settings-grid store-product-grid">
           {data.products.length === 0 ? <div className="empty-state">No products are live yet.</div> : data.products.map((product) => {
             const variants = product.variants?.length ? product.variants : [{ id: product.id, title: "Default", price: product.base_price, available_quantity: 999, inventory_policy: "continue" }];
-            return <article className="settings-card" key={product.id}>
-              {product.image_url ? <img src={product.image_url} alt={product.name} style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "1rem", marginBottom: ".75rem" }} /> : null}
+            return <article className="settings-card store-product-card" key={product.id}>
+              {product.image_url ? <img className="store-product-photo" src={product.image_url} alt={product.name} loading="lazy" /> : <div className="store-product-photo store-product-photo-empty" aria-hidden="true"><Store size={28} /></div>}
+              <div className="store-product-body">
               <h2>{product.name}</h2>
               <p>{product.short_description || product.description || ""}</p>
-              {variants.map((variant) => <div key={variant.id} style={{ marginTop: ".75rem" }}>
+              {variants.map((variant) => <div className="store-variant-row" key={variant.id}>
                 <div className="panel-title panel-title-row"><span>{variant.title}</span><strong>{money(variant.price, data.store.currency)}</strong></div>
                 <button className="wide-btn" type="button" disabled={variant.inventory_policy === "deny" && variant.available_quantity <= 0} onClick={() => add(product, variant)}>{variant.inventory_policy === "deny" && variant.available_quantity <= 0 ? "Sold out" : "Add to cart"}</button>
               </div>)}
+              </div>
             </article>;
           })}
         </section>

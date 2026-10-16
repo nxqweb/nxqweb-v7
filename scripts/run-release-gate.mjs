@@ -36,6 +36,7 @@ run(npm, ["run", "test:commerce-launch-guide"]);
 run(npm, ["run", "test:commerce-rpc-reason"]);
 run(npm, ["run", "test:commerce-setup-form"]);
 run(npm, ["run", "test:client-setup-sheet"]);
+run(npm, ["run", "test:storefront-theme"]);
 run(npm, ["run", "test:store-white-label"]);
 run(npm, ["run", "test:shopper-account"]);
 run(npm, ["run", "test:payment-links"]);
