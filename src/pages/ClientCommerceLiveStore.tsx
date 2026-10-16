@@ -225,7 +225,8 @@ export function ClientCommerceLiveStore() {
                   {busy === product.id ? "Saving..." : product.status === "active" ? "Hide product" : "Make visible"}
                 </button>
               </div>
-              <label><span>Primary product image URL</span><input className="auth-input" placeholder="https://..." value={images[product.id] || ""} onChange={(e) => setImages((current) => ({ ...current, [product.id]: e.target.value }))} /></label>
+              <label><span>Primary product image (optional)</span><input className="auth-input" placeholder="Leave empty. Add photos on the Photos page." value={images[product.id] || ""} onChange={(e) => setImages((current) => ({ ...current, [product.id]: e.target.value }))} /></label>
+              <p className="subtle">Only photos uploaded on the <a href="/client/commerce/images">Photos page</a> work here. Never paste a payment link in this box.</p>
             </article>
           ))}
         </section>

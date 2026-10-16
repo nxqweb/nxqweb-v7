@@ -50,7 +50,7 @@ export const launchGuideSteps: LaunchGuideStep[] = [
       "Press Save private draft.",
       "Under Product visibility, press Make visible on each product you want customers to see.",
     ],
-    watchOut: "Only the Stripe Payment Link box takes the payment link. The product image box is for a photo web address, so leave it empty if you have none. Never paste a secret key or password anywhere.",
+    watchOut: "Only the Stripe Payment Link box takes the payment link. The product image box on Live store only accepts a photo you uploaded on the Photos page, never a payment link or an outside web link, so leave it empty and add photos on the Photos page. Never paste a secret key or password anywhere.",
     href: "/client/commerce/live",
     action: "Open live store",
   },

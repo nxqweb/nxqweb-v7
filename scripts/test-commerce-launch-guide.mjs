@@ -24,7 +24,7 @@ check("every step links to a real Commerce page", launchGuideSteps.every((s) => 
 
 const text = launchGuideSteps.map((s) => `${s.summary} ${s.doThis.join(" ")} ${s.watchOut}`).join("\n");
 check("warns that variant price and on-hand start at 0", /Price and On hand/.test(text) && /\$0 or sold out/.test(text));
-check("warns the product image box is not the payment link box", /Only the Stripe Payment Link box takes the payment link/.test(text) && /image box is for a photo/.test(text));
+check("warns the product image box is not the payment link box", /Only the Stripe Payment Link box takes the payment link/.test(text) && /only accepts a photo you uploaded on the Photos page/.test(text) && /never a payment link or an outside web link/.test(text));
 check("explains the live store name is separate from the setup name", /separate from the setup form name/.test(text));
 check("tells clients to confirm payment only after seeing the money", /Never confirm a payment you have not seen arrive/.test(text));
 check("never tells clients to paste secrets", /Never paste a secret key or password/.test(text));
