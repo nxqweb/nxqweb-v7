@@ -181,6 +181,13 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Migrations 269, 270 and 271 APPLIED to staging (2026-10-16, ~11:03 local; owner approved in chat)
+
+- Flow followed: read-only `validate_foundation` first (run 38941620908; the owner expanded the "Migration dry run" step and showed it listed exactly 269_store_profile, 270_store_order_by_email, 271_store_menu_mode and nothing else); owner said "yes, apply 269, 270 and 271 to staging"; the owner ran `apply_migrations` with the confirmation phrase from the GitHub form (run 38943935178, workflow run #260) and clicked Review deployments -> nxq-staging -> Approve and deploy. Claude's own attempt to dispatch the apply was blocked by the session safety classifier and was not worked around.
+- Evidence (owner screenshot of the "Apply migrations" step): "Applying migration 269_store_profile.sql... 270_store_order_by_email.sql... 271_store_menu_mode.sql... Finished supabase db push." No errors. Staging DATABASE only: the staging WEBSITE still runs the old frontend, so none of the new screens are visible until the Oct 22+ site deploy.
+- Not verified yet: the new functions answering against real staging data (nothing was called). The first real check is COMMERCE_TEST_PLAN sections D7 and J after the deploy.
+- The older lines below that say "269 NOT applied" / "270 NOT applied" / "271 not applied" are superseded by this entry.
+
 ## Monthly report now says what happened (2026-10-16, after the Menu push; local/pushed, NOT deployed)
 
 - `/client/business/reports` shows "What happened in <month>" from the latest ready/delivered report row: website checks run, how many finished, how many need attention, and the saved next steps. Only real values from `website_monthly_reports.health_summary` and `recommendations` are used (the maintenance worker writes those); bad or missing values are dropped. Honest note on the page: reports cover website checks only (search/speed/security summaries are still empty in the database).
