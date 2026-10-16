@@ -13,11 +13,13 @@ export type CycleReport = {
   status: string;
   generated_at: string | null;
   delivered_at: string | null;
+  health_summary?: unknown;
+  recommendations?: unknown;
 };
 
 export type MonthStatus = "delivered" | "ready" | "draft" | "blocked" | "failed" | "missing";
 
-export type CycleMonth = { month: string; status: MonthStatus; generatedAt: string | null; deliveredAt: string | null };
+export type CycleMonth = { month: string; status: MonthStatus; generatedAt: string | null; deliveredAt: string | null; summary: ReportSummary | null };
 
 export type CycleState = "no_plan" | "paused" | "off" | "active";
 
@@ -44,6 +46,30 @@ function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// What a finished monthly report says, in plain numbers. Only values the maintenance worker really wrote are used; anything missing, negative or
+// the wrong type is dropped, and an empty result means "nothing to show" (never invented figures).
+export type ReportSummary = { checks: number; completed: number; needAttention: number; sentences: string[]; recommendations: string[] };
+
+const count = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100000 ? Math.floor(value) : null);
+
+export function summarizeReport(row: Pick<CycleReport, "health_summary" | "recommendations">): ReportSummary | null {
+  const health = row.health_summary && typeof row.health_summary === "object" ? (row.health_summary as Record<string, unknown>) : {};
+  const checks = count(health.total_checks);
+  const completed = count(health.completed_checks);
+  const attention = count(health.unresolved_checks);
+  const recommendations = Array.isArray(row.recommendations)
+    ? row.recommendations.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 300)).slice(0, 5)
+    : [];
+  if (checks === null && recommendations.length === 0) return null;
+  const sentences: string[] = [];
+  if (checks !== null) {
+    sentences.push(checks === 0 ? "No website checks were needed this month." : `${checks} website check${checks === 1 ? " was" : "s were"} run this month.`);
+    if (completed !== null && checks > 0) sentences.push(`${completed} finished without a problem.`);
+    if (attention !== null && attention > 0) sentences.push(`${attention} ${attention === 1 ? "needs" : "need"} attention. The NXQX team is looking at ${attention === 1 ? "it" : "them"}.`);
+  }
+  return { checks: checks ?? 0, completed: completed ?? 0, needAttention: attention ?? 0, sentences, recommendations };
+}
+
 export function buildCycle(plan: CyclePlan | null, reports: CycleReport[], nowMs: number, monthCount = 6): CycleSummary {
   const byMonth = new Map<string, CycleReport>();
   for (const report of reports) {
@@ -63,6 +89,7 @@ export function buildCycle(plan: CyclePlan | null, reports: CycleReport[], nowMs
       status,
       generatedAt: report?.generated_at ?? null,
       deliveredAt: report?.delivered_at ?? null,
+      summary: report && (status === "ready" || status === "delivered") ? summarizeReport(report) : null,
     });
   }
 

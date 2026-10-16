@@ -181,6 +181,11 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Monthly report now says what happened (2026-10-16, after the Menu push; local/pushed, NOT deployed)
+
+- `/client/business/reports` shows "What happened in <month>" from the latest ready/delivered report row: website checks run, how many finished, how many need attention, and the saved next steps. Only real values from `website_monthly_reports.health_summary` and `recommendations` are used (the maintenance worker writes those); bad or missing values are dropped. Honest note on the page: reports cover website checks only (search/speed/security summaries are still empty in the database).
+- Tests added to `scripts/test-report-cycle.mjs` (`npm run test:report-cycle`, not part of CI parity) with planted-bug controls. No migration, no workflow change.
+
 ## Email orders, Menu v1, assistant chat, Report a problem, help words (2026-10-16, very late; local/pushed, NOT deployed, 270 NOT applied)
 
 - **Migration 270 promoted (owner said yes in chat, 2026-10-16):** `supabase/migrations/270_store_order_by_email.sql` (get/save order mode, public mode read). A store can take orders by email: the public checkout becomes "Email my order" (mailto built from the store's contact email, copy-text fallback, no order row, no stock hold). Regression test `scripts/sql/local-full-schema/regression/270_store_order_by_email.test.sql`. NOT applied to staging; applying needs a new owner approval, the validate run first, and the owner's Approve click.

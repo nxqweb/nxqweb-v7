@@ -1,6 +1,6 @@
 // Logic + wiring tests for the Reports page monthly-cycle panel (Node runs the TypeScript directly).
 import fs from "node:fs";
-import { buildCycle, statusLabel } from "../src/lib/reportCycle.ts";
+import { buildCycle, statusLabel, summarizeReport } from "../src/lib/reportCycle.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") {
@@ -53,6 +53,17 @@ check("a failed cycle read says so and shows no dates", page.includes("Monthly c
 check("the page states when reports are prepared and never says live", page.includes("first of each month") && !/\blive\b/i.test(page.replace(/Open live website/g, "")));
 check("the unused combined business-summary list is gone (nothing writes that table)", !page.includes("client_monthly_business_reports") && !page.includes("Business summary reports") && !page.includes("No business summary reports yet"));
 check("the page subtitle only promises what is shown", page.includes("Your monthly report schedule and the improvements recommended for your website.") && !page.includes("usage summaries"));
+
+
+// ---- plain summary of a finished report (only real values, never invented)
+const good = summarizeReport({ health_summary: { total_checks: 12, completed_checks: 11, unresolved_checks: 1 }, recommendations: ["Review unresolved maintenance exceptions in the NXQX owner portal."] });
+check("a finished report becomes plain sentences with the real numbers", good && good.checks === 12 && good.completed === 11 && good.needAttention === 1 && good.sentences.join(" ") === "12 website checks were run this month. 11 finished without a problem. 1 needs attention. The NXQX team is looking at it." && good.recommendations.length === 1);
+check("one check, zero checks and all-clear read naturally", summarizeReport({ health_summary: { total_checks: 1, completed_checks: 1, unresolved_checks: 0 }, recommendations: [] }).sentences.join(" ") === "1 website check was run this month. 1 finished without a problem." && summarizeReport({ health_summary: { total_checks: 0 }, recommendations: [] }).sentences[0] === "No website checks were needed this month.");
+check("missing, wrong-typed or negative values are dropped, and an empty report shows nothing", summarizeReport({ health_summary: {}, recommendations: [] }) === null && summarizeReport({ health_summary: null, recommendations: null }) === null && summarizeReport({ health_summary: { total_checks: -4, completed_checks: "9" }, recommendations: [] }) === null && summarizeReport({ health_summary: "x", recommendations: [5, {}, "  ", "ok"] }).recommendations.join() === "ok");
+check("recommendations are trimmed, capped at 5 and 300 characters", (() => { const r = summarizeReport({ health_summary: { total_checks: 1 }, recommendations: Array.from({ length: 9 }, (_, i) => `${i} ${"x".repeat(400)}`) }); return r.recommendations.length === 5 && r.recommendations.every((t) => t.length <= 300); })());
+check("only ready or delivered months carry a summary", (() => { const c = buildCycle(plan(), [report("2026-10", "draft", { health_summary: { total_checks: 3 } }), report("2026-09", "delivered", { health_summary: { total_checks: 3 } })], NOW); const by = Object.fromEntries(c.months.map((m) => [m.month.slice(0, 7), m.summary])); return by["2026-10"] === null && by["2026-09"] && by["2026-09"].checks === 3; })());
+const reportsPage = fs.readFileSync("src/pages/ClientBusinessReports.tsx", "utf8");
+check("the page reads the two report columns and shows the latest summary with an honest scope note", /select\("report_month,status,generated_at,delivered_at,health_summary,recommendations"\)/.test(reportsPage) && /data-testid="report-summary"/.test(reportsPage) && /cycle\.latest\?\.summary/.test(reportsPage) && /These reports cover your website checks\./.test(reportsPage));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll report cycle checks passed.");
 process.exit(failures ? 1 : 0);
