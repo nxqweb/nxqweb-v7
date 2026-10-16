@@ -13,7 +13,7 @@ Nothing here changes any status or launches anything; every public-status change
 | NXQX-Property | planned | 4 | None | None | None | Catalog copy only |
 | NXQX-Multi-Location | planned | 4 | None (Business has `ClientBusinessLocations` for its own use) | None | None | Catalog copy only |
 | NXQX-Membership | planned | 4 | None | None | None | Catalog copy only |
-| NXQX-Enterprise Systems | private | 4+ | Identity/privacy hooks only (migration 140) | None | Invite only | Sales-led, not self-serve |
+| NXQX-Enterprise Systems | private | 4 | Identity/privacy hooks only (migration 140) | None | Invite only | Sales-led, not self-serve |
 
 ## Findings
 

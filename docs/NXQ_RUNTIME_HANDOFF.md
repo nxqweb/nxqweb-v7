@@ -181,6 +181,15 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Client Commerce polish + product family audit (2026-10-16, late night; local/pushed, NOT deployed)
+
+- Products form: only name, base price, variant price and On hand are in the way; extra facts, stock options and search/shipping settings are collapsed "optional" sections (they open themselves when they hold answers). Variant 1 price follows the base price until edited.
+- Commerce menu: seven everyday pages show on a computer, the other eight sit behind "More pages" (a phone still gets one swipeable row with everything). Dashboard: duplicated menu cards replaced by one Quick actions row.
+- New test `scripts/test-commerce-polish.mjs` (in `npm run test:store`, now 17 files, and the release gate); four negative controls confirmed failing.
+- New `docs/PRODUCT_FAMILY_ROADMAP.md`: only Business (launched) and Commerce (built) have real surface; Booking is schema-only (migration 188); others are catalog copy. Owner decision pending: Menu, Booking or stay on Commerce next.
+- Checks: `npm run test:ci-parity` 64/64 pass, `npm run test:store` 17/17, eslint max-warnings=0 clean, tsc clean.
+- Still pending owner: apply 269, add store tests to CI workflow, Oct 22 deploy sequence, remove temp billing button before launch.
+
 ## Store experience, resilience and accessibility pass (2026-10-16, night; local/pushed, NOT deployed)
 
 - **Public store is now a real shop** (`src/pages/PublicCommerceStorefront.tsx` + `src/components/store/*` + `src/lib/storeCatalog.ts`): product cards with sale / "Only N left" / sold-out badges and "From $X" pricing; a product detail dialog (native `<dialog>`: all photos with thumbnails and arrow keys, full description, option chooser, Add to cart; product links `#product-<slug>` open it, back/Escape close it); hero line from the shop's About (or "Order directly from the shop."); Share button; loading skeleton; toast messages; light colour scheme for native controls; reduced-motion respected.
