@@ -179,7 +179,12 @@ state. Update this file, not a new one, at every handoff.
 8. Billing for a complimentary client: use the TEMPORARY "Activate billing (no charge)" button on `/owner/billing` (the SQL block is only a fallback; the older runbook said no button existed). Remove that button before launch.
 9. Venmo box needs a full link (`https://venmo.com/u/<handle>`); whether Venmo's site honors the amount/note query parameters is UNVERIFIED.
 
-**CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
+**CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
+
+## Mega Extended CI failure found and fixed (2026-10-16; local, pushed; no deploy needed)
+
+- Reproduced locally with `npm run test:edge` (the failing CI step "Edge function type checks"): `supabase/functions/dispatch-notifications/index.ts` typed its helper's Supabase client as plain `ReturnType<typeof createClient>`, which Deno's type checker rejects (TS2345 twice). Fix: use the repo's existing pattern `ReturnType<typeof createClient<DynamicDatabase>>` (type only, same as `run-website-maintenance`). No runtime change, so NO Edge function deploy is needed for this.
+- After the fix: `npm run test:edge` passes all 44 functions, and every other command in `ci-mega-extended.yml` passes locally (test:families, test:runtime-stage, test:migrations, test:security, test:accessibility, test:routes, `npm audit --omit=dev --audit-level=high` = 0 vulnerabilities, lint, build, bundle budget via parity). The next GitHub run of NXQ Mega Extended CI is the real confirmation: until it is green, this is "fixed locally, unconfirmed on GitHub".
 
 ## Oct 22 checklist and next-product plans written (2026-10-16; docs only)
 

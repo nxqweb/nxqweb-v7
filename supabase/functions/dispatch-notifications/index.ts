@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { emailNotificationsEnabled, ensureEmailCopies, resolveRecipientEmail } from "../_shared/notification-email.ts";
 import type { ClientContact, EmailDeliveryInsert, EmailStore } from "../_shared/notification-email.ts";
 
@@ -93,7 +94,7 @@ async function postAdapter(delivery: Delivery) {
 }
 
 // Database access for the email recipient logic (kept here so the shared module stays pure and testable).
-function makeEmailStore(admin: ReturnType<typeof createClient>): EmailStore {
+function makeEmailStore(admin: ReturnType<typeof createClient<DynamicDatabase>>): EmailStore {
   return {
     async getClient(clientId: string): Promise<ClientContact | null> {
       const res = await admin.from("clients").select("contact_email,qa_only,status").eq("id", clientId).maybeSingle();
