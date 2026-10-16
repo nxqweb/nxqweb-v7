@@ -140,3 +140,34 @@ html.px-has-bg body:has(.store-theme) {
 .store-theme .store-empty { padding: 36px 20px !important; }
 .store-theme .store-empty strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 1.3rem; margin-bottom: 6px; color: var(--store-ink) !important; }
 .store-theme .store-empty p { margin: 0; }
+
+/* About and contact block at the bottom of a store */
+.store-theme .store-about { margin-top: 28px; padding: 22px; background: var(--store-surface); border: 1px solid var(--store-line); border-radius: 16px; box-shadow: var(--nxq-card-shadow); }
+.store-theme .store-about h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.store-theme .store-about-text { margin: 0 0 12px; line-height: 1.55; white-space: pre-line; }
+.store-theme .store-contact-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.store-theme .store-contact-list a { color: var(--store-accent-dark) !important; font-weight: 600; text-decoration: underline; overflow-wrap: anywhere; }
+
+/* cart shortcuts: the header count is a link and a bar sticks to the bottom once something is in the cart */
+.store-theme .store-cart-link { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; text-decoration: none; padding: 8px 4px; }
+.store-theme .store-cart-link, .store-theme .store-cart-link * { color: var(--store-ink) !important; }
+.store-theme .store-cart-bar {
+  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 50;
+  display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 18px;
+  background: var(--store-accent); color: #fff !important; border-radius: 999px; font-weight: 600; text-decoration: none;
+  box-shadow: 0 8px 28px rgba(60, 35, 15, 0.35);
+}
+.store-theme .store-cart-bar:hover { background: var(--store-accent-dark); }
+@media (min-width: 900px) { .store-theme .store-cart-bar { left: auto; right: 24px; width: auto; } }
+.store-theme #store-cart { scroll-margin-top: 16px; }
+.store-theme .portal-shell { padding-bottom: 88px; }
+
+/* what happens after placing an order */
+.store-theme .store-next-steps { margin: 14px 0; padding-left: 22px; line-height: 1.6; }
+.store-theme .store-next-steps li { margin-bottom: 6px; }
+
+/* keyboard users can always see where they are */
+.store-theme a:focus-visible, .store-theme button:focus-visible, .store-theme select:focus-visible, .store-theme summary:focus-visible {
+  outline: 3px solid var(--store-accent-dark);
+  outline-offset: 2px;
+}

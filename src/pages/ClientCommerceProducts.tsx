@@ -268,7 +268,7 @@ export function ClientCommerceProducts() {
         </div>
 
         <div className="notice-card">
-          Products saved here remain drafts. Saving does not publish a storefront, activate payments, or bypass review and production safety gates.
+          Products you save here stay private drafts. A product only shows in your store after you press Make visible on the Live store page.
         </div>
 
         {error ? <div className="auth-error" role="alert">{error}</div> : null}

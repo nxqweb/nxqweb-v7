@@ -14,6 +14,11 @@ export const commerceReasonMessages: Record<string, string> = {
   "Enter a valid legacy PayPal link.": "Enter a valid legacy PayPal link.",
   "Enter a valid legacy Venmo link.": "Enter a valid legacy Venmo link.",
   "Add a public payment link before opening the store.": "Add a public payment link before opening the store.",
+  "About text must be 600 characters or fewer.": "About text must be 600 characters or fewer.",
+  "Enter a valid contact email.": "Enter a valid contact email.",
+  "Enter a valid contact phone number.": "Enter a valid contact phone number.",
+  "Enter a social link that starts with https://.": "Enter a social link that starts with https://.",
+  "Create your storefront first.": "Create your storefront first.",
 };
 
 export function commerceRpcReason(error: { message?: string | null } | null | undefined): string | null {

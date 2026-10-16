@@ -72,7 +72,7 @@ const api = fs.readFileSync("src/lib/shopperApi.ts", "utf8");
 
 const rpcNames = (text) => [...text.matchAll(/\.rpc\(\s*"([a-z_]+)"/g)].map((m) => m[1]);
 const definedIn268 = new Set([...migration.matchAll(/create or replace function public\.([a-z_]+)\(/g)].map((m) => m[1]));
-const allowedOutside = new Set(["get_public_stripe_ready_commerce_storefront", "create_public_stripe_ready_direct_payment_order", "get_my_stripe_ready_storefront_settings", "save_my_stripe_ready_storefront_settings", "set_my_commerce_product_live"]);
+const allowedOutside = new Set(["get_public_stripe_ready_commerce_storefront", "create_public_stripe_ready_direct_payment_order", "get_my_stripe_ready_storefront_settings", "save_my_stripe_ready_storefront_settings", "set_my_commerce_product_live", "get_my_store_profile", "save_my_store_profile", "get_public_store_profile"]); // the three store-profile functions are checked against migration 269 in test-store-profile.mjs
 const shopperRpcs = [...new Set([...rpcNames(account), ...rpcNames(storefront), ...rpcNames(live), ...rpcNames(api)])].filter((n) => !allowedOutside.has(n));
 check("every shopper database call is a real function from migration 268", shopperRpcs.length >= 6 && shopperRpcs.every((n) => definedIn268.has(n)), shopperRpcs.filter((n) => !definedIn268.has(n)).join(","));
 const signedInOnly = ["get_my_shopper_profile", "save_my_shopper_profile", "delete_my_shopper_profile", "list_my_shopper_orders"];

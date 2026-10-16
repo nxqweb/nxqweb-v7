@@ -5,6 +5,7 @@ import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
 import { fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
 import { StoreCredit } from "../components/StoreCredit";
+import { mailtoHref, metaDescription, profileFromRow, profileHasContent, socialHref, telHref, type StoreProfile } from "../lib/storeProfile";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 
 type Variant = { id: string; title: string; price: number; available_quantity: number; inventory_policy: string };
@@ -30,7 +31,10 @@ export function PublicCommerceStorefront() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState<StoreProfile | null>(null);
+  const [orderCopied, setOrderCopied] = useState(false);
 
+  const itemCount = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
   const total = useMemo(() => cart.reduce((sum, item) => sum + Number(item.variant.price) * item.quantity, 0), [cart]);
 
   async function load() {
@@ -39,7 +43,24 @@ export function PublicCommerceStorefront() {
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);
-    if (!result.error && result.data) void loadAccountHelp();
+    if (!result.error && result.data) { void loadAccountHelp(); void loadProfile(); }
+  }
+
+  async function copyOrderNumber() {
+    if (!order) return;
+    try { await navigator.clipboard.writeText(order.order_number); setOrderCopied(true); window.setTimeout(() => setOrderCopied(false), 2500); }
+    catch { setError("Could not copy automatically. Please write down your order number."); }
+  }
+
+  // Optional About and contact. Any failure (including the function not existing yet) just hides the block.
+  async function loadProfile() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_store_profile", { store_slug_value: slug });
+      if (result.error || !result.data) return;
+      const next = profileFromRow(result.data);
+      if (profileHasContent(next)) setProfile(next);
+    } catch { /* the store works without it */ }
   }
 
   // Optional shopper accounts: never blocks guest checkout. Any failure here is ignored on purpose.
@@ -68,6 +89,18 @@ export function PublicCommerceStorefront() {
     document.title = name;
     return () => { document.title = previous; };
   }, [data?.store.name]);
+
+  // Link previews and search results show a short summary of the shop when the owner wrote an About.
+  useEffect(() => {
+    const about = profile?.about;
+    if (!about) return;
+    let tag = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    const created = !tag;
+    const previous = tag?.getAttribute("content") ?? null;
+    if (!tag) { tag = document.createElement("meta"); tag.setAttribute("name", "description"); document.head.appendChild(tag); }
+    tag.setAttribute("content", metaDescription(about));
+    return () => { if (created) tag?.remove(); else if (previous !== null) tag?.setAttribute("content", previous); };
+  }, [profile?.about]);
 
   function add(product: Product, variant: Variant) {
     if (variant.inventory_policy === "deny" && variant.available_quantity <= 0) return;
@@ -113,13 +146,19 @@ export function PublicCommerceStorefront() {
 
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
-      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <ShoppingCart size={20} /> {cart.reduce((sum, item) => sum + item.quantity, 0)}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">Secure order request · payment goes directly to this business</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a></div></div>
       {error ? <div className="auth-error">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
         <h2>Order {order.order_number} created</h2>
         <p>Your total is <strong>{money(order.total, order.currency)}</strong>.</p>
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
+        <ol className="store-next-steps" data-testid="store-next-steps">
+          <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
+          <li>The shop confirms your payment once it arrives in their account.</li>
+          <li>Keep your order number. Use it if you contact the shop about this order.</li>
+        </ol>
+        <button className="icon-btn" type="button" onClick={() => void copyOrderNumber()}>{orderCopied ? "Order number copied" : "Copy order number"}</button>
         {(() => {
           const context = { orderNumber: order.order_number, total: Number(order.total), currency: order.currency, email: form.email };
           const stripeHref = orderPaymentHref("stripe", safePaymentUrl("stripe", order.stripe_payment_link), context);
@@ -153,7 +192,7 @@ export function PublicCommerceStorefront() {
           })}
         </section>
 
-        <section className="panel panel-wide" style={{ marginTop: "1rem" }}>
+        <section className="panel panel-wide" id="store-cart" style={{ marginTop: "1rem" }}>
           <div className="panel-title"><ShoppingCart size={20} /><div><h2>Your cart</h2><p className="subtle">Prices are verified by the store before the order is created.</p></div></div>
           {cart.length === 0 ? <div className="empty-state">Your cart is empty.</div> : cart.map((item) => <article className="settings-card" key={item.variant.id} style={{ marginBottom: ".75rem" }}>
             <div className="panel-title panel-title-row"><div><strong>{item.product.name}</strong><p>{item.variant.title}</p></div><strong>{money(item.variant.price * item.quantity, data.store.currency)}</strong></div>
@@ -175,6 +214,15 @@ export function PublicCommerceStorefront() {
           <button className="wide-btn" disabled={busy} onClick={() => void placeOrder()} type="button">{busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </section> : null}
       </>}
+      {!order && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar" role="status">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {money(total, data.store.currency)}</a> : null}
+      {profile ? <section className="store-about" data-testid="store-about" aria-label={`About ${data.store.name}`}>
+        {profile.about ? <><h2>About us</h2><p className="store-about-text">{profile.about}</p></> : null}
+        {mailtoHref(profile.contactEmail) || telHref(profile.contactPhone) || socialHref(profile.socialUrl) ? <ul className="store-contact-list">
+          {mailtoHref(profile.contactEmail) ? <li>Email <a href={mailtoHref(profile.contactEmail)}>{profile.contactEmail}</a></li> : null}
+          {telHref(profile.contactPhone) ? <li>Phone <a href={telHref(profile.contactPhone)}>{profile.contactPhone}</a></li> : null}
+          {socialHref(profile.socialUrl) ? <li><a href={socialHref(profile.socialUrl)} target="_blank" rel="noopener noreferrer">Find us online</a></li> : null}
+        </ul> : null}
+      </section> : null}
       <StoreCredit />
     </section></main>
   );

@@ -179,6 +179,9 @@ export function ClientCommerceReadiness() {
               <p className="subtle">
                 Finish shipping, pickup, tax preparation, store policies, and customer-support details before live payments are connected.
               </p>
+              <p className="subtle" data-testid="readiness-optional-note">
+                This page is optional preparation. You can open your store and take orders without filling it in, and you can come back to it any time.
+              </p>
             </div>
           </div>
           <button className="icon-btn" disabled={loading || saving} onClick={() => void loadReadiness()} type="button">

@@ -4,6 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { withCommerceReason } from "../lib/commerceRpcReason";
+import { emptyStoreProfile, normalizeStoreProfile, profileFromRow, storeProfileLimits, type StoreProfile } from "../lib/storeProfile";
 
 type LiveProduct = {
   id: string;
@@ -36,6 +37,8 @@ export function ClientCommerceLiveStore() {
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState("");
   const [accountsOn, setAccountsOn] = useState<boolean | null>(null);
+  const [profile, setProfile] = useState<StoreProfile>(emptyStoreProfile);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -75,8 +78,24 @@ export function ClientCommerceLiveStore() {
     setPaymentNote(next.payment_note || "");
     setVerified(true);
     setLoading(false);
+    // The About and contact form is optional: if it cannot load, the rest of the page still works.
+    const profileResult = await supabase.rpc("get_my_store_profile");
+    if (!profileResult.error && profileResult.data) { setProfile(profileFromRow(profileResult.data)); setProfileLoaded(true); } else { setProfileLoaded(false); }
     const accounts = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: next.store_slug });
     setAccountsOn(accounts.error ? null : Boolean((accounts.data as { accounts_enabled?: boolean } | null)?.accounts_enabled));
+  }
+
+  async function saveProfile() {
+    if (!supabase || !verified || !profileLoaded) return;
+    const check = normalizeStoreProfile(profile);
+    if (!check.ok) { setMessage(""); setError(check.error); return; }
+    setBusy("profile");
+    setError("");
+    setMessage("");
+    const result = await supabase.rpc("save_my_store_profile", check.args);
+    if (result.error) setError(withCommerceReason("Your About and contact details could not be saved. Nothing was changed.", result.error));
+    else { setProfile(profileFromRow(result.data)); setMessage(data?.status === "active" ? "Saved. It now shows at the bottom of your store." : "Saved. It will show at the bottom of your store once the store is open."); }
+    setBusy("");
   }
 
   async function toggleAccounts() {
@@ -131,8 +150,8 @@ export function ClientCommerceLiveStore() {
       setError(
         withCommerceReason(
           makeLive
-            ? "Storefront activation could not be completed. The previously verified storefront state remains in place."
-            : "Storefront settings could not be saved. The previously verified storefront state remains in place.",
+            ? "We could not open your store. Nothing was changed."
+            : "We could not save your store settings. Nothing was changed.",
           result.error
         )
       );
@@ -142,8 +161,8 @@ export function ClientCommerceLiveStore() {
 
     setMessage(
       makeLive
-        ? "Storefront activation was accepted. Payment-provider activation remains separate and protected."
-        : "Storefront saved as a private draft."
+        ? "Your store is open. Customers can now order from it."
+        : "Saved. Your store stays private until you press Open storefront."
     );
     await load();
     setBusy("");
@@ -153,10 +172,14 @@ export function ClientCommerceLiveStore() {
     if (!supabase || !verified) return;
 
     const makingLive = product.status !== "active";
+    // A product left at $0 would be shown to customers for free, so say so before it goes live.
+    const zeroPrice = makingLive && !(Number(product.base_price) > 0);
     const confirmed = window.confirm(
-      makingLive
-        ? `Make ${product.name} visible on the storefront?`
-        : `Hide ${product.name} from the storefront?`
+      zeroPrice
+        ? `${product.name} has a price of $0, so customers would see it for free. Make it visible anyway? (You can set a price on the Products page first.)`
+        : makingLive
+          ? `Make ${product.name} visible on the storefront?`
+          : `Hide ${product.name} from the storefront?`
     );
     if (!confirmed) return;
 
@@ -196,7 +219,7 @@ export function ClientCommerceLiveStore() {
   return (
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
-      <div className="panel-title"><Store size={22} /><div><h1>Live storefront</h1><p className="subtle">You control storefront visibility. Payment-provider activation, billing, and production approvals remain separate protected actions.</p></div></div>
+      <div className="panel-title"><Store size={22} /><div><h1>Live storefront</h1><p className="subtle">Set your store name and payment link, open your store, and choose which products customers can see. This page never charges anyone or holds your money.</p></div></div>
 
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {message ? <div className="auth-success">{message}</div> : null}
@@ -228,7 +251,7 @@ export function ClientCommerceLiveStore() {
         </section>
 
         <section className="panel panel-wide">
-          <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Visibility changes affect only the storefront product listing. They do not activate payments or bypass other launch gates.</p></div></div>
+          <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
           <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
           {(data.products || []).length === 0 ? <div className="empty-state">No verified products are available for storefront visibility yet.</div> : data.products.map((product) => (
             <article className="settings-card" key={product.id} style={{ marginBottom: ".75rem" }}>
@@ -242,6 +265,18 @@ export function ClientCommerceLiveStore() {
             </article>
           ))}
         </section>
+
+        {profileLoaded ? <section className="panel panel-wide" data-testid="store-profile-form">
+          <div className="panel-title"><Store size={20} /><div><h2>About and contact <em className="optional-tag">optional</em></h2><p className="subtle">A short note and a way for customers to reach you. Whatever you type here is shown publicly at the bottom of your store, so leave a box empty to keep it private.</p></div></div>
+          <label className="auth-label"><span>About your shop</span><textarea className="auth-input" rows={4} maxLength={storeProfileLimits.about} value={profile.about} onChange={(e) => setProfile((current) => ({ ...current, about: e.target.value }))} placeholder="Example: Small-batch candles and soap, hand-poured with essential oils." /></label>
+          <p className="subtle">{profile.about.length} of {storeProfileLimits.about} characters</p>
+          <div className="setup-form-grid">
+            <label><span>Contact email</span><input className="auth-input" type="email" autoComplete="off" value={profile.contactEmail} onChange={(e) => setProfile((current) => ({ ...current, contactEmail: e.target.value }))} placeholder="you@example.com" /></label>
+            <label><span>Contact phone</span><input className="auth-input" type="tel" autoComplete="off" value={profile.contactPhone} onChange={(e) => setProfile((current) => ({ ...current, contactPhone: e.target.value }))} placeholder="(555) 123-4567" /></label>
+            <label><span>Instagram, Facebook or website link</span><input className="auth-input" autoComplete="off" value={profile.socialUrl} onChange={(e) => setProfile((current) => ({ ...current, socialUrl: e.target.value }))} placeholder="https://instagram.com/yourshop" /></label>
+          </div>
+          <button className="wide-btn" disabled={busy === "profile"} onClick={() => void saveProfile()} type="button">{busy === "profile" ? "Saving..." : "Save About and contact"}</button>
+        </section> : null}
 
         <section className="panel panel-wide">
           <div className="panel-title panel-title-row">

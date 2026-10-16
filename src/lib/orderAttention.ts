@@ -3,7 +3,7 @@
 export type OrderLike = { payment_status?: unknown; fulfillment_status?: unknown; is_test?: unknown };
 export type OrderAttention = { awaitingPayment: number; toShip: number; total: number };
 
-const finished = new Set(["shipped", "delivered", "cancelled", "refunded", "completed"]);
+const finished = new Set(["ready_for_pickup", "shipped", "delivered", "cancelled", "refunded", "completed"]);
 
 export function summarizeOrderAttention(data: unknown): OrderAttention {
   const orders = Array.isArray((data as { orders?: unknown } | null)?.orders) ? ((data as { orders: OrderLike[] }).orders) : [];

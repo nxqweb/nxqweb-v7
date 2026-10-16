@@ -83,7 +83,7 @@ export function ClientCommerceProductImages() {
         </div>
 
         <div className="notice-card">
-          Upload up to 8 JPG, PNG, WEBP, or GIF images per product. Images remain in the protected Commerce workflow and do not publish a storefront by themselves.
+          Upload up to 8 JPG, PNG, WEBP, or GIF photos per product. Photos stay private until you make the product visible on the Live store page.
         </div>
 
         {error ? <div className="auth-error" role="alert">{error}</div> : null}
@@ -111,7 +111,7 @@ export function ClientCommerceProductImages() {
             {selectedProduct ? (
               <div className="setup-section-divider">
                 <span>{selectedProduct.name}</span>
-                <p>Image changes stay inside the protected product workflow. A live storefront still requires the existing publish and approval gates.</p>
+                <p>Photos you upload are only shown in your store once the product is visible.</p>
               </div>
             ) : null}
 

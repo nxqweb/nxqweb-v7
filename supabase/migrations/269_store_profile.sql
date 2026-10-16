@@ -1,4 +1,4 @@
--- DRAFT 05: optional public store profile for NXQX-Commerce stores (About text and contact details). Not applied anywhere.
+-- Migration 269: optional public store profile for NXQX-Commerce stores (About text and contact details). Promoted from draft 05 on 2026-10-16 (owner approved in chat); applied to staging only after a separate explicit approval and the guarded workflow.
 --
 -- Why: today a customer on a client's store cannot reach the shop owner at all. This lets the owner add a short "About" and how to
 -- contact them, shown at the bottom of their public store. Everything is optional and opt-in: nothing is published until the owner

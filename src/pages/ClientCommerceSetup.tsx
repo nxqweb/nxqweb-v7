@@ -224,7 +224,7 @@ export function ClientCommerceSetup() {
           <a className="icon-btn" href="/client/commerce"><ArrowLeft size={16} /> Back to Commerce</a>
         </div>
 
-        <div className="notice-card">Saving or submitting this form does not publish a store, activate payments, change your plan, or bypass owner and production safety gates.</div>
+        <div className="notice-card">Saving or submitting this form does not publish your store, change your plan, or charge anything.</div>
         <div className="notice-card success" data-testid="commerce-setup-quickstart">
           <strong>Quick start: you only need the Store name.</strong>
           <p>Everything else on this page is optional. Skip what you do not know and add it later. Press <strong>Save draft</strong> at the bottom. You do not need to send this to NXQX for review to open your store.</p>

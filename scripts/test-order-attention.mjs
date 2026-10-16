@@ -19,6 +19,7 @@ const a = summarizeOrderAttention({ orders });
 check("unpaid open orders count as waiting for payment confirmation", a.awaitingPayment === 2, JSON.stringify(a));
 check("paid orders that are not shipped yet count as ready to ship", a.toShip === 1, JSON.stringify(a));
 check("shipped, delivered and cancelled orders need no action", a.awaitingPayment + a.toShip === 3);
+check("a paid order that is ready for pickup needs no more action from the owner", summarizeOrderAttention({ orders: [{ payment_status: "paid", fulfillment_status: "ready_for_pickup", is_test: false }] }).toShip === 0 && summarizeOrderAttention({ orders: [{ payment_status: "paid", fulfillment_status: "processing", is_test: false }] }).toShip === 1);
 check("practice (test) orders never count", summarizeOrderAttention({ orders: [{ payment_status: "pending", fulfillment_status: "new", is_test: true }] }).awaitingPayment === 0 && a.total === 6);
 check("missing, null or malformed data gives zeros and never crashes", JSON.stringify(summarizeOrderAttention(null)) === JSON.stringify({ awaitingPayment: 0, toShip: 0, total: 0 }) && summarizeOrderAttention({ orders: "x" }).total === 0 && summarizeOrderAttention({ orders: [null, 5, {}] }).awaitingPayment === 1);
 check("plain-words message: singular, plural, both, none", orderAttentionMessage({ awaitingPayment: 1, toShip: 0, total: 1 }) === "1 order is waiting for you to confirm payment."

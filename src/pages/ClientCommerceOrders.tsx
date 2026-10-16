@@ -118,10 +118,10 @@ export function ClientCommerceOrders() {
     if (!supabase || busy) return;
     setBusy("create"); setError(""); setMessage("");
     const result = await supabase.rpc("create_my_commerce_test_order");
-    if (result.error) setError("The protected test order could not be created. No payment, customer message, shipment, or live checkout was triggered.");
+    if (result.error) setError("The practice order could not be created. Nothing was charged and no customer was contacted.");
     else {
       const payload = result.data as { order_number?: string } | null;
-      setMessage(`${payload?.order_number || "Protected test order"} created. No payment was charged and no customer was contacted.`);
+      setMessage(`${payload?.order_number || "Practice order"} created. Nothing was charged and no customer was contacted.`);
       await loadOrders();
     }
     setBusy("");
@@ -163,13 +163,13 @@ export function ClientCommerceOrders() {
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
       <div className="panel-title panel-title-row">
-        <div className="panel-title"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">Manage verified order records, payment-status confirmation, fulfillment, and tracking.</p></div></div>
+        <div className="panel-title"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">See your orders, confirm payments when the money arrives, and update shipping.</p></div></div>
         <button className="icon-btn" disabled={loading || Boolean(busy)} onClick={loadOrders} type="button"><RefreshCcw size={16} /> Refresh</button>
       </div>
 
       <section className="panel panel-wide">
         <div className="panel-title"><PackageCheck size={20} /><div><h2>Client-managed orders</h2><p className="subtle">Routine order updates stay in your portal. Payment confirmation here only records money you have independently verified as received; this screen does not charge a customer.</p></div></div>
-        <button className="wide-btn" disabled={Boolean(busy)} onClick={createTestOrder} type="button"><Plus size={16} /> {busy === "create" ? "Creating test order..." : "Create protected test order"}</button>
+        <button className="wide-btn" disabled={Boolean(busy)} onClick={createTestOrder} type="button"><Plus size={16} /> {busy === "create" ? "Creating practice order..." : "Create practice order"}</button>
         <p className="subtle" style={{ textAlign: "center", marginTop: ".75rem" }}>Testing only: no payment, email, shipment, provider activation, or live checkout is triggered.</p>
       </section>
 
@@ -177,14 +177,14 @@ export function ClientCommerceOrders() {
       {message ? <div className="auth-success">{message}</div> : null}
 
       <section className="panel panel-wide"><div className="settings-grid">
-        <article className="settings-card"><span>Total orders</span><strong>{summaryValue(summary.orders, verified)}</strong><p>All verified protected and live order records.</p></article>
+        <article className="settings-card"><span>Total orders</span><strong>{summaryValue(summary.orders, verified)}</strong><p>All of your orders.</p></article>
         <article className="settings-card"><span>New</span><strong>{summaryValue(summary.new_orders, verified)}</strong><p>Orders waiting to be processed.</p></article>
         <article className="settings-card"><span>Open</span><strong>{summaryValue(summary.open_orders, verified)}</strong><p>Orders still being fulfilled.</p></article>
         <article className="settings-card"><span>Completed</span><strong>{summaryValue(summary.completed_orders, verified)}</strong><p>Orders marked delivered.</p></article>
       </div></section>
 
       {loading ? <div className="empty-state">Loading orders...</div> : verified && sortedOrders.length === 0 ? (
-        <div className="empty-state">No verified orders yet. Protected test orders can be created above without activating payments or live checkout.</div>
+        <div className="empty-state">No orders yet. Place a practice order from your store, or press Create practice order above.</div>
       ) : verified ? sortedOrders.map((order) => {
         const draft = drafts[order.id] || { status: order.fulfillment_status, tracking: order.tracking_number || "", note: order.fulfillment_note || "" };
         const isOpen = Boolean(expanded[order.id]);

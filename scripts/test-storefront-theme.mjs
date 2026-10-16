@@ -37,5 +37,8 @@ const pairs = [["ink on page", vars.ink, vars.bg], ["ink on card", vars.ink, var
 for (const [label, fg, bg] of pairs) check(`contrast ${label} is at least 4.5:1`, Boolean(fg && bg) && ratio(fg, bg) >= 4.5, `${fg} on ${bg} = ${fg && bg ? ratio(fg, bg).toFixed(2) : "?"}`);
 check("form labels no longer use the unreadable gold", /label span[\s\S]{0,400}color: var\(--store-ink\) !important/.test(css));
 
+check("links, buttons and menus show a clear focus outline for keyboard users", /\.store-theme a:focus-visible, \.store-theme button:focus-visible, \.store-theme select:focus-visible/.test(css) && /outline: 3px solid var\(--store-accent-dark\)/.test(css));
+check("the focus outline color itself passes contrast against the page and cards", ratio(vars["accent-dark"], vars.bg) >= 3 && ratio(vars["accent-dark"], vars.surface) >= 3);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll storefront-theme checks passed (offline).");
 process.exit(failures ? 1 : 0);
