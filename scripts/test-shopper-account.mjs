@@ -4,6 +4,7 @@ import fs from "node:fs";
 import {
   formatOrderTotal, friendlyShopperError, isShopperAccountPath, mergeCheckoutAutofill, normalizeProfileInput, orderStatusLabel,
   profileToCheckoutFields, shopperAccountPath, shopperLimits, storeSlugFromPath, validateCredentials,
+  forgotPasswordSentMessage, isRecoveryUrl, resetRedirectUrl, tooManyAttemptsMessage, validateEmailOnly, validateNewPassword,
 } from "../src/lib/shopperAccount.ts";
 
 let failures = 0;
@@ -20,6 +21,14 @@ const blank = normalizeProfileInput({ fullName: "  ", phone: "", address: "" });
 check("empty name and phone become null, not empty strings", blank.ok && blank.payload.full_name === null && blank.payload.phone === null);
 check("over-long name, phone and address are refused with a plain message", !normalizeProfileInput({ fullName: "x".repeat(shopperLimits.name + 1), phone: "", address: "" }).ok && !normalizeProfileInput({ fullName: "", phone: "1".repeat(shopperLimits.phone + 1), address: "" }).ok && !normalizeProfileInput({ fullName: "", phone: "", address: "a".repeat(shopperLimits.address + 1) }).ok);
 check("limits match the database (160 / 80)", shopperLimits.name === 160 && shopperLimits.phone === 80);
+
+// ---- forgot password / reset
+check("reset email returns to the same account URL sign-up uses (one Supabase allow-list entry covers both)", resetRedirectUrl("https://shop.example.com", "candles-abc123") === "https://shop.example.com/store/candles-abc123/account" && resetRedirectUrl("https://shop.example.com/", "x") === "https://shop.example.com/store/x/account");
+check("a recovery link is recognised from the URL hash, and a normal visit or sign-up confirmation is not", isRecoveryUrl("#access_token=abc&type=recovery") && isRecoveryUrl("#type=recovery&access_token=abc") && isRecoveryUrl("", "?type=recovery") && !isRecoveryUrl("") && !isRecoveryUrl("#access_token=abc&type=signup") && !isRecoveryUrl("#note=type=recoveryx"));
+check("forgot form needs a real-looking email", validateEmailOnly("jo@shop.com").ok && !validateEmailOnly("").ok && !validateEmailOnly("jo@").ok);
+check("new password must be long enough and typed twice the same", validateNewPassword("longenough1", "longenough1").ok && !validateNewPassword("short", "short").ok && !validateNewPassword("longenough1", "longenough2").ok);
+check("same-password and rate-limit errors get plain sentences", /not used before/.test(friendlyShopperError("New password should be different from the old password.")) && friendlyShopperError("email rate limit exceeded") === tooManyAttemptsMessage);
+check("the forgot-password confirmation never says whether the email has an account", /^If that email has an account/.test(forgotPasswordSentMessage) && !/not found|no account|does not exist/i.test(forgotPasswordSentMessage));
 
 // ---- autofill
 const saved = profileToCheckoutFields({ email: "a@b.co", full_name: "Jo", phone: "555", shipping_address: { address: "1 Main St", extra: "ignored" } });
@@ -85,6 +94,14 @@ check("guest checkout is still allowed with no account", storefront.includes("if
 check("account lookup on the store page cannot break checkout (errors swallowed)", /async function loadAccountHelp\(\)[\s\S]*try \{[\s\S]*catch \{ \/\* guest checkout continues \*\/ \}/.test(storefront));
 check("details are saved to the account only for signed-in shoppers who opted in", storefront.includes("if (signedIn && saveToAccount)") && storefront.includes("Save these details to my account for next time"));
 check("the Sign in link appears only when the store has accounts on", storefront.includes("accountsEnabled ? <a className=\"icon-btn\" href={shopperAccountPath(slug)}>"));
+
+check("page sends the reset email through resetPasswordForEmail with the account-page redirect", account.includes("auth.resetPasswordForEmail(") && account.includes("resetRedirectUrl(window.location.origin, slug)"));
+check("page shows the same message after a reset request whether or not it worked (except rate limits)", account.includes("setMessage(forgotPasswordSentMessage)") && !/resetPasswordForEmail[\s\S]{0,400}(not found|no account)/i.test(account));
+check("page switches to a new-password form on recovery (URL on first render and PASSWORD_RECOVERY event) and changes it with updateUser", account.includes("isRecoveryUrl(window.location.hash") && account.includes('"PASSWORD_RECOVERY"') && account.includes("auth.updateUser({ password: newPassword })") && account.includes("validateNewPassword("));
+check("a recovery visit does not show the signed-in account view before the password is changed", /recovering \? <section[\s\S]*Change password[\s\S]*: !signedInEmail && mode === "forgot"/.test(account) && account.includes("if (enabled && recovering)"));
+check("a dead reset link asks for a fresh one instead of a blank page", account.includes("This reset link is invalid or has expired. Request a new one."));
+check("sign-in screen offers 'Forgot your password?' only on sign-in", account.includes('mode === "signin" ? <button') && account.includes("Forgot your password?"));
+check("the recovery listener is cleaned up on unmount", account.includes("subscription.unsubscribe()"));
 
 check("owner switch asks for confirmation and calls the owner function", live.includes("set_my_customer_accounts_enabled") && /toggleAccounts\(\)[\s\S]*window\.confirm/.test(live) && live.includes("No card details are stored"));
 

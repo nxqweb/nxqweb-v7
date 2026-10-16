@@ -39,7 +39,7 @@ Free plan, 300 credits/month; a production deploy costs 15; the cycle resets **O
 
 ## Waiting / blocked / open
 - **Oct 22+:** owner reads fresh Netlify credits; then (a) one Supabase `deploy_functions` run for pending function fixes (Netlify `stop_builds` for Business/Commerce in `provision-project-infrastructure` and `provision-storefront`, claim-free copy, analytics-ingest path privacy), (b) one main-site production deploy for today's pages, (c) retry QA run #4 (`QA-16A49D9B4A3E`, job `provision_project_infrastructure` queued 1/5; **do NOT dispatch workers before the function deploy**), then QA runs 5–10 (1 of 10 clean so far).
-- Shopper accounts before real shoppers: add the shopper account URL pattern to Supabase Auth → URL Configuration (owner's setting; otherwise the confirm link lands on the main site), keep "Confirm email" ON, and Supabase's built-in confirmation email is rate-limited (needs the verified email domain = card). No shopper "forgot password" yet.
+- Shopper accounts before real shoppers: add the shopper account URL pattern to Supabase Auth → URL Configuration (owner's setting; otherwise the confirm link lands on the main site), keep "Confirm email" ON, and Supabase's built-in confirmation email is rate-limited (needs the verified email domain = card). Shopper "forgot password" is built (2026-10-16, not deployed): the reset email returns to the same account URL, so the SAME Supabase redirect entry covers sign-up confirmation and reset; the reset email is also sent by the rate-limited built-in mailer.
 - Stripe amount: Payment Links cannot carry an amount; the guide/Live page tell the owner to use the "customers choose what to pay" option if the account offers it. UNVERIFIED wording/availability; check in her Stripe dashboard.
 - Known product friction (from the rehearsal): putting the Stripe link in the Primary product image box made "Make visible" fail with only a generic error (root cause unconfirmed); Live-store name is separate from the setup-form name; generic red errors hide the real reason.
 - `NXQ-` still appears in customer order numbers until the held migration is applied.
@@ -50,7 +50,7 @@ Free plan, 300 credits/month; a production deploy costs 15; the cycle resets **O
 ## Next 3 highest-priority safe tasks
 1. **When the candle friend signs up:** run the five-step onboarding above, one click at a time; write friction found into the handoff.
 2. **On Oct 22 or later (after the owner reads fresh credits):** the deploy sequence above, then a real shopper sign-up/sign-in test in a private window and set the Supabase redirect URL (owner's decision).
-3. **Safe local work while waiting:** shopper "forgot password" flow; replace the generic Live-store error with the real reason and find the image-box root cause; (only with a fresh yes) promote/apply `03_journey_nxqx_wording`.
+3. **Safe local work while waiting:** (done: shopper forgot-password flow, real reason on Live-store errors) find the image-box root cause (the 400 is still unexplained); (only with a fresh yes) promote/apply `03_journey_nxqx_wording`.
 
 ## Done / left (this chat)
 - [x] Commerce rehearsal passed end to end; friction list written
@@ -60,7 +60,8 @@ Free plan, 300 credits/month; a production deploy costs 15; the cycle resets **O
 - [x] Harness check broken by my shopper pages found and fixed
 - [ ] Candle friend signs up → onboarding
 - [ ] Oct 22: fresh Netlify credits → deploy everything
-- [ ] Shopper redirect URL + real sign-up test; forgot-password flow
+- [x] Shopper forgot-password flow built (local, not deployed)
+- [ ] Shopper redirect URL + real sign-up and reset test in a private window (after the deploy)
 - [ ] Order-number migration (held), journey-wording migration (awaiting approval), remove temp billing button before launch
 
 ## New chat starter (paste this)

@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, LogOut, Package, Save, Trash2, UserRound } from "lucide-react";
+import { ArrowLeft, KeyRound, LogOut, Package, Save, Trash2, UserRound } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { StoreCredit } from "../components/StoreCredit";
 import { deleteShopperProfile, fetchShopperOrders, fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
 import {
-  formatOrderTotal, friendlyShopperError, normalizeProfileInput, orderStatusLabel, profileToCheckoutFields, shopperLimits,
-  storeSlugFromPath, validateCredentials, type ShopperOrderRow, type ShopperProfileRow,
+  forgotPasswordSentMessage, formatOrderTotal, friendlyShopperError, isRecoveryUrl, normalizeProfileInput, orderStatusLabel, profileToCheckoutFields,
+  resetRedirectUrl, shopperLimits, storeSlugFromPath, tooManyAttemptsMessage, validateCredentials, validateEmailOnly, validateNewPassword, type ShopperOrderRow, type ShopperProfileRow,
 } from "../lib/shopperAccount";
 
 export function PublicShopperAccount() {
@@ -14,7 +14,11 @@ export function PublicShopperAccount() {
   const [storeName, setStoreName] = useState("this store");
   const [accountsEnabled, setAccountsEnabled] = useState<boolean | null>(null);
   const [signedInEmail, setSignedInEmail] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
+  // Read the URL on first render, before the auth library clears the recovery hash.
+  const [recovering, setRecovering] = useState(() => isRecoveryUrl(window.location.hash, window.location.search));
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -57,10 +61,16 @@ export function PublicShopperAccount() {
       const enabled = Boolean((status.data as { accounts_enabled?: boolean } | null)?.accounts_enabled);
       setAccountsEnabled(enabled);
       const user = session.data.session?.user;
-      if (enabled && user?.email) { setSignedInEmail(user.email); await loadAccount(); }
+      if (enabled && recovering) {
+        // Opened from a reset email: show the new-password form, or ask for a fresh link if the session did not form.
+        if (!user) { setRecovering(false); setMode("forgot"); setError("This reset link is invalid or has expired. Request a new one."); }
+      } else if (enabled && user?.email) { setSignedInEmail(user.email); await loadAccount(); }
     }
     void start();
-    return () => { cancelled = true; };
+    const listener = supabase?.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") { setRecovering(true); setSignedInEmail(""); setAccountLoaded(false); }
+    });
+    return () => { cancelled = true; listener?.data.subscription.unsubscribe(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- slug is fixed for this mounted route
 
   async function submitCredentials(event: FormEvent) {
@@ -81,6 +91,38 @@ export function PublicShopperAccount() {
       if (result.error) setError(friendlyShopperError(result.error.message));
       else { setSignedInEmail(result.data.user?.email || email.trim()); setPassword(""); await loadAccount(); }
     }
+    setBusy("");
+  }
+
+  async function submitForgot(event: FormEvent) {
+    event.preventDefault();
+    if (!supabase) return;
+    setError(""); setMessage("");
+    const check = validateEmailOnly(email);
+    if (!check.ok) { setError(check.error); return; }
+    setBusy("auth");
+    const result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: resetRedirectUrl(window.location.origin, slug) });
+    // Same answer whether or not the email has an account, so nobody can use this form to find out who shops here.
+    const friendly = result.error ? friendlyShopperError(result.error.message) : "";
+    if (friendly === tooManyAttemptsMessage) setError(friendly);
+    else setMessage(forgotPasswordSentMessage);
+    setBusy("");
+  }
+
+  async function submitNewPassword(event: FormEvent) {
+    event.preventDefault();
+    if (!supabase) return;
+    setError(""); setMessage("");
+    const check = validateNewPassword(newPassword, confirmPassword);
+    if (!check.ok) { setError(check.error); return; }
+    setBusy("auth");
+    const result = await supabase.auth.updateUser({ password: newPassword });
+    if (result.error) { setError(friendlyShopperError(result.error.message)); setBusy(""); return; }
+    const userResult = await supabase.auth.getUser();
+    setNewPassword(""); setConfirmPassword(""); setRecovering(false);
+    window.history.replaceState(null, "", window.location.pathname);
+    if (userResult.data.user?.email) { setSignedInEmail(userResult.data.user.email); await loadAccount(); }
+    setMessage("Your password was changed. You are signed in.");
     setBusy("");
   }
 
@@ -129,11 +171,28 @@ export function PublicShopperAccount() {
 
   return (
     <main className="nxq-page"><section className="portal-shell">
-      <div className="panel-title panel-title-row"><div className="panel-title"><UserRound size={24} /><div><h1>{signedInEmail ? "Your account" : mode === "signup" ? "Create your account" : "Sign in"}</h1><p className="subtle">{storeName} · saved details and order history</p></div></div>{backLink}</div>
+      <div className="panel-title panel-title-row"><div className="panel-title"><UserRound size={24} /><div><h1>{recovering ? "Choose a new password" : signedInEmail ? "Your account" : mode === "signup" ? "Create your account" : mode === "forgot" ? "Reset your password" : "Sign in"}</h1><p className="subtle">{storeName} · saved details and order history</p></div></div>{backLink}</div>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {message ? <div className="auth-success" role="status">{message}</div> : null}
 
-      {!signedInEmail ? <section className="panel panel-wide">
+      {recovering ? <section className="panel panel-wide">
+        <div className="panel-title"><KeyRound size={20} /><div><h2>New password</h2><p className="subtle">Pick a new password for your {storeName} account.</p></div></div>
+        <form onSubmit={(event) => void submitNewPassword(event)}>
+          <div className="setup-form-grid">
+            <label><span>New password</span><input className="auth-input" type="password" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></label>
+            <label><span>Confirm new password</span><input className="auth-input" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></label>
+          </div>
+          <button className="wide-btn" type="submit" disabled={busy === "auth"}>{busy === "auth" ? "One moment..." : "Change password"}</button>
+        </form>
+      </section> : !signedInEmail && mode === "forgot" ? <section className="panel panel-wide">
+        <form onSubmit={(event) => void submitForgot(event)}>
+          <div className="setup-form-grid">
+            <label><span>Email</span><input className="auth-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+          </div>
+          <button className="wide-btn" type="submit" disabled={busy === "auth"}>{busy === "auth" ? "One moment..." : "Send reset link"}</button>
+        </form>
+        <button className="icon-btn" type="button" onClick={() => { setMode("signin"); setError(""); setMessage(""); }}>Back to sign in</button>
+      </section> : !signedInEmail ? <section className="panel panel-wide">
         <form onSubmit={(event) => void submitCredentials(event)}>
           <div className="setup-form-grid">
             <label><span>Email</span><input className="auth-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
@@ -144,6 +203,7 @@ export function PublicShopperAccount() {
         <button className="icon-btn" type="button" onClick={() => { setMode(mode === "signup" ? "signin" : "signup"); setError(""); setMessage(""); }}>
           {mode === "signup" ? "I already have an account" : "Create a new account"}
         </button>
+        {mode === "signin" ? <button className="icon-btn" type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }}>Forgot your password?</button> : null}
         <p className="subtle">An account is optional. You can always check out as a guest. We never ask for or store card details here.</p>
       </section> : <>
         <section className="panel panel-wide">

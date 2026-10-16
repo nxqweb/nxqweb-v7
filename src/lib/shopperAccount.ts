@@ -78,6 +78,32 @@ export function validateCredentials(email: string, password: string): SignUpChec
   return { ok: true };
 }
 
+// Password reset (forgot password). The reset email returns to the same account URL that sign-up confirmation uses, so one
+// Supabase redirect allow-list entry covers both.
+export const forgotPasswordSentMessage = "If that email has an account, we sent a link to reset the password. Check your inbox and spam folder.";
+
+export function resetRedirectUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/+$/, "")}${shopperAccountPath(slug)}`;
+}
+
+// True when the page was opened from a password-recovery email link (the auth library puts type=recovery in the URL hash).
+export function isRecoveryUrl(hash: string, search = ""): boolean {
+  return /(?:^|[#&?])type=recovery(?:&|$)/.test(hash) || /(?:^|[?&])type=recovery(?:&|$)/.test(search);
+}
+
+export function validateEmailOnly(email: string): SignUpCheck {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) return { ok: false, error: "Enter a valid email address." };
+  return { ok: true };
+}
+
+export function validateNewPassword(password: string, confirm: string): SignUpCheck {
+  if (password.length < shopperLimits.passwordMin) return { ok: false, error: `Use a password with at least ${shopperLimits.passwordMin} characters.` };
+  if (password !== confirm) return { ok: false, error: "The two passwords do not match." };
+  return { ok: true };
+}
+
+export const tooManyAttemptsMessage = "Too many attempts right now. Please wait a minute and try again.";
+
 // Turn database and sign-in errors into short plain sentences. Unknown errors stay generic so internals never leak.
 export function friendlyShopperError(message: string | null | undefined): string {
   const text = String(message || "");
@@ -86,7 +112,8 @@ export function friendlyShopperError(message: string | null | undefined): string
   if (/Customer accounts are not available/i.test(text) || /Storefront is not available/i.test(text)) return "This store does not offer accounts right now. You can still check out as a guest.";
   if (/Invalid login credentials/i.test(text)) return "That email and password do not match. Please try again.";
   if (/already registered/i.test(text) || /already been registered/i.test(text)) return "An account with that email already exists. Try signing in instead.";
-  if (/rate limit/i.test(text) || /too many/i.test(text) || /seconds/i.test(text)) return "Too many attempts right now. Please wait a minute and try again.";
+  if (/rate limit/i.test(text) || /too many/i.test(text) || /seconds/i.test(text)) return tooManyAttemptsMessage;
+  if (/different from the old password/i.test(text) || /same_password/i.test(text)) return "Choose a password you have not used before for this account.";
   if (/Password should be/i.test(text) || /weak/i.test(text)) return `Use a stronger password with at least ${shopperLimits.passwordMin} characters.`;
   if (/must be \d+ characters or fewer/i.test(text) || /too large/i.test(text)) return "One of the details is too long. Please shorten it and try again.";
   return "Something went wrong. Please try again in a moment.";
