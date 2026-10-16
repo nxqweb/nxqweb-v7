@@ -96,7 +96,7 @@ export function ClientOverviewGraph({ journey, healthLabel, healthTone, billingL
           </div>
         </div>
 
-        <div className="px-id-row" aria-label="Your identity numbers">
+        <div className="px-id-row" role="group" aria-label="Your identity numbers">
           <IdChip label="Your NXQX ID" value={nxqId} />
           <IdChip label="NXQX-Web client ID" value={clientCode} />
           <p className="px-id-note">Quote these when you contact support so we can find your account fast.</p>

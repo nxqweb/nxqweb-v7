@@ -37,7 +37,7 @@ export function OwnerOverviewGraph({ summary, title, subtitle }: Props) {
   const moneyMax = Math.max(mrr + pipelineValue, 1);
 
   return (
-    <div className="px-owner-overview" aria-label="Owner overview">
+    <div className="px-owner-overview" role="group" aria-label="Owner overview">
       <span className="px-glance-kicker">Owner Portal · overview</span>
       <h1 className="px-ob-title">{title}</h1>
       <p className="px-ob-sub">{subtitle}</p>

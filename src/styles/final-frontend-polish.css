@@ -356,3 +356,16 @@ canvas {
     scroll-behavior: auto !important;
   }
 }
+
+/* Text for screen readers only (for example a page heading that the visual design already shows another way). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

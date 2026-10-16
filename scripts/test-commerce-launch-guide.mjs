@@ -58,5 +58,8 @@ check("tutorial page does not write to the database", !/\.rpc\(|\.from\(/.test(p
 const dash = fs.readFileSync("src/pages/ClientCommerceDashboard.tsx", "utf8");
 check("dashboard shows the nudge with a dismiss button", dash.includes("shouldShowGuidePrompt(") && dash.includes("Don't remind me again") && dash.includes('href="/client/commerce/tutorial"'));
 
+const tutorialPage = fs.readFileSync("src/pages/ClientCommerceTutorial.tsx", "utf8");
+check("the guide's progress bar is a real progressbar for screen readers (role, range, value and a plain-words text)", /className="usage-progress" role="progressbar" aria-label="Guide progress" aria-valuemin=\{0\} aria-valuemax=\{100\} aria-valuenow=\{progress\.percent\} aria-valuetext=\{`\$\{progress\.count\} of \$\{progress\.total\} steps done`\}/.test(tutorialPage));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll commerce-launch-guide checks passed (offline).");
 process.exit(failures ? 1 : 0);

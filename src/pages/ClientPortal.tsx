@@ -14,7 +14,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { signupPrefillForSetup } from "../lib/signupPrefill";
 import { OptionalSection } from "../components/OptionalSection";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
-import type { ClientLaunchJourney } from "../lib/clientJourney";
+import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
 
 type ClientRow = {
   id: string;
@@ -471,7 +471,7 @@ export function ClientPortal() {
         setErrorMessage("Some project journey information could not be verified. No project changes were made.");
         setJourney(null);
       } else {
-        setJourney((journeyResult.data as ClientLaunchJourney) || null);
+        setJourney(parseLaunchJourney(journeyResult.data));
       }
 
       const messageResult = await supabase.rpc("current_client_message_page", {

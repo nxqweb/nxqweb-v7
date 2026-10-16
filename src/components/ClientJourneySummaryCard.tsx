@@ -23,7 +23,7 @@ export function ClientJourneySummaryCard({ journey }: Props) {
         <a className="icon-btn" href="/client/journey">View full journey <ArrowRight size={15} /></a>
       </div>
 
-      <div className="journey-progress" aria-label={`Website journey ${journey.progress_percent}% complete`}>
+      <div className="journey-progress" role="progressbar" aria-label="Website journey progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress_percent}>
         <span style={{ width: `${Math.max(0, Math.min(100, journey.progress_percent))}%` }} />
       </div>
 

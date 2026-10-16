@@ -128,7 +128,7 @@ export function OwnerProductFamilies() {
         {error ? <div className="notice-card" role="alert">{error}</div> : null}
         {loading ? <div className="empty-state" role="status">Loading family readiness…</div> : null}
 
-        <div className="owner-detail-grid" aria-label="Product family summary">
+        <div className="owner-detail-grid" role="group" aria-label="Product family summary">
           <section className="panel"><Building2 size={22} /><h2>{summary.total}</h2><p className="subtle">Distinct family blueprints</p></section>
           <section className="panel"><CheckCircle2 size={22} /><h2>{summary.inQa}</h2><p className="subtle">Foundations in QA</p></section>
           <section className="panel"><LockKeyhole size={22} /><h2>{summary.locked}</h2><p className="subtle">Launch-locked families</p></section>

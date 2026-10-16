@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, CheckCircle2, CircleAlert, Clock3, Circle, Route, ShieldCheck } from "lucide-react";
-import { journeyStatusLabel, type ClientLaunchJourney, type ClientJourneyRequirement } from "../lib/clientJourney";
+import { journeyStatusLabel, parseLaunchJourney, type ClientLaunchJourney, type ClientJourneyRequirement } from "../lib/clientJourney";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 function RequirementIcon({ requirement }: { requirement: ClientJourneyRequirement }) {
@@ -29,8 +29,10 @@ export function ClientLaunchJourneyPage() {
       }
       const result = await supabase.rpc("current_client_launch_journey");
       if (!active) return;
-      if (result.error) setError(result.error.message || "Your website journey could not load.");
-      else setJourney(result.data as ClientLaunchJourney);
+      // Never show the technical error text to a client; an empty or malformed response is treated like a failed load.
+      const parsed = parseLaunchJourney(result.data);
+      if (result.error || !parsed) setError("Your website journey could not load right now. Please try again shortly.");
+      else setJourney(parsed);
       setLoading(false);
     }
     void loadJourney();
@@ -63,7 +65,7 @@ export function ClientLaunchJourneyPage() {
                 <h2>{journey.stage_title}</h2>
                 <p>{journey.stage_detail}</p>
               </div>
-              <div className="journey-progress journey-progress-large" aria-label={`Website journey ${journey.progress_percent}% complete`}>
+              <div className="journey-progress journey-progress-large" role="progressbar" aria-label="Website journey progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={journey.progress_percent}>
                 <span style={{ width: `${Math.max(0, Math.min(100, journey.progress_percent))}%` }} />
               </div>
               <div className={`journey-next-action ${journey.next_action.owner === "client" ? "client-action" : "nxq-action"}`}>

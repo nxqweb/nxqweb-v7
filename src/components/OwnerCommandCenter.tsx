@@ -293,7 +293,7 @@ export function OwnerCommandCenter() {
         </div>
       </div>
 
-      <div className="owner-command-quick-links" aria-label="Owner operations shortcuts">
+      <div className="owner-command-quick-links" role="group" aria-label="Owner operations shortcuts">
         <a href="/owner/automation-health">Automation health</a>
         <a href="/owner/providers">Provider health</a>
         <a href="/owner/exceptions">Exception center</a>

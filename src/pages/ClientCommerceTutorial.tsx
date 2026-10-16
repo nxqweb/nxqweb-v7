@@ -45,7 +45,7 @@ export function ClientCommerceTutorial() {
             <div><span className="subtle">{progress.complete ? "All steps done" : `${progress.count} of ${progress.total} steps done`}</span></div>
             <strong>{progress.percent}%</strong>
           </div>
-          <div className="usage-progress" aria-label={`Guide ${progress.percent}% complete`}><span style={{ width: `${progress.percent}%` }} /></div>
+          <div className="usage-progress" role="progressbar" aria-label="Guide progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent} aria-valuetext={`${progress.count} of ${progress.total} steps done`}><span style={{ width: `${progress.percent}%` }} /></div>
           <ol className="guide-step-list" style={{ listStyle: "none", padding: 0, margin: "0.75rem 0 0", display: "grid", gap: "0.4rem" }}>
             {launchGuideSteps.map((item, index) => (
               <li key={item.id}>

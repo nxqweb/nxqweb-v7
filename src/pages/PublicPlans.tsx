@@ -34,6 +34,7 @@ export function PublicPlans() {
 
       <section id="tiers">
         <div className="px-wrap">
+          <h1 className="sr-only">NXQX-Web service levels and plans</h1>
           <span className="px-kicker" data-px-reveal>Service tiers</span>
           <h2 data-px-reveal>Four clear service levels, from a polished managed site to a custom growth system.</h2>
           <p className="px-sub" data-px-reveal>

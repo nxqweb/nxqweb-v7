@@ -16,7 +16,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { ClientCommercePortalTab } from "./ClientCommercePortalTab";
 import { ClientJourneySummaryCard } from "./ClientJourneySummaryCard";
 import { ClientOverviewGraph } from "./ClientOverviewGraph";
-import type { ClientLaunchJourney } from "../lib/clientJourney";
+import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
 
 type BillingSummary = {
   billing_status: string;
@@ -127,12 +127,13 @@ export function ClientPortalTopCards() {
         setHealthStateLoad("ready");
       }
 
-      if (journeyResult.error || !journeyResult.data) {
+      const parsedJourney = parseLaunchJourney(journeyResult.data);
+      if (journeyResult.error || !parsedJourney) {
         setJourney(null);
         setJourneyStateLoad("error");
         failures.push("launch journey");
       } else {
-        setJourney(journeyResult.data as ClientLaunchJourney);
+        setJourney(parsedJourney);
         setJourneyStateLoad("ready");
       }
 

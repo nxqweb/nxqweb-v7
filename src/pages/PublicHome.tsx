@@ -112,7 +112,7 @@ export function PublicHome() {
             </a>
             <a className="px-btn px-ghost" href="#systems">See how NXQX works</a>
           </div>
-          <div className="px-chips px-rise px-d4" aria-label="NXQX-Web service principles">
+          <div className="px-chips px-rise px-d4" role="group" aria-label="NXQX-Web service principles">
             <span>Managed after launch</span>
             <span>Built to keep improving</span>
             <span>Owner-reviewed where it matters</span>
@@ -151,7 +151,7 @@ export function PublicHome() {
             ))}
           </div>
 
-          <div className="px-story" aria-label="NXQX-Web managed website lifecycle demonstration">
+          <div className="px-story" role="group" aria-label="NXQX-Web managed website lifecycle demonstration">
             <div className="px-card px-story-card" aria-live="polite">
               {storyStages.map((item, index) => (
                 <div className={`px-stage ${index === stage ? "px-on" : ""}`} key={item.eyebrow}>
@@ -161,7 +161,7 @@ export function PublicHome() {
                   <div className="px-signal"><span>{item.signal}</span><b>{item.detail}</b></div>
                 </div>
               ))}
-              <div className="px-dotsrow" aria-label="Lifecycle progress">
+              <div className="px-dotsrow" role="img" aria-label="Lifecycle progress">
                 {storyStages.map((item, index) => <i className={index <= stage ? "px-on" : ""} key={item.eyebrow} />)}
               </div>
             </div>
@@ -194,7 +194,7 @@ export function PublicHome() {
           <span className="px-kicker" data-px-reveal>Built to feel premium everywhere</span>
           <h2 data-px-reveal>Desktop, tablet, phone. Always on brand.</h2>
           <p className="px-sub" data-px-reveal>Responsive by default. Mobile-first presentation is part of every plan, from Starter up.</p>
-          <div className="px-devs" data-px-reveal aria-label="Example website on desktop and phone">
+          <div className="px-devs" data-px-reveal role="img" aria-label="Example website on desktop and phone">
             {[0, 1].map((variant) => {
               const sample = (
                 <div className="px-scrollpage" aria-hidden="true">

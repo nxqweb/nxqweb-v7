@@ -169,6 +169,7 @@ export function PortalSignup() {
         </a>
 
         <form className="lux-card premium-signup-card" onSubmit={handleSignup}>
+          <h1 className="sr-only">Create your NXQX-Web client account</h1>
           <div className="lux-section-head">
             <span><Sparkles size={14} /> Project setup</span>
             <h2>{selectedFamily.name} · {tier.name}</h2>
