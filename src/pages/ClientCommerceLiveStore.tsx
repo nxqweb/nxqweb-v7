@@ -198,11 +198,12 @@ export function ClientCommerceLiveStore() {
       {!loading && verified && data ? <>
         <section className="panel panel-wide">
           <div className="panel-title"><Save size={20} /><div><h2>Store and payment handoff</h2><p className="subtle">A public payment link can be recorded here later, but this page does not create a payment account, store secrets, charge customers, or connect payouts.</p></div></div>
+          <p className="subtle" data-testid="payment-link-hint">You only need one payment link: Stripe, PayPal or Venmo. Fill in just the one you use and leave the others empty. PayPal and Venmo links carry the exact order total.</p>
           <div className="setup-form-grid">
             <label><span>Store name</span><input className="auth-input" value={storeName} onChange={(e) => setStoreName(e.target.value)} /></label>
             <label><span>Stripe Payment Link</span><input className="auth-input" placeholder="https://buy.stripe.com/... public link only" value={stripePaymentLink} onChange={(e) => setStripePaymentLink(e.target.value)} /></label>
-            <label><span>Legacy PayPal link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
-            <label><span>Legacy Venmo link (optional)</span><input className="auth-input" placeholder="Leave blank for new stores" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
+            <label><span>PayPal link (optional)</span><input className="auth-input" placeholder="https://paypal.me/yourname" value={paypalUrl} onChange={(e) => setPaypalUrl(e.target.value)} /></label>
+            <label><span>Venmo link (optional)</span><input className="auth-input" placeholder="https://venmo.com/u/yourname" value={venmoUrl} onChange={(e) => setVenmoUrl(e.target.value)} /></label>
             <label><span>Payment instructions</span><input className="auth-input" placeholder="Public customer-facing instructions only" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} /></label>
           </div>
           <div className="settings-grid">

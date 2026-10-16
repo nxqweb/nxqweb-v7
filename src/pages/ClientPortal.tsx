@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { signupPrefillForSetup } from "../lib/signupPrefill";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import type { ClientLaunchJourney } from "../lib/clientJourney";
 
@@ -441,6 +442,12 @@ export function ClientPortal() {
         setEscalationRules(getSetupReportValue(setupFields, "Escalation rules"));
         setTypedSignature(getSetupReportValue(setupFields, "Typed signature"));
         setAgreementAccepted(false);
+      } else {
+        // First visit: start from what the client already told us at signup instead of an empty sheet. Never overwrites typing.
+        const prefill = signupPrefillForSetup(session.user.user_metadata, session.user.email);
+        setServices((current) => current || prefill.services);
+        setLocations((current) => current || prefill.locations);
+        setBusinessEmail((current) => current || prefill.businessEmail);
       }
 
       const projectResult = await supabase
@@ -535,6 +542,8 @@ export function ClientPortal() {
       setIsLoading(false);
     }
   }
+
+  const leadAndAssistantHaveContent = [preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise, escalationRules].some((value) => value.trim());
 
   async function submitWebsiteSetup() {
     setNotice("");
@@ -1147,6 +1156,10 @@ export function ClientPortal() {
             <section className="panel panel-wide" id="website-setup-sheet">
               <div className="panel-title"><Send size={20} /><h2>Website setup sheet</h2></div>
               <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
+              <div className="notice-card success" data-testid="setup-sheet-quickstart">
+                <strong>Only the fields marked (required) are needed.</strong>
+                <p>Everything else is optional. Skip what you do not know and add it later. We filled in what you told us at signup, and you can change it.</p>
+              </div>
 
               <div className="package-grid">
                 {(Object.keys(packageOptions) as PackageTier[]).map((tier) => {
@@ -1167,13 +1180,15 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="business-address">Business address</label><input className="auth-input" id="business-address" onChange={(event) => setBusinessAddress(event.target.value)} placeholder="Example: 123 Main St, Sacramento CA" value={businessAddress} />
               <label className="auth-label" htmlFor="business-hours">Business hours</label><textarea id="business-hours" onChange={(event) => setBusinessHours(event.target.value)} placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed." value={businessHours} />
               <label className="auth-label" htmlFor="emergency-availability">Emergency / after-hours availability</label><textarea id="emergency-availability" onChange={(event) => setEmergencyAvailability(event.target.value)} placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc." value={emergencyAvailability} />
-              <label className="auth-label" htmlFor="industry">Industry</label><input className="auth-input" id="industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
-              <label className="auth-label" htmlFor="services">Services/products the website needs to explain</label><textarea id="services" onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
-              <label className="auth-label" htmlFor="pages-needed">Pages or sections needed</label><textarea id="pages-needed" onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
-              <label className="auth-label" htmlFor="style-direction">Website style direction</label><textarea id="style-direction" onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
-              <label className="auth-label" htmlFor="brand-notes">What makes this business different?</label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
+              <label className="auth-label" htmlFor="industry">Industry <em className="required-mark">(required)</em></label><input className="auth-input" id="industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
+              <label className="auth-label" htmlFor="services">Services/products the website needs to explain <em className="required-mark">(required)</em></label><textarea id="services" onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
+              <label className="auth-label" htmlFor="pages-needed">Pages or sections needed <em className="required-mark">(required)</em></label><textarea id="pages-needed" onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
+              <label className="auth-label" htmlFor="style-direction">Website style direction <em className="required-mark">(required)</em></label><textarea id="style-direction" onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
+              <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
               <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
 
+              <details className="optional-section" open={leadAndAssistantHaveContent}>
+                <summary className="optional-summary"><span><strong>Lead handling and website assistant rules</strong> <em className="optional-tag">optional</em><small>How to treat urgent leads and what the website assistant may say. You can add these later.</small></span></summary>
               <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
               <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
               <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
@@ -1185,9 +1200,11 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="ai-never-promise">What should it never promise?</label><textarea id="ai-never-promise" onChange={(event) => setAiNeverPromise(event.target.value)} placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review." value={aiNeverPromise} />
               <label className="auth-label" htmlFor="escalation-rules">When should it escalate to support or the owner?</label><textarea id="escalation-rules" onChange={(event) => setEscalationRules(event.target.value)} placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services." value={escalationRules} />
 
+              </details>
+
               <div className="agreement-box">
-                <label><input checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} type="checkbox" /><span>I acknowledge and agree that my website team will use the information I submit to prepare a brand-new website project. I understand that agreement acceptance and billing activation are required before final website access/live service.</span></label>
-                <label className="auth-label" htmlFor="typed-signature">Typed signature</label><input className="auth-input" id="typed-signature" onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
+                <label><input checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} type="checkbox" /><span><em className="required-mark">(required)</em> I acknowledge and agree that my website team will use the information I submit to prepare a brand-new website project. I understand that agreement acceptance and billing activation are required before final website access/live service.</span></label>
+                <label className="auth-label" htmlFor="typed-signature">Typed signature <em className="required-mark">(required)</em></label><input className="auth-input" id="typed-signature" onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
               </div>
 
               <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitWebsiteSetup()} type="button">{isSubmittingSetup ? "Submitting setup..." : "Submit website setup"}</button>

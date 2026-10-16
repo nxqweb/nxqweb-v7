@@ -1,5 +1,5 @@
 // Replayable first-launch guide for NXQX-Commerce clients. Steps follow the order that was proven end to end
-// (setup -> product -> live store -> open store -> test order -> confirm payment). Progress lives in this
+// (setup -> product -> photos -> live store -> open store -> test order -> confirm payment -> add more products). Progress lives in this
 // browser only; it is a convenience, never a source of truth about the store.
 
 export type LaunchGuideStep = {
@@ -39,6 +39,19 @@ export const launchGuideSteps: LaunchGuideStep[] = [
     watchOut: "The variant Price and On hand boxes start at 0. Leave them at 0 and the product shows as $0 or sold out.",
     href: "/client/commerce/products",
     action: "Add a product",
+  },
+  {
+    id: "photos",
+    title: "Add photos to your product",
+    summary: "Customers buy what they can see.",
+    doThis: [
+      "Open Photos and pick the product you just saved.",
+      "Press Upload photos and choose up to 8 clear, well-lit pictures. The first one is the main photo.",
+      "Check the photos show up, then go on to the Live store page.",
+    ],
+    watchOut: "Photos are added on the Photos page. Never paste a web address or a payment link into the Live store image box.",
+    href: "/client/commerce/images",
+    action: "Open photos",
   },
   {
     id: "live",
@@ -92,6 +105,19 @@ export const launchGuideSteps: LaunchGuideStep[] = [
     watchOut: "Never confirm a payment you have not seen arrive in your own account.",
     href: "/client/commerce/orders",
     action: "Open orders",
+  },
+  {
+    id: "more",
+    title: "Add more products any time",
+    summary: "Repeat the same three steps for every new product.",
+    doThis: [
+      "Products: enter the name, price and description, then the Variant price and On hand, and press Save product draft.",
+      "Photos: upload the pictures for that product.",
+      "Live store: press Make visible on that product. It stays hidden until you do.",
+    ],
+    watchOut: "Open your store afterward and check the new product. A product left at $0 or 0 on hand shows as $0 or sold out.",
+    href: "/client/commerce/products",
+    action: "Add a product",
   },
 ];
 

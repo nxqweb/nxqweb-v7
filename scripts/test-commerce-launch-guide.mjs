@@ -15,7 +15,7 @@ function memoryStorage(initial = {}) {
 const throwingStorage = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); } };
 
 const ids = launchGuideSteps.map((s) => s.id);
-check("steps follow the proven order", ids.join(",") === "setup,product,live,open,test-order,orders", ids.join(","));
+check("steps follow the proven order, with photos before the live store and an add-more loop at the end", ids.join(",") === "setup,product,photos,live,open,test-order,orders,more", ids.join(","));
 check("every step has instructions and a warning", launchGuideSteps.every((s) => s.doThis.length >= 2 && s.watchOut.length > 20 && s.summary.length > 10));
 
 const app = fs.readFileSync("src/App.tsx", "utf8");
@@ -31,7 +31,11 @@ check("never tells clients to paste secrets", /Never paste a secret key or passw
 check("notes a practice order holds stock", /holds one unit of stock/.test(text));
 check("makes no unsupported promises", !/\b(guarantee|instant|automatic payout|best|fast(?:est)?)\b/i.test(text));
 
-check("progress math is right", guideProgress([]).percent === 0 && guideProgress(["setup", "product", "live"]).percent === 50 && guideProgress(ids).complete === true);
+check("progress math is right", guideProgress([]).percent === 0 && guideProgress(["setup", "product", "live"]).percent === Math.round((3 / ids.length) * 100) && guideProgress(ids).complete === true);
+check("there is a photos step that points at the Photos page and warns against the image box", (() => { const st = launchGuideSteps.find((x) => x.id === "photos"); return Boolean(st) && st.href === "/client/commerce/images" && /Never paste a web address or a payment link into the Live store image box/.test(st.watchOut) && ids.indexOf("photos") > ids.indexOf("product") && ids.indexOf("photos") < ids.indexOf("live"); })());
+check("there is an add-more-products loop (products, photos, make visible) for ongoing use", (() => { const st = launchGuideSteps.find((x) => x.id === "more"); return Boolean(st) && st.href === "/client/commerce/products" && st.doThis.length === 3 && /Products:/.test(st.doThis[0]) && /Photos:/.test(st.doThis[1]) && /Make visible/.test(st.doThis[2]) && /stays hidden/.test(st.doThis[2]); })());
+const card = fs.readFileSync("src/components/ClientCommercePortalTab.tsx", "utf8");
+check("the dashboard Commerce card leads with the step-by-step guide and no longer mentions the paused storefront build", /href="\/client\/commerce\/tutorial"/.test(card) && /Start the step-by-step guide/.test(card) && !/storefront build and migration plan/.test(card) && /You only need a store name to begin/.test(card));
 check("unknown ids do not count toward progress", guideProgress(["setup", "bogus"]).count === 1);
 check("toggle adds then removes a step", toggleStepDone([], "setup").join() === "setup" && toggleStepDone(["setup"], "setup").length === 0);
 check("guide resumes at the first unfinished step", nextStepIndex([]) === 0 && nextStepIndex(["setup", "product"]) === 2 && nextStepIndex(ids) === 0);

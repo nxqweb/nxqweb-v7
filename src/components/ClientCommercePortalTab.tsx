@@ -60,19 +60,24 @@ export function ClientCommercePortalTab() {
 
       {setupNeedsAttention ? (
         <div className="notice-card">
-          Finish Commerce setup before NXQX prepares the storefront build and migration plan.
+          New here? Start with the step-by-step guide. You only need a store name to begin, and the rest of the setup form is optional.
         </div>
       ) : null}
 
       <div className="setup-form-grid">
-        <a className="wide-btn" href="/client/commerce">
+        <a className="wide-btn" href="/client/commerce/tutorial">
+          <ClipboardList size={17} />
+          Start the step-by-step guide
+        </a>
+
+        <a className="icon-btn" href="/client/commerce">
           <LayoutDashboard size={17} />
           Open Commerce dashboard
         </a>
 
-        <a className={setupNeedsAttention ? "wide-btn" : "icon-btn"} href="/client/commerce/setup">
+        <a className="icon-btn" href="/client/commerce/setup">
           <ClipboardList size={17} />
-          {setupNeedsAttention ? "Complete Commerce setup" : "Review store setup"}
+          {setupNeedsAttention ? "Open store setup form" : "Review store setup"}
         </a>
 
         <a className="icon-btn" href="/client/commerce/products">

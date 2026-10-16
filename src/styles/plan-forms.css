@@ -101,3 +101,22 @@ body[data-nxq-theme="light"] .plan-resolution-card {
   background: rgba(255, 255, 255, 0.72);
   border-color: rgba(15, 23, 42, 0.18);
 }
+
+/* Optional sections on long setup forms: collapsed by default so clients see what is required first. */
+.optional-section { padding: 0; }
+.optional-section > .optional-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.optional-section > .optional-summary::-webkit-details-marker { display: none; }
+.optional-section > .optional-summary::after { content: "Show"; margin-left: auto; font-size: .85rem; color: var(--muted, #a9acb7); }
+.optional-section[open] > .optional-summary::after { content: "Hide"; }
+.optional-summary small { display: block; margin-top: .2rem; color: var(--muted, #a9acb7); font-weight: 400; }
+.optional-section > :not(summary) { margin-left: 1.1rem; margin-right: 1.1rem; }
+.optional-section[open] > :last-child { margin-bottom: 1.1rem; }
+.optional-tag, .required-mark { font-style: normal; font-size: .78rem; font-weight: 600; opacity: .85; }
+.required-mark { color: var(--gold, #e4c476); }
