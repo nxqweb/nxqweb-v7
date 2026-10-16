@@ -61,7 +61,8 @@ Free plan, 300 credits/month; a production deploy costs 15; the cycle resets **O
 - [ ] Candle friend signs up → onboarding
 - [ ] Oct 22: fresh Netlify credits → deploy everything
 - [x] Shopper forgot-password flow built (local, not deployed)
-- [ ] Shopper redirect URL + real sign-up and reset test in a private window (after the deploy)
+- [x] Supabase redirect URLs (2026-10-16, owner, seen in a screenshot): `https://nxqweb-v9-staging.netlify.app`, `.../**` (already there, covers every path) and `.../store/**` (added today, redundant but harmless); Site URL unchanged
+- [ ] Real shopper sign-up and reset test in a private window (after the deploy)
 - [ ] Order-number migration (held), journey-wording migration (awaiting approval), remove temp billing button before launch
 
 ## New chat starter (paste this)
