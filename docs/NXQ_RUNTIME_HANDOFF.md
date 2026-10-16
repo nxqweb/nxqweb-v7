@@ -181,6 +181,11 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Oct 22 checklist and next-product plans written (2026-10-16; docs only)
+
+- `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`: step by step deploy day (fresh credit reading, optional functions deploy, ONE site deploy, then the test plan including the new J section).
+- `docs/NEXT_PRODUCT_PLANS.md`: Reviews collector v1 (review link + QR card + hand-added testimonials, no card needed) and Booking v1 (request-only), with a recommendation (Reviews first). Nothing built; any database part stays a draft until the owner approves. Owner has not picked next clients yet.
+
 ## Migrations 269, 270 and 271 APPLIED to staging (2026-10-16, ~11:03 local; owner approved in chat)
 
 - Flow followed: read-only `validate_foundation` first (run 38941620908; the owner expanded the "Migration dry run" step and showed it listed exactly 269_store_profile, 270_store_order_by_email, 271_store_menu_mode and nothing else); owner said "yes, apply 269, 270 and 271 to staging"; the owner ran `apply_migrations` with the confirmation phrase from the GitHub form (run 38943935178, workflow run #260) and clicked Review deployments -> nxq-staging -> Approve and deploy. Claude's own attempt to dispatch the apply was blocked by the session safety classifier and was not worked around.
