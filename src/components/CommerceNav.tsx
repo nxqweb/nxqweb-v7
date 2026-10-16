@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Boxes, CircleHelp, ClipboardCheck, ClipboardList, Eye, FileText, Gauge, Images, LayoutDashboard, MessageSquareText, PackagePlus, ShoppingBag, Store, Tags } from "lucide-react";
 
-// Everyday pages first (they are what fits on a phone screen), advanced pages after.
+// Everyday pages first (they are what fits on a phone screen), advanced pages after. On a computer the advanced pages sit behind a
+// "More pages" button; on a phone the whole menu is one swipeable row.
+const everydayCount = 7;
 const links = [
   { href: "/client/commerce", label: "Dashboard", icon: LayoutDashboard },
   { href: "/client/commerce/tutorial", label: "Tutorial", icon: CircleHelp },
@@ -23,6 +25,8 @@ const links = [
 export function CommerceNav() {
   const path = window.location.pathname;
   const navRef = useRef<HTMLElement | null>(null);
+  const onAdvancedPage = links.slice(everydayCount).some((link) => link.href === path);
+  const [showMore, setShowMore] = useState(onAdvancedPage);
 
   // On a phone the menu is one scrollable row, so bring the current page's button into view.
   useEffect(() => {
@@ -32,10 +36,10 @@ export function CommerceNav() {
   return (
     <nav aria-label="Commerce workspace navigation" className="panel panel-wide commerce-nav" ref={navRef}>
       <div className="commerce-nav-grid">
-        {links.map(({ href, label, icon: Icon }) => (
+        {links.map(({ href, label, icon: Icon }, index) => (
           <a
             aria-current={path === href ? "page" : undefined}
-            className={`commerce-nav-link ${path === href ? "wide-btn" : "icon-btn"}`}
+            className={`commerce-nav-link ${path === href ? "wide-btn" : "icon-btn"}${index >= everydayCount ? " commerce-nav-more" : ""}${showMore ? " is-shown" : ""}`}
             href={href}
             key={href}
           >
@@ -43,6 +47,9 @@ export function CommerceNav() {
             <span>{label}</span>
           </a>
         ))}
+        <button aria-expanded={showMore} className="commerce-nav-toggle icon-btn" type="button" onClick={() => setShowMore((open) => !open)}>
+          {showMore ? "Fewer pages" : "More pages"}
+        </button>
       </div>
     </nav>
   );

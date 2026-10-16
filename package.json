@@ -29,6 +29,7 @@
     "test:store-polish": "node scripts/test-store-polish.mjs",
     "test:order-attention": "node scripts/test-order-attention.mjs",
     "test:commerce-nav": "node scripts/test-commerce-nav.mjs",
+    "test:commerce-polish": "node scripts/test-commerce-polish.mjs",
     "test:store-profile": "node scripts/test-store-profile.mjs",
     "test:client-wording": "node scripts/test-client-wording.mjs",
     "test:links": "node scripts/test-link-integrity.mjs",

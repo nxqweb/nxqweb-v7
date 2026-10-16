@@ -4,7 +4,8 @@ const require = createRequire(process.env.PW_FROM || "/node-tools/node_modules/"
 const { chromium } = require("playwright");
 const base = process.env.BASE_URL || "http://127.0.0.1:5199";
 const outDir = process.argv[2];
-const widths = [390, 360];
+const widths = (process.env.WIDTHS || "390,360").split(",").map(Number);
+const shotWidth = Number(process.env.SHOT_WIDTH || 390);
 const paths = ["/client", "/client/commerce", "/client/commerce/tutorial", "/client/commerce/setup", "/client/commerce/products", "/client/commerce/images", "/client/commerce/live", "/client/commerce/orders", "/client/commerce/readiness", "/client/commerce/inventory", "/client/commerce/catalog", "/client/settings"];
 const user = { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", role: "authenticated", email: "client@example.com", app_metadata: {}, user_metadata: { business_name: "Light of the world candles and soap", intake_family_answers: { services: "Candles and soap" } }, created_at: "2026-10-15T00:00:00Z" };
 const session = { access_token: "mock.jwt.token", refresh_token: "mock-refresh", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, user };
@@ -25,7 +26,7 @@ const rpc = {
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());
 const results = [];
 for (const width of widths) for (const path of paths) {
-  const ctx = await browser.newContext({ viewport: { width, height: 800 }, isMobile: true, hasTouch: true });
+  const ctx = await browser.newContext({ viewport: { width, height: 800 }, isMobile: width < 500, hasTouch: width < 500 });
   const page = await ctx.newPage();
   await page.addInitScript(([s]) => { try { localStorage.setItem("sb-mock-auth-token", JSON.stringify(s)); } catch {} }, [session]);
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
@@ -44,7 +45,7 @@ for (const width of widths) for (const path of paths) {
     return { vw, over, wide, small, h1: (document.querySelector("h1")?.textContent || "").slice(0, 40), redirected: location.pathname };
   });
   results.push({ width, path, ...info });
-  if (width === 390) await page.screenshot({ path: `${outDir}/m-${path.replace(/\//g, "_")}.png`, fullPage: true });
+  if (width === shotWidth) await page.screenshot({ path: `${outDir}/m-${path.replace(/\//g, "_")}.png`, fullPage: true });
   await ctx.close();
 }
 await browser.close();
