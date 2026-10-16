@@ -47,13 +47,13 @@ export function PortalSignup() {
     if (selectedTier === "growth") {
       return {
         label: "What should growth focus on first?",
-        placeholder: "Examples: local search visibility, more estimate requests, stronger service pages, better calls to action.",
+        placeholder: "Examples: local search visibility, more estimate requests, stronger service pages, clearer buttons that tell visitors what to do next.",
       };
     }
     if (selectedTier === "intelligence") {
       return {
         label: "What result should we measure and improve?",
-        placeholder: "Examples: more qualified leads, more calls, better form completion, stronger conversion on a key service page.",
+        placeholder: "Examples: more qualified leads, more calls, better form completion, more visitors taking action on a key service page.",
       };
     }
     if (selectedTier === "enterprise") {

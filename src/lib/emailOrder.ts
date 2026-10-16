@@ -1,4 +1,4 @@
-// "Order by email" stores (draft migration 05): instead of paying online, the customer sends the shop an email with their order. Everything here is
+// "Order by email" stores (migration 270): instead of paying online, the customer sends the shop an email with their order. Everything here is
 // pure text building, no network. The email address always comes from the store's saved contact email and is re-checked with the same strict rule the
 // database uses, and every part of the message is URL-encoded, so nothing a customer types can add mail fields (bcc, extra recipients) to the link.
 import type { CartLine } from "./storeCatalog";

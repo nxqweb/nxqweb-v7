@@ -198,20 +198,6 @@ drop schema nxq_selftest cascade;`,
     `flagged=${flagged.length}, runtime insert on affected table=${runtime}, control table=${control}`);
 }
 
-// ---- 2b. Draft migrations (docs/drafts/migrations) are applied here, after all real migrations -------------
-// Drafts are NOT real migrations. Applying them before check 3 lets the app call functions that only exist in a draft (not yet approved or applied
-// anywhere real) and still have the call's argument names and EXECUTE grants verified. Their sidecar tests run in section 5.
-const draftDir = path.join(root, "docs/drafts/migrations");
-const draftNames = fs.existsSync(draftDir) ? fs.readdirSync(draftDir).filter((n) => n.endsWith(".sql") && !n.endsWith(".test.sql")).sort() : [];
-let draftsAllApplied = true;
-if (setupComplete) {
-  for (const name of draftNames) {
-    const applied = psql({ db: dbName, sql: fs.readFileSync(path.join(draftDir, name), "utf8"), singleTransaction: true, stopOnError: true });
-    record(`draft ${name} applies after all real migrations`, applied.status === 0, firstError(applied.stderr));
-    if (applied.status !== 0) draftsAllApplied = false;
-  }
-}
-
 // ---- 3. Check: RPC call arguments and EXECUTE privileges -------------------------------
 if (setupComplete) {
   const catalog = psql({
@@ -354,15 +340,26 @@ reset role;`),
   record("a client can create a location (no 42703 from queue_location_seo_refresh, migration 256)", locOut.create_location === "true", `result=${locOut.create_location ?? `fixture failed: ${firstError(location.stderr)}`}`);
 }
 
-// ---- 5. Draft migrations: sidecar tests ---------------------------------------------------
-// The drafts themselves were applied earlier (before check 3, see "2b"), so draft-only database functions can be checked against the app's calls.
-if (setupComplete && draftsAllApplied && draftNames.length) {
-  // Run the sidecar tests only after every draft is applied, so drafts that depend on each other work.
-  for (const name of draftNames) {
-    const testPath = path.join(draftDir, name.replace(/\.sql$/, ".test.sql"));
-    if (!fs.existsSync(testPath)) { record(`draft ${name} has a sidecar test`, false, "missing"); continue; }
-    const t = psql({ db: dbName, tuples: true, sql: fs.readFileSync(testPath, "utf8") });
-    record(`draft ${name} passes its sidecar test`, t.status === 0 && t.stdout.includes("DRAFT_TEST_OK"), t.status === 0 ? t.stdout.trim().slice(-200) : firstError(t.stderr));
+// ---- 5. Draft migrations (docs/drafts/migrations) ---------------------------------------
+// Drafts are NOT real migrations. Each is applied after all real migrations, then its sidecar test
+// (<name>.test.sql, which must select DRAFT_TEST_OK) runs inside a rolled-back transaction.
+const draftDir = path.join(root, "docs/drafts/migrations");
+if (setupComplete && fs.existsSync(draftDir)) {
+  const drafts = fs.readdirSync(draftDir).filter((n) => n.endsWith(".sql") && !n.endsWith(".test.sql")).sort();
+  let allApplied = true;
+  for (const name of drafts) {
+    const applied = psql({ db: dbName, sql: fs.readFileSync(path.join(draftDir, name), "utf8"), singleTransaction: true, stopOnError: true });
+    record(`draft ${name} applies after all real migrations`, applied.status === 0, firstError(applied.stderr));
+    if (applied.status !== 0) { allApplied = false; continue; }
+  }
+  if (allApplied && drafts.length) {
+    // Run the sidecar tests only after every draft is applied, so drafts that depend on each other work.
+    for (const name of drafts) {
+      const testPath = path.join(draftDir, name.replace(/\.sql$/, ".test.sql"));
+      if (!fs.existsSync(testPath)) { record(`draft ${name} has a sidecar test`, false, "missing"); continue; }
+      const t = psql({ db: dbName, tuples: true, sql: fs.readFileSync(testPath, "utf8") });
+      record(`draft ${name} passes its sidecar test`, t.status === 0 && t.stdout.includes("DRAFT_TEST_OK"), t.status === 0 ? t.stdout.trim().slice(-200) : firstError(t.stderr));
+    }
   }
 }
 

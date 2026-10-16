@@ -43,7 +43,7 @@ check("a very long order still fits in a link email apps accept", (() => {
 // ---- wiring
 const live = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
 const pub = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
-const draft = fs.readFileSync("docs/drafts/migrations/05_store_order_by_email.sql", "utf8");
+const draft = fs.readFileSync("supabase/migrations/270_store_order_by_email.sql", "utf8");
 check("the public store asks the database for the mode and any failure keeps online ordering", /rpc\("get_public_store_order_mode", \{ store_slug_value: slug \}\)/.test(pub) && /catch \{ \/\* online ordering \*\/ \}/.test(pub) && /orderModeFromRow\(result\.data\)/.test(pub));
 check("the checkout form sends an email order in email mode and creates an online order otherwise", /if \(orderMode\.mode === "email"\) sendEmailOrder\(\); else void placeOrder\(\);/.test(pub));
 check("email mode never calls the online order function", (() => { const start = pub.indexOf("function sendEmailOrder"); const end = pub.indexOf("async function copyEmailOrder"); return start > 0 && end > start && !/create_public_stripe_ready_direct_payment_order/.test(pub.slice(start, end)); })());
@@ -53,7 +53,7 @@ check("the Live store page hides the choice when the database does not have it y
 check("email mode needs a contact email before saving, and opening asks first", /Type your contact email in the About and contact box below/.test(live) && /Open this store now\? Customers will be able to see it and send you orders by email/.test(live));
 check("email mode hides the payment link boxes and the Open storefront button", /\{orderMode === "email" \? null : <>\s*<label><span>Stripe Payment Link/.test(live) && /\{orderMode === "email" \? null : <button className="wide-btn" disabled=\{busy === "settings"\} onClick=\{\(\) => void save\(true\)\}/.test(live));
 check("saving the store name in email mode does not leave an open store closed", /orderMode === "email" && data\.status === "active" && !makeLive/.test(live) && /save_my_store_order_mode", \{ order_mode_value: "email", make_live: true \}/.test(live));
-check("the database draft refuses email mode without a contact email and never returns payment links", /Add a contact email before taking orders by email/.test(draft) && !/'(stripe_payment_link|paypal_url|venmo_url)'/.test(draft.slice(draft.indexOf("get_public_store_order_mode"))));
+check("the database migration refuses email mode without a contact email and never returns payment links", /Add a contact email before taking orders by email/.test(draft) && !/'(stripe_payment_link|paypal_url|venmo_url)'/.test(draft.slice(draft.indexOf("get_public_store_order_mode"))));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll email-order checks passed (offline).");
 process.exit(failures ? 1 : 0);

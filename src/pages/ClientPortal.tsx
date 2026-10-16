@@ -15,6 +15,8 @@ import { signupPrefillForSetup } from "../lib/signupPrefill";
 import { OptionalSection } from "../components/OptionalSection";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
+import { AssistantChat } from "../components/AssistantChat";
+import { HelpTerm } from "../components/HelpTerm";
 
 type ClientRow = {
   id: string;
@@ -287,7 +289,6 @@ export function ClientPortal() {
   const [domainDnsProvider, setDomainDnsProvider] = useState("");
   const [domainNotes, setDomainNotes] = useState("");
   const [domainOwnershipConfirmed, setDomainOwnershipConfirmed] = useState(false);
-  const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
   const [companyScale, setCompanyScale] = useState("Local business");
   const [locationType, setLocationType] = useState("Single location");
@@ -313,7 +314,6 @@ export function ClientPortal() {
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [typedSignature, setTypedSignature] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [isSubmittingDomain, setIsSubmittingDomain] = useState(false);
@@ -861,40 +861,16 @@ export function ClientPortal() {
     }
   }
 
-  async function sendMessage() {
-    setNotice("");
-    setErrorMessage("");
-
-    if (!supabase) {
-      setErrorMessage("Messaging is temporarily unavailable. Please try again later.");
-      return;
-    }
-    if (!client) {
-      setErrorMessage("Your client profile must be loaded before a message can be sent.");
-      return;
-    }
-
-    const cleanMessage = messageText.trim();
-    if (!cleanMessage) {
-      setErrorMessage("Type a message before sending.");
-      return;
-    }
-
-    setIsSending(true);
+  // Used by the assistant chat: only runs when the client presses "Send this to the NXQX team". Returns whether the message was sent.
+  async function sendToTeam(text: string): Promise<boolean> {
+    if (!supabase || !client) return false;
     try {
-      const messageResult = await supabase.rpc("send_client_portal_message", { message_text: cleanMessage });
-      if (messageResult.error) {
-        setErrorMessage("Your message could not be sent. Nothing was changed.");
-        return;
-      }
-
-      setMessageText("");
-      setNotice("Message sent to support.");
-      await loadClientPortalData();
+      const messageResult = await supabase.rpc("send_client_portal_message", { message_text: text });
+      if (messageResult.error) return false;
+      void loadClientPortalData(); // refresh the history in the background; the chat confirms right away
+      return true;
     } catch {
-      setErrorMessage("Your message could not be sent. Nothing was changed.");
-    } finally {
-      setIsSending(false);
+      return false;
     }
   }
 
@@ -1021,7 +997,7 @@ export function ClientPortal() {
     if (normalizedStatus === "owner_review") return "We received your domain request and are reviewing it before DNS setup begins.";
     if (normalizedStatus === "waiting_dns") return "Your domain was approved. DNS setup is the next step, and instructions will stay visible below.";
     if (normalizedStatus === "connected") return "Your domain is connected to your website.";
-    if (normalizedStatus === "failed") return "This domain request needs attention. Message support or check the notes below.";
+    if (normalizedStatus === "failed") return "This domain request needs attention. Ask the assistant below or check the notes.";
     return "We received your domain request and will place updates below.";
   }
 
@@ -1096,7 +1072,7 @@ export function ClientPortal() {
       if (setupWasReopenedForMoreInfo) return { tone: "warning", title: "More information needed", body: latestMoreInfoRequest ? `We requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again." };
       return { tone: "warning", title: "Website setup needed", body: "Complete your website setup sheet so we can review your project and prepare the build plan." };
     }
-    if (projectDecisionStatus === "frozen") return { tone: "danger", title: "Website service paused", body: `This project is currently paused. Message support below or contact ${supportEmail} for help.` };
+    if (projectDecisionStatus === "frozen") return { tone: "danger", title: "Website service paused", body: `This project is currently paused. Ask the assistant below or contact ${supportEmail} for help.` };
     if (projectDecisionStatus === "cancelled") return { tone: "danger", title: "Project cancelled", body: `This website project is marked cancelled. Contact ${supportEmail} if you believe this needs to be reviewed.` };
     if (projectDecisionStatus === "in_review") return { tone: "info", title: "Website is in review", body: "Your website is currently in review. We will message you if anything else is needed." };
     return null;
@@ -1220,6 +1196,7 @@ export function ClientPortal() {
             ) : !hasDomainRequests ? (
               <div className="domain-connect-card">
                 <div className="domain-connect-copy"><strong>Connect a domain you own</strong><p>Add the domain you want connected to your website. We can help with setup, but you keep ownership and can repoint it later.</p></div>
+                <p className="subtle">Not sure what these words mean? Domain<HelpTerm term="domain" /> Registrar<HelpTerm term="registrar" /> DNS provider<HelpTerm term="dns" /> You can leave the ones you do not know empty and we will help.</p>
                 <div className="domain-form-grid">
                   <label className="domain-field"><span>Domain name</span><input placeholder="example.com" value={domainName} onChange={(event) => setDomainName(event.target.value)} /></label>
                   <label className="domain-field"><span>Registrar</span><input placeholder="Namecheap, GoDaddy, Cloudflare..." value={domainRegistrar} onChange={(event) => setDomainRegistrar(event.target.value)} /></label>
@@ -1239,17 +1216,12 @@ export function ClientPortal() {
             </div> : null}
           </section>
 
-          <section className="panel">
-            <div className="panel-title panel-title-row"><div className="panel-title"><MessageCircle size={20} /><h2>Message support</h2></div><button className="icon-btn" disabled={isLoading || isSending || isUploadingFile || isSubmittingDomain || isSubmittingSetup} onClick={() => void loadClientPortalData()} type="button"><RefreshCcw size={16} /> Refresh</button></div>
-            <p className="subtle">{client ? `Sending as ${client.business_name}.` : isLoading ? "Loading client..." : "No client loaded."}</p>
-            <textarea placeholder="Type your message here..." value={messageText} onChange={(event) => setMessageText(event.target.value)} />
-            <button className="wide-btn" disabled={isSending || !client} onClick={() => void sendMessage()} type="button">{isSending ? "Sending..." : "Send message"}</button>
-          </section>
+          <AssistantChat canSend={Boolean(client)} sendToTeam={sendToTeam} />
 
           <section className="panel">
             <div className="panel-title"><UploadCloud size={20} /><h2>Upload files</h2></div>
             <p className="subtle">Upload logos, business photos, reviews, service images, and content for your website.</p>
-            <div className="upload-box"><ImagePlus size={30} /><input className="auth-input" type="file" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /><span>{selectedFile ? `Ready to upload: ${selectedFile.name}` : "Choose a logo, photo, review, screenshot, or content file."}</span><button className="wide-btn" disabled={isUploadingFile || !selectedFile || !client} onClick={() => void uploadClientFile()} type="button">{isUploadingFile ? "Uploading file..." : "Upload file"}</button></div>
+            <div className="upload-box"><ImagePlus size={30} /><input className="auth-input" type="file" aria-label="Choose a file to upload" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /><span>{selectedFile ? `Ready to upload: ${selectedFile.name}` : "Choose a logo, photo, review, screenshot, or content file."}</span><button className="wide-btn" disabled={isUploadingFile || !selectedFile || !client} onClick={() => void uploadClientFile()} type="button">{isUploadingFile ? "Uploading file..." : "Upload file"}</button></div>
             {uploadStatus ? <div className={`notice-card ${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>{uploadStatus.text}</div> : null}
             <div className="message-list">
               {!filesVerified ? <div className="empty-state">File history could not be verified right now.</div> : uploadedFiles.length === 0 ? <div className="empty-state">No files uploaded yet.</div> : null}
@@ -1258,9 +1230,9 @@ export function ClientPortal() {
           </section>
 
           <section className="panel panel-wide">
-            <h2>Recent messages</h2>
+            <div className="panel-title panel-title-row"><div className="panel-title"><MessageCircle size={20} /><h2>Message history</h2></div><button className="icon-btn" disabled={isLoading || isUploadingFile || isSubmittingDomain || isSubmittingSetup} onClick={() => void loadClientPortalData()} type="button"><RefreshCcw size={16} /> Refresh</button></div>
             <div className="message-list">
-              {!messagesVerified ? <div className="empty-state">Message history could not be verified right now.</div> : messages.length === 0 ? <div className="empty-state">No messages yet. Send one above to contact support.</div> : null}
+              {!messagesVerified ? <div className="empty-state">Message history could not be verified right now.</div> : messages.length === 0 ? <div className="empty-state">No messages yet. Questions you send to the NXQX team and their replies show up here.</div> : null}
               {messagesVerified && messageHasMore && messages.length > 0 ? <button className="wide-btn" type="button" onClick={() => void loadOlderMessages()} disabled={isLoadingOlderMessages}>{isLoadingOlderMessages ? "Loading…" : "Load older messages"}</button> : null}
               {messagesVerified ? messages.map((message) => {
                 const senderLabel = message.sender_type === "client" ? "You" : "Support";

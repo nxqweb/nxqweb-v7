@@ -141,3 +141,21 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .order-mode-option { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; }
 .order-mode-option input { margin-top: 0.3rem; flex-shrink: 0; }
 .order-mode-option small { display: block; opacity: 0.85; margin-top: 0.2rem; }
+.assistant-log { max-height: 340px; overflow-y: auto; display: grid; gap: 0.6rem; padding: 0.25rem; margin-bottom: 0.75rem; }
+.assistant-turn { border-radius: 14px; padding: 0.7rem 0.9rem; max-width: 92%; }
+.assistant-turn p { margin: 0.25rem 0 0.5rem; }
+.assistant-assistant { background: rgba(255, 255, 255, 0.06); justify-self: start; }
+.assistant-you { background: rgba(212, 175, 90, 0.16); justify-self: end; }
+.assistant-who { display: inline-flex; gap: 0.35rem; align-items: center; font-size: 0.8rem; opacity: 0.85; }
+.assistant-turn .icon-btn, .assistant-turn .wide-btn { margin-top: 0.25rem; }
+.assistant-suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.assistant-form { display: grid; gap: 0.5rem; }
+.report-problem-btn { position: fixed; right: 16px; bottom: 16px; z-index: 40; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+.report-problem-dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid rgba(212, 175, 90, 0.4); border-radius: 18px; padding: 1.25rem; background: #14161b; color: #f3f0e8; }
+.report-problem-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.report-problem-dialog form { display: grid; gap: 0.75rem; }
+.help-term { display: inline; position: relative; }
+.help-term-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 0; margin-inline: 0.25rem; border: 0; background: transparent; color: inherit; opacity: 0.8; cursor: pointer; vertical-align: middle; border-radius: 50%; }
+.help-term-btn:hover, .help-term-btn:focus-visible { opacity: 1; outline: 2px solid currentColor; outline-offset: 1px; }
+.help-term-text { display: block; margin: 0.35rem 0; padding: 0.6rem 0.8rem; border-radius: 12px; background: rgba(255, 255, 255, 0.08); font-size: 0.9rem; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.4; max-width: 46ch; }
+.field-hint { display: block; font-weight: 400; text-transform: none; letter-spacing: normal; opacity: 0.8; font-size: 0.82rem; margin-top: 0.15rem; }

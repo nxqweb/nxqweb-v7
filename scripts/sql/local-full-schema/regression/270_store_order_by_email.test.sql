@@ -1,4 +1,4 @@
--- Sidecar test for draft 05 (orders by email). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 270 (orders by email). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

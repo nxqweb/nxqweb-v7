@@ -1,4 +1,4 @@
--- DRAFT 05: let a store take orders by email instead of online payment links.
+-- Migration 270: let a store take orders by email instead of online payment links.
 -- Owner request 2026-10-16 (the candle client wants customers to order over email).
 -- Stored in commerce_storefronts.settings->>'order_mode' ('online' is the default when missing, 'email' is new).
 -- In email mode the public store shows an "Email my order" button that opens the shopper's own email app addressed to the shop's contact

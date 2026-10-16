@@ -15,12 +15,13 @@ import {
   useStoryStage,
 } from "../lib/premiumMotion";
 import { usePageWipe } from "../lib/usePageWipe";
+import { HelpTerm } from "../components/HelpTerm";
 
 const comparisonRows = [
   { label: "Premium managed website", starter: "Included", growth: "Included", intelligence: "Included", enterprise: "Included" },
-  { label: "Local SEO foundation", starter: "Basic", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
-  { label: "Lead + conversion focus", starter: "Core", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
-  { label: "Behavior analytics", starter: "—", growth: "Core analytics", intelligence: "Click + scroll", enterprise: "Custom" },
+  { label: "Local SEO foundation", help: "seo" as const, starter: "Basic", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
+  { label: "Lead + conversion focus", help: "conversion" as const, starter: "Core", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
+  { label: "Behavior analytics", help: "analytics" as const, starter: "—", growth: "Page, click + scroll summaries", intelligence: "Adds heat maps (with consent)", enterprise: "Custom" },
   { label: "Ongoing optimization", starter: "Maintenance", growth: "Monthly", intelligence: "Priority cycle", enterprise: "Custom cadence" },
   { label: "Multi-location scale", starter: "—", growth: "—", intelligence: "—", enterprise: "Available" },
 ];
@@ -269,7 +270,7 @@ export function PublicHome() {
               <tbody>
                 {comparisonRows.map((row) => (
                   <tr key={row.label}>
-                    <td>{row.label}</td><td>{row.starter}</td><td>{row.growth}</td><td>{row.intelligence}</td><td>{row.enterprise}</td>
+                    <td>{row.label}{row.help ? <HelpTerm term={row.help} /> : null}</td><td>{row.starter}</td><td>{row.growth}</td><td>{row.intelligence}</td><td>{row.enterprise}</td>
                   </tr>
                 ))}
               </tbody>

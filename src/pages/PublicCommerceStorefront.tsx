@@ -36,7 +36,7 @@ export function PublicCommerceStorefront() {
   const [error, setError] = useState("");
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
-  // "Order by email" stores (draft migration 05): the checkout builds an email to the shop instead of creating an online order.
+  // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
   const [emailOrder, setEmailOrder] = useState<{ href: string; text: string } | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);

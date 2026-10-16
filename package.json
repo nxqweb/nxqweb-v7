@@ -31,6 +31,7 @@
     "test:commerce-nav": "node scripts/test-commerce-nav.mjs",
     "test:commerce-polish": "node scripts/test-commerce-polish.mjs",
     "test:email-orders": "node scripts/test-email-orders.mjs",
+    "test:portal-help": "node scripts/test-portal-help.mjs",
     "test:store-profile": "node scripts/test-store-profile.mjs",
     "test:client-wording": "node scripts/test-client-wording.mjs",
     "test:links": "node scripts/test-link-integrity.mjs",

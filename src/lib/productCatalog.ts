@@ -374,7 +374,7 @@ export const productTiers: ProductTierDefinition[] = [
       "Everything in Starter",
       "Up to 5 core pages",
       "Service-area and local SEO structure",
-      "Lead tracking and stronger calls to action",
+      "Lead tracking, stronger calls to action, and page, click and scroll summaries",
       "Monthly website/content improvements",
       "SEO and content opportunity guidance",
     ],
@@ -388,7 +388,7 @@ export const productTiers: ProductTierDefinition[] = [
     outcome: "Analyze + optimize",
     features: [
       "Everything in Growth",
-      "Click and scroll behavior insights",
+      "Heat map insights (consent-based) and deeper click review",
       "Conversion and page-interaction review",
       "Monthly performance and optimization cycle",
       "Lead-source and funnel insights",

@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 
 const tests = [
   "test-shopper-account", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
-  "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
+  "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-portal-help", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
 ];
 
 const failed = [];

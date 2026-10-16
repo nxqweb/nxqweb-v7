@@ -39,3 +39,5 @@ The top-pages draft (`03_rollup_top_pages`) was promoted on 2026-10-09 (owner ap
 The shopper-accounts draft (`04_shopper_accounts`) was promoted on 2026-10-15 (owner approved in chat) to real migration `268_shopper_accounts`; its test now lives in `scripts/sql/local-full-schema/regression/`. Only the journey-wording draft (03) remains here.
 
 The store-profile draft (`05_store_profile`) was promoted on 2026-10-16 (owner approved in chat) to real migration `269_store_profile`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT yet applied to staging (apply needs the owner's separate explicit approval and the guarded workflow).
+
+The order-by-email draft (`05_store_order_by_email`) was promoted on 2026-10-16 (owner approved in chat) to real migration `270_store_order_by_email`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT applied to staging. Only the journey-wording draft (03) and drafts 01 and 02 remain here.

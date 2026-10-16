@@ -237,7 +237,7 @@ export function ClientBillingStatus() {
                 <MessageCircle size={20} />
                 <div>
                   <h2>Need help?</h2>
-                  <p className="subtle">Message support from the Client Portal or email {appConfig.supportEmail}.</p>
+                  <p className="subtle">Ask the assistant in the Client Portal or email {appConfig.supportEmail}.</p>
                 </div>
               </div>
               <a className="wide-btn" href="/client">Open Client Portal support</a>
