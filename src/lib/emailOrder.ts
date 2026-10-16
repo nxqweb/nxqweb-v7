@@ -9,16 +9,23 @@ function formatMoney(value: number, currency: string): string {
   catch { return `$${Number(value || 0).toFixed(2)}`; }
 }
 
-export type OrderMode = { mode: "online" | "email"; email: string };
-export const onlineMode: OrderMode = { mode: "online", email: "" };
+// online: normal checkout. email: the customer emails their order. menu: the items are shown with prices and the customer is told how to order (call or email).
+export type OrderMode = { mode: "online" | "email" | "menu"; email: string; phone: string };
+export const onlineMode: OrderMode = { mode: "online", email: "", phone: "" };
 
 const emailPattern = /^[A-Za-z0-9._+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const phonePattern = /^[0-9+()\-.\s]+$/; // same rule as the store profile; at least 7 digits are checked below
 
-// Reads the public function result. Anything unexpected (or an invalid email) falls back to normal online ordering, never to a broken email button.
+// Reads the public function result. Anything unexpected (or an unusable email or phone) falls back to normal online ordering, never to a broken button.
 export function orderModeFromRow(row: unknown): OrderMode {
   const source = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
-  const email = typeof source.contact_email === "string" ? source.contact_email.trim() : "";
-  return source.order_mode === "email" && emailPattern.test(email) ? { mode: "email", email } : onlineMode;
+  const rawEmail = typeof source.contact_email === "string" ? source.contact_email.trim() : "";
+  const rawPhone = typeof source.contact_phone === "string" ? source.contact_phone.trim() : "";
+  const email = emailPattern.test(rawEmail) ? rawEmail : "";
+  const phone = phonePattern.test(rawPhone) && rawPhone.replace(/\D/g, "").length >= 7 ? rawPhone : "";
+  if (source.order_mode === "email" && email) return { mode: "email", email, phone: "" };
+  if (source.order_mode === "menu" && (email || phone)) return { mode: "menu", email, phone };
+  return onlineMode;
 }
 
 export type EmailOrderInput = {

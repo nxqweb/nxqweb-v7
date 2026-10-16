@@ -37,7 +37,7 @@ check("customers never see raw server text: order failures go through the plain-
 
 // ---- extras
 check("a Share button uses the phone's share sheet, or copies the link and says so", /typeof navigator\.share === "function"\) await navigator\.share\(\{ title: data\.store\.name, url \}\)/.test(page) && /showToast\("Store link copied\."\)/.test(page) && /aria-label="Share this store"/.test(page));
-check("the hero shows the first sentence of the shop's About, or a plain default, with a Shop now link", /firstSentence\(profile\.about\) : "Order directly from the shop\."/.test(page) && /href="#products"/.test(page) && /id="products"/.test(page));
+check("the hero shows the first sentence of the shop's About, or a plain default, with a Shop now link", /firstSentence\(profile\.about\) : orderMode\.mode === "menu" \? "Take a look at our menu\." : "Order directly from the shop\."/.test(page) && /href="#products"/.test(page) && /id="products"/.test(page));
 check("loading shows a placeholder skeleton that tells screen readers it is loading, and a failed load offers a calm message", /if \(loading\) return <StoreSkeleton \/>/.test(page) && /aria-busy="true"/.test(skeleton) && /role="status">Loading the store/.test(skeleton) && /If a shop gave you this link, please check back soon\./.test(page));
 check("no raw HTML is ever injected into the store", ![page, card, dialog].some((t) => /dangerouslySetInnerHTML/.test(t)));
 

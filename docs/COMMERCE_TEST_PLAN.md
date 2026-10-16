@@ -107,6 +107,22 @@ cancel every practice order afterwards so it stops holding stock.
 | H3 | A QA-only client in `/owner/billing` | Cannot be activated |
 | H4 | Open a store that is not open yet | "This storefront is not open yet." |
 
+## J. Order by email, menu mode, assistant and reporting (added 2026-10-16; needs migration 270 applied, and 06 for Menu)
+
+| # | Steps | Expected |
+|---|---|---|
+| J1 | `/client/commerce/live`: "How do customers order?" | Online and By email show (Menu only shows after draft 06 is applied). If the whole box is missing, 270 is not applied yet |
+| J2 | Pick By email with NO contact email saved, press Save ordering choice | A plain message to save a contact email first |
+| J3 | Save a contact email in About and contact, pick By email, press Open my store | "Your store is open. Customers send you their orders by email." The payment link boxes disappear |
+| J4 | Public store: add to cart, fill details, press Email my order | Panel "Almost done": Open my email app (email app opens with the order written), Copy order text, I sent it |
+| J5 | In J4 change the cart | The email panel disappears and must be built again |
+| J6 | Switch back to Online | Payment boxes return; the public store shows normal checkout |
+| J7 | (after 06) Pick Menu only, contact phone or email saved, Open my menu | Public store shows items and prices, a "How to order" card with Call / Email, no cart, no stock words |
+| J8 | `/client`: Ask the NXQX assistant "What is SEO?" | A plain answer with a link; nothing is sent to the team |
+| J9 | Ask "I want a refund" and press Send this to the NXQX team | One message starting [Assistant question] appears in the owner's messages |
+| J10 | Any `/client` page: Report a problem, write a sentence, Send report | Thank-you; the owner sees [Problem report] with the page and screen size, and no sign-in code from the address bar |
+| J11 | Press the ? next to SEO, Analytics, Domain | A short plain meaning; Escape hides it |
+
 ## I. Clean up
 
 1. Cancel every practice order (F4) so no stock stays reserved.

@@ -18,3 +18,6 @@ malformed data). They need Playwright and a browser, so they are not part of `np
      390px and 360px with a mocked signed-in client.
 
 Do not point these at a real project: they only make sense with the mocked responses built into each script.
+
+- `store-email-e2e.mjs`: order-by-email checkout in a real browser. `MENU=1` runs the menu-mode store, `NO_MODE=1` runs a database without the feature. `SHOT=file.png` saves a screenshot.
+- `portal-help-e2e.mjs`: the portal assistant, Report a problem and the "?" help words in a real browser (needs the dev server and a mocked backend, like the other scripts here).

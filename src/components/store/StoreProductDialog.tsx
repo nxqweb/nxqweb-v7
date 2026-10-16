@@ -4,7 +4,8 @@ import { formatMoney, isPurchasable, priceSummary, productImages, saleInfo, stoc
 
 // The product detail view: all photos, the full description, the options and Add to cart. A native <dialog> gives a proper focus trap,
 // the Escape key and a backdrop for free, and it works with keyboard and screen readers.
-export function StoreProductDialog({ product, currency, onClose, onAdd }: { product: StoreProduct; currency: string; onClose: () => void; onAdd: (product: StoreProduct, variant: StoreVariant) => void }) {
+// viewOnly is a menu: sizes and prices are listed, with no choosing, no stock notes and no Add to cart.
+export function StoreProductDialog({ product, currency, onClose, onAdd, viewOnly = false }: { product: StoreProduct; currency: string; onClose: () => void; onAdd: (product: StoreProduct, variant: StoreVariant) => void; viewOnly?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const images = useMemo(() => productImages(product), [product]);
@@ -59,7 +60,12 @@ export function StoreProductDialog({ product, currency, onClose, onAdd }: { prod
             {sale.onSale && product.compare_at_price ? <> <s className="store-compare-price">{formatMoney(Number(product.compare_at_price), currency)}</s> <span className="store-badge store-badge-sale">{sale.percentOff}% off</span></> : null}
           </p>
           {(product.description || product.short_description) ? <p className="store-description">{product.description || product.short_description}</p> : null}
-          {showOptions ? (
+          {viewOnly && showOptions ? (
+            <ul className="menu-options" aria-label="Sizes and prices">
+              {variants.map((variant) => <li key={variant.id}><span>{variant.title}</span><strong>{formatMoney(Number(variant.price), currency)}</strong></li>)}
+            </ul>
+          ) : null}
+          {!viewOnly && showOptions ? (
             <fieldset className="store-options">
               <legend>Choose an option</legend>
               {variants.map((variant) => {
@@ -76,10 +82,10 @@ export function StoreProductDialog({ product, currency, onClose, onAdd }: { prod
               })}
             </fieldset>
           ) : null}
-          {selected && !isPurchasable(selected) ? <p className="store-stock-note">{stockLabel(selected)}</p> : selected && stockLabel(selected) ? <p className="store-stock-note">{stockLabel(selected)}</p> : null}
-          <button className="wide-btn" type="button" disabled={!selected || !isPurchasable(selected)} onClick={() => { if (selected) { onAdd(product, selected); ref.current?.close(); } }}>
+          {viewOnly ? null : selected && !isPurchasable(selected) ? <p className="store-stock-note">{stockLabel(selected)}</p> : selected && stockLabel(selected) ? <p className="store-stock-note">{stockLabel(selected)}</p> : null}
+          {viewOnly ? <button className="wide-btn" type="button" onClick={() => ref.current?.close()}>Close</button> : <button className="wide-btn" type="button" disabled={!selected || !isPurchasable(selected)} onClick={() => { if (selected) { onAdd(product, selected); ref.current?.close(); } }}>
             {!selected || !isPurchasable(selected) ? "Sold out" : "Add to cart"}
-          </button>
+          </button>}
         </div>
       </div>
     </dialog>

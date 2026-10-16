@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 const require = createRequire(process.env.PW_FROM || "/node-tools/node_modules/");
 const { chromium } = require("playwright");
 const v = (id, title, price, avail) => ({ id, title, price, available_quantity: avail, inventory_policy: "deny" });
+const MENU = process.env.MENU === "1";
 const store = { store: { name: "Email Shop", slug: "x", currency: "USD" }, products: [
   { id: "p2", name: "Soap Bar", slug: "soap-bar", short_description: "Soap.", base_price: 9, image_url: null, image_urls: [], requires_shipping: true, variants: [v("v2", "Default", 9, 5)] },
 ] };
@@ -17,13 +18,27 @@ await page.route("**/rest/v1/rpc/**", async (route) => {
   const fn = route.request().url().split("/rpc/")[1].split("?")[0];
   if (fn === "create_public_stripe_ready_direct_payment_order") orderCalls++;
   const body = fn === "get_public_stripe_ready_commerce_storefront" ? store
-    : fn === "get_public_store_order_mode" ? (process.env.NO_MODE ? null : { order_mode: "email", contact_email: "shop@example.com" })
+    : fn === "get_public_store_order_mode" ? (process.env.NO_MODE ? null : MENU ? { order_mode: "menu", contact_email: "cafe@example.com", contact_phone: "555 0100" } : { order_mode: "email", contact_email: "shop@example.com" })
     : fn === "get_public_store_accounts_status" ? { accounts_enabled: false } : {};
   if (fn === "get_public_store_order_mode" && process.env.NO_MODE) return route.fulfill({ status: 404, contentType: "application/json", headers: cors, body: JSON.stringify({ message: "function does not exist" }) });
   await route.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(body) });
 });
 await page.route("**/auth/v1/**", (r) => r.fulfill({ status: 200, contentType: "application/json", headers: cors, body: "{}" }));
 await page.goto(`${process.env.BASE_URL || "http://127.0.0.1:5199"}/store/x`, { waitUntil: "networkidle" });
+if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT, fullPage: true });
+if (MENU) {
+  ok("the header says it is a menu", (await page.locator(".store-header").innerText()).includes("Menu"));
+  ok("the hero button says See the menu", (await page.getByRole("link", { name: "See the menu" }).count()) === 1);
+  ok("how to order shows call and email links", (await page.locator("[data-testid=menu-how-to-order] a[href^='tel:']").count()) === 1 && (await page.locator("[data-testid=menu-how-to-order] a[href^='mailto:cafe@example.com']").count()) === 1);
+  ok("there is no cart, no add button, no stock text and no checkout form", (await page.getByRole("button", { name: /add to cart|sold out|place order|email my order/i }).count()) === 0 && (await page.locator("#store-cart").count()) === 0 && (await page.locator("form").count()) === 0 && !(await page.content()).includes("Only 5 left"));
+  await page.getByRole("button", { name: "Soap Bar", exact: true }).click();
+  await page.waitForSelector("dialog[open]");
+  ok("the detail view has a Close button and no Add to cart", (await page.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).count()) >= 1 && (await page.locator("dialog[open]").getByRole("button", { name: /add to cart/i }).count()) === 0);
+  ok("no page errors happened", errors.length === 0, errors.join(" | "));
+  await browser.close();
+  console.log(failCount ? `\n${failCount} FAILED` : "\nAll browser checks passed");
+  process.exit(failCount ? 1 : 0);
+}
 await page.getByRole("button", { name: "Add to cart" }).first().click();
 await page.waitForTimeout(200);
 if (process.env.NO_MODE) {

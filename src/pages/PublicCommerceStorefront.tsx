@@ -258,11 +258,11 @@ export function PublicCommerceStorefront() {
   if (!data) return <main className="nxq-page store-theme"><section className="portal-shell"><div className="auth-error" role="alert">{error || "Store unavailable."}</div><p className="subtle">If a shop gave you this link, please check back soon.</p></section></main>;
 
   const currency = data.store.currency;
-  const tagline = profile?.about ? firstSentence(profile.about) : "Order directly from the shop.";
+  const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
-      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
@@ -307,14 +307,24 @@ export function PublicCommerceStorefront() {
         </section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
           <p className="store-hero-text">{tagline}</p>
-          <a className="wide-btn store-hero-cta" href="#products">Shop now</a>
+          <a className="wide-btn store-hero-cta" href="#products">{orderMode.mode === "menu" ? "See the menu" : "Shop now"}</a>
+        </section> : null}
+
+        {orderMode.mode === "menu" ? <section className="panel panel-wide store-how-to-order" data-testid="menu-how-to-order" aria-label="How to order">
+          <h2>How to order</h2>
+          <p>Call or email the shop to place your order.</p>
+          <div className="settings-grid">
+            {telHref(orderMode.phone) ? <a className="wide-btn" href={telHref(orderMode.phone)}>Call {orderMode.phone}</a> : null}
+            {mailtoHref(orderMode.email) ? <a className="wide-btn" href={mailtoHref(orderMode.email)}>Email {orderMode.email}</a> : null}
+          </div>
         </section> : null}
 
         <section className="settings-grid store-product-grid" id="products" aria-label="Products">
           {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div>
-            : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} />)}
+            : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu"} />)}
         </section>
 
+        {orderMode.mode === "menu" ? null : <>
         <section className="panel panel-wide" id="store-cart" style={{ marginTop: "1rem" }}>
           <div className="panel-title"><ShoppingCart size={20} /><div><h2>Your cart</h2><p className="subtle">{orderMode.mode === "email" ? "The shop confirms prices and availability when it replies." : "Prices are verified by the store before the order is created."}</p></div></div>
           {cart.length === 0 ? <div className="empty-state">Your cart is empty.</div> : cart.map((item) => {
@@ -345,8 +355,9 @@ export function PublicCommerceStorefront() {
           {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
           <button className="wide-btn" disabled={busy} type="submit">{orderMode.mode === "email" ? "Email my order" : busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </form> : null}
+        </>}
       </>}
-      {!order && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}
+      {!order && orderMode.mode !== "menu" && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}
       {profile ? <section className="store-about" data-testid="store-about" aria-label={`About ${data.store.name}`}>
         {profile.about ? <><h2>About us</h2><p className="store-about-text">{profile.about}</p></> : null}
         {mailtoHref(profile.contactEmail) || telHref(profile.contactPhone) || socialHref(profile.socialUrl) ? <ul className="store-contact-list">
@@ -355,7 +366,7 @@ export function PublicCommerceStorefront() {
           {socialHref(profile.socialUrl) ? <li><a href={socialHref(profile.socialUrl)} target="_blank" rel="noopener noreferrer">Find us online</a></li> : null}
         </ul> : null}
       </section> : null}
-      {openProduct && !order ? <StoreProductDialog key={openProduct.id} product={openProduct} currency={currency} onClose={closeProductView} onAdd={add} /> : null}
+      {openProduct && !order ? <StoreProductDialog key={openProduct.id} product={openProduct} currency={currency} onClose={closeProductView} onAdd={add} viewOnly={orderMode.mode === "menu"} /> : null}
       <div className="store-toast" role="status" aria-live="polite" data-testid="store-toast">{toast}</div>
       <StoreCredit />
     </section></main>

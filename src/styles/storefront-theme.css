@@ -259,3 +259,9 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 
 /* native controls (radio buttons, scrollbars, selects) follow the light look instead of the app's dark default */
 .store-theme, .store-theme .store-dialog { color-scheme: light; }
+
+/* Menu mode (view-only store): sizes and prices in the detail view, and the "how to order" card. */
+.store-theme .menu-options { list-style: none; margin: 12px 0; padding: 0; border-top: 1px solid var(--store-line); }
+.store-theme .menu-options li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--store-line); }
+.store-theme .store-how-to-order { background: var(--store-tint); text-align: center; margin-bottom: 16px; }
+.store-theme .store-how-to-order .settings-grid { justify-content: center; }

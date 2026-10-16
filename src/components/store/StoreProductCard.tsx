@@ -3,7 +3,8 @@ import { formatMoney, isPurchasable, priceSummary, productImages, productInStock
 
 // One product in the grid. The photo and the name open the detail view; the button adds straight to the cart when there is just one option,
 // and otherwise opens the detail view so the customer can choose.
-export function StoreProductCard({ product, currency, onOpen, onAdd }: { product: StoreProduct; currency: string; onOpen: (product: StoreProduct) => void; onAdd: (product: StoreProduct, variant: StoreVariant) => void }) {
+// viewOnly is a menu: the price and description only, no stock labels and no buttons (nothing to add to a cart).
+export function StoreProductCard({ product, currency, onOpen, onAdd, viewOnly = false }: { product: StoreProduct; currency: string; onOpen: (product: StoreProduct) => void; onAdd: (product: StoreProduct, variant: StoreVariant) => void; viewOnly?: boolean }) {
   const photo = productImages(product)[0];
   const price = priceSummary(product);
   const sale = saleInfo(product);
@@ -18,9 +19,9 @@ export function StoreProductCard({ product, currency, onOpen, onAdd }: { product
       <button type="button" className="store-product-open" onClick={() => onOpen(product)} aria-label={`View ${product.name}`}>
         {photo ? <img className="store-product-photo" src={photo} alt="" loading="lazy" /> : <span className="store-product-photo store-product-photo-empty" aria-hidden="true"><Store size={28} /></span>}
         <span className="store-badges">
-          {!inStock ? <span className="store-badge store-badge-soldout">Sold out</span> : null}
-          {inStock && sale.onSale ? <span className="store-badge store-badge-sale">{sale.percentOff}% off</span> : null}
-          {inStock && lowest ? <span className="store-badge store-badge-low">{lowest.label}</span> : null}
+          {!viewOnly && !inStock ? <span className="store-badge store-badge-soldout">Sold out</span> : null}
+          {(viewOnly || inStock) && sale.onSale ? <span className="store-badge store-badge-sale">{sale.percentOff}% off</span> : null}
+          {!viewOnly && inStock && lowest ? <span className="store-badge store-badge-low">{lowest.label}</span> : null}
         </span>
       </button>
       <div className="store-product-body">
@@ -30,7 +31,7 @@ export function StoreProductCard({ product, currency, onOpen, onAdd }: { product
           {sale.onSale && product.compare_at_price ? <s className="store-compare-price" aria-label={`was ${formatMoney(Number(product.compare_at_price), currency)}`}>{formatMoney(Number(product.compare_at_price), currency)}</s> : null}
         </p>
         {blurb ? <p className="store-product-blurb">{blurb}</p> : null}
-        {!inStock ? <button className="wide-btn" type="button" disabled>Sold out</button>
+        {viewOnly ? null : !inStock ? <button className="wide-btn" type="button" disabled>Sold out</button>
           : single ? <button className="wide-btn" type="button" onClick={() => onAdd(product, single)}>Add to cart</button>
           : <button className="wide-btn" type="button" onClick={() => onOpen(product)}>Choose options</button>}
       </div>

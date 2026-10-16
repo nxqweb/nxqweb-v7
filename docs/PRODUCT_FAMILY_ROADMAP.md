@@ -9,7 +9,7 @@ Nothing here changes any status or launches anything; every public-status change
 | NXQX-Business | available | 4 | Full (leads, builds, workers, billing) | Full portal | Open signup | The only launched family |
 | NXQX-Commerce | planned | yes | Catalog, inventory, orders, storefront rows; migration 269 (store profile) written, not applied | 14 client pages + public `/store/<slug>` | Signup falls back to Business; plan switch is owner-approved | Built and locally tested; staging apply + deploy pending |
 | NXQX-Booking | planned | 4 | Scaffold only (migration 188: workspaces, services, staff, availability rules, appointment requests; no public endpoint) | None | None | Schema scaffold, no UI |
-| NXQX-Menu | planned | 4 | None | None | None | Catalog copy only |
+| NXQX-Menu | planned | 4 | Draft 06 (menu mode for a store: view-only items, contact to order); builds on 270 | None of its own: a store set to "Menu only" on `/client/commerce/live`, shown at `/store/<slug>` | None | v1 built locally (needs 270 and draft 06 promoted and applied); no signup path, no categories/hours fields yet (hours go in About) |
 | NXQX-Property | planned | 4 | None | None | None | Catalog copy only |
 | NXQX-Multi-Location | planned | 4 | None (Business has `ClientBusinessLocations` for its own use) | None | None | Catalog copy only |
 | NXQX-Membership | planned | 4 | None | None | None | Catalog copy only |
@@ -27,8 +27,9 @@ Nothing here changes any status or launches anything; every public-status change
 ## Suggested order (reasoning: reuse what Commerce just proved)
 
 1. **Commerce**: finish staging apply of 269, deploy after Oct 22, run `docs/COMMERCE_TEST_PLAN.md`. Biggest gain, nearly done.
-2. **Menu** (restaurants, cafes): the Commerce store pattern fits closely (items, categories, hours, ordering link). Cheapest next family: a
-   read-only public menu page backed by the same storefront-row approach, no checkout needed at first.
+2. **Menu** (restaurants, cafes): v1 is built as a store mode (see above). Next steps: sections by category, an hours field, and a signup path
+   once Commerce has proven itself. Promote 06 to a real migration (271) only with the owner's approval; when promoting, update the 270 regression
+   test because 06 changes the wording of the unknown-mode error and the default list of modes.
 3. **Booking**: schema exists; next safe step is a draft migration for owner-facing RPCs (list/save services, availability) plus a client
    page, with a request-only public form (no payments, no reminders until an email domain exists).
 4. **Membership**, **Property**, **Multi-Location**: need product decisions (payments for membership, listing source for property, routing

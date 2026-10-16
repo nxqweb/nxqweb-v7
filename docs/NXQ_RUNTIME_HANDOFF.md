@@ -181,6 +181,17 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Email orders, Menu v1, assistant chat, Report a problem, help words (2026-10-16, very late; local/pushed, NOT deployed, 270 NOT applied)
+
+- **Migration 270 promoted (owner said yes in chat, 2026-10-16):** `supabase/migrations/270_store_order_by_email.sql` (get/save order mode, public mode read). A store can take orders by email: the public checkout becomes "Email my order" (mailto built from the store's contact email, copy-text fallback, no order row, no stock hold). Regression test `scripts/sql/local-full-schema/regression/270_store_order_by_email.test.sql`. NOT applied to staging; applying needs a new owner approval, the validate run first, and the owner's Approve click.
+- **Draft 06 (not a migration):** `docs/drafts/migrations/06_store_menu_mode.sql` adds the Menu mode on top of 270 (same function names; Menu choice only appears when the database lists it in `supported_modes`). Promoting it needs the owner's approval and a 270 test update (see drafts README).
+- **Public store:** menu mode is view-only (no cart, no stock words, "How to order" call/email card). Normal and email stores are unchanged.
+- **Portal:** the client dashboard's direct message box is replaced by the NXQX assistant (prepared answers, NOT a live AI; anything unknown, billing, cancelling and privacy are offered to the team with one button, sent as a normal portal message labelled [Assistant question]). A "Report a problem" button on every `/client` page sends a [Problem report] message with page path (never the query string) and screen size. A "?" help button explains SEO, analytics, heat maps, conversion, domain, DNS and registrar in plain words. A real AI can replace `answerQuestion()` in `src/lib/assistantAnswers.ts` later (needs an AI key, which needs a card).
+- **Plan wording fixed to match the database:** Growth gets page/click/scroll summaries, heat maps are Intelligence (see `PublicHome.tsx` table and the catalog bullets). Owner may want to double check this is the intended promise.
+- **Tests (all in `npm run test:store`, now 20 files):** test-email-orders, test-portal-help, test-menu-mode, each with planted-bug controls confirmed failing; browser scripts `scripts/manual/store-email-e2e.mjs` and `portal-help-e2e.mjs` pass; axe: 0 violations on the dashboard assistant (one unlabeled file input fixed) and the report dialog.
+- Caveat: the wave-22 CI contract requires every RPC the app calls to exist in a real migration, which is why 270 had to be promoted before pushing; Menu was built so the app only uses the 270 function names.
+- Pending owner: apply 270 (and later decide on 06), add store tests to the CI workflow, Oct 22+ deploy sequence, remove the temporary billing button before launch.
+
 ## Client Commerce polish + product family audit (2026-10-16, late night; local/pushed, NOT deployed)
 
 - Products form: only name, base price, variant price and On hand are in the way; extra facts, stock options and search/shipping settings are collapsed "optional" sections (they open themselves when they hold answers). Variant 1 price follows the base price until edited.
