@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Boxes, CircleHelp, ClipboardList, PackagePlus, ShieldCheck, ShoppingBag, Tags } from "lucide-react";
+import { ArrowLeft, Boxes, CircleHelp, ClipboardList, Inbox, PackagePlus, ShieldCheck, ShoppingBag, Tags } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { readAutoOff, readDoneSteps, shouldShowGuidePrompt, writeAutoOff } from "../lib/commerceLaunchGuide";
+import { orderAttentionMessage, summarizeOrderAttention, type OrderAttention } from "../lib/orderAttention";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CatalogSummary = {
@@ -23,6 +24,7 @@ function metric(value: number | undefined) { return typeof value === "number" ? 
 export function ClientCommerceDashboard() {
   const [catalog, setCatalog] = useState<CatalogSummary | null>(null);
   const [intake, setIntake] = useState<CommerceIntakeSummary | null>(null);
+  const [orderAttention, setOrderAttention] = useState<OrderAttention | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [guideAutoOff, setGuideAutoOff] = useState(() => readAutoOff());
@@ -84,6 +86,10 @@ export function ClientCommerceDashboard() {
 
     setCatalog((catalogResult.data as CatalogSummary) || null);
     setIntake((intakeResult.data as CommerceIntakeSummary) || null);
+
+    // Orders waiting for the owner. A failure here never blocks the rest of the dashboard.
+    const ordersResult = await supabase.rpc("get_my_commerce_orders");
+    if (!ordersResult.error) setOrderAttention(summarizeOrderAttention(ordersResult.data));
     setLoading(false);
   }
 
@@ -99,8 +105,9 @@ export function ClientCommerceDashboard() {
       {error ? <div className="auth-error" role="alert">{error}</div> : null}
       {loading ? <div className="empty-state" role="status">Loading Commerce...</div> : null}
       {!loading && !error ? <>
+        {orderAttention ? <section className="panel panel-wide" data-testid="orders-waiting-card"><div className="panel-title panel-title-row"><div className="panel-title"><Inbox size={20} /><div><h2>Orders</h2><p className="subtle">{orderAttentionMessage(orderAttention)}</p></div></div><a className={orderAttention.awaitingPayment + orderAttention.toShip > 0 ? "wide-btn" : "icon-btn"} href="/client/commerce/orders">Open orders</a></div></section> : null}
         {showGuidePrompt ? <section className="panel panel-wide"><div className="panel-title"><CircleHelp size={20} /><div><h2>New here? Launch your store step by step</h2><p className="subtle">Six short steps, from an empty store to your first order. You can replay it any time from the Tutorial tab.</p></div></div><a className="wide-btn" href="/client/commerce/tutorial">Start the guide</a><button className="icon-btn" type="button" onClick={() => { writeAutoOff(true); setGuideAutoOff(true); }}>Don't remind me again</button></section> : null}
-        {setupNeedsAttention ? <section className="panel panel-wide"><div className="panel-title"><ClipboardList size={20} /><div><h2>Commerce setup required</h2><p className="subtle">Finish the storefront setup before NXQX prepares the build and migration plan.</p></div></div>{intake?.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {formatSource(intake.detected_site_source)}.</p></div> : null}<a className="wide-btn" href="/client/commerce/setup">Complete Commerce setup</a></section> : null}
+        {setupNeedsAttention ? <section className="panel panel-wide"><div className="panel-title"><ClipboardList size={20} /><div><h2>Store setup</h2><p className="subtle">Only the store name is required. Everything else on the setup form is optional, and you can add it later.</p></div></div>{intake?.existing_site_detected && intake.detected_site_url ? <div className="notice-card success"><strong>Existing website detected automatically</strong><p>{intake.detected_site_url}</p><p className="subtle">Found from {formatSource(intake.detected_site_source)}.</p></div> : null}<a className="wide-btn" href="/client/commerce/setup">Open store setup form</a></section> : null}
         <section className="panel panel-wide"><div className="panel-title"><ShoppingBag size={20} /><div><h2>{catalog?.storefront?.store_name || "Commerce storefront"}</h2><p className="subtle">Storefront status: {formatStatus(catalog?.storefront?.status)}</p></div></div><div className="settings-grid"><article className="settings-card"><span>Total products</span><strong>{metric(summary?.products)}</strong><p>All product drafts and future published products.</p></article><article className="settings-card"><span>Draft products</span><strong>{metric(summary?.draft_products)}</strong><p>Products still being prepared for review.</p></article><article className="settings-card"><span>Low stock</span><strong>{metric(summary?.low_stock_variants)}</strong><p>Variants at or below their low-stock threshold.</p></article><article className="settings-card"><span>Out of stock</span><strong>{metric(summary?.out_of_stock_variants)}</strong><p>Variants with no currently available inventory.</p></article></div></section>
         {checkoutHref ? <section className="panel panel-wide"><div className="panel-title"><ShieldCheck size={20} /><div><h2>Protected checkout test</h2><p className="subtle">Test the customer cart, automatic server pricing, order creation, and inventory reservation. No real payment or customer contact occurs.</p></div></div><a className="wide-btn" href={checkoutHref}><ShieldCheck size={17} /> Open protected checkout</a></section> : null}
         <div className="owner-detail-grid">

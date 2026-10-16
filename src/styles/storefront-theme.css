@@ -135,3 +135,8 @@ html.px-has-bg body:has(.store-theme) {
 .store-theme .portal-shell label:has(input[type="checkbox"]) span { display: inline; margin: 0; }
 .store-theme .portal-shell .panel > .icon-btn, .store-theme .portal-shell .panel > form + .icon-btn { margin: 10px 10px 0 0; }
 .store-theme .portal-shell .panel > p.subtle { margin-top: 14px; }
+
+/* store with no live products yet */
+.store-theme .store-empty { padding: 36px 20px !important; }
+.store-theme .store-empty strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 1.3rem; margin-bottom: 6px; color: var(--store-ink) !important; }
+.store-theme .store-empty p { margin: 0; }

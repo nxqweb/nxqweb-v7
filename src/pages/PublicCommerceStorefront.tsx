@@ -137,7 +137,7 @@ export function PublicCommerceStorefront() {
         <p className="subtle">The business will confirm the payment after it arrives in their account.</p>
       </section> : <>
         <section className="settings-grid store-product-grid">
-          {data.products.length === 0 ? <div className="empty-state">No products are live yet.</div> : data.products.map((product) => {
+          {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div> : data.products.map((product) => {
             const variants = product.variants?.length ? product.variants : [{ id: product.id, title: "Default", price: product.base_price, available_quantity: 999, inventory_policy: "continue" }];
             return <article className="settings-card store-product-card" key={product.id}>
               {product.image_url ? <img className="store-product-photo" src={product.image_url} alt={product.name} loading="lazy" /> : <div className="store-product-photo store-product-photo-empty" aria-hidden="true"><Store size={28} /></div>}

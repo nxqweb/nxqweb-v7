@@ -14,6 +14,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `03_journey_nxqx_wording.sql` | Client journey text says NXQX instead of NXQ, and the denied-client support link points at NXQweb@protonmail.com (the old address was lost); logic unchanged | owner request 2026-10-15 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `04_store_order_number_prefix.sql` | Customer-facing order numbers use the store's own prefix (initials of the store name, or an `order_prefix` setting) instead of `NXQ-`; changes only the Stripe-ready checkout wrapper from migration 227, the order primitive is untouched, existing orders keep their numbers | owner request 2026-10-15 |
+| `05_store_profile.sql` | Optional public About + contact details for an open store (three new functions, no table, no change to existing functions); the owner types it, nothing is published until then | owner request 2026-10-16 (customers cannot reach the shop owner today) |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
