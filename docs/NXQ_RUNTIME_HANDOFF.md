@@ -184,7 +184,7 @@ state. Update this file, not a new one, at every handoff.
 ## Mega Extended CI failure found and fixed (2026-10-16; local, pushed; no deploy needed)
 
 - Reproduced locally with `npm run test:edge` (the failing CI step "Edge function type checks"): `supabase/functions/dispatch-notifications/index.ts` typed its helper's Supabase client as plain `ReturnType<typeof createClient>`, which Deno's type checker rejects (TS2345 twice). Fix: use the repo's existing pattern `ReturnType<typeof createClient<DynamicDatabase>>` (type only, same as `run-website-maintenance`). No runtime change, so NO Edge function deploy is needed for this.
-- After the fix: `npm run test:edge` passes all 44 functions, and every other command in `ci-mega-extended.yml` passes locally (test:families, test:runtime-stage, test:migrations, test:security, test:accessibility, test:routes, `npm audit --omit=dev --audit-level=high` = 0 vulnerabilities, lint, build, bundle budget via parity). The next GitHub run of NXQ Mega Extended CI is the real confirmation: until it is green, this is "fixed locally, unconfirmed on GitHub".
+- After the fix: `npm run test:edge` passes all 44 functions, and every other command in `ci-mega-extended.yml` passes locally (test:families, test:runtime-stage, test:migrations, test:security, test:accessibility, test:routes, `npm audit --omit=dev --audit-level=high` = 0 vulnerabilities, lint, build, bundle budget via parity). CONFIRMED ON GITHUB (2026-10-16): the NXQ Mega Extended CI run on commit `173e308` completed with conclusion success, its first green run. It should now stop emailing the owner about a failed check on each push.
 
 ## Oct 22 checklist and next-product plans written (2026-10-16; docs only)
 
