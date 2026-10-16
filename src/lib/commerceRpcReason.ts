@@ -6,7 +6,7 @@ export const commerceReasonMessages: Record<string, string> = {
   "Product was not found in this workspace.": "Product was not found in this workspace.",
   "Product image must be a valid HTTPS URL.": "Product image must be a valid HTTPS URL.",
   "Every product image must be an existing image owned by this client workspace.":
-    "That image link is not one of your uploaded photos. Upload photos on the Photos page, or leave the image box empty. Payment links and outside web links do not work there.",
+    "That image is not one of your uploaded photos. Upload your photos on the Photos page.",
   "Product price is invalid.": "Product price is invalid.",
   "This workspace has reached its live product limit.": "This workspace has reached its live product limit.",
   "Store name is required.": "Store name is required.",

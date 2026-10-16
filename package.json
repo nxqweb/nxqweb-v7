@@ -26,6 +26,7 @@
     "test:commerce-setup-form": "node scripts/test-commerce-setup-form.mjs",
     "test:client-setup-sheet": "node scripts/test-client-setup-sheet.mjs",
     "test:storefront-theme": "node scripts/test-storefront-theme.mjs",
+    "test:store-polish": "node scripts/test-store-polish.mjs",
     "test:store-white-label": "node scripts/test-store-white-label.mjs",
     "test:shopper-account": "node scripts/test-shopper-account.mjs",
     "test:payment-links": "node scripts/test-payment-links.mjs",

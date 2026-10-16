@@ -174,9 +174,10 @@ state. Update this file, not a new one, at every handoff.
 3. Business -> Commerce switch (client requests at `/client/settings`, owner approves at `/owner/plan-changes`, billing SQL first): NOT fixed. Real fix = an invite-only Commerce signup (the signup trigger in migration 193 only accepts families whose `public_status` is available/beta; Commerce is `planned`, so it silently falls back to Business). Needs a migration + owner decision (Option B); flipping Commerce to beta for everyone was declined (Option C).
 4. Launch guide had no Photos step and no "add more products" loop; dashboard card talked about the paused storefront build: FIXED in code (guide is now setup, product, photos, live, open, practice order, confirm payments, add more; dashboard card leads with the guide).
 5. "Legacy PayPal/Venmo ... leave blank for new stores" labels: FIXED in code (plain labels, one-payment-link hint).
-6. Image box trap (migration 114 only accepts photos uploaded on the Photos page): copy/guide fixed earlier; the box itself still exists. Owner has NOT answered whether to delete it.
+6. Image box trap (migration 114 only accepts photos uploaded on the Photos page): the owner said DELETE it (2026-10-16). DONE in code: the box and its state are gone from the Live store page, the database function is called without the image argument (it has a default, so existing photos are kept), the guide and error text were rewritten. Also added in the same change: a "Copy store link" button and the store address on the Live store page, and public store pages now set the browser tab title to the store name (`test:store-polish`).
 7. Public store looked like the dark NXQX product: FIXED in code (`src/styles/storefront-theme.css`, scoped to `.store-theme`, light warm look, equal product cards with a placeholder for products without a photo, readable on a phone; contrast checked in `test:storefront-theme`). Per-store branding (colors/logo) is NOT built (would likely need a migration).
-8. Venmo box needs a full link (`https://venmo.com/u/<handle>`); whether Venmo's site honors the amount/note query parameters is UNVERIFIED.
+8. Billing for a complimentary client: use the TEMPORARY "Activate billing (no charge)" button on `/owner/billing` (the SQL block is only a fallback; the older runbook said no button existed). Remove that button before launch.
+9. Venmo box needs a full link (`https://venmo.com/u/<handle>`); whether Venmo's site honors the amount/note query parameters is UNVERIFIED.
 
 **CI finding (not caused by us):** `NXQ Mega Extended CI` has failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
@@ -186,7 +187,7 @@ state. Update this file, not a new one, at every handoff.
 3. ONE main-site production deploy containing everything pending: launch guide (with Photos + add-more), simplified setup forms and prefill, storefront theme, shopper accounts + forgot password, per-order payment links, plain Live-store errors and labels.
 4. Then verify on the real address, on a phone: the store page, add to cart, a practice order with the client's first real product (cancel it afterwards in Orders), shopper sign-up and a real password-reset email (the Supabase redirect entries are already in place), the Photos/Products loop.
 5. Tell the client the store is public only after the practice order passes.
-6. Decisions still open for the owner: delete the product image box? invite-only Commerce signup (migration)? per-store branding? investigate the failing Mega Extended CI?
+6. Decisions still open for the owner: invite-only Commerce signup (migration)? per-store branding? investigate the failing Mega Extended CI? (DECIDED 2026-10-16: delete the Live store product image box; done in code, see below.)
 
 ## Shopper "forgot password" built (2026-10-16; local code only, NOT deployed)
 

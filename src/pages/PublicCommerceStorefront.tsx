@@ -60,6 +60,15 @@ export function PublicCommerceStorefront() {
 
   useEffect(() => { void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- storefront slug is fixed for this mounted route
 
+  // The browser tab and shared links show the store's own name, not the NXQX app title.
+  useEffect(() => {
+    const name = data?.store.name;
+    if (!name) return;
+    const previous = document.title;
+    document.title = name;
+    return () => { document.title = previous; };
+  }, [data?.store.name]);
+
   function add(product: Product, variant: Variant) {
     if (variant.inventory_policy === "deny" && variant.available_quantity <= 0) return;
     setCart((current) => {

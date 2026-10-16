@@ -73,6 +73,13 @@ export function PublicShopperAccount() {
     return () => { cancelled = true; listener?.data.subscription.unsubscribe(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- slug is fixed for this mounted route
 
+  useEffect(() => {
+    if (storeName === "this store") return;
+    const previous = document.title;
+    document.title = `${storeName} · Your account`;
+    return () => { document.title = previous; };
+  }, [storeName]);
+
   async function submitCredentials(event: FormEvent) {
     event.preventDefault();
     if (!supabase) return;

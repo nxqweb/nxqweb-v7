@@ -2,6 +2,8 @@
 
 Written 2026-10-05. Tested on a local copy of the full schema (`scripts/test-local-full-schema.mjs` database), NOT on staging.
 
+> **Update 2026-10-16: there is an easier way.** `/owner/billing` has a section "Temporary: activate a test client (no charge)" (`src/pages/OwnerBillingLifecycle.tsx`, marked TEMPORARY-TEST-ACTIVATION) with an **Activate billing (no charge)** button per non-QA client. It calls the same guarded owner function as the SQL block below, so use the button first and keep the SQL as a fallback. The owner ran the SQL for the first real client only because this runbook (written 2026-10-05, before the button existed) said no UI control existed. The button must be removed before launch (see `docs/LAUNCH_HARDENING_CHECKLIST.md`); when it goes, this runbook's SQL becomes the only path, so keep it tested.
+
 ## Why this exists
 A client must have `billing_status` `active` (or `past_due`) **and** `status` `approved`/`active`/`overdue` before the server accepts any
 file upload or paid capability (`nxq_authorize_storage_upload`, `nxq_authorize_paid_capability`). A brand-new signup starts as

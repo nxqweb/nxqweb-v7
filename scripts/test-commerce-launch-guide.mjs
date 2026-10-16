@@ -24,7 +24,7 @@ check("every step links to a real Commerce page", launchGuideSteps.every((s) => 
 
 const text = launchGuideSteps.map((s) => `${s.summary} ${s.doThis.join(" ")} ${s.watchOut}`).join("\n");
 check("warns that variant price and on-hand start at 0", /Price and On hand/.test(text) && /\$0 or sold out/.test(text));
-check("warns the product image box is not the payment link box", /Only the Stripe Payment Link box takes the payment link/.test(text) && /only accepts a photo you uploaded on the Photos page/.test(text) && /never a payment link or an outside web link/.test(text));
+check("says the payment link goes in the payment box and photos go on the Photos page", /Only the Stripe Payment Link box takes the payment link/.test(text) && /Photos are added on the Photos page, not here/.test(text) && /PayPal or Venmo, which have their own boxes/.test(text));
 check("explains the live store name is separate from the setup name", /separate from the setup form name/.test(text));
 check("tells clients to confirm payment only after seeing the money", /Never confirm a payment you have not seen arrive/.test(text));
 check("never tells clients to paste secrets", /Never paste a secret key or password/.test(text));
@@ -32,7 +32,7 @@ check("notes a practice order holds stock", /holds one unit of stock/.test(text)
 check("makes no unsupported promises", !/\b(guarantee|instant|automatic payout|best|fast(?:est)?)\b/i.test(text));
 
 check("progress math is right", guideProgress([]).percent === 0 && guideProgress(["setup", "product", "live"]).percent === Math.round((3 / ids.length) * 100) && guideProgress(ids).complete === true);
-check("there is a photos step that points at the Photos page and warns against the image box", (() => { const st = launchGuideSteps.find((x) => x.id === "photos"); return Boolean(st) && st.href === "/client/commerce/images" && /Never paste a web address or a payment link into the Live store image box/.test(st.watchOut) && ids.indexOf("photos") > ids.indexOf("product") && ids.indexOf("photos") < ids.indexOf("live"); })());
+check("there is a photos step that points at the Photos page and says the Live store page has no photo box", (() => { const st = launchGuideSteps.find((x) => x.id === "photos"); return Boolean(st) && st.href === "/client/commerce/images" && /by uploading files from your device/.test(st.watchOut) && /The Live store page has no photo box/.test(st.watchOut) && ids.indexOf("photos") > ids.indexOf("product") && ids.indexOf("photos") < ids.indexOf("live"); })());
 check("there is an add-more-products loop (products, photos, make visible) for ongoing use", (() => { const st = launchGuideSteps.find((x) => x.id === "more"); return Boolean(st) && st.href === "/client/commerce/products" && st.doThis.length === 3 && /Products:/.test(st.doThis[0]) && /Photos:/.test(st.doThis[1]) && /Make visible/.test(st.doThis[2]) && /stays hidden/.test(st.doThis[2]); })());
 const card = fs.readFileSync("src/components/ClientCommercePortalTab.tsx", "utf8");
 check("the dashboard Commerce card leads with the step-by-step guide and no longer mentions the paused storefront build", /href="\/client\/commerce\/tutorial"/.test(card) && /Start the step-by-step guide/.test(card) && !/storefront build and migration plan/.test(card) && /You only need a store name to begin/.test(card));

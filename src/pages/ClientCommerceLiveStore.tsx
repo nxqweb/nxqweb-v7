@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } from "lucide-react";
+import { Copy, ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
@@ -32,7 +32,6 @@ export function ClientCommerceLiveStore() {
   const [paypalUrl, setPaypalUrl] = useState("");
   const [venmoUrl, setVenmoUrl] = useState("");
   const [paymentNote, setPaymentNote] = useState("");
-  const [images, setImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState("");
@@ -74,7 +73,6 @@ export function ClientCommerceLiveStore() {
     setPaypalUrl(next.paypal_url || "");
     setVenmoUrl(next.venmo_url || "");
     setPaymentNote(next.payment_note || "");
-    setImages(Object.fromEntries((next.products || []).map((product) => [product.id, product.image_url || ""])));
     setVerified(true);
     setLoading(false);
     const accounts = await supabase.rpc("get_public_store_accounts_status", { store_slug_value: next.store_slug });
@@ -169,7 +167,6 @@ export function ClientCommerceLiveStore() {
     const result = await supabase.rpc("set_my_commerce_product_live", {
       product_uuid: product.id,
       make_active: makingLive,
-      primary_image_url: images[product.id]?.trim() || null,
     });
 
     if (result.error) {
@@ -184,6 +181,17 @@ export function ClientCommerceLiveStore() {
   }
 
   const liveUrl = data ? `${window.location.origin}${data.public_url}` : "";
+
+  async function copyStoreLink() {
+    try {
+      await navigator.clipboard.writeText(liveUrl);
+      setError("");
+      setMessage("Store link copied.");
+    } catch {
+      setMessage("");
+      setError("Could not copy automatically. Select the store address above and copy it by hand.");
+    }
+  }
 
   return (
     <main className="nxq-page"><section className="portal-shell">
@@ -213,10 +221,15 @@ export function ClientCommerceLiveStore() {
           <p className="subtle" style={{ marginTop: ".75rem" }}>How amounts work: a Stripe Payment Link has its price set inside Stripe, and a store link cannot change it. If your orders can have different totals, create the link in Stripe with the option that lets customers choose what to pay (if your Stripe account offers it); customers are told the exact amount to enter. PayPal.me and Venmo links get each order's exact total added automatically. Every order number appears in your Orders page so you can match payments.</p>
           <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a Stripe secret key, webhook secret, password, bank account, login code, or other protected credential here. Only a public Stripe Payment Link (https://buy.stripe.com/...) belongs in this field.</p>
           {data.status === "active" ? <a className="wide-btn" href={liveUrl} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open verified storefront</a> : null}
+          {data.status === "active" ? <div data-testid="store-link-box">
+            <p className="subtle" style={{ marginTop: ".75rem" }}>Your store address: <strong>{liveUrl}</strong></p>
+            <button className="icon-btn" type="button" onClick={() => void copyStoreLink()}><Copy size={16} /> Copy store link</button>
+          </div> : null}
         </section>
 
         <section className="panel panel-wide">
           <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Visibility changes affect only the storefront product listing. They do not activate payments or bypass other launch gates.</p></div></div>
+          <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
           {(data.products || []).length === 0 ? <div className="empty-state">No verified products are available for storefront visibility yet.</div> : data.products.map((product) => (
             <article className="settings-card" key={product.id} style={{ marginBottom: ".75rem" }}>
               <div className="panel-title panel-title-row">
@@ -226,8 +239,6 @@ export function ClientCommerceLiveStore() {
                   {busy === product.id ? "Saving..." : product.status === "active" ? "Hide product" : "Make visible"}
                 </button>
               </div>
-              <label><span>Primary product image (optional)</span><input className="auth-input" placeholder="Leave empty. Add photos on the Photos page." value={images[product.id] || ""} onChange={(e) => setImages((current) => ({ ...current, [product.id]: e.target.value }))} /></label>
-              <p className="subtle">Only photos uploaded on the <a href="/client/commerce/images">Photos page</a> work here. Never paste a payment link in this box.</p>
             </article>
           ))}
         </section>

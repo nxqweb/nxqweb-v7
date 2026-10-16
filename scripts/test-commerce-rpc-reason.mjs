@@ -28,7 +28,7 @@ check("every whitelisted reason is raised by a real migration", missing.length =
 const page = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
 check("Live store uses the helper for both save and visibility errors", (page.match(/withCommerceReason\(/g) ?? []).length === 2);
 
-check("the Live store image box says only uploaded photos work and links to the Photos page", /Primary product image \(optional\)/.test(page) && page.includes('href="/client/commerce/images"') && /Never paste a payment link in this box/.test(page) && !/Primary product image URL/.test(page));
+check("the Live store page no longer has a product image box (it was a trap) and points to the Photos page", !/Primary product image/.test(page) && !/images\[product\.id\]/.test(page) && !/primary_image_url/.test(page) && /href="\/client\/commerce\/images"/.test(page) && /not here/.test(page));
 check("the payment boxes no longer say Legacy or leave blank, and the page says only one payment link is needed", !/Legacy (PayPal|Venmo)/.test(page) && !/Leave blank for new stores/.test(page) && /You only need one payment link: Stripe, PayPal or Venmo/.test(page) && /https:\/\/paypal\.me\/yourname/.test(page) && /https:\/\/venmo\.com\/u\/yourname/.test(page));
 check("image-ownership trigger really exists in a migration (so the explanation stays true)", sql.includes("Every product image must be an existing image owned by this client workspace."));
 
