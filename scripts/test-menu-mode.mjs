@@ -30,10 +30,10 @@ check("menu needs a contact email or phone before saving, and opening asks first
 check("a menu hides the payment boxes like email mode", (live.match(/orderMode === "email" \|\| orderMode === "menu"/g) || []).length >= 5);
 check("the client page sends the existing function with the same argument names", /rpc\("save_my_store_order_mode", \{ order_mode_value: orderChoice, make_live: makeLive \}\)/.test(live));
 
-// ---- database draft
-const draft = read("docs/drafts/migrations/06_store_menu_mode.sql");
-check("the draft keeps the function names and argument names of migration 270", /function public\.save_my_store_order_mode\(order_mode_value text, make_live boolean default false\)/.test(draft) && /function public\.get_public_store_order_mode\(store_slug_value text\)/.test(draft) && /function public\.get_my_store_order_mode\(\)/.test(draft));
-check("the draft needs an email or a phone for a menu, still needs an email for email mode, and lists supported modes", /Add a contact email or phone so customers know how to order from your menu/.test(draft) && /Add a contact email before taking orders by email/.test(draft) && /'supported_modes'/.test(draft));
+// ---- database migration
+const draft = read("supabase/migrations/271_store_menu_mode.sql");
+check("the migration keeps the function names and argument names of migration 270", /function public\.save_my_store_order_mode\(order_mode_value text, make_live boolean default false\)/.test(draft) && /function public\.get_public_store_order_mode\(store_slug_value text\)/.test(draft) && /function public\.get_my_store_order_mode\(\)/.test(draft));
+check("the migration needs an email or a phone for a menu, still needs an email for email mode, and lists supported modes", /Add a contact email or phone so customers know how to order from your menu/.test(draft) && /Add a contact email before taking orders by email/.test(draft) && /'supported_modes'/.test(draft));
 check("the public function exposes the phone only for menus and never payment links", /'contact_phone', case when s\.settings ->> 'order_mode' = 'menu' then/.test(draft) && !/stripe_payment_link|paypal_url|venmo_url/.test(draft.replace(/--.*$/gm, "")));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll menu-mode checks passed (offline).");

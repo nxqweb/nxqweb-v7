@@ -111,7 +111,7 @@ cancel every practice order afterwards so it stops holding stock.
 
 | # | Steps | Expected |
 |---|---|---|
-| J1 | `/client/commerce/live`: "How do customers order?" | Online and By email show (Menu only shows after draft 06 is applied). If the whole box is missing, 270 is not applied yet |
+| J1 | `/client/commerce/live`: "How do customers order?" | Online and By email show (Menu only shows after 271 is applied). If the whole box is missing, 270 is not applied yet |
 | J2 | Pick By email with NO contact email saved, press Save ordering choice | A plain message to save a contact email first |
 | J3 | Save a contact email in About and contact, pick By email, press Open my store | "Your store is open. Customers send you their orders by email." The payment link boxes disappear |
 | J4 | Public store: add to cart, fill details, press Email my order | Panel "Almost done": Open my email app (email app opens with the order written), Copy order text, I sent it |

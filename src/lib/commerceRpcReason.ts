@@ -20,7 +20,8 @@ export const commerceReasonMessages: Record<string, string> = {
   "Enter a social link that starts with https://.": "Enter a social link that starts with https://.",
   "Create your storefront first.": "Create your storefront first.",
   "Add a contact email before taking orders by email.": "Add a contact email before taking orders by email. Type it in About and contact, save it, then try again.",
-  "Choose online payment or orders by email.": "Choose online payment or orders by email.",
+  "Choose online payment, orders by email, or a menu.": "Choose online payment, orders by email, or a menu.",
+  "Add a contact email or phone so customers know how to order from your menu.": "Add a contact email or phone in About and contact so customers know how to order from your menu.",
 };
 
 export function commerceRpcReason(error: { message?: string | null } | null | undefined): string | null {

@@ -48,7 +48,7 @@ begin
   if r->>'order_mode' is distinct from 'online' then raise exception 'default must be online: %', r; end if;
 
   -- bad mode refused
-  if not pg_temp.fails($q$select public.save_my_store_order_mode('carrier-pigeon')$q$, 'Choose online payment or orders by email') then raise exception 'unknown mode must be refused'; end if;
+  if not pg_temp.fails($q$select public.save_my_store_order_mode('carrier-pigeon')$q$, 'Choose online payment, orders by email, or a menu') then raise exception 'unknown mode must be refused'; end if;
 
   -- email mode without a contact email is refused (client two)
   perform pg_temp.as_user(o2);

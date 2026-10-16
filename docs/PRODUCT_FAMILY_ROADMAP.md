@@ -9,7 +9,7 @@ Nothing here changes any status or launches anything; every public-status change
 | NXQX-Business | available | 4 | Full (leads, builds, workers, billing) | Full portal | Open signup | The only launched family |
 | NXQX-Commerce | planned | yes | Catalog, inventory, orders, storefront rows; migration 269 (store profile) written, not applied | 14 client pages + public `/store/<slug>` | Signup falls back to Business; plan switch is owner-approved | Built and locally tested; staging apply + deploy pending |
 | NXQX-Booking | planned | 4 | Scaffold only (migration 188: workspaces, services, staff, availability rules, appointment requests; no public endpoint) | None | None | Schema scaffold, no UI |
-| NXQX-Menu | planned | 4 | Draft 06 (menu mode for a store: view-only items, contact to order); builds on 270 | None of its own: a store set to "Menu only" on `/client/commerce/live`, shown at `/store/<slug>` | None | v1 built locally (needs 270 and draft 06 promoted and applied); no signup path, no categories/hours fields yet (hours go in About) |
+| NXQX-Menu | planned | 4 | Migration 271 (menu mode for a store: view-only items, contact to order); builds on 270 | None of its own: a store set to "Menu only" on `/client/commerce/live`, shown at `/store/<slug>` | None | v1 built locally (migrations 270 and 271 written, not applied); no signup path, no categories/hours fields yet (hours go in About) |
 | NXQX-Property | planned | 4 | None | None | None | Catalog copy only |
 | NXQX-Multi-Location | planned | 4 | None (Business has `ClientBusinessLocations` for its own use) | None | None | Catalog copy only |
 | NXQX-Membership | planned | 4 | None | None | None | Catalog copy only |

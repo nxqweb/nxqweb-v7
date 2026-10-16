@@ -42,6 +42,4 @@ The store-profile draft (`05_store_profile`) was promoted on 2026-10-16 (owner a
 
 The order-by-email draft (`05_store_order_by_email`) was promoted on 2026-10-16 (owner approved in chat) to real migration `270_store_order_by_email`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT applied to staging. Only the journey-wording draft (03) and drafts 01 and 02 remain here.
 
-| `06_store_menu_mode.sql` | NXQX-Menu v1: a store can be a view-only menu (items and prices, no cart or stock, call or email to order); builds on 270 with the same function and argument names | owner request 2026-10-16, `docs/PRODUCT_FAMILY_ROADMAP.md` |
-
-Promoting draft 06 (to 271) needs the owner's approval. At that point the 270 regression test must be updated: 06 changes the unknown-mode error text ("Choose online payment, orders by email, or a menu.") and adds `supported_modes`.
+The menu-mode draft (`06_store_menu_mode`) was promoted on 2026-10-16 (owner said "promote 06" in chat) to real migration `271_store_menu_mode`; its test now lives in `scripts/sql/local-full-schema/regression/` and the 270 test was updated for the new unknown-mode wording. NOT applied to staging. Only drafts 01, 02 and 03 (journey wording) remain here.

@@ -1,4 +1,4 @@
--- DRAFT 06: NXQX-Menu v1. A store can be a "menu": customers see the items with prices and descriptions, with no cart and no stock, and are told how
+-- Migration 271: NXQX-Menu v1. A store can be a "menu": customers see the items with prices and descriptions, with no cart and no stock, and are told how
 -- to order (call or email the shop, from the contact details in migration 269's profile). Hours go in the About text (no new field).
 -- Builds on migration 270 (order mode). Same function names and argument names as 270, so the app's calls do not change:
 --   get_my_store_order_mode()  now also returns supported_modes (the app shows the Menu choice only when this list has 'menu')
