@@ -48,6 +48,7 @@ run(npm, ["run", "test:referral-link"]);
 run(npm, ["run", "test:referral-credit"]);
 run(npm, ["run", "test:rewards-page"]);
 run(npm, ["run", "test:info-pages"]);
+run(npm, ["run", "test:owner-billing-safety"]);
 run(npm, ["run", "test:store-profile"]);
 run(npm, ["run", "test:client-wording"]);
 run(npm, ["run", "test:links"]);

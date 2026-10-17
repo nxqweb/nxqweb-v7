@@ -181,6 +181,13 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Stripe sandbox created; test-mode walkthrough + owner billing safety proof (2026-10-17; docs and a test; nothing deployed)
+
+- The owner created a Stripe SANDBOX ("NXQX sandbox") and wants to test with it, plus dark mode, plus proof they cannot be locked out or made to pay.
+- `docs/STRIPE_TEST_MODE_WALKTHROUGH.md`: exact order: webhook endpoint URL and the 8 events the code understands (plus `invoice.created` for later referral credits), the Supabase secret NAMES to set by hand (`STRIPE_WEBHOOK_SECRET`, `NXQ_BILLING_ENABLED=true` staging only; `STRIPE_SECRET_KEY` not needed for the first test), the guarded `deploy_functions` step (needs owner approval, validate first), linking a TEST client (never the owner or the complimentary candle client), Stripe test cards, what each event should do, the 200/400/401/503 meanings, rollback.
+- `scripts/test-owner-billing-safety.mjs` (in `npm run test:store`, now 25 files; five planted-bug controls caught): owner access depends only on `owner_users`; only an owner can link a customer; QA clients are never billable; Stripe events reach only clients the owner linked; a failed payment only ever makes `past_due`; nothing sets `frozen` automatically; billing is off unless `NXQ_BILLING_ENABLED=true`.
+- Not built (owner decision pending): a per-client "billing exempt" switch (needs a migration). Dark mode for the Stripe dashboard could not be confirmed; suggested the browser's auto-dark flag.
+
 ## CI caught a build error my local checks missed; parity script fixed (2026-10-17)
 
 - **What happened:** the push `caecd12` (info pages) failed GitHub's NXQ Safe CI at the Build step: `<PublicInfoPage slug="about" />` did not type-check because the lazy-loading helper `named()` in `src/App.tsx` types every page as taking no props. Fixed by loading that one page with `lazy()` directly; build passes.

@@ -37,6 +37,7 @@
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",
+    "test:owner-billing-safety": "node scripts/test-owner-billing-safety.mjs",
     "test:store-profile": "node scripts/test-store-profile.mjs",
     "test:client-wording": "node scripts/test-client-wording.mjs",
     "test:links": "node scripts/test-link-integrity.mjs",
