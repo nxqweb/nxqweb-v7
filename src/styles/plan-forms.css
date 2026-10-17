@@ -184,3 +184,25 @@ body[data-nxq-theme="light"] .plan-resolution-card {
   body { background: #fff !important; }
   .review-card { box-shadow: none; border: 1px solid #000; max-width: 100%; }
 }
+
+/* Booking: the request page and the manager page. */
+.booking-shell { max-width: 720px; }
+.booking-form .auth-input { margin-bottom: 0.5rem; }
+.booking-times { border: 0; margin: 0.5rem 0; padding: 0; }
+.booking-times legend { font-weight: 600; margin-bottom: 0.4rem; }
+.booking-slots { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.booking-slot { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 5.5rem; min-height: 44px; padding: 0 0.9rem; border: 1px solid currentColor; border-radius: 999px; cursor: pointer; opacity: 0.85; }
+.booking-slot input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.booking-slot.is-picked { opacity: 1; font-weight: 700; box-shadow: 0 0 0 2px currentColor; }
+.booking-slot:focus-within { outline: 3px solid currentColor; outline-offset: 2px; }
+.booking-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.field-error { color: #ff9a9a; margin: 0.1rem 0 0.5rem; }
+.booking-hours-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin: 0.4rem 0; }
+.booking-hours-day { min-width: 8.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+.booking-hours-row .auth-input { width: auto; min-width: 7.5rem; margin: 0; }
+.booking-request { margin: 0.6rem 0; }
+/* The storefront theme makes every label a block with extra margins; time chips and the hidden bot field need to opt out of that. */
+.store-theme .portal-shell .booking-slot { display: inline-flex; margin: 0; }
+.store-theme .portal-shell .booking-slot span { display: inline; margin: 0; }
+.store-theme .portal-shell .booking-hp label { display: block; margin: 0; }
+.store-theme .portal-shell .booking-times legend { margin-bottom: 0.4rem; }

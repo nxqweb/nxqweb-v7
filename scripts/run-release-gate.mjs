@@ -47,6 +47,8 @@ run(npm, ["run", "test:menu-mode"]);
 run(npm, ["run", "test:referral-link"]);
 run(npm, ["run", "test:reviews"]);
 run(npm, ["run", "test:qr-code"]);
+run(npm, ["run", "test:booking"]);
+run(npm, ["run", "test:booking-time"]);
 run(npm, ["run", "test:referral-credit"]);
 run(npm, ["run", "test:rewards-page"]);
 run(npm, ["run", "test:info-pages"]);

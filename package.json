@@ -36,6 +36,8 @@
     "test:referral-link": "node scripts/test-referral-link.mjs",
     "test:reviews": "node scripts/test-reviews.mjs",
     "test:qr-code": "node scripts/test-qr-code.mjs",
+    "test:booking": "node scripts/test-booking.mjs",
+    "test:booking-time": "node scripts/test-booking-time.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",

@@ -22,7 +22,8 @@ check("the stylesheet is loaded by the app", /import "\.\/styles\/storefront-the
 const mains = (page) => [...page.matchAll(/<main className="([^"]*)"/g)].map((m) => m[1]);
 const skeleton = fs.readFileSync("src/components/store/StoreSkeleton.tsx", "utf8");
 check("every main element on the store, its loading skeleton and the shopper account pages uses the theme", mains(store).length >= 2 && mains(store).every((c) => c.includes("store-theme")) && mains(skeleton).length === 1 && mains(skeleton).every((c) => c.includes("store-theme")) && mains(account).length >= 3 && mains(account).every((c) => c.includes("store-theme")));
-check("no other page opts into the store theme", fs.readdirSync("src/pages").filter((f) => f.endsWith(".tsx") && !["PublicCommerceStorefront.tsx", "PublicShopperAccount.tsx"].includes(f)).every((f) => !fs.readFileSync(`src/pages/${f}`, "utf8").includes("store-theme")));
+check("every main element on the public Booking request page uses the theme (customer-facing page, same warm look as the store)", mains(fs.readFileSync("src/pages/PublicBooking.tsx", "utf8")).length >= 3 && mains(fs.readFileSync("src/pages/PublicBooking.tsx", "utf8")).every((c) => c.includes("store-theme")));
+check("no other page opts into the store theme", fs.readdirSync("src/pages").filter((f) => f.endsWith(".tsx") && !["PublicCommerceStorefront.tsx", "PublicShopperAccount.tsx", "PublicBooking.tsx"].includes(f)).every((f) => !fs.readFileSync(`src/pages/${f}`, "utf8").includes("store-theme")));
 
 // ---- layout
 check("products sit in an equal-card responsive grid", /store-product-grid/.test(store) && /grid-template-columns: repeat\(auto-fill, minmax\(230px, 1fr\)\)/.test(css));
