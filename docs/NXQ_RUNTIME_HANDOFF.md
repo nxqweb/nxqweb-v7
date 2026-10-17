@@ -181,6 +181,13 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Owner approved the candle client's Commerce intake (2026-10-17, owner action in the owner portal; read from screenshots)
+
+- The owner pressed APPROVE on "Commerce intake ready for review: Light of the world candles and soap" (confirm dialog "This will update the approval request in Supabase"). The dashboard then showed "No completed intake is waiting" and one more "accepted" row. Earlier notes said "do not approve this"; that was a caution, and the owner has now decided. Do not repeat the old warning.
+- What the code does for this approval type (migration 183, `resolve_owner_approval_decision`, only allowed for `commerce_intake_review`): sets the approval to accepted, stores the owner's response, writes one `activity_logs` row and one `automation_audit_log` row with `external_notification_sent: false`. It starts no build and notifies nobody. The candle client's project stage stayed "planning".
+- Unverified from here (no access to the staging database): whether any paused automated build jobs exist that could pick up an accepted intake. Workers and AI/provider keys are not connected, so nothing should run; check the owner exceptions page and AI queue before connecting providers.
+- Also seen: Active MRR $300/mo and 2 active clients (was $400 and 3) because the test client "Email Test Tree Service 2" is past due after the Stripe failed-payment test; paying invoice #0002 with 4242 restores it.
+
 ## Reviews PROMOTED to migration 273 and wired (2026-10-17, owner said "promote reviews"; local/pushed; NOT applied, NOT deployed)
 
 - `docs/drafts/migrations/05_reviews_collector.sql` -> `supabase/migrations/273_reviews_collector.sql`; test -> `scripts/sql/local-full-schema/regression/273_reviews_collector.test.sql` (local full-schema harness 36/36 with 273 applied after 272).

@@ -39,7 +39,7 @@ cancel every practice order afterwards so it stops holding stock.
 | B2 | Scroll down | "Storefront design and motion" and "Policies, content, and launch" are collapsed and labelled optional |
 | B3 | Type a store name, press **Save draft** | "Commerce setup draft saved." Save draft is the big button; "Send to NXQX for review (optional)" is quiet |
 | B4 | Reload the page | The store name is still there |
-| B5 | Do NOT approve any "Commerce intake ready for review" item in the owner portal | (Approving can start the paused automated build jobs; the store does not need it) |
+| B5 | (UPDATED 2026-10-17) The owner approved the candle client's "Commerce intake ready for review" item. The click only records the decision (`resolve_owner_approval_decision`: status to accepted, owner response, an activity log row and an audit row with `external_notification_sent: false`); it builds nothing and tells no one. Do not approve further intake items without checking what they need | (If paused automated build jobs exist they could pick up an accepted intake once workers and provider keys are connected; check the owner exceptions page and AI queue before connecting those) |
 
 ## C. Products and photos (client)
 
