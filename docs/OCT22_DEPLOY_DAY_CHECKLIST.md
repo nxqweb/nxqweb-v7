@@ -13,6 +13,7 @@ Review deployments -> nxq-staging -> Approve and deploy; Claude never does).
 
 ## Database (UPDATED 2026-10-17 after "promote reviews")
 - Migrations 269, 270 and 271 were applied to staging on 2026-10-16 (run #260, log confirmed).
+- **Owner chose Option A on 2026-10-17: apply 272 and 273 together on deploy day** (a plan; the apply still needs the steps below in that day's chat).
 - **Two migrations are now pending: 272 (referral credit on Stripe invoices, dormant) and 273 (Reviews collector).** The guarded workflow runs `supabase db push --linked`, which applies ALL pending migrations, so they go together. This needs the owner's explicit OK because it also applies 272 (the owner earlier wanted 272 held until Stripe). 272 is inert: service-role-only functions, off unless `NXQ_REFERRAL_CREDITS_ENABLED`, a Stripe secret key and the referral program are all switched on.
 - Order: (1) `validate_foundation`, read the "Migration dry run" list: it must list exactly `272_referral_invoice_credit.sql` and `273_reviews_collector.sql`, nothing else (anything else: STOP and ask). (2) `apply_migrations`: owner fills the form, branch `safe/checkpoint-autonomy-wave35-sales`, types `APPLY-NXQ-SUPABASE-STAGING` exactly, Approves; Claude reads the log for "Applying migration 272..." and "Applying migration 273...". (3) Only then deploy functions and the site (a site deployed before 273 exists shows a calm "could not be loaded" on `/client/reviews`).
 - Booking draft 06 stays a draft (never part of an apply); the Booking pages have no route.
