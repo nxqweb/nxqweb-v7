@@ -44,4 +44,4 @@ The order-by-email draft (`05_store_order_by_email`) was promoted on 2026-10-16 
 
 The menu-mode draft (`06_store_menu_mode`) was promoted on 2026-10-16 (owner said "promote 06" in chat) to real migration `271_store_menu_mode`; its test now lives in `scripts/sql/local-full-schema/regression/` and the 270 test was updated for the new unknown-mode wording. NOT applied to staging. Only drafts 01, 02 and 03 (journey wording) remain here.
 
-| `07_referral_invoice_credit.sql` | Service-role functions to reserve and release referral credit for one Stripe invoice (owner chose Option A, 2026-10-17); reuses the migration 229 apply function; does nothing while the referral program is OFF | `docs/STRIPE_AND_AI_PLUG_IN_DAY.md` |
+The referral-invoice-credit draft (`07_referral_invoice_credit`) was promoted on 2026-10-17 (owner said "promote 07 and wire it") to real migration `272_referral_invoice_credit`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT applied to staging. Only drafts 01, 02 and 03 (journey wording) remain here.

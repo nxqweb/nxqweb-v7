@@ -74,5 +74,22 @@ const src = fs.readFileSync("supabase/functions/_shared/referral-invoice-credit.
 check("the module never logs, and never reads secrets from the environment itself", !/console\./.test(src) && !/Deno\.env/.test(src) && !/process\.env/.test(src));
 check("the module only ever talks to Stripe's invoice item endpoint over https", [...src.matchAll(/https?:\/\/[^"'`\s)]+/g)].map((m) => m[0]).every((u) => u === "https://api.stripe.com/v1/invoiceitems"));
 
+
+// ---- the webhook wiring (source checks; the real function cannot run without Stripe)
+const hook = fs.readFileSync("supabase/functions/ingest-stripe-webhook/index.ts", "utf8");
+const mig = fs.readFileSync("supabase/migrations/272_referral_invoice_credit.sql", "utf8");
+const body = hook.slice(hook.indexOf("async function creditNewInvoice"), hook.indexOf("type StripeEvent="));
+check("credit is only attempted for invoice.created, after the customer is matched to a real non-QA client", /if\(eventType==="invoice\.created"\)return await creditNewInvoice\(admin,object,client\.data\.id\);/.test(hook) && hook.indexOf('if(client.data.qa_only)') < hook.indexOf('creditNewInvoice(admin,object'));
+check("every other event type still behaves as before (still ignored when it maps to nothing)", /if\(!mappedType&&eventType!=="invoice\.created"\)return response\(\{ok:true,ignored:true,event_type:eventType\},202\);/.test(hook));
+check("it is OFF unless its own switch is set, and the key is read only after that check", /NXQ_REFERRAL_CREDITS_ENABLED/.test(body) && body.indexOf("NXQ_REFERRAL_CREDITS_ENABLED") < body.indexOf('secret("STRIPE_SECRET_KEY")') && /reason:"referral_credits_off"/.test(body));
+check("billing must be enabled first, as for every other Stripe event", hook.indexOf('NXQ_BILLING_ENABLED') > 0 && hook.indexOf('NXQ_BILLING_ENABLED') < hook.indexOf("creditNewInvoice(admin,object"));
+const sqlArgs = (name) => [...(mig.match(new RegExp(`function public\\.${name}\\(([^)]*)\\)`))?.[1] || "").matchAll(/(target_[a-z_]+)\s/g)].map((m) => m[1]).sort().join(",");
+const callArgs = (name) => [...(body.match(new RegExp(`rpc\\("${name}",\\{([^}]*)\\}`))?.[1] || "").matchAll(/(target_[a-z_]+):/g)].map((m) => m[1]).sort().join(",");
+check("the webhook calls the three database functions with exactly the argument names the migration defines", ["nxq_reserve_referral_credit_for_invoice", "nxq_release_referral_credit_for_invoice"].every((n) => sqlArgs(n) !== "" && sqlArgs(n) === callArgs(n)) && callArgs("nxq_mature_referral_credits") === "target_limit", ["nxq_reserve_referral_credit_for_invoice", "nxq_release_referral_credit_for_invoice"].map((n) => `${n}: sql[${sqlArgs(n)}] call[${callArgs(n)}]`).join(" | "));
+check("outcomes map to the right answers: applied 200, skipped 202, refused-and-returned 202 (no pointless retries), uncertain 500 (retry is safe)", /result\.outcome==="uncertain"[\s\S]*500\)/.test(body) && /failed_released"\)return response\(\{ok:false,reason:result\.reason,credit_returned:true\},202\)/.test(body) && /outcome==="applied"\)return response\(\{ok:true,referral_credit_cents:result\.creditCents\},200\)/.test(body));
+check("an uncertain result leaves a record for the owner and never prints the key", /action:"referral_credit_uncertain"/.test(body) && !/console\./.test(body) && !/stripeKey[^,)]*\}\)/.test(body.replace("secret(\"STRIPE_SECRET_KEY\")", "")) );
+check("the call to Stripe has a time limit and never follows the secret into a response", /AbortController/.test(body) && /setTimeout\(\(\)=>controller\.abort\(\),15000\)/.test(body) && !/response\([^)]*stripeKey/.test(body));
+check("the migration is service-role only and does nothing while the program is off", /grant execute on function public\.nxq_reserve_referral_credit_for_invoice\(uuid, text, text, numeric\) to service_role;/.test(mig) && /not coalesce\(program_on, false\)/.test(mig) && !/to authenticated/.test(mig.replace(/revoke[^;]*;/g, "")));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll referral-invoice-credit checks passed (offline).");
 process.exit(failures ? 1 : 0);

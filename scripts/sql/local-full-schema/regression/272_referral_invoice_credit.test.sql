@@ -1,4 +1,4 @@
--- Sidecar test for draft 07 (referral credit on invoices). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 272 (referral credit on invoices). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

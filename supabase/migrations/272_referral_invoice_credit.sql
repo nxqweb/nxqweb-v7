@@ -1,4 +1,4 @@
--- DRAFT 07: safe plumbing for taking referral credit off a real Stripe invoice (owner chose "Option A": a negative line on each new draft invoice).
+-- Migration 272: safe plumbing for taking referral credit off a real Stripe invoice (owner chose "Option A": a negative line on each new draft invoice).
 -- Two service-role-only functions around the existing nxq_apply_referral_credit (migration 229), which is left unchanged:
 --   nxq_reserve_referral_credit_for_invoice(client, provider, invoice id, subtotal)
 --       Does nothing (credit 0) unless the referral program is switched on. Otherwise uses up credit for that ONE invoice (idempotent per invoice,
