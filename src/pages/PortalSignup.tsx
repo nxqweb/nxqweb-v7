@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, MailCheck, Sparkles } from "lucide-react";
 import {
   getProductFamily,
@@ -8,9 +8,13 @@ import {
   type ProductTierKey,
 } from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { referralCodeFromSearch, savePendingReferral } from "../lib/referralCode";
 
 export function PortalSignup() {
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  // A referral link (?ref=CODE) is remembered here and stored with the new account, so it still counts if the email is confirmed on another device.
+  const referralCode = useMemo(() => referralCodeFromSearch(window.location.search), []);
+  useEffect(() => { if (referralCode) savePendingReferral(referralCode); }, [referralCode]);
   const requestedFamily = useMemo(
     () => getRequestedProductFamily(searchParams.get("family")),
     [searchParams]
@@ -145,6 +149,7 @@ export function PortalSignup() {
           intake_service_area: serviceArea.trim(),
           intake_primary_goal: trimmedPrimaryGoal,
           intake_tier_goal: tierGoal.trim(),
+          ...(referralCode ? { referral_code: referralCode } : {}),
         },
       },
     });
@@ -170,6 +175,7 @@ export function PortalSignup() {
 
         <form className="lux-card premium-signup-card" onSubmit={handleSignup}>
           <h1 className="sr-only">Create your NXQX-Web client account</h1>
+          {referralCode ? <div className="notice-card success" data-testid="referral-note" role="note"><strong>You were invited by a friend.</strong> Your referral code <strong>{referralCode}</strong> is saved and will be applied to your new account if the referral program is open.</div> : null}
           <div className="lux-section-head">
             <span><Sparkles size={14} /> Project setup</span>
             <h2>{selectedFamily.name} · {tier.name}</h2>

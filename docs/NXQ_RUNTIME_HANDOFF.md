@@ -181,6 +181,12 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Referral link fixed + Stripe/AI/referral readiness audit (2026-10-17; local/pushed, nothing deployed)
+
+- **Fixed:** the referral share link `/portal/signup?ref=CODE` was never read by the signup page. Now `src/lib/referralCode.ts`, `PortalSignup.tsx` and a silent `src/components/ReferralClaimer.tsx` (mounted on `/client*`) remember the code, store it on the new account, and apply it once after sign-in with the existing `nxq_claim_referral`. `scripts/test-referral-link.mjs` (in `npm run test:store`, now 21 files) with planted-bug controls; real-browser check `scripts/manual/referral-e2e.mjs` passes.
+- **Audit result (see `docs/STRIPE_AND_AI_PLUG_IN_DAY.md`):** the money-back step for referrals does not exist. Nothing calls `nxq_mature_referral_credits` or `nxq_apply_referral_credit`, the Stripe webhook ignores `invoice.created`, and NO code calls the Stripe API (`STRIPE_SECRET_KEY` is required by readiness but unused). The referral program is OFF. Owner decision pending: Option A (negative invoice line on `invoice.created`, recommended) or Option B (Stripe customer balance credit).
+- AI key: one secret, `NXQ_AI_MODEL_PROVIDER_TOKEN`; Claude protocol needs a readiness migration before it can be proven.
+
 ## Store tests now run in GitHub CI (2026-10-16; owner said "I approve" to the workflow edit)
 
 - `.github/workflows/ci.yml` (NXQ Safe CI) got one new step, "Commerce and store tests" (`node scripts/run-store-tests.mjs`, 20 test files), following the file's existing pattern: `continue-on-error` with an id, and `store_tests` added to the final "Fail if validation failed" gate and its message. Nothing else in the workflow changed. `npm run test:ci-parity` now counts 65 commands and passes.

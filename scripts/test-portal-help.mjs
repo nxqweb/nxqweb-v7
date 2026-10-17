@@ -38,7 +38,7 @@ const report = read("src/components/ReportProblem.tsx");
 check("the portal shows the assistant instead of a direct message box", /<AssistantChat canSend=\{Boolean\(client\)\} sendToTeam=\{sendToTeam\} \/>/.test(portal) && !/Type your message here/.test(portal) && !/Message support/.test(portal));
 check("nothing reaches the team unless the client presses the send button", /sendToTeam\(teamMessage\(turn\.offerTeam\)\)/.test(chat) && (chat.match(/sendToTeam\(/g) || []).length === 1 && /onClick=\{\(\) => void send\(turn\)\}/.test(chat));
 check("the chat is a labelled live log, keyboard reachable, and Enter sends (Shift+Enter adds a line)", /role="log"/.test(chat) && /aria-live="polite"/.test(chat) && /tabIndex=\{0\}/.test(chat) && /event\.key === "Enter" && !event\.shiftKey/.test(chat));
-check("Report a problem shows on client pages only and uses the existing message function", /pathname\.startsWith\("\/client"\) \? <ReportProblem \/>/.test(app) && /send_client_portal_message/.test(report) && !/\.from\(|insert\(/.test(report));
+check("Report a problem shows on client pages only and uses the existing message function", /pathname\.startsWith\("\/client"\) \? <><ReportProblem \/>/.test(app) && /send_client_portal_message/.test(report) && !/\.from\(|insert\(/.test(report));
 check("the report dialog is a native dialog, labelled, and not force-closed by cleanup", /<dialog/.test(report) && /aria-labelledby="report-problem-title"/.test(report) && !/return \(\) => .*close\(\)/.test(report));
 check("report errors are announced and tied to the box", /role="alert"/.test(report) && /aria-invalid/.test(report) && /aria-describedby/.test(report));
 
