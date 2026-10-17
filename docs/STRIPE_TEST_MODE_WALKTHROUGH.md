@@ -60,3 +60,9 @@ Stripe's testing page lists these cards. Each delivery should show **200** under
 ## 7. Dark mode for the Stripe dashboard
 I could not confirm a dashboard "dark mode" setting from here. Look under the gear icon (Settings), Personal details, for an appearance or theme option. If there is none,
 use your browser: Chrome, `chrome://flags`, search "Auto Dark Mode for Web Contents", set Enabled and relaunch. That darkens Stripe without any NXQX change.
+
+## 8. What actually happened on 2026-10-17 (owner-run, sandbox)
+- Webhook + secrets + customer link + $10 invoice paid with 4242: `invoice.paid` delivered **200** (`ok:true`, new event id), `invoice.created` **202** (ignored on purpose while referral credits are off). Error rate 0%.
+- Easiest way to make events without a subscription: Customers, your test customer, **Create invoice**, add a $10 item, Review invoice, **Finalize only**, open the payment page link in a new tab, pay with a test card (untick "Save my information", it asks for a phone number otherwise).
+- Deploy tip: `deploy_functions` can fail with `toomanyrequests: Data limit exceeded` from public.ecr.aws (shared runner throttle). Nothing changes; wait ~30 minutes and "Re-run all jobs".
+- Not yet run: failed payment (4000 0000 0000 0341), refund, dispute.

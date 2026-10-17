@@ -181,6 +181,17 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Stripe sandbox webhook LIVE on staging; paid-invoice path proven (2026-10-17, owner-run, sandbox only; no live Stripe, no real money)
+
+- Owner created the Stripe webhook destination in the sandbox (URL `https://wjgtqrpdntfxvtmgwfbf.supabase.co/functions/v1/ingest-stripe-webhook`, 9 events, label "NXQX stagingD" (stray "D" is harmless)) and set the Supabase Edge secrets `STRIPE_WEBHOOK_SECRET` and `NXQ_BILLING_ENABLED=true` by hand (names verified from screenshots; values never shown).
+- `validate_foundation` run #262 (read-only, owner-approved) succeeded; "Migration dry run" listed exactly `272_referral_invoice_credit.sql`. 272 is still NOT applied.
+- `deploy_functions` run #263: first attempt failed pulling the Edge runtime image (`toomanyrequests: Data limit exceeded` from public.ecr.aws; GitHub runner throttle, not our code, nothing mutated); the re-run succeeded (2m 20s; the two deploy steps took 1m 14s and 40s). Not independently confirmed per function (Claude cannot read Actions logs; timings + success + the webhook responding are the evidence). If the throttle recurs: wait ~30 min and re-run; a retry/backoff in the workflow would be a gated workflow edit.
+- Owner linked sandbox customer `cus_…QukZ` to test client "Email Test Tree Service 2" on `/owner/billing` (never the candle client). Claude saw the confirm dialog but not the post-click row; the proof is the webhook response below.
+- Sandbox invoice $10.00 finalized then paid with test card 4242. Stripe Event deliveries: `invoice.paid` = **200** `{"ok":true,"event_id":"…","idempotent":false}` (signature verified, customer matched, event recorded); `invoice.created` = **202** (intentionally ignored: referral credit is off; code: `creditNewInvoice` returns 202 `referral_credits_off`). Endpoint error rate 0%.
+- NOT yet verified: what the paid event did to the client's billing row (expected: no visible change for an already-active client) and the failure paths. Next: failed-payment test (invoice paid with `4000 0000 0000 0341` should give `invoice.payment_failed` = 200 and the test client `past_due`, never frozen/cancelled; candle client untouched), then refund and dispute.
+- Owner accidentally reached the temporary "Activate billing (no charge)" confirm on "Email Test Tree Service" (a denied client) and cancelled it; nothing changed. Reminder: remove that temporary section before launch.
+- Real product decisions still open: apply 272 + enable referral credits only when connecting Stripe (not now); optional per-client "billing exempt" flag; lawyer review before `legalReviewComplete=true`.
+
 ## Stripe sandbox created; test-mode walkthrough + owner billing safety proof (2026-10-17; docs and a test; nothing deployed)
 
 - The owner created a Stripe SANDBOX ("NXQX sandbox") and wants to test with it, plus dark mode, plus proof they cannot be locked out or made to pay.
@@ -1003,7 +1014,7 @@ in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #
 - [x] 258 — NXQ-* to NXQX-* display names in stored product/outreach names (ids untouched); applied to staging in run #235
 - [x] 259 — `current_client_lead_sources(target_days)`: aggregated, sanitized UTM counts for the signed-in client; applied in run #235; now called by the funnel page
 - [x] 260 — monthly report covers the previous complete month (`queue_due_website_maintenance()`); applied in run #235
-- [x] 261 — owner-only Stripe customer link/unlink/list functions (`owner_link_stripe_customer`, `owner_disable_stripe_customer_link`, `owner_list_stripe_customer_links`); dry run #237 listed exactly 261; applied to staging in run #238 (log: 'Applying migration 261_owner_link_stripe_customer.sql... Finished supabase db push'); not yet called against real staging data
+- [x] 261 — owner-only Stripe customer link/unlink/list functions (`owner_link_stripe_customer`, `owner_disable_stripe_customer_link`, `owner_list_stripe_customer_links`); dry run #237 listed exactly 261; applied to staging in run #238 (log: 'Applying migration 261_owner_link_stripe_customer.sql... Finished supabase db push'); first used against real staging data 2026-10-17 (owner linked a sandbox customer to a test client; the webhook then accepted that customer's event, which proves the link saved)
 - [x] 262 — revokes the `anon` role's privileges on 7 core tables (`activity_logs, client_intakes, client_messages, clients, owner_ai_messages, owner_approval_requests, projects`; defense in depth, no anon policy existed); read-only run #239 listed exactly 262; applied to staging in run #240 (log: 'Applying migration 262_revoke_anon_table_grants.sql... Finished supabase db push'); owner still to confirm one client page and one owner page load normally
 - [x] 263 — Scanii scans now count for the DATABASE launch-readiness check (`evaluate_extended_launch_readiness()` one-line change vs 238) and the `malware_scan` provider row is provider-neutral and reset to `not_configured` (revalidated by the next successful scan); read-only run #241 listed exactly 263; applied to staging in run #242 (log: 'Applying migration 263_malware_provider_scanii_readiness.sql... Finished supabase db push'); malware readiness shows NOT ready until one more clean scan runs
 - [x] 264 — clients can no longer read the internal `last_error` column of `data_subject_requests` through the API (column-level SELECT grant excluding it; the privacy page was changed first and published in publish #5); read-only run #243 listed exactly 264; applied to staging in run #244 (log: 'Applying migration 264_hide_data_request_internal_errors.sql... Finished supabase db push'); owner to confirm the client Security & privacy page still loads
@@ -1032,7 +1043,7 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Real AI provider key and Resend (email) — not confirmed by any test; these features fail
   closed by design, not broken code (a dispatcher run showed `external_delivery_enabled: true` and
   1 notification delivered, which is a hint, not proof of email delivery)
-- [ ] Stripe test-mode lifecycle, real payout account — not configured
+- [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice path proven on staging (see the Stripe sandbox section at the top); failed-payment (`4000 0000 0000 0341`), refund and dispute paths NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
   (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **1 of 10 done** (run #3
