@@ -67,7 +67,7 @@ export function OwnerCommerceHub() {
                   <p className="subtle">{description}</p>
                 </div>
               </div>
-              {href ? <a className="wide-btn" href={href}>Open {label}</a> : <button className="wide-btn" disabled>Coming later</button>}
+              {href ? <a className="wide-btn" href={href}>Open {label}</a> : <button className="wide-btn" type="button" disabled>Coming later</button>}
             </article>
           ))}
         </div>
