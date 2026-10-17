@@ -181,6 +181,13 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Public Privacy, Terms, About and Contact pages built + legal/data checklist (2026-10-17; local/pushed, NOT deployed)
+
+- Owner chose Option A. New routes `/privacy`, `/terms`, `/about`, `/contact` (`src/pages/PublicInfoPage.tsx`, content in `src/lib/legalContent.ts`), linked from the home and plans footers (`PublicFooterLinks`). Plain-words content written from `docs/PRIVACY_DATA_INVENTORY.md` (providers, retention, data rights, analytics consent). **Privacy and Terms show a visible "Draft, pending legal review" notice** until `legalReviewComplete` is set to `true` in `src/lib/legalContent.ts` AFTER a lawyer approves the final wording; unfinished terms (late payment, cancelling, liability, governing law) are marked in [square brackets]. About and Contact promise nothing invented (no team size, address, phone or dates).
+- `scripts/test-info-pages.mjs` (in `npm run test:store`, now 24 files; eight planted-bug controls caught) and real-browser `scripts/manual/info-pages-e2e.mjs` (axe 0 violations, no sideways scroll, footer links work, at 390px and 1280px).
+- `docs/LEGAL_AND_DATA_CHECKLIST.md`: what we collect vs what we need, possible over-collection (7-year security log retention, phone, free-text boxes), common rules to ask a lawyer about (CAN-SPAM postal address for outreach, CCPA/GDPR thresholds, COPPA, ADA, sales tax duty of store owners, breach notice), and an owner to-do list. NOT legal advice.
+- Not linked from the signup page on purpose: no "you agree to..." wording until the terms are reviewed.
+
 ## Public pages scan: home bug fixed, legal pages missing (2026-10-17)
 
 - Scanned `/`, `/plans`, `/portal`, `/portal/login`, `/portal/signup`, `/portal/forgot-password`, `/portal/check-email` at 390px and 1280px with axe (0 violations), overflow (none) and console errors.

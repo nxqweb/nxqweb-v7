@@ -54,6 +54,7 @@ const ClientLaunchJourneyPage = named(() => import("./pages/ClientLaunchJourney"
 const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
 const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
 const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
+const PublicInfoPage = named(() => import("./pages/PublicInfoPage"), "PublicInfoPage");
 const ClientRewards = named(() => import("./pages/ClientRewards"), "ClientRewards");
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
@@ -157,6 +158,10 @@ function AppRoutes() {
   if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (/^\/store\/[^/]+\/account\/?$/.test(path)) return <PublicShopperAccount />;
   if (path === "/plans") return <PublicPlans />;
+  if (path === "/about") return <PublicInfoPage slug="about" />;
+  if (path === "/contact") return <PublicInfoPage slug="contact" />;
+  if (path === "/privacy") return <PublicInfoPage slug="privacy" />;
+  if (path === "/terms") return <PublicInfoPage slug="terms" />;
   if (path === "/portal/login") return <PortalLogin />;
   if (path === "/portal/signup") return <PortalSignup />;
   if (path === "/portal/check-email") return <CheckEmail />;

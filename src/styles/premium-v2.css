@@ -329,3 +329,6 @@ body[data-nxq-theme="light"] .px-ob-label, body[data-nxq-theme="light"] .px-ob-s
 .px-owner-overview, .px-owner-overview .px-ob-title, .px-owner-overview .px-ob-sub { text-align: left; }
 .portal-header:has(.px-owner-overview) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; }
 @media (max-width: 860px) { .portal-header:has(.px-owner-overview) { grid-template-columns: 1fr; } }
+.px-foot-links { display: flex; flex-wrap: wrap; gap: 1rem; }
+.px-foot-links a { color: inherit; text-decoration: underline; text-underline-offset: 3px; padding: 4px 2px; }
+.px-foot-links a:hover, .px-foot-links a:focus-visible { color: var(--px-ink, #fff); }

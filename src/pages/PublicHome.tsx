@@ -16,6 +16,7 @@ import {
 } from "../lib/premiumMotion";
 import { usePageWipe } from "../lib/usePageWipe";
 import { HelpTerm } from "../components/HelpTerm";
+import { PublicFooterLinks } from "../components/PublicFooterLinks";
 
 const comparisonRows = [
   { label: "Premium managed website", starter: "Included", growth: "Included", intelligence: "Included", enterprise: "Included" },
@@ -368,6 +369,7 @@ export function PublicHome() {
         <div className="px-wrap px-foot">
           <span>NXQX · NXQX-Web</span>
           <span>Premium managed website systems</span>
+          <PublicFooterLinks />
         </div>
       </footer>
     </main>

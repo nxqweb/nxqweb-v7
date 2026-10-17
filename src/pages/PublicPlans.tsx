@@ -3,6 +3,7 @@ import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSe
 import { productTiers } from "../lib/productCatalog";
 import { usePremiumRoot, usePointerSpotlight, useScrollReveal } from "../lib/premiumMotion";
 import { usePageWipe } from "../lib/usePageWipe";
+import { PublicFooterLinks } from "../components/PublicFooterLinks";
 
 export function PublicPlans() {
   usePremiumRoot();
@@ -87,6 +88,7 @@ export function PublicPlans() {
         <div className="px-wrap px-foot">
           <span>NXQX · NXQX-Web</span>
           <span>Premium managed website systems</span>
+          <PublicFooterLinks />
         </div>
       </footer>
     </main>

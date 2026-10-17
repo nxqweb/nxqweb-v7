@@ -162,3 +162,10 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .rewards-steps { margin: 0.5rem 0 1rem; padding-left: 1.25rem; line-height: 1.6; }
 .rewards-steps li { margin-bottom: 0.35rem; }
 .rewards-meta { display: block; margin-top: 0.2rem; }
+.info-page .panel { margin-bottom: 1rem; }
+.info-page p, .info-list { max-width: 70ch; line-height: 1.65; }
+.info-list { padding-left: 1.25rem; }
+.info-list li { margin-bottom: 0.4rem; }
+.info-draft { margin-bottom: 1rem; }
+.info-footer-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+.info-footer-links a { color: inherit; text-decoration: underline; padding: 6px 2px; }
