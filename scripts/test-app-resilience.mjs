@@ -19,12 +19,21 @@ const journeyPage = fs.readFileSync("src/pages/ClientLaunchJourney.tsx", "utf8")
 check("all three places that read the journey check it first", /parseLaunchJourney\(journeyResult\.data\)/.test(topCards) && /setJourney\(parseLaunchJourney\(journeyResult\.data\)\)/.test(portal) && /parseLaunchJourney\(result\.data\)/.test(journeyPage) && !/as ClientLaunchJourney\)/.test(portal) && !/journeyResult\.data as ClientLaunchJourney/.test(topCards));
 check("the journey page never shows the technical error text to a client", !/result\.error\.message/.test(journeyPage) && /Your website journey could not load right now\. Please try again shortly\./.test(journeyPage));
 
+const read = (p) => fs.readFileSync(p, "utf8");
 const boundary = fs.readFileSync("src/components/AppErrorBoundary.tsx", "utf8");
 const app = fs.readFileSync("src/App.tsx", "utf8");
 check("the app has an error boundary wrapped around every route", /getDerivedStateFromError/.test(boundary) && /componentDidCatch/.test(boundary) && /<AppErrorBoundary><Suspense[\s\S]*<AppRoutes \/><\/Suspense><\/AppErrorBoundary>/.test(app) && /import \{ AppErrorBoundary \}/.test(app));
 check("the fallback is calm: an alert, a plain message, a reload button and a way back, and no technical text", /role="alert"/.test(boundary) && /Something went wrong/.test(boundary) && /Reload this page/.test(boundary) && /Go to the home page/.test(boundary) && !/error\.message|\.stack|String\(error\)/.test(boundary.replace(/console\.error\([^;]*\);/, "")));
 check("the technical error goes only to the browser console", /console\.error\("Page error:", error, info\.componentStack\)/.test(boundary));
 check("a store page keeps its light look and links back to the store, not the NXQX home page", /isStore \? " store-theme" : ""/.test(boundary) && /Back to the store/.test(boundary) && /slice\(0, 2\)/.test(boundary));
+
+
+// ---- the home page's sample dashboard feed (found 2026-10-17: React warned about duplicate keys on the home page)
+const demo = fs.readFileSync("src/components/PortalPreviewDemo.tsx", "utf8");
+const pushStart = demo.indexOf("const pushEvent = () => {");
+const pushBody = demo.slice(pushStart, demo.indexOf("pushEvent();", pushStart));
+check("each sample feed event takes its id before the delayed state update, so ids are never repeated", /counter\.current \+= 1;\s*const id = counter\.current;/.test(pushBody) && /setFeed\(\(current\) => \[\{ id, text, time \}/.test(pushBody) && !/setFeed\([^;]*counter\.current/.test(pushBody));
+check("every list on the home page is keyed by something unique (no index-only keys)", !/\.map\(\([a-z]+, ?(index|i)\) => <[^>]*key=\{(index|i)\}/.test(read("src/pages/PublicHome.tsx")));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll app-resilience checks passed (offline).");
 process.exit(failures ? 1 : 0);

@@ -181,6 +181,12 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Public pages scan: home bug fixed, legal pages missing (2026-10-17)
+
+- Scanned `/`, `/plans`, `/portal`, `/portal/login`, `/portal/signup`, `/portal/forgot-password`, `/portal/check-email` at 390px and 1280px with axe (0 violations), overflow (none) and console errors.
+- **Fixed:** the home page's sample dashboard (`src/components/PortalPreviewDemo.tsx`) gave several feed events the same React key (it read the counter inside a delayed state update), so React warned about duplicate keys and could drop or repeat rows. Id is now taken before the update; regression checks added to `scripts/test-app-resilience.mjs` with planted-bug controls.
+- **Found, NOT fixed (needs an owner decision):** there are NO public `/privacy`, `/terms`, `/about` or `/contact` pages. Those URLs silently show the home page, and nothing on the site links to them. A public site that takes signups, and later payments, needs at least a privacy policy and terms (Stripe and Google OAuth reviews also ask for them). The client-only `/client/security-privacy` page and `docs/PRIVACY_DATA_INVENTORY.md` exist as source facts. Legal wording must be lawyer-reviewed.
+
 ## Referral terms draft written for a lawyer (2026-10-17; docs only)
 
 - `docs/REFERRAL_TERMS_DRAFT.md`: plain-words terms built from what the code really enforces, with a checklist of decisions the code does NOT enforce (credit on cancellation, expiry, tax, link-advertising rules, disputes, governing law). NOT legal advice; the referral program stays OFF until an attorney reviews it. One honest note in it: a new subscription's first invoice is charged at once, so the friend's discount lands on their next renewal invoice unless a Stripe coupon is given by hand at signup.

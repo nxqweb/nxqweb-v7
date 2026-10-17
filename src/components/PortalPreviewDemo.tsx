@@ -58,10 +58,13 @@ export function PortalPreviewDemo() {
 
   useEffect(() => {
     const pushEvent = () => {
+      // The id is taken NOW. Reading counter.current inside the update below would run later, after all three starting events had counted up,
+      // and give them the same id (React warns about duplicate keys and can drop or repeat rows).
       counter.current += 1;
+      const id = counter.current;
       const text = EVENTS[Math.floor(Math.random() * EVENTS.length)];
       const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      setFeed((current) => [{ id: counter.current, text, time }, ...current].slice(0, 3));
+      setFeed((current) => [{ id, text, time }, ...current].slice(0, 3));
     };
     pushEvent();
     pushEvent();
