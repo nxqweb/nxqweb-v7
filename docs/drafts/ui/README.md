@@ -22,3 +22,8 @@ To go live (each step is an owner decision/approval):
 3. In `src/App.tsx` add two lazy routes: `/book/:slug` (public, renders `<PublicBooking slug gateway={createPublicBookingGateway(supabase)} />`) and `/client/booking` (renders `<ClientBooking gateway={createOwnerBookingGateway(supabase)} />`, pass `null` when Supabase is not configured); add a portal link; add `/book/` to the public route list and the sitemap/route tests.
 4. Product decisions first: which plans include it; whether a business may mark a request "confirmed" by hand (that needs the 188 guard changed, a deliberate governance change); how long request data is kept (privacy text); whether an email alert to the business is wanted (needs the verified email domain).
 5. Re-run `npm run test:ci-parity`, `node scripts/manual/booking-e2e.mjs`, the axe scan, and a security review of `submit_public_booking_request` (the only public write surface).
+
+
+## Membership (draft 08)
+
+Page `src/pages/ClientMembership.tsx` and `src/lib/membershipGateway.ts` are built and tested but NOT routed. The real connection is `membershipSupabaseGateway.ts` here (copy it to `src/lib/` only after migration 08 is promoted and applied). Wiring: route `/client/members` in `src/App.tsx` (`named(() => import("./pages/ClientMembershipRoute"), ...)`, mirror `ClientReviewsRoute`), a "Members" link in `ClientPortal.tsx`, then update `scripts/test-membership.mjs` (`notRouted` and `noSrcRpc` expectations).
