@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Trash2, Users } from "lucide-react";
-import { dueSoon, emptyMembership, friendlyMembershipError, maxMembers, maxTiers, memberProblem, memberStatusLabel, renewalLabel, todayLocal, type MemberInput, type MemberRow, type MemberStatus, type MembershipData, type OwnerMembershipGateway, type TierInput } from "../lib/membershipGateway";
+import { dueSoon, emptyMembership, friendlyMembershipError, maxMembers, maxTiers, memberProblem, memberStatusLabel, membersToCsv, renewalLabel, todayLocal, type MemberInput, type MemberRow, type MemberStatus, type MembershipData, type OwnerMembershipGateway, type TierInput } from "../lib/membershipGateway";
 
 const blankMember: MemberInput = { id: null, email: "", fullName: "", phone: "", tierId: "", status: "active", renewsOn: "", notes: "" };
 const blankTier: TierInput = { id: null, name: "", perks: "", active: true };
@@ -42,6 +42,13 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
   }, [data.members, filter, search]);
   const due = dueSoon(data.members, today);
 
+  function downloadCsv() {
+    const url = URL.createObjectURL(new Blob([membersToCsv(data.members, data.tiers)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url; link.download = `members-${today}.csv`;
+    document.body.appendChild(link); link.click(); link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
   function saveTier() {
     const name = tier.name.trim();
     if (!name || name.length > 80) { setError("Give the tier a name of 1 to 80 characters."); return; }
@@ -107,6 +114,7 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
 
         <section className="panel panel-wide" data-testid="membership-members">
           <h2>Members</h2>
+          <div className="review-actions"><button className="icon-btn" type="button" disabled={data.members.length === 0} onClick={downloadCsv}>Download list (CSV)</button></div>
           <label className="auth-label" htmlFor="mem-filter"><span>Show</span></label>
           <select id="mem-filter" className="auth-input" value={filter} onChange={(e) => setFilter(e.target.value as MemberStatus | "")}>
             <option value="">Everyone</option><option value="active">Active</option><option value="paused">Paused</option><option value="ended">Ended</option>

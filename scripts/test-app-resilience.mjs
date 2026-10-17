@@ -35,5 +35,11 @@ const pushBody = demo.slice(pushStart, demo.indexOf("pushEvent();", pushStart));
 check("each sample feed event takes its id before the delayed state update, so ids are never repeated", /counter\.current \+= 1;\s*const id = counter\.current;/.test(pushBody) && /setFeed\(\(current\) => \[\{ id, text, time \}/.test(pushBody) && !/setFeed\([^;]*counter\.current/.test(pushBody));
 check("every list on the home page is keyed by something unique (no index-only keys)", !/\.map\(\([a-z]+, ?(index|i)\) => <[^>]*key=\{(index|i)\}/.test(read("src/pages/PublicHome.tsx")));
 
+// A message list that arrives as something other than a list (an empty object, a string) must show the calm message, not blank the whole portal.
+const msgGuard = (src) => /const messageRows = messageResult\.data \|\| \[\];\s*if \(messageResult\.error \|\| !Array\.isArray\(messageRows\)\)/.test(src) && /if \(!Array\.isArray\(rows\)\) throw new Error\("Unexpected message page\."\);/.test(src);
+check("the portal's first and 'older messages' loads both refuse a response that is not a list", msgGuard(portal));
+check("PLANTED BUG caught: the first message load trusts whatever arrives", msgGuard(portal.replace("messageResult.error || !Array.isArray(messageRows)", "messageResult.error")) === false);
+check("PLANTED BUG caught: the older-messages load trusts whatever arrives", msgGuard(portal.replace('if (!Array.isArray(rows)) throw new Error("Unexpected message page.");', "")) === false);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll app-resilience checks passed (offline).");
 process.exit(failures ? 1 : 0);

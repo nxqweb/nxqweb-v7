@@ -534,6 +534,28 @@ begin
 end;
 $$;
 
+-- Retention (owner decision 2026-10-17: keep booking requests 90 days, then delete). Callable ONLY by the service role (a scheduled job); no API role can run it.
+-- It deletes requests of any status older than the retention, at most 5000 per call so one run can never lock the table for long (run again for more).
+-- Retention below 30 days is refused so a typo cannot wipe recent requests. NOTHING SCHEDULES THIS: a daily job (pg_cron or the existing dispatcher) is an owner-approved,
+-- separate step, so until then requests are NOT deleted automatically and the pages must not say they are.
+create or replace function public.purge_old_booking_requests(retention_days integer default 90)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare removed integer;
+begin
+  if retention_days is null or retention_days < 30 or retention_days > 3650 then raise exception 'Retention must be between 30 and 3650 days.'; end if;
+  with doomed as (
+    select id from public.booking_appointment_requests where created_at < now() - make_interval(days => retention_days) order by created_at limit 5000
+  )
+  delete from public.booking_appointment_requests q using doomed d where q.id = d.id;
+  get diagnostics removed = row_count;
+  return jsonb_build_object('deleted', removed, 'retention_days', retention_days);
+end;
+$$;
+
 revoke all on function public.get_my_booking_setup() from public, anon;
 revoke all on function public.ensure_my_booking_workspace(text) from public, anon;
 revoke all on function public.save_my_booking_settings(text, text, text, integer, integer, text, text) from public, anon;
@@ -545,6 +567,8 @@ revoke all on function public.update_my_booking_request(uuid, text, text) from p
 revoke all on function public.delete_my_booking_request(uuid) from public, anon;
 revoke all on function public.get_public_booking_page(text) from public;
 revoke all on function public.submit_public_booking_request(text, text, timestamptz, text, text, text, text, text, text) from public;
+revoke all on function public.purge_old_booking_requests(integer) from public, anon, authenticated;
+grant execute on function public.purge_old_booking_requests(integer) to service_role;
 grant execute on function public.get_my_booking_setup() to authenticated;
 grant execute on function public.ensure_my_booking_workspace(text) to authenticated;
 grant execute on function public.save_my_booking_settings(text, text, text, integer, integer, text, text) to authenticated;

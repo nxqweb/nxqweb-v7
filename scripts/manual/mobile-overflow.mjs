@@ -22,6 +22,9 @@ const rpc = {
     { id: "o2", order_number: "NXQ-EF56GH78", customer_name: "Sam Test", customer_email: "sam@example.com", currency: "USD", subtotal: 12, total: 12, payment_status: "paid", fulfillment_status: "processing", tracking_number: null, fulfillment_note: null, is_test: false, placed_at: "2026-10-16T13:00:00Z", updated_at: "2026-10-16T13:00:00Z", items: [], events: [] } ] },
   get_my_commerce_product_images: { image_urls: [] },
   get_public_store_accounts_status: { accounts_enabled: false },
+  current_client_file_page: [],
+  current_client_message_page: [],
+  current_client_domain_page: [],
 };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());
 const results = [];

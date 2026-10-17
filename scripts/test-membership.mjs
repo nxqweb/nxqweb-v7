@@ -1,7 +1,7 @@
 // Offline test: Membership v1 (track only). Checks the helper maths, the page promises and the draft gateway against the SQL draft.
 // Planted-bug controls prove the checks can fail. Database behaviour is covered by docs/drafts/migrations/08_membership_tracking.test.sql.
 import fs from "node:fs";
-import { daysUntil, dueSoon, friendlyMembershipError, membershipFromRow, memberProblem, renewalLabel, todayLocal } from "../src/lib/membershipGateway.ts";
+import { membersToCsv, daysUntil, dueSoon, friendlyMembershipError, membershipFromRow, memberProblem, renewalLabel, todayLocal } from "../src/lib/membershipGateway.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -21,6 +21,11 @@ check("database rows become safe values: unknown status becomes active, junk row
   return d.tiers.length === 1 && d.tiers[0].active === false && d.tiers[0].perks === "" && d.members.length === 1 && d.members[0].status === "active" && d.members[0].renewsOn === "2026-11-01";
 })() && membershipFromRow(null).tiers.length === 0 && membershipFromRow("x").members.length === 0);
 check("database messages turn into plain words and unknown ones never leak", friendlyMembershipError("That email is already a member.") === "That email is already a member." && !/violates|constraint|pg_/i.test(friendlyMembershipError('duplicate key value violates unique constraint "commerce_members_pkey"')) && friendlyMembershipError(undefined).includes("Nothing was changed"));
+
+const csv = membersToCsv([m({ email: "a@b.co", fullName: '=HYPERLINK("http://evil")', notes: 'said "hi", left', phone: "+15550100", renewsOn: "2026-11-01" }), m({ id: "y", email: "c@d.co", fullName: "Line\nBreak", tierId: "gone" })], [{ id: "t", name: "Gold", perks: "", active: true }]);
+check("the CSV opens in Excel (byte-order mark), has a header, quotes every cell and uses the tier name", csv.startsWith('\uFEFF"Email","Name"') && csv.split("\r\n")[1].includes('"Gold"'));
+check("the CSV can never run a customer's text as a formula, and quotes and commas stay inside their cell", csv.includes('"\'=HYPERLINK(""http://evil"")"') && csv.includes('"\'+15550100"') && csv.includes('"said ""hi"", left"') && !/,"=/.test(csv) && !/,"\+/.test(csv));
+check("CSV for an empty list is just the header", membersToCsv([], []).split("\r\n").length === 2 && membersToCsv([], []).includes("Renews on"));
 
 // ---- files
 const sql = read("docs/drafts/migrations/08_membership_tracking.sql");
@@ -48,6 +53,7 @@ const checks = (s, g, p, l, a) => ({
   labels: ["tier-name", "tier-perks", "mem-email", "mem-name", "mem-phone", "mem-tier", "mem-status", "mem-renews", "mem-notes", "mem-filter", "mem-search"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /role="alert"/.test(p),
   unavailable: /data-testid="membership-unavailable"/.test(p),
   notRouted: !/ClientMembership/.test(a),
+  csvButton: /Download list \(CSV\)/.test(p) && /URL\.revokeObjectURL/.test(p) && /disabled=\{data\.members\.length === 0\}/.test(p),
   singleFlight: /if \(busy\) return;/.test(p),
 });
 const good = checks(sql, gw, page, lib, app);
@@ -60,6 +66,8 @@ check("the database says the members-only flag is a record only", good.notEnforc
 check("no raw HTML; mailto and tel links are cleaned; removing a member asks first", good.noRawHtml && good.safeLinks && good.removeAsks);
 check("tier and member caps match between page and database", good.caps);
 check("every field has a label, errors are announced, there is a calm 'not available' state, and double-clicks are ignored", good.labels && good.unavailable && good.singleFlight);
+check("the page can download the member list as a CSV (off when empty, object URL released)", good.csvButton);
+check("PLANTED BUG caught: the CSV button is removed", checks(sql, gw, page.replace("Download list (CSV)", "Download"), lib, app).csvButton === false);
 check("the page is not routed yet (wiring is a documented, owner-approved step)", good.notRouted);
 check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw.replace("tier_id_value: input.tierId", "tier: input.tierId"), page, lib, app).argsMatch === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, page + '\nsupabase.rpc("list_my_membership");', lib, app).noSrcRpc === false);

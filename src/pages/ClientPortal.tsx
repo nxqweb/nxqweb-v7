@@ -482,13 +482,14 @@ export function ClientPortal() {
         target_cursor_id: null,
       });
 
-      if (messageResult.error) {
+      const messageRows = messageResult.data || [];
+      if (messageResult.error || !Array.isArray(messageRows)) {
         setErrorMessage("Message history could not be loaded right now. No messages were changed.");
         setMessages([]);
         setMessageHasMore(false);
         setMessagesVerified(false);
       } else {
-        const messagePage = (messageResult.data || []) as ClientMessageRow[];
+        const messagePage = messageRows as ClientMessageRow[];
         setMessages(messagePage);
         setMessageHasMore(messagePage.length === 50);
         setMessagesVerified(true);
@@ -852,7 +853,9 @@ export function ClientPortal() {
 
       if (result.error) throw result.error;
 
-      const page = (result.data || []) as ClientMessageRow[];
+      const rows = result.data || [];
+      if (!Array.isArray(rows)) throw new Error("Unexpected message page.");
+      const page = rows as ClientMessageRow[];
       setMessages((current) => [...current, ...page]);
       setMessageHasMore(page.length === 50);
       setMessagesVerified(true);

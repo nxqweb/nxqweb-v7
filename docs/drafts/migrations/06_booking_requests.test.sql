@@ -304,5 +304,29 @@ begin
   if (r->>'public_enabled')::boolean is not false then raise exception 'no hours means the page must switch off: %', r; end if;
 end $$;
 
+-- retention purge: service role only, 30-day floor, deletes only what is older than the retention, never more than asked
+do $$
+declare
+  total integer; old_id uuid; recent_id uuid; r jsonb;
+begin
+  select count(*) into total from public.booking_appointment_requests;
+  if total < 2 then raise exception 'purge test needs at least 2 requests, found %', total; end if;
+  select id into old_id from public.booking_appointment_requests order by created_at limit 1;
+  select id into recent_id from public.booking_appointment_requests where id <> old_id order by created_at limit 1;
+  update public.booking_appointment_requests set created_at = now() - interval '100 days' where id = old_id;
+  update public.booking_appointment_requests set created_at = now() - interval '89 days' where id = recent_id;
+  if has_function_privilege('anon', 'public.purge_old_booking_requests(integer)', 'execute') or has_function_privilege('authenticated', 'public.purge_old_booking_requests(integer)', 'execute') then raise exception 'purge must not be callable by API roles'; end if;
+  if not has_function_privilege('service_role', 'public.purge_old_booking_requests(integer)', 'execute') then raise exception 'the service role must be able to purge'; end if;
+  if not pg_temp.fails('select public.purge_old_booking_requests(7)', 'between 30 and 3650') then raise exception 'a retention under 30 days must be refused'; end if;
+  if not pg_temp.fails('select public.purge_old_booking_requests(null)', 'between 30 and 3650') then raise exception 'a null retention must be refused'; end if;
+  if (select count(*) from public.booking_appointment_requests) <> total then raise exception 'refused calls must delete nothing'; end if;
+  r := public.purge_old_booking_requests(90);
+  if (r->>'deleted')::int <> 1 then raise exception 'exactly the 100-day-old request must go: %', r; end if;
+  if exists (select 1 from public.booking_appointment_requests where id = old_id) then raise exception 'the old request must be gone'; end if;
+  if not exists (select 1 from public.booking_appointment_requests where id = recent_id) then raise exception 'the 89-day-old request must stay'; end if;
+  r := public.purge_old_booking_requests(90);
+  if (r->>'deleted')::int <> 0 then raise exception 'a second run must find nothing: %', r; end if;
+end $$;
+
 select 'DRAFT_TEST_OK';
 rollback;

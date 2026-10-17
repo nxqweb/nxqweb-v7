@@ -9,7 +9,7 @@ const ok = (name, cond) => { if (cond) console.log(`PASS  ${name}`); else { fail
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());
 const pageErrors = [];
 async function open(q = "", width = 900) {
-  const ctx = await browser.newContext({ viewport: { width, height: 900 } });
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, acceptDownloads: true });
   const page = await ctx.newPage();
   page.on("pageerror", (e) => pageErrors.push(e.message));
   page.on("dialog", (d) => d.accept());
@@ -71,6 +71,9 @@ await page.fill("#mem-search", "zzz");
 ok("a search with no match says so", /No members match/.test(await text(page)));
 await page.fill("#mem-search", "");
 
+const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download list (CSV)" }).click()]);
+const csvText = (await import("node:fs")).readFileSync(await download.path(), "utf8");
+ok("the CSV downloads with today's date in its name and every member as a row", /^members-\d{4}-\d{2}-\d{2}\.csv$/.test(download.suggestedFilename()) && csvText.split("\r\n").length === 5 && /"Candle Club"/.test(csvText) && /"mia@example.com"/.test(csvText));
 await page.getByTestId("membership-member").first().getByRole("button", { name: "Edit" }).click();
 ok("edit fills the form and moves the cursor to the email box", (await page.inputValue("#mem-email")) === "mia@example.com" && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === "mem-email");
 await page.selectOption("#mem-status", "paused");

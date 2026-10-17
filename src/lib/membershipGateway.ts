@@ -83,3 +83,12 @@ export function friendlyMembershipError(message: string | null | undefined): str
   if (/characters or fewer|1 to 80/i.test(t)) return "That text is too long or too short. Please check the limits shown next to the field.";
   return "We could not save that right now. Nothing was changed. Please try again in a moment.";
 }
+
+// A spreadsheet-safe CSV of the member list. Every cell is quoted; a cell that starts with = + - @ (or a tab/return) gets a leading apostrophe so Excel or Sheets
+// never runs it as a formula (a customer could have typed anything as their name). Opens correctly in Excel thanks to the byte-order mark.
+const csvCell = (value: string) => { const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value; return `"${safe.replace(/"/g, '""')}"`; };
+export function membersToCsv(members: MemberRow[], tiers: MemberTier[]): string {
+  const tierName = new Map(tiers.map((t) => [t.id, t.name]));
+  const rows = [["Email", "Name", "Phone", "Tier", "Status", "Renews on", "Notes"], ...members.map((m) => [m.email, m.fullName, m.phone, tierName.get(m.tierId) ?? "", memberStatusLabel[m.status], m.renewsOn, m.notes])];
+  return `\uFEFF${rows.map((r) => r.map(csvCell).join(",")).join("\r\n")}\r\n`;
+}
