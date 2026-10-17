@@ -18,6 +18,8 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
   const [done, setDone] = useState<{ requestCode: string } | null>(null);
   const keyRef = useRef(newIdempotencyKey());
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const doneRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (done) doneRef.current?.focus(); }, [done]); // the form disappears on success, so keyboard and screen-reader users land on the confirmation
 
   useEffect(() => {
     let alive = true;
@@ -75,7 +77,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
 
       {done ? (
         <section className="panel panel-wide" data-testid="booking-done" role="status">
-          <h2>Request sent</h2>
+          <h2 ref={doneRef} tabIndex={-1}>Request sent</h2>
           <p>Thank you! <strong>{page.displayName}</strong> will get back to you using the details you gave.</p>
           <p className="subtle">This is a <strong>request</strong>, not a confirmed appointment. Your request code is <strong data-testid="booking-code">{done.requestCode}</strong>. Keep it in case you need to ask about it.</p>
           <button className="icon-btn" type="button" onClick={another}>Send another request</button>

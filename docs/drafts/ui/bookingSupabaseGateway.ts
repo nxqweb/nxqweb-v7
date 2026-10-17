@@ -36,8 +36,8 @@ export function createOwnerBookingGateway(client: SupabaseClient): OwnerBookingG
     async saveService(input) { return setupFromRow(check(await client.rpc("save_my_booking_service", { service_key_value: input.serviceKey, name_value: input.name, duration_minutes_value: input.durationMinutes, active_value: input.active }))); },
     async saveHours(hours) { return setupFromRow(check(await client.rpc("save_my_booking_hours", { hours_value: hours.map((h) => ({ weekday: h.weekday, start: h.start, end: h.end })) }))); },
     async setPublic(enabled) { return setupFromRow(check(await client.rpc("set_my_booking_public", { enabled_value: enabled }))); },
-    async listRequests(status) { return requestRowsFromRows(check(await client.rpc("list_my_booking_requests", { status_value: status || null, limit_value: 50 }))); },
-    async updateRequest(id, status, note) { check(await client.rpc("update_my_booking_request", { request_id_value: id, status_value: status, owner_note_value: note || null })); },
+    async listRequests(status) { return requestRowsFromRows(check(await client.rpc("list_my_booking_requests", { status_value: status || null, limit_value: 200 }))); },
+    async updateRequest(id, status, note) { check(await client.rpc("update_my_booking_request", { request_id_value: id, status_value: status, owner_note_value: note })); },
     async deleteRequest(id) { check(await client.rpc("delete_my_booking_request", { request_id_value: id })); },
   };
 }

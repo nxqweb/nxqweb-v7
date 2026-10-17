@@ -128,5 +128,18 @@ check("PLANTED BUG caught: dispute resolution removed", wiring(hook.replace("awa
 check("PLANTED BUG caught: $0 guard removed", wiring(hook.replace("&&Number.isFinite(paidCents)&&paidCents>0", "")).zeroDollarGuard === false);
 check("PLANTED BUG caught: live invoice read removed", wiring(hook.replace("fetchInvoice:async(invoiceId)=>", "fetchInvoiceX:async(invoiceId)=>")).liveInvoice === false);
 
+// Webhook hardening (reviewer round 2): an anonymous caller must learn nothing about missing secrets, and a huge body is refused before it is read.
+const hookSrc = fs.readFileSync("supabase/functions/ingest-stripe-webhook/index.ts", "utf8");
+const hardening = (src) => ({
+  genericMissingSecret: /const webhookSecret=Deno\.env\.get\("STRIPE_WEBHOOK_SECRET"\)\?\.trim\(\);\s*if\(!webhookSecret\)return response\(\{ok:false,error:"Stripe webhook is not configured\."\},503\);/.test(src) && !/verifyStripeSignature\(raw,signature,secret\(/.test(src),
+  sizeBeforeRead: src.indexOf('req.headers.get("content-length")') !== -1 && src.indexOf('req.headers.get("content-length")') < src.indexOf("await req.text()") && /,413\)/.test(src),
+  secretCheckBeforeBody: src.indexOf("if(!webhookSecret)") !== -1 && src.indexOf("if(!webhookSecret)") < src.indexOf("await req.text()"),
+});
+const hd = hardening(hookSrc);
+check("a missing webhook secret gets a generic 503 before the body is read (never the secret's name)", hd.genericMissingSecret && hd.secretCheckBeforeBody);
+check("an oversized body is refused (413) from its declared length before it is read", hd.sizeBeforeRead);
+check("PLANTED BUG caught: the secret's name leaks again", hardening(hookSrc.replace("verifyStripeSignature(raw,signature,webhookSecret)", 'verifyStripeSignature(raw,signature,secret("STRIPE_WEBHOOK_SECRET"))')).genericMissingSecret === false);
+check("PLANTED BUG caught: the size guard is removed", hardening(hookSrc.replace('req.headers.get("content-length")', 'req.headers.get("x-none")')).sizeBeforeRead === false);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll referral-invoice-credit checks passed (offline).");
 process.exit(failures ? 1 : 0);

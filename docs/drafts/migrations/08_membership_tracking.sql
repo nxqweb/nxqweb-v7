@@ -181,7 +181,7 @@ begin
     raise exception 'Some characters are not allowed.';
   end if;
   if status_value is null or status_value not in ('active','paused','ended') then raise exception 'Status must be active, paused or ended.'; end if;
-  if renews_on_value is not null and (renews_on_value < current_date - 365 or renews_on_value > current_date + 3650) then
+  if renews_on_value is not null and (renews_on_value < current_date - 3650 or renews_on_value > current_date + 3650) then
     raise exception 'Renewal date looks wrong.';
   end if;
   if tier_id_value is null or not exists (select 1 from public.commerce_member_tiers t where t.id = tier_id_value and t.storefront_id = ctx.owner_storefront) then

@@ -47,7 +47,12 @@ const checks = (s, g, p, l, a) => ({
   helperInternal: /revoke all on function public\.nxq_member_owner_store\(\) from public, anon, authenticated/.test(s),
   notEnforcedSaid: /'enforced', false/.test(s) && /record only/i.test(s),
   noRawHtml: !/dangerouslySetInnerHTML/.test(p),
-  safeLinks: /href=\{`mailto:\$\{m\.email\}`\}/.test(p) && /replace\(\/\[\^0-9\+\]\/g, ""\)/.test(p),
+  safeLinks: /href=\{`mailto:\$\{m\.email\}`\}/.test(p) && p.includes("[^@\\s?&#%]+@") && /replace\(\/\[\^0-9\+\]\/g, ""\)/.test(p) && p.includes("/[0-9]/.test(m.phone)"),
+  staleFormSafe: p.includes("active: tier.id ? (data.tiers.find((t) => t.id === tier.id)?.active ?? tier.active) : tier.active"),
+  countsFollowTiers: p.includes('m.status === "active" && activeTierIds.has(m.tierId)') && p.includes("dueSoon(countedMembers, today)"),
+  honestRefreshError: p.includes("Saved, but the list could not refresh") && p.includes("saved = true; await reload();"),
+  messagesScrolled: p.includes("scrollIntoView"),
+  oldDatesEditable: l.includes("d < -3650 || d > 3650") && s.includes("renews_on_value < current_date - 3650"),
   removeAsks: /window\.confirm\(`Remove /.test(p),
   caps: /maxTiers = 10/.test(l) && /maxMembers = 2000/.test(l) && />= 10 then/.test(s) && />= 2000 then/.test(s),
   labels: ["tier-name", "tier-perks", "mem-email", "mem-name", "mem-phone", "mem-tier", "mem-status", "mem-renews", "mem-notes", "mem-filter", "mem-search"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /role="alert"/.test(p),
@@ -68,6 +73,12 @@ check("tier and member caps match between page and database", good.caps);
 check("every field has a label, errors are announced, there is a calm 'not available' state, and double-clicks are ignored", good.labels && good.unavailable && good.singleFlight);
 check("the page can download the member list as a CSV (off when empty, object URL released)", good.csvButton);
 check("PLANTED BUG caught: the CSV button is removed", checks(sql, gw, page.replace("Download list (CSV)", "Download"), lib, app).csvButton === false);
+check("the Members reviewer's findings stay fixed: a stale tier form cannot flip a tier back, counts follow paused tiers, a failed refresh is not reported as a failed save, messages scroll into view, old renewal dates stay editable", good.staleFormSafe && good.countsFollowTiers && good.honestRefreshError && good.messagesScrolled && good.oldDatesEditable);
+check("PLANTED BUG caught: stale tier form flips the tier", checks(sql, gw, page.replace("active: tier.id ? (data.tiers.find((t) => t.id === tier.id)?.active ?? tier.active) : tier.active", "active: tier.active"), lib, app).staleFormSafe === false);
+check("PLANTED BUG caught: paused-tier members still counted", checks(sql, gw, page.replace('m.status === "active" && activeTierIds.has(m.tierId)', 'm.status === "active"'), lib, app).countsFollowTiers === false);
+check("PLANTED BUG caught: refresh failure reported as a failed save", checks(sql, gw, page.replace("saved = true; await reload();", "await reload();"), lib, app).honestRefreshError === false);
+check("PLANTED BUG caught: an odd email becomes a mailto link", checks(sql, gw, page.replace("[^@\\s?&#%]+@", "[^@\\s]+@"), lib, app).safeLinks === false);
+check("PLANTED BUG caught: old renewal dates become uneditable", checks(sql, gw, page, lib.replace("d < -3650", "d < -365"), app).oldDatesEditable === false);
 check("the page is not routed yet (wiring is a documented, owner-approved step)", good.notRouted);
 check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw.replace("tier_id_value: input.tierId", "tier: input.tierId"), page, lib, app).argsMatch === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, page + '\nsupabase.rpc("list_my_membership");', lib, app).noSrcRpc === false);

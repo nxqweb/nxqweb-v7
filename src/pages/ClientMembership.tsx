@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Trash2, Users } from "lucide-react";
 import { dueSoon, emptyMembership, friendlyMembershipError, maxMembers, maxTiers, memberProblem, memberStatusLabel, membersToCsv, renewalLabel, todayLocal, type MemberInput, type MemberRow, type MemberStatus, type MembershipData, type OwnerMembershipGateway, type TierInput } from "../lib/membershipGateway";
 
@@ -17,6 +17,8 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
   const [filter, setFilter] = useState<MemberStatus | "">("");
   const [search, setSearch] = useState("");
   const today = todayLocal();
+  const messageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (error || notice) messageRef.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" }); }, [error, notice]);
 
   const reload = useCallback(async () => { if (gateway) setData(await gateway.load()); }, [gateway]);
   useEffect(() => {
@@ -30,7 +32,9 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
   async function run(key: string, work: () => Promise<void>, message: string) {
     if (busy) return;
     setBusy(key); setError(""); setNotice("");
-    try { await work(); await reload(); if (message) setNotice(message); } catch (failure) { setError(friendlyMembershipError(failure instanceof Error ? failure.message : "")); }
+    let saved = false;
+    try { await work(); saved = true; await reload(); if (message) setNotice(message); }
+    catch (failure) { setError(saved ? "Saved, but the list could not refresh. Please reload the page to see it." : friendlyMembershipError(failure instanceof Error ? failure.message : "")); }
     setBusy("");
   }
 
@@ -40,7 +44,9 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
     const q = search.trim().toLowerCase();
     return data.members.filter((m) => (!filter || m.status === filter) && (!q || m.email.includes(q) || m.fullName.toLowerCase().includes(q)));
   }, [data.members, filter, search]);
-  const due = dueSoon(data.members, today);
+  const activeTierIds = useMemo(() => new Set(activeTiers.map((t) => t.id)), [activeTiers]);
+  const countedMembers = data.members.filter((m) => m.status === "active" && activeTierIds.has(m.tierId));
+  const due = dueSoon(countedMembers, today);
 
   function downloadCsv() {
     const url = URL.createObjectURL(new Blob([membersToCsv(data.members, data.tiers)], { type: "text/csv;charset=utf-8" }));
@@ -53,7 +59,7 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
     const name = tier.name.trim();
     if (!name || name.length > 80) { setError("Give the tier a name of 1 to 80 characters."); return; }
     if (tier.perks.trim().length > 500) { setError("Perks must be 500 characters or fewer."); return; }
-    void run("tier", async () => { await gateway!.saveTier({ ...tier, name, perks: tier.perks.trim() }); setTier(blankTier); }, tier.id ? "Tier saved." : "Tier added.");
+    void run("tier", async () => { await gateway!.saveTier({ ...tier, name, perks: tier.perks.trim(), active: tier.id ? (data.tiers.find((t) => t.id === tier.id)?.active ?? tier.active) : tier.active }); setTier(blankTier); }, tier.id ? "Tier saved." : "Tier added.");
   }
   function toggleTier(id: string, active: boolean) {
     const found = data.tiers.find((t) => t.id === id); if (!found) return;
@@ -78,14 +84,16 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
         <div className="client-control-row"><a className="icon-btn" href="/client"><ArrowLeft size={16} /> Portal</a></div>
       </div>
       {!gateway ? <div className="empty-state" role="status" data-testid="membership-unavailable">This feature is not open yet. Check back soon.</div> : null}
-      {error ? <div className="auth-error" role="alert">{error}</div> : null}
-      {notice ? <div className="auth-success" role="status">{notice}</div> : null}
+      <div ref={messageRef}>
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
+        {notice ? <div className="auth-success" role="status">{notice}</div> : null}
+      </div>
       {gateway && !loaded ? <div className="empty-state" role="status">Loading...</div> : null}
 
       {gateway && loaded ? <>
         <section className="panel panel-wide" data-testid="membership-summary">
           <h2>At a glance</h2>
-          <p><strong>{data.members.filter((m) => m.status === "active").length}</strong> active members · <strong>{data.tiers.filter((t) => t.active).length}</strong> tiers</p>
+          <p><strong>{countedMembers.length}</strong> active members · <strong>{data.tiers.filter((t) => t.active).length}</strong> tiers</p>
           {due.length > 0 ? <p className="subtle" data-testid="membership-due">{due.length} {due.length === 1 ? "member renews" : "members renew"} within 2 weeks or {due.length === 1 ? "is" : "are"} overdue: {due.slice(0, 5).map((m) => m.fullName || m.email).join(", ")}{due.length > 5 ? "..." : ""}.</p> : <p className="subtle">No renewals due in the next 2 weeks.</p>}
         </section>
 
@@ -125,7 +133,7 @@ export function ClientMembership({ gateway }: { gateway: OwnerMembershipGateway 
             <article className="owner-message-card" key={m.id} data-testid="membership-member">
               <strong>{m.fullName || m.email}</strong> <span className="status-summary">{memberStatusLabel[m.status]}</span>
               <div>{tierName.get(m.tierId) ?? "Tier removed"} · {m.status === "active" ? renewalLabel(m.renewsOn, today) : m.renewsOn || "No renewal date"}</div>
-              <div className="subtle"><a href={`mailto:${m.email}`}>{m.email}</a>{m.phone ? <> · <a href={`tel:${m.phone.replace(/[^0-9+]/g, "")}`}>{m.phone}</a></> : null}</div>
+              <div className="subtle">{/^[^@\s?&#%]+@[^@\s?&#%]+$/.test(m.email) ? <a href={`mailto:${m.email}`}>{m.email}</a> : m.email}{m.phone ? <> · {/[0-9]/.test(m.phone) ? <a href={`tel:${m.phone.replace(/[^0-9+]/g, "")}`}>{m.phone}</a> : m.phone}</> : null}</div>
               {m.notes ? <p className="subtle">{m.notes}</p> : null}
               <div className="review-actions">
                 <button className="icon-btn" type="button" disabled={Boolean(busy)} onClick={() => editMember(m)}>Edit</button>

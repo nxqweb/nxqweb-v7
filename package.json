@@ -40,6 +40,8 @@
     "test:booking": "node scripts/test-booking.mjs",
     "test:booking-time": "node scripts/test-booking-time.mjs",
     "test:membership": "node scripts/test-membership.mjs",
+    "test:smoke-script": "node scripts/smoke-live-site.mjs --self-test",
+    "smoke": "node scripts/smoke-live-site.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",

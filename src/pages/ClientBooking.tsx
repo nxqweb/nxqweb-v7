@@ -155,6 +155,7 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
               </div>
             </article>
           ))}
+          {requests.length >= 200 ? <p className="subtle" data-testid="booking-requests-capped">Showing the newest 200 requests. Delete old ones to see earlier ones.</p> : null}
           <p className="subtle">Reply to each person yourself by email or phone. NXQX-Web does not confirm appointments, send reminders or take payments.</p>
         </section>
 

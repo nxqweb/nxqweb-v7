@@ -14,7 +14,7 @@ export function ClientReviewsRoute() {
       if (!alive) return;
       if (!result.data.session) { window.location.replace("/portal/login"); return; }
       setReady(true);
-    });
+    }).catch(() => { if (alive) window.location.replace("/portal/login"); });
     return () => { alive = false; };
   }, [gateway]);
   if (!ready) return <main className="nxq-page"><section className="portal-shell"><div className="empty-state" role="status">Loading...</div></section></main>;

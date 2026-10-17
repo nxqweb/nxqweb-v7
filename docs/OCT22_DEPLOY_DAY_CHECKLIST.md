@@ -39,6 +39,10 @@ Client portal: Rewards page, AI assistant chat, Report a problem button, "?" hel
 NOT on the site: Booking (no route), referral credits on invoices (off), live Stripe (not connected), shopper accounts (leave off).
 NEW on the site once 273 is applied: `/client/reviews` ("Get reviews" link in the client portal): paste a review link, get a printable QR card and messages. Proof: open it on a phone, save a real review link, press "Test my link", scan the printed or on-screen QR with a second phone.
 
+## Quick automatic check right after the site is live (C, read-only)
+Run `npm run smoke -- https://nxqweb-v9-staging.netlify.app <store-slug>` (plain GET requests only, no login). It proves the public pages load, the built scripts load with the right type, every security header from `netlify.toml` is present with the same value (including the strict Content-Security-Policy), and the home page is not cached. Needs the owner's OK before it contacts the staging site. It cannot see anything behind a login, so the phone proof below is still needed.
+If anything is red, read `docs/ROLLBACK_AND_EMERGENCY_PLAN.md` before doing anything else.
+
 ## Prove it (O on a real phone, C watching screenshots) - use `docs/COMMERCE_TEST_PLAN.md`
 Order of importance:
 1. **E (public store):** open the candle store link in a private window: light look, store name as tab title, products, sold-out text, sticky cart bar on a phone.
@@ -56,11 +60,11 @@ Order of importance:
 ## Only then
 | # | Step |
 |---|---|
-| 4.1 | O tells the client the store is public (only after the practice order passed) |
+| 4.1 | O tells the client the store is public (only after the practice order passed); the friendly guide to send is `docs/CANDLE_CLIENT_QUICK_START.md` (delete its Reviews section if Reviews is not live) |
 | 4.2 | C writes every surprise into `docs/NXQ_RUNTIME_HANDOFF.md` (friction list) and cancels all practice orders |
 | 4.3 | Remove the temporary "Activate billing (no charge)" button before any real launch |
 
-## Rollback (O does the clicks)
+## Rollback (O does the clicks) - the full symptom-by-symptom guide is `docs/ROLLBACK_AND_EMERGENCY_PLAN.md`
 - The site: Netlify -> Deploys -> open the previous good deploy -> "Publish deploy". Publishing an older deploy does not run a new build, but Netlify's credit rules for that could not be verified from the repo: check the Netlify credit page before relying on it.
 - Edge functions: there is no one-click rollback; set `NXQ_BILLING_ENABLED` to `false` in Supabase (stops the Stripe webhook doing anything) and tell Claude, who fixes locally and redeploys once.
 - Never apply, un-apply or edit migrations as a rollback; stop and ask.

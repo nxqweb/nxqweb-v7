@@ -93,11 +93,15 @@ function normalizedType(eventType:string,object:Record<string,unknown>){
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405);
   if(Deno.env.get("NXQ_BILLING_ENABLED")?.trim().toLowerCase()!=="true")return response({ok:false,error:"Stripe billing is disabled."},503);
+  // Checked BEFORE the body is read or the signature is verified, and with a generic message, so an anonymous caller learns nothing about which secret is missing.
+  const webhookSecret=Deno.env.get("STRIPE_WEBHOOK_SECRET")?.trim();
+  if(!webhookSecret)return response({ok:false,error:"Stripe webhook is not configured."},503);
+  if(Number(req.headers.get("content-length")||0)>262144)return response({ok:false,error:"Stripe event is too large."},413);
   try{
     const raw=await req.text();
     if(encoder.encode(raw).length>262144)throw new Error("Stripe event is too large.");
     const signature=req.headers.get("stripe-signature")||"";
-    if(!await verifyStripeSignature(raw,signature,secret("STRIPE_WEBHOOK_SECRET")))return response({ok:false,error:"Invalid Stripe signature."},401);
+    if(!await verifyStripeSignature(raw,signature,webhookSecret))return response({ok:false,error:"Invalid Stripe signature."},401);
     const event=JSON.parse(raw) as StripeEvent;
     const object=event.data?.object||{};
     const eventId=String(event.id||"").slice(0,180);

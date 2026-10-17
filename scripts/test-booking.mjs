@@ -1,7 +1,7 @@
 // Offline test: Booking v1 wiring and promises. Checks the pages against the SQL draft and the "request-only" promise. Planted-bug controls prove the checks can fail.
 // (Time math and the form rules are in test-booking-time.mjs; the database behaviour is in the 06_booking_requests.test.sql sidecar run by the local full-schema harness.)
 import fs from "node:fs";
-import { serviceKeyFromName, timeZoneChoices, weekdayDisplayOrder, weekdayNames } from "../src/lib/bookingForm.ts";
+import { checkBookingRequest, serviceKeyFromName, timeZoneChoices, weekdayDisplayOrder, weekdayNames } from "../src/lib/bookingForm.ts";
 import { isValidTimeZone } from "../src/lib/bookingTime.ts";
 import { draftToHours, hoursDayNames, hoursProblem, hoursToDraft } from "../src/lib/bookingHours.ts";
 
@@ -119,6 +119,26 @@ check("PLANTED BUG caught: the bot field becomes reachable", pageChecks(owner2, 
 check("PLANTED BUG caught: edits keep the old key", pageChecks(owner2, pub2.replace('if (key !== "website") touch();', ""), time2).editedRetryIsNewRequest === false);
 check("PLANTED BUG caught: the visitor's clock is frozen again", pageChecks(owner2, pub2.replaceAll("setNowMs(Date.now());", ""), time2).freshNow === false);
 check("PLANTED BUG caught: hours with off-grid minutes are accepted again", hoursProblem(week({ 1: day(true, "09:07", "17:00") })) !== "" && (() => { const loose = (d) => (d.open && !(d.start < d.end) ? "x" : ""); return loose(day(true, "09:07", "17:00")) === ""; })());
+
+// ---- reviewer round 2 (2026-10-17): fixes that must stay fixed
+const gwNow = read("docs/drafts/ui/bookingSupabaseGateway.ts");
+const formNow = read("src/lib/bookingForm.ts");
+const pubNow = read("src/pages/PublicBooking.tsx");
+const ownerNow = read("src/pages/ClientBooking.tsx");
+const round2 = (g, f, p, o) => ({
+  noteCanBeCleared: /owner_note_value: note\b(?! \|\|)/.test(g),
+  listIsNotTiny: /limit_value: 200/.test(g) && /data-testid="booking-requests-capped"/.test(o),
+  nameRulesMirrored: /\^\[=\+@-\]/.test(f) && /hiddenChars/.test(f),
+  focusAfterSend: /ref=\{doneRef\} tabIndex=\{-1\}/.test(p) && /doneRef\.current\?\.focus\(\)/.test(p),
+});
+const r2 = round2(gwNow, formNow, pubNow, ownerNow);
+check("an emptied owner note is sent as an empty note (null would silently keep the old one)", r2.noteCanBeCleared);
+check("the owner sees up to 200 requests and is told when the list is capped", r2.listIsNotTiny);
+check("the visitor form refuses names the database refuses (starting = + - @, hidden characters) with a message that says what to fix", r2.nameRulesMirrored && checkBookingRequest({ serviceKey: "a", startIso: new Date().toISOString(), name: "@mike", email: "a@b.co", phone: "", notes: "" }).name?.includes("cannot start") && checkBookingRequest({ serviceKey: "a", startIso: new Date().toISOString(), name: "Pat​X", email: "a@b.co", phone: "", notes: "" }).name?.includes("hidden") && checkBookingRequest({ serviceKey: "a", startIso: new Date().toISOString(), name: "Pat", email: "a@b.co", phone: "", notes: "line one\nline two" }).notes === undefined && checkBookingRequest({ serviceKey: "a", startIso: new Date().toISOString(), name: "Pat", email: "a@b.co", phone: "", notes: "x‮y" }).notes?.includes("hidden"));
+check("after a request is sent, focus moves to the confirmation heading", r2.focusAfterSend);
+check("PLANTED BUG caught: an empty note is sent as null again", round2(gwNow.replace("owner_note_value: note", "owner_note_value: note || null"), formNow, pubNow, ownerNow).noteCanBeCleared === false);
+check("PLANTED BUG caught: the list is back to 50", round2(gwNow.replace("limit_value: 200", "limit_value: 50"), formNow, pubNow, ownerNow).listIsNotTiny === false);
+check("PLANTED BUG caught: focus is not moved after sending", round2(gwNow, formNow, pubNow.replace("doneRef.current?.focus()", "void 0"), ownerNow).focusAfterSend === false);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll booking checks passed (offline).");
 process.exit(failures ? 1 : 0);

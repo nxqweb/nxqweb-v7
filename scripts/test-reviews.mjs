@@ -88,7 +88,7 @@ check("/client/reviews is a real route and the portal links to it", pr.routed &&
 check("the route sends signed-out visitors to the login page and passes no connection when Supabase is not configured", pr.signedInOnly);
 check("the only database calls are the two functions migration 273 defines", pr.onlyTwoCalls);
 check("PLANTED BUG caught: route removed", promo(app.replace('if (path === "/client/reviews") return <ClientReviewsRoute />;', ""), route, portal, migDir, fs.readdirSync("docs/drafts/migrations")).routed === false);
-check("PLANTED BUG caught: signed-out visitors no longer redirected", promo(app, route.replace('window.location.replace("/portal/login")', "void 0"), portal, migDir, fs.readdirSync("docs/drafts/migrations")).signedInOnly === false);
+check("PLANTED BUG caught: signed-out visitors no longer redirected", promo(app, route.replaceAll('window.location.replace("/portal/login")', "void 0"), portal, migDir, fs.readdirSync("docs/drafts/migrations")).signedInOnly === false);
 check("PLANTED BUG caught: a stray third database call", promo(app, route, portal, migDir, []).onlyTwoCalls === true && [...(read("src/lib/reviewsSupabaseGateway.ts") + 'client.rpc("owner_secret_thing")').matchAll(/\.rpc\("([a-z_]+)"/g)].map((x) => x[1]).sort().join(",") !== "get_my_review_settings,save_my_review_settings");
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll reviews checks passed (offline).");

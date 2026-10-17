@@ -62,7 +62,7 @@ export function memberProblem(input: MemberInput, today: string): string {
   if (input.fullName.trim().length > 160) return "Name must be 160 characters or fewer.";
   if (input.phone.trim().length > 80) return "Phone must be 80 characters or fewer.";
   if (input.notes.trim().length > 500) return "Notes must be 500 characters or fewer.";
-  if (input.renewsOn) { const d = daysUntil(input.renewsOn, today); if (d === null) return "Choose a real renewal date."; if (d < -365 || d > 3650) return "That renewal date looks wrong."; }
+  if (input.renewsOn) { const d = daysUntil(input.renewsOn, today); if (d === null) return "Choose a real renewal date."; if (d < -3650 || d > 3650) return "That renewal date looks wrong."; }
   return "";
 }
 

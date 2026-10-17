@@ -92,6 +92,12 @@ begin
   if not pg_temp.fails(format('select public.save_my_member(null, %L, %L, null, %L, %L, null, null)', 'ok@example.com', 'Bad' || chr(0 + 7), tier1, 'active'), 'not allowed') then raise exception 'control chars in name must be refused'; end if;
   if not pg_temp.fails(format('select public.save_my_member(null, %L, null, null, null, %L, null, null)', 'ok@example.com', 'active'), 'Choose one of your tiers') then raise exception 'tier is required'; end if;
 
+  -- an old renewal date (a member who lapsed over a year ago) stays editable; a absurdly old one is refused
+  perform public.save_my_member(null, 'lapsed@example.com', null, null, tier1, 'ended', current_date - 400, null);
+  perform public.save_my_member((select id from public.commerce_members where email = 'lapsed@example.com'), 'lapsed@example.com', 'Lapsed', null, tier1, 'ended', current_date - 400, null);
+  if not pg_temp.fails(format('select public.save_my_member(null, %L, null, null, %L, %L, %L, null)', 'ancient@example.com', tier1, 'ended', (current_date - 5000)::text), 'Renewal date') then raise exception 'a renewal date over 10 years ago must be refused'; end if;
+  perform public.remove_my_member((select id from public.commerce_members where email = 'lapsed@example.com'));
+
   -- editing: cannot collide with another member, cannot touch another store's member
   perform public.save_my_member(null, 'second@example.com', null, null, tier2, 'paused', null, null);
   if not pg_temp.fails(format('select public.save_my_member(%L, %L, null, null, %L, %L, null, null)', member1, 'second@example.com', tier1, 'active'), 'already a member') then raise exception 'edit must not steal another member email'; end if;
