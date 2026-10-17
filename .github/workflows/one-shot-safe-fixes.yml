@@ -1,0 +1,66 @@
+name: NXQ One-Shot Safe Fixes
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+    paths:
+      - .github/workflows/one-shot-safe-fixes.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out safe branch
+        uses: actions/checkout@v4
+        with:
+          ref: safe/commerce-live-storefront
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Fix provisioning env contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('supabase/functions/provision-storefront/index.ts')
+          text = path.read_text()
+          old = 'VITE_STOREFRONT_SLUG: storefront.store_slug'
+          new = 'VITE_NXQ_STOREFRONT_SLUG: storefront.store_slug'
+          if old not in text:
+              raise SystemExit('Expected storefront env key not found; refusing to make an ambiguous edit.')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply ESLint safe auto-fixes
+        run: npx eslint . --fix || true
+
+      - name: Verify production build
+        run: npm run build
+
+      - name: Show staged-safe diff
+        run: git diff --check && git diff --stat
+
+      - name: Commit safe fixes
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/provision-storefront/index.ts src .github/workflows/one-shot-safe-fixes.yml
+          git commit -m "fix: align storefront provisioning contract and safe lint fixes"
+          git push origin HEAD:safe/commerce-live-storefront

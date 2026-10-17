@@ -1,0 +1,239 @@
+/* Single-series daily trend chart (client Analytics). Marks use the series ink; text uses text tokens only. */
+.nxq-trend {
+  --trend-ink: var(--nxq-gold, #f7c948);
+  --trend-surface: #14120d;
+  --trend-grid: rgba(226, 232, 240, 0.12);
+  margin: 0 0 18px;
+}
+
+body[data-nxq-theme="light"] .nxq-trend {
+  --trend-ink: #8a5a00;
+  --trend-surface: #ffffff;
+  --trend-grid: rgba(15, 23, 42, 0.12);
+}
+
+.nxq-trend figcaption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.nxq-trend figcaption strong {
+  color: var(--nxq-text);
+  font-size: 0.95rem;
+}
+
+.nxq-trend figcaption span {
+  color: var(--nxq-muted);
+  font-size: 0.85rem;
+}
+
+.nxq-trend-frame {
+  position: relative;
+}
+
+.nxq-trend svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.nxq-trend svg:focus-visible {
+  outline: 2px solid var(--trend-ink);
+  outline-offset: 4px;
+}
+
+.nxq-trend-grid {
+  stroke: var(--trend-grid);
+  stroke-width: 1;
+}
+
+.nxq-trend-tick {
+  fill: var(--nxq-soft);
+  font-size: 11px;
+}
+
+.nxq-trend-line {
+  fill: none;
+  stroke: var(--trend-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nxq-trend-area {
+  fill: var(--trend-ink);
+  opacity: 0.1;
+}
+
+.nxq-trend-cross {
+  stroke: var(--nxq-soft);
+  stroke-width: 1;
+}
+
+.nxq-trend-ring {
+  fill: var(--trend-surface);
+}
+
+.nxq-trend-dot {
+  fill: var(--trend-ink);
+}
+
+.nxq-trend-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.nxq-trend-tip {
+  position: absolute;
+  top: 14px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--trend-surface);
+  border: 1px solid var(--trend-grid);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.nxq-trend-tip b {
+  color: var(--nxq-text);
+  font-size: 1rem;
+}
+
+.nxq-trend-tip span {
+  color: var(--nxq-muted);
+  font-size: 0.8rem;
+}
+
+.nxq-range {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.nxq-range button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--trend-grid, rgba(226, 232, 240, 0.2));
+  background: transparent;
+  color: var(--nxq-muted);
+  cursor: pointer;
+}
+
+.nxq-range button[aria-pressed="true"] {
+  color: var(--nxq-text);
+  border-color: var(--nxq-gold, #f7c948);
+}
+
+.nxq-range .nxq-updated {
+  margin-left: auto;
+  color: var(--nxq-soft);
+  font-size: 0.85rem;
+}
+
+/* Lead funnel bars (client Business funnel). Bars wear the series ink; every label and value wears text tokens. */
+.nxq-funnel {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.nxq-funnel-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 56px;
+  align-items: center;
+  gap: 12px;
+}
+
+.nxq-funnel-label {
+  color: var(--nxq-muted);
+  font-size: 0.9rem;
+}
+
+.nxq-funnel-track {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  border-left: 1px solid var(--trend-grid, rgba(226, 232, 240, 0.12));
+}
+
+.nxq-funnel-bar {
+  display: block;
+  height: 20px;
+  background: var(--trend-ink, var(--nxq-gold, #f7c948));
+  border-radius: 0 4px 4px 0;
+}
+
+.nxq-funnel-value {
+  color: var(--nxq-text);
+  text-align: right;
+}
+
+body[data-nxq-theme="light"] .nxq-funnel {
+  --trend-ink: #8a5a00;
+  --trend-grid: rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 480px) {
+  .nxq-funnel-row {
+    grid-template-columns: 76px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+}
+
+/* Monthly report cycle (client Reports page). Status is always spelled out in text; the border is only a hint. */
+.nxq-cycle {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nxq-cycle li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px dashed var(--nxq-soft);
+  border-radius: 10px;
+}
+
+.nxq-cycle li strong {
+  color: var(--nxq-text);
+}
+
+.nxq-cycle li span {
+  color: var(--nxq-muted);
+  font-size: 0.85rem;
+}
+
+.nxq-cycle li[data-status="delivered"],
+.nxq-cycle li[data-status="ready"] {
+  border: 1px solid var(--nxq-gold, #f7c948);
+}
+
+.nxq-cycle li[data-status="draft"],
+.nxq-cycle li[data-status="blocked"] {
+  border-style: solid;
+  border-color: var(--nxq-soft);
+}
+
+.nxq-cycle li[data-status="failed"] {
+  border: 1px solid #ef4444;
+}
+
+body[data-nxq-theme="light"] .nxq-cycle li[data-status="delivered"],
+body[data-nxq-theme="light"] .nxq-cycle li[data-status="ready"] {
+  border-color: #8a5a00;
+}

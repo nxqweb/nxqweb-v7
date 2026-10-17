@@ -1,0 +1,47 @@
+name: NXQ Business Worker GitHub Key Compatibility
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-build-business-github-key.yml
+      - scripts/patch-build-business-github-key.mjs
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch business worker GitHub private-key compatibility
+        run: node scripts/patch-build-business-github-key.mjs
+      - name: Lint worker
+        run: npx eslint supabase/functions/build-business-website/index.ts --max-warnings=0
+      - name: Validate runtime contracts
+        run: npm run test:runtime-stage
+      - name: Verify diff
+        run: git diff --check && git diff -- supabase/functions/build-business-website/index.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- supabase/functions/build-business-website/index.ts; then
+            echo "No worker changes needed."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/build-business-website/index.ts
+          git commit -m "fix: support GitHub App PKCS1 keys in business worker"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

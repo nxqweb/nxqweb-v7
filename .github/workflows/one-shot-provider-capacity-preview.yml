@@ -1,0 +1,47 @@
+name: One-shot Provider Capacity Preview Hardening
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-provider-capacity-preview.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded provider-capacity patch
+        run: node scripts/patch-provider-capacity-preview.mjs
+      - name: Verify provider-capacity markers
+        run: |
+          grep -q 'EXTERNAL_PROVIDER_CAPACITY_BLOCKER:' supabase/functions/build-business-website/index.ts
+          grep -q 'provider_blocked: Boolean(capacityReason)' supabase/functions/build-business-website/index.ts
+          grep -q 'ageMs < 20 \* 60 \* 1000' supabase/functions/build-business-website/index.ts
+      - name: Typecheck Business website worker
+        run: npx deno check supabase/functions/build-business-website/index.ts
+      - name: Business build contract
+        run: node scripts/validate-business-build-worker-contract.mjs
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit provider-capacity handling
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add supabase/functions/build-business-website/index.ts
+          git diff --cached --quiet && { echo "No provider-capacity changes to commit."; exit 1; }
+          git commit -m "fix: classify stale provider preview capacity"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

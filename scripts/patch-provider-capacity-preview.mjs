@@ -1,0 +1,24 @@
+import fs from "node:fs";
+
+const path = "supabase/functions/build-business-website/index.ts";
+let source = fs.readFileSync(path, "utf8");
+
+const helperMarker = "async function findReadyBranchDeploy(siteId: string, branch: string, expectedCommitSha: string) {";
+const helperIndex = source.indexOf(helperMarker);
+if (helperIndex < 0) throw new Error("Missing findReadyBranchDeploy marker.");
+if (source.includes("function providerCapacityBlockReason(")) throw new Error("Provider capacity helper already exists.");
+
+const helper = `async function findBranchDeployState(siteId: string, branch: string, expectedCommitSha: string) {\n  const token = requiredSecret("NETLIFY_ACCESS_TOKEN");\n  const res = await timedFetch(\`https://api.netlify.com/api/v1/sites/\${siteId}/deploys?per_page=20\`, {\n    headers: netlifyHeaders(token),\n  });\n  const body = await readJson(res);\n  if (!res.ok || !Array.isArray(body)) throw new Error(\`Netlify preview state lookup failed (\${res.status}).\`);\n  const deploy = body.find((item: JsonRecord) =>\n    item.branch === branch\n    && item.commit_ref === expectedCommitSha\n    && (item.context === "branch-deploy" || item.branch === branch)\n  );\n  if (!deploy) return null;\n  return {\n    id: String(deploy.id || ""),\n    state: String(deploy.state || "unknown"),\n    url: String(deploy.deploy_ssl_url || deploy.ssl_url || deploy.deploy_url || deploy.url || ""),\n    commitSha: String(deploy.commit_ref || ""),\n    createdAt: String(deploy.created_at || ""),\n    updatedAt: String(deploy.updated_at || ""),\n    errorMessage: String(deploy.error_message || ""),\n  };\n}\n\nfunction providerCapacityBlockReason(deploy: { state: string; createdAt: string; updatedAt: string }) {\n  if (["ready", "error"].includes(deploy.state)) return "";\n  const started = Date.parse(deploy.createdAt || deploy.updatedAt);\n  if (!Number.isFinite(started)) return "";\n  const ageMs = Date.now() - started;\n  if (ageMs < 20 * 60 * 1000) return "";\n  return \`EXTERNAL_PROVIDER_CAPACITY_BLOCKER: Netlify preview deploy has remained \${deploy.state || "pending"} for more than 20 minutes. NXQ will keep the exact commit queued and retry automatically when provider capacity resumes.\`;\n}\n\n`;
+source = source.slice(0, helperIndex) + helper + source.slice(helperIndex);
+
+const oldBlock = `  const deploy = await findReadyBranchDeploy(siteId, branch, expectedPreviewCommitSha);\n  if (!deploy) {\n    const deferred = await admin.rpc("defer_external_automation_job_v2", {\n      target_job_id: job.id,\n      target_lock_token: job.lock_token,\n      worker_name: workerName,\n      target_reason: "Netlify preview is still building.",\n      retry_after: "30 seconds",\n    });\n    if (deferred.error) throw new Error(\`Preview wait deferral failed: \${deferred.error.message}\`);\n    return { run_id: runId, status: "preview_building", deferred: true };\n  }`;
+
+const newBlock = `  const deployState = await findBranchDeployState(siteId, branch, expectedPreviewCommitSha);\n  if (deployState?.state === "error") {\n    throw new Error(\`Netlify branch preview failed: \${deployState.errorMessage || "Unknown build error"}\`);\n  }\n  if (!deployState || deployState.state !== "ready") {\n    const capacityReason = deployState ? providerCapacityBlockReason(deployState) : "";\n    const deferred = await admin.rpc("defer_external_automation_job_v2", {\n      target_job_id: job.id,\n      target_lock_token: job.lock_token,\n      worker_name: workerName,\n      target_reason: capacityReason || "Netlify preview is still building.",\n      retry_after: capacityReason ? "5 minutes" : "30 seconds",\n    });\n    if (deferred.error) throw new Error(\`Preview wait deferral failed: \${deferred.error.message}\`);\n    return { run_id: runId, status: "preview_building", deferred: true, provider_blocked: Boolean(capacityReason) };\n  }\n\n  const deploy = await findReadyBranchDeploy(siteId, branch, expectedPreviewCommitSha);\n  if (!deploy) {\n    const deferred = await admin.rpc("defer_external_automation_job_v2", {\n      target_job_id: job.id,\n      target_lock_token: job.lock_token,\n      worker_name: workerName,\n      target_reason: "Netlify preview readiness changed during verification; retrying exact commit.",\n      retry_after: "30 seconds",\n    });\n    if (deferred.error) throw new Error(\`Preview verification deferral failed: \${deferred.error.message}\`);\n    return { run_id: runId, status: "preview_building", deferred: true };\n  }`;
+
+const first = source.indexOf(oldBlock);
+if (first < 0) throw new Error("Missing expected preview deferral block.");
+if (source.indexOf(oldBlock, first + oldBlock.length) >= 0) throw new Error("Preview deferral block is not unique.");
+source = source.slice(0, first) + newBlock + source.slice(first + oldBlock.length);
+
+fs.writeFileSync(path, source);
+console.log("Applied provider-capacity preview classification hardening.");
