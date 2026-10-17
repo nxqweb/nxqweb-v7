@@ -10,7 +10,7 @@ export const emptyReviewSettings: ReviewSettings = { hasSettings: false, reviewU
 
 export function reviewSettingsFromRow(row: unknown): ReviewSettings {
   const source = row && typeof row === "object" ? (row as Record<string, unknown>) : {};
-  const reviewUrl = typeof source.review_url === "string" ? source.review_url : "";
+  const reviewUrl = typeof source.review_url === "string" && /^https:\/\//i.test(source.review_url) ? source.review_url : "";
   return { hasSettings: Boolean(reviewUrl) && source.has_settings !== false, reviewUrl, businessName: typeof source.business_name === "string" ? source.business_name : "" };
 }
 

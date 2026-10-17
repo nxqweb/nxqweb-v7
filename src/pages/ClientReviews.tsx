@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Copy, ExternalLink, Printer, Star } from "lucide-react";
 import { ReviewQr } from "../components/ReviewQr";
-import { checkBusinessName, checkReviewLink, reviewSiteName } from "../lib/reviewLink";
+import { checkBusinessName, checkReviewLink, linkFitsQr, reviewSiteName } from "../lib/reviewLink";
 import { buildReviewTexts, reviewFairnessNotes } from "../lib/reviewCard";
 import { emptyReviewSettings, friendlyReviewsError, type ReviewSettings, type ReviewsGateway } from "../lib/reviewsGateway";
 
@@ -80,6 +80,7 @@ export function ClientReviews({ gateway }: { gateway: ReviewsGateway | null }) {
           </ol>
           <label className="auth-label" htmlFor="review-link"><span>Review link</span></label>
           <input id="review-link" className="auth-input" inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://g.page/r/..." value={link} maxLength={500} onChange={(event) => setLink(event.target.value)} />
+          {link.trim() && !linkFitsQr(link.trim()) ? <p className="subtle" role="status" data-testid="review-long-link">This link is long, so the card cannot show a QR code for it. Use the short link from your review page's Share button to get a code. The messages below still work.</p> : null}
           <label className="auth-label" htmlFor="review-name"><span>Business name on the card (optional)</span></label>
           <input id="review-name" className="auth-input" autoComplete="organization" placeholder="Example: Light of the World Candles" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
           <div className="review-actions">

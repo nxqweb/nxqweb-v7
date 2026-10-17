@@ -83,6 +83,9 @@ export function friendlyOwnerBookingError(message: string | null | undefined): s
   if (/time zone/i.test(t)) return "Choose a valid time zone.";
   if (/Request not found/i.test(t)) return "That request could not be found. It may already have been removed.";
   if (/Client workspace not found/i.test(t)) return "We could not find your workspace. Please sign in again.";
-  if (/no < or >|characters/i.test(t)) return "Please remove any < or > characters and keep the text within the limits.";
+  if (/< or >/i.test(t)) return "Please remove any < or > characters and keep the text within the limits.";
+  if (/5-minute mark/i.test(t)) return "Please use opening times on a 5-minute mark, such as 09:00 or 09:05.";
+  if (/not available for your account/i.test(t)) return "Booking is not available for your account right now. Please contact us.";
+  if (/\d+ (to \d+ )?characters|characters or fewer/i.test(t)) return "That text is too long or too short. Please check the limits shown next to the field.";
   return "We could not save that right now. Nothing was changed. Please try again in a moment.";
 }

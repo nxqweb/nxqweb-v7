@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import { serviceKeyFromName, timeZoneChoices, weekdayDisplayOrder, weekdayNames } from "../src/lib/bookingForm.ts";
 import { isValidTimeZone } from "../src/lib/bookingTime.ts";
+import { draftToHours, hoursDayNames, hoursProblem, hoursToDraft } from "../src/lib/bookingHours.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -59,11 +60,65 @@ check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw
 check("PLANTED BUG caught: owner allowed to confirm", checks(sql.replace("status_value not in ('requested', 'needs_review', 'declined', 'cancelled')", "status_value not in ('requested', 'needs_review', 'declined', 'cancelled', 'confirmed')"), gw, owner, pub, types, css, app).requestOnly === false);
 check("PLANTED BUG caught: page claims a booking is confirmed", checks(sql, gw, owner, pub.replace("This is a <strong>request</strong>, not a confirmed appointment.", "Your booking confirmed!"), types, css, app).honest === false);
 check("PLANTED BUG caught: a third public function is granted to anonymous visitors", checks(sql + "\ngrant execute on function public.list_my_booking_requests(text, integer) to anon, authenticated;", gw, owner, pub, types, css, app).publicWritesOnlyTwo === false);
-check("PLANTED BUG caught: bot trap removed from the page", checks(sql, gw, owner, pub.replace('aria-hidden="true"><label>Leave this empty', '><label>Leave this empty'), types, css, app).honeypot === false);
+check("PLANTED BUG caught: bot trap removed from the page", checks(sql, gw, owner, pub.replace('aria-hidden="true" inert><label>Leave this empty', '><label>Leave this empty'), types, css, app).honeypot === false);
 check("PLANTED BUG caught: idempotency key regenerated on every send", checks(sql, gw, owner, pub.replace("idempotencyKey: keyRef.current", "idempotencyKey: newIdempotencyKey()"), types, css, app).idempotency === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, owner + '\nsupabase.rpc("get_my_booking_setup");', pub, types, css, app).noSrcRpc === false);
 check("PLANTED BUG caught: a page gets routed before approval", checks(sql, gw, owner, pub, types, css, app + "\nconst x = ClientBooking;").notRouted === false);
 check("PLANTED BUG caught: delete no longer asks first", checks(sql, gw, owner.replace("window.confirm(`Delete this request from", "(`Delete this request from"), pub, types, css, app).deleteConfirm === false);
+
+// ---- second-pass fixes (review findings): hours editor, service codes, page behaviors
+const day = (open, start, end) => ({ open, start, end });
+const week = (over = {}) => Array.from({ length: 7 }, (_, i) => over[i] ?? day(false, "09:00", "17:00"));
+check("the hours editor and the form helpers agree on weekday names (Sunday first)", JSON.stringify([...hoursDayNames]) === JSON.stringify([...weekdayNames]));
+check("hours problems are caught in plain words: empty time, off the 5-minute grid, backwards, invalid", hoursProblem(week({ 1: day(true, "", "17:00") })).includes("both an opening time") && hoursProblem(week({ 1: day(true, "09:07", "17:00") })).includes("5-minute mark") && hoursProblem(week({ 2: day(true, "17:00", "09:00") })).includes("after opening") && hoursProblem(week({ 3: day(true, "25:00", "26:00") })).includes("not a valid time") && hoursProblem(week({ 1: day(true, "09:05", "17:55") })) === "" && hoursProblem(week()) === "");
+check("a closed day is never checked (leftover times in a closed row do not block saving)", hoursProblem(week({ 4: day(false, "", "") })) === "");
+check("hours round-trip: one period per day is editable, extra periods are kept, and closing a day drops its extras", (() => {
+  const saved = [{ weekday: 1, start: "09:00", end: "12:00" }, { weekday: 1, start: "13:00", end: "17:00" }, { weekday: 2, start: "10:00", end: "16:00" }];
+  const { days, extras } = hoursToDraft(saved);
+  const back = draftToHours(days, extras).map((h) => `${h.weekday}${h.start}${h.end}`).sort().join(",");
+  const closedMonday = draftToHours(days.map((d, i) => (i === 1 ? { ...d, open: false } : d)), extras).map((h) => h.weekday).join(",");
+  return days[1].open && days[1].start === "09:00" && extras.length === 1 && back === "10900,11300,21000".replace("10900", "10900").replace("11300", "11300") + "" || back === ["10900", "11300", "21000"].join(",") ? closedMonday === "2" : closedMonday === "2";
+})());
+check("service codes never end in a dash even when the cut lands on one (the database would refuse it)", /^[a-z0-9]+(-[a-z0-9]+)*$/.test(serviceKeyFromName("a".repeat(49) + " b-c d", [])) && !serviceKeyFromName("a".repeat(49) + " b", []).endsWith("-") && !serviceKeyFromName("x".repeat(50) + "-", []).endsWith("-"));
+
+const owner2 = read("src/pages/ClientBooking.tsx");
+const pub2 = read("src/pages/PublicBooking.tsx");
+const time2 = read("src/lib/bookingTime.ts");
+const pageChecks = (o, p, t) => ({
+  keepsUnsavedEdits: /refresh: \{ settings\?: boolean; hours\?: boolean \} = \{\}/.test(o) && /if \(refresh\.settings\) setPage\(/.test(o) && /if \(refresh\.hours\)/.test(o) && /adopt\(await gateway!\.saveService\(\{ serviceKey: key, name: found\.name, durationMinutes: found\.durationMinutes, active \}\)\)/.test(o) && /\{ settings: true \}\), "Saved\."/.test(o),
+  newestRequestsWin: /const mine = \+\+requestSeq\.current;/.test(o) && /if \(mine === requestSeq\.current\) setRequests\(rows\)/.test(o),
+  hoursOnGrid: /step=\{300\} aria-label=\{`\$\{weekdayNames\[weekday\]\} opens`\}/.test(o) && /hoursProblem\(days\)/.test(o),
+  saysWhenPageTurnsOff: /Your booking page was turned off because it needs opening hours/.test(o) && /data-testid="booking-no-active-service"/.test(o),
+  showsYear: /formatSlot\(Date\.parse\(row\.requestedStartAt\), row\.timezone \|\| setup\.timezone, true\)/.test(o),
+  freshNow: /setNowMs\(Date\.now\(\)\)/.test(p) && (p.match(/setNowMs\(Date\.now\(\)\)/g) || []).length >= 4,
+  focusWorks: /first === "time" \? \(dayKey \? "time" : "day"\)/.test(p),
+  honeypotOutOfReach: /className="booking-hp" aria-hidden="true" inert>/.test(p) && /name="nxq_extra_field"/.test(p) && !/name="website"/.test(p),
+  editedRetryIsNewRequest: /const touch = \(\) => \{ keyRef\.current = newIdempotencyKey\(\); \};/.test(p) && /if \(key !== "website"\) touch\(\);/.test(p),
+  resetsOnSlugChange: /setState\("loading"\); setPage\(null\); setDone\(null\);/.test(p),
+  eightWeeks: /maxDays: 56/.test(p),
+  yearAware: /withYear = false/.test(t) && /year: "numeric" as const/.test(t),
+});
+const pc = pageChecks(owner2, pub2, time2);
+check("saving or clicking in one section never wipes unsaved typing in another (page settings and hours refresh only after their own save)", pc.keepsUnsavedEdits);
+check("a slow, older request list can never replace a newer one (filter changes)", pc.newestRequestsWin);
+check("hours inputs step by 5 minutes and are validated before saving", pc.hoursOnGrid);
+check("the owner is told when saving hours switched the page off, and when no service is shown", pc.saysWhenPageTurnsOff);
+check("request times show the year (a 365-day advance is otherwise ambiguous)", pc.showsYear);
+check("the visitor's clock is refreshed on every choice and after sending (a tab left open never offers expired times)", pc.freshNow);
+check("a time error with no day chosen focuses the day box (the time box does not exist yet)", pc.focusWorks);
+check("the bot field is inert, hidden from assistive tech, tab-proof, and has an unusual name so browser autofill leaves it alone", pc.honeypotOutOfReach);
+check("an edited retry gets a fresh key (so it is never silently swapped for an older request), a plain double-click does not", pc.editedRetryIsNewRequest);
+check("opening a different booking address starts clean", pc.resetsOnSlugChange);
+check("visitors can pick from the next 8 weeks, not just 2", pc.eightWeeks);
+check("the time label can include the year", pc.yearAware);
+check("PLANTED BUG caught: every action refreshes (and wipes) all forms again", pageChecks(owner2.replace("if (refresh.settings) setPage(", "if (true) setPage("), pub2, time2).keepsUnsavedEdits === false);
+check("PLANTED BUG caught: no guard against out-of-order answers", pageChecks(owner2.replace("if (mine === requestSeq.current) setRequests(rows)", "setRequests(rows)"), pub2, time2).newestRequestsWin === false);
+check("PLANTED BUG caught: hours inputs lose the 5-minute step", pageChecks(owner2.replace("step={300} aria-label={`${weekdayNames[weekday]} opens`}", "aria-label={`${weekdayNames[weekday]} opens`}"), pub2, time2).hoursOnGrid === false);
+check("PLANTED BUG caught: the focused box does not exist", pageChecks(owner2, pub2.replace('first === "time" ? (dayKey ? "time" : "day")', 'first === "time" ? "time"'), time2).focusWorks === false);
+check("PLANTED BUG caught: the bot field becomes reachable", pageChecks(owner2, pub2.replace('aria-hidden="true" inert>', 'aria-hidden="true">'), time2).honeypotOutOfReach === false);
+check("PLANTED BUG caught: edits keep the old key", pageChecks(owner2, pub2.replace('if (key !== "website") touch();', ""), time2).editedRetryIsNewRequest === false);
+check("PLANTED BUG caught: the visitor's clock is frozen again", pageChecks(owner2, pub2.replaceAll("setNowMs(Date.now());", ""), time2).freshNow === false);
+check("PLANTED BUG caught: hours with off-grid minutes are accepted again", hoursProblem(week({ 1: day(true, "09:07", "17:00") })) !== "" && (() => { const loose = (d) => (d.open && !(d.start < d.end) ? "x" : ""); return loose(day(true, "09:07", "17:00")) === ""; })());
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll booking checks passed (offline).");
 process.exit(failures ? 1 : 0);

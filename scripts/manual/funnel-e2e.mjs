@@ -29,6 +29,7 @@ async function open(path, width = 1100) {
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
 async function axe(page, label) {
   if (!process.env.AXE) return;
+  await page.waitForTimeout(2500); // let fade-in animations finish: a half-faded element reads as low contrast for a moment
   await page.addScriptTag({ path: process.env.AXE });
   const v = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.map((x) => `${x.impact} ${x.id} x${x.nodes.length}`));
   ok(`accessibility scan (axe) finds no violations on ${label}${v.length ? `: ${v.join("; ")}` : ""}`, v.length === 0);

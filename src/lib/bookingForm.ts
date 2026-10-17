@@ -56,7 +56,7 @@ export function friendlyBookingError(message: string | null | undefined): string
 // A service needs a short code made of letters, numbers and single dashes (the database requires it). It is made from the name, kept unique among the
 // business's own services, and never shown to customers.
 export function serviceKeyFromName(name: string, existingKeys: string[]): string {
-  const base = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "service";
+  const base = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50).replace(/-+$/g, "") || "service";
   if (!existingKeys.includes(base)) return base;
   for (let i = 2; i < 100; i += 1) { const next = `${base}-${i}`; if (!existingKeys.includes(next)) return next; }
   return `${base}-${Date.now().toString(36)}`;

@@ -1,31 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, CalendarCheck, Copy, ExternalLink, Trash2 } from "lucide-react";
 import { serviceKeyFromName, timeZoneChoices, weekdayDisplayOrder, weekdayNames } from "../lib/bookingForm";
+import { defaultDay, draftToHours, hoursProblem, hoursToDraft, type DayDraft } from "../lib/bookingHours";
 import { formatSlot, isValidTimeZone, type HoursPeriod } from "../lib/bookingTime";
 import { bookingStatusLabel, emptyBookingSetup, friendlyOwnerBookingError, type BookingRequestRow, type BookingRequestStatus, type BookingSetup, type OwnerBookingGateway } from "../lib/bookingGateway";
-
-type DayDraft = { open: boolean; start: string; end: string };
-const defaultDay: DayDraft = { open: false, start: "09:00", end: "17:00" };
-
-// Splits saved opening hours into one editable period per weekday plus "extra" periods (a lunch break, for example) that are kept untouched when saving.
-function hoursToDraft(hours: HoursPeriod[]): { days: DayDraft[]; extras: HoursPeriod[] } {
-  const days = Array.from({ length: 7 }, () => ({ ...defaultDay }));
-  const extras: HoursPeriod[] = [];
-  const seen = new Set<number>();
-  [...hours].sort((a, b) => a.weekday - b.weekday || a.start.localeCompare(b.start)).forEach((h) => {
-    if (!seen.has(h.weekday)) { seen.add(h.weekday); days[h.weekday] = { open: true, start: h.start, end: h.end }; } else extras.push(h);
-  });
-  return { days, extras };
-}
-function draftToHours(days: DayDraft[], extras: HoursPeriod[]): HoursPeriod[] {
-  const out: HoursPeriod[] = [];
-  days.forEach((d, weekday) => { if (d.open) out.push({ weekday, start: d.start, end: d.end }); });
-  return [...out, ...extras.filter((e) => days[e.weekday]?.open)];
-}
-function hoursProblem(days: DayDraft[]): string {
-  for (let i = 0; i < 7; i += 1) if (days[i].open && !(days[i].start < days[i].end)) return `${weekdayNames[i]}: closing time must be after opening time.`;
-  return "";
-}
 
 // Request-only booking for the business: set up the page, then answer the requests that come in. Nothing here confirms, charges or messages anyone.
 export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null }) {
@@ -45,19 +23,24 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
   const [extras, setExtras] = useState<HoursPeriod[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  const adopt = useCallback((next: BookingSetup) => {
+  // Always shows the latest saved state. The page-settings form and the hours editor are only refreshed when asked (right after THEY were saved or on first load),
+  // so something typed in one section is never wiped by saving or clicking in another.
+  const adopt = useCallback((next: BookingSetup, refresh: { settings?: boolean; hours?: boolean } = {}) => {
     setSetup(next);
-    setPage({ displayName: next.displayName, intro: next.intro, publicSlug: next.publicSlug, timezone: next.timezone, lead: String(next.minimumLeadMinutes), advance: String(next.maximumAdvanceDays), policy: next.cancellationPolicy });
-    const draft = hoursToDraft(next.hours); setDays(draft.days); setExtras(draft.extras);
+    if (refresh.settings) setPage({ displayName: next.displayName, intro: next.intro, publicSlug: next.publicSlug, timezone: next.timezone, lead: String(next.minimumLeadMinutes), advance: String(next.maximumAdvanceDays), policy: next.cancellationPolicy });
+    if (refresh.hours) { const draft = hoursToDraft(next.hours); setDays(draft.days); setExtras(draft.extras); }
   }, []);
+  const requestSeq = useRef(0);
   const loadRequests = useCallback(async (status: BookingRequestStatus | "") => {
     if (!gateway) return;
-    try { setRequests(await gateway.listRequests(status)); } catch { setError("Your requests could not be loaded right now. Please try again shortly."); }
+    const mine = ++requestSeq.current; // a slower, older answer must never replace a newer one
+    try { const rows = await gateway.listRequests(status); if (mine === requestSeq.current) setRequests(rows); }
+    catch { if (mine === requestSeq.current) setError("Your requests could not be loaded right now. Please try again shortly."); }
   }, [gateway]);
   useEffect(() => {
     (async () => {
       if (!gateway) { setLoaded(true); return; }
-      try { const next = await gateway.load(); adopt(next); if (next.hasWorkspace) await loadRequests(""); } catch { setError("Your booking settings could not be loaded right now. Please try again shortly."); }
+      try { const next = await gateway.load(); adopt(next, { settings: true, hours: true }); if (next.hasWorkspace) await loadRequests(""); } catch { setError("Your booking settings could not be loaded right now. Please try again shortly."); }
       setLoaded(true);
     })();
     return () => window.clearTimeout(copiedTimer.current);
@@ -81,7 +64,7 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
     if (!Number.isInteger(lead) || lead < 0 || lead > 43200) { setError("Notice time must be a whole number of minutes between 0 and 43200 (30 days)."); return; }
     if (!Number.isInteger(advance) || advance < 1 || advance > 365) { setError("How far ahead people can ask must be between 1 and 365 days."); return; }
     if (!isValidTimeZone(page.timezone)) { setError("Choose a valid time zone."); return; }
-    void run("settings", async () => adopt(await gateway!.saveSettings({ displayName: page.displayName, intro: page.intro, timezone: page.timezone, minimumLeadMinutes: lead, maximumAdvanceDays: advance, cancellationPolicy: page.policy, publicSlug: page.publicSlug.trim().toLowerCase() })), "Saved.");
+    void run("settings", async () => adopt(await gateway!.saveSettings({ displayName: page.displayName, intro: page.intro, timezone: page.timezone, minimumLeadMinutes: lead, maximumAdvanceDays: advance, cancellationPolicy: page.policy, publicSlug: page.publicSlug.trim().toLowerCase() }), { settings: true }), "Saved.");
   }
   function addService() {
     const minutes = Number(service.minutes);
@@ -96,7 +79,13 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
   function saveHours() {
     const problem = hoursProblem(days);
     if (problem) { setError(problem); return; }
-    void run("hours", async () => adopt(await gateway!.saveHours(draftToHours(days, extras))), "Opening hours saved.");
+    void run("hours", async () => {
+      const wasOn = setup.publicEnabled;
+      const next = await gateway!.saveHours(draftToHours(days, extras));
+      adopt(next, { hours: true });
+      if (wasOn && !next.publicEnabled) { setNotice("Opening hours saved. Your booking page was turned off because it needs opening hours. Add hours and turn it on again."); }
+      else setNotice("Opening hours saved.");
+    }, "");
   }
   function updateRequest(row: BookingRequestRow, status: BookingRequestStatus) {
     void run(`req-${row.id}`, async () => { await gateway!.updateRequest(row.id, status, notes[row.id] ?? row.ownerNote); await loadRequests(filter); adopt(await gateway!.load()); }, `Marked as ${bookingStatusLabel[status].toLowerCase()}.`);
@@ -124,7 +113,7 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
           <p className="subtle">Choose your time zone. You can change everything later.</p>
           <label className="auth-label" htmlFor="start-zone"><span>Your time zone</span></label>
           <select id="start-zone" className="auth-input" value={zone} onChange={(e) => setZone(e.target.value)}>{timeZoneChoices.map((z) => <option key={z.value} value={z.value}>{z.label}</option>)}</select>
-          <button className="wide-btn" type="button" disabled={Boolean(busy)} onClick={() => void run("ensure", async () => { adopt(await gateway.ensure(zone)); await loadRequests(""); }, "Booking is set up. Add your services and hours below.")}>{busy === "ensure" ? "Setting up..." : "Set up booking"}</button>
+          <button className="wide-btn" type="button" disabled={Boolean(busy)} onClick={() => void run("ensure", async () => { adopt(await gateway.ensure(zone), { settings: true, hours: true }); await loadRequests(""); }, "Booking is set up. Add your services and hours below.")}>{busy === "ensure" ? "Setting up..." : "Set up booking"}</button>
         </section>
       ) : null}
 
@@ -138,6 +127,7 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
               <button className="wide-btn" type="button" onClick={() => void copyLink()}><Copy size={16} /> {copied ? "Link copied" : "Copy link"}</button>
               <a className="icon-btn" href={publicUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={16} /> Open my page</a>
             </div>
+            {!setup.services.some((x) => x.active) ? <p className="auth-error" role="status" data-testid="booking-no-active-service">Your page shows as closed to visitors until at least one service is shown. Show a service below.</p> : null}
           </> : <p className="subtle">Fill in the page name, address, a service and your hours below, then turn it on.</p>}
           <button className="icon-btn" type="button" disabled={Boolean(busy)} onClick={() => void run("public", async () => adopt(await gateway.setPublic(!setup.publicEnabled)), setup.publicEnabled ? "Your page is off. Visitors can no longer send requests." : "Your page is on. Share the link.")}>{setup.publicEnabled ? "Turn page off" : "Turn page on"}</button>
         </section>
@@ -151,7 +141,7 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
           {requests.length === 0 ? <div className="empty-state">No requests yet. When someone asks for a time, it shows up here.</div> : requests.map((row) => (
             <article className="owner-message-card booking-request" key={row.id} data-testid="booking-request">
               <strong>{row.contactName}</strong> <span className="status-summary">{bookingStatusLabel[row.status] ?? row.status}</span>
-              <div>{row.serviceName || "Service removed"} · {Number.isNaN(Date.parse(row.requestedStartAt)) ? "" : formatSlot(Date.parse(row.requestedStartAt), row.timezone || setup.timezone)}</div>
+              <div>{row.serviceName || "Service removed"} · {Number.isNaN(Date.parse(row.requestedStartAt)) ? "" : formatSlot(Date.parse(row.requestedStartAt), row.timezone || setup.timezone, true)}</div>
               <div className="subtle">{row.contactEmail ? <a href={`mailto:${row.contactEmail}`}>{row.contactEmail}</a> : null}{row.contactEmail && row.contactPhone ? " · " : ""}{row.contactPhone ? <a href={`tel:${row.contactPhone.replace(/[^0-9+]/g, "")}`}>{row.contactPhone}</a> : null}</div>
               {row.notes ? <p className="subtle">“{row.notes}”</p> : null}
               <label className="auth-label" htmlFor={`note-${row.id}`}><span>Your note (only you see this)</span></label>
@@ -210,9 +200,9 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
             <div className="booking-hours-row" key={weekday}>
               <label className="booking-hours-day"><input type="checkbox" checked={days[weekday].open} onChange={(e) => setDays((c) => c.map((d, i) => (i === weekday ? { ...d, open: e.target.checked } : d)))} /> <span>{weekdayNames[weekday]}</span></label>
               {days[weekday].open ? <>
-                <input className="auth-input" type="time" aria-label={`${weekdayNames[weekday]} opens`} value={days[weekday].start} onChange={(e) => setDays((c) => c.map((d, i) => (i === weekday ? { ...d, start: e.target.value } : d)))} />
+                <input className="auth-input" type="time" step={300} aria-label={`${weekdayNames[weekday]} opens`} value={days[weekday].start} onChange={(e) => setDays((c) => c.map((d, i) => (i === weekday ? { ...d, start: e.target.value } : d)))} />
                 <span aria-hidden="true">to</span>
-                <input className="auth-input" type="time" aria-label={`${weekdayNames[weekday]} closes`} value={days[weekday].end} onChange={(e) => setDays((c) => c.map((d, i) => (i === weekday ? { ...d, end: e.target.value } : d)))} />
+                <input className="auth-input" type="time" step={300} aria-label={`${weekdayNames[weekday]} closes`} value={days[weekday].end} onChange={(e) => setDays((c) => c.map((d, i) => (i === weekday ? { ...d, end: e.target.value } : d)))} />
               </> : <span className="subtle">Closed</span>}
             </div>
           ))}

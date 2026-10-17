@@ -17,10 +17,11 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ requestCode: string } | null>(null);
   const keyRef = useRef(newIdempotencyKey());
-  const [nowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
     let alive = true;
+    setState("loading"); setPage(null); setDone(null); setServiceKey(""); setDayKey(""); setStartIso(""); setError(""); setErrors({}); setNowMs(Date.now());
     (async () => {
       if (!gateway) { setState("closed"); return; }
       try {
@@ -34,12 +35,13 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
   }, [gateway, slug]);
 
   const service = page?.services.find((s) => s.serviceKey === serviceKey) ?? null;
-  const days = useMemo(() => (page && service ? generateSlots({ hours: page.hours, durationMinutes: service.durationMinutes, timeZone: page.timezone, nowMs, minimumLeadMinutes: page.minimumLeadMinutes, maximumAdvanceDays: page.maximumAdvanceDays }) : []), [page, service, nowMs]);
+  const days = useMemo(() => (page && service ? generateSlots({ hours: page.hours, durationMinutes: service.durationMinutes, timeZone: page.timezone, nowMs, minimumLeadMinutes: page.minimumLeadMinutes, maximumAdvanceDays: page.maximumAdvanceDays, maxDays: 56 }) : []), [page, service, nowMs]);
   const day = days.find((d) => d.dateKey === dayKey) ?? null;
 
-  function pickService(key: string) { setServiceKey(key); setDayKey(""); setStartIso(""); setErrors((e) => ({ ...e, service: undefined, time: undefined })); }
-  function pickDay(key: string) { setDayKey(key); setStartIso(""); setErrors((e) => ({ ...e, time: undefined })); }
-  const setField = (key: keyof typeof form, value: string) => { setForm((c) => ({ ...c, [key]: value })); if (key !== "website") setErrors((e) => ({ ...e, [key]: undefined, contact: key === "email" || key === "phone" ? undefined : e.contact })); };
+  const touch = () => { keyRef.current = newIdempotencyKey(); };
+  function pickService(key: string) { touch(); setNowMs(Date.now()); setServiceKey(key); setDayKey(""); setStartIso(""); setErrors((e) => ({ ...e, service: undefined, time: undefined })); }
+  function pickDay(key: string) { touch(); setNowMs(Date.now()); setDayKey(key); setStartIso(""); setErrors((e) => ({ ...e, time: undefined })); }
+  const setField = (key: keyof typeof form, value: string) => { if (key !== "website") touch(); setForm((c) => ({ ...c, [key]: value })); if (key !== "website") setErrors((e) => ({ ...e, [key]: undefined, contact: key === "email" || key === "phone" ? undefined : e.contact })); };
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -50,7 +52,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
     if (Object.keys(problems).length > 0) {
       setError("Please check the details marked below.");
       const first = (["service", "time", "name", "contact", "email", "phone", "notes"] as const).find((k) => problems[k]);
-      const target = first === "contact" ? "email" : first;
+      const target = first === "contact" ? "email" : first === "time" ? (dayKey ? "time" : "day") : first;
       if (target) window.setTimeout(() => document.getElementById(`book-${target}`)?.focus(), 0);
       return;
     }
@@ -61,7 +63,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
     } catch (failure) { setError(friendlyBookingError(failure instanceof Error ? failure.message : "")); }
     setBusy(false);
   }
-  function another() { keyRef.current = newIdempotencyKey(); setDone(null); setStartIso(""); setDayKey(""); setForm({ name: "", email: "", phone: "", notes: "", website: "" }); setErrors({}); setError(""); }
+  function another() { keyRef.current = newIdempotencyKey(); setNowMs(Date.now()); setDone(null); setStartIso(""); setDayKey(""); setForm({ name: "", email: "", phone: "", notes: "", website: "" }); setErrors({}); setError(""); }
 
   if (state === "loading") return <main className="nxq-page store-theme"><section className="portal-shell"><div className="empty-state" role="status">Loading...</div></section></main>;
   if (state === "closed" || !page) return <main className="nxq-page store-theme"><section className="portal-shell"><div className="empty-state" role="status" data-testid="booking-closed">This booking page is not open right now. If someone sent you this link, please contact them another way.</div></section></main>;
@@ -92,7 +94,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
 
           {service ? <>
             <label className="auth-label" htmlFor="book-day"><span>Day</span></label>
-            {days.length === 0 ? <p className="subtle" role="status" data-testid="booking-no-times">There are no open times in the next few weeks. Please contact {page.displayName} directly.</p> : <>
+            {days.length === 0 ? <p className="subtle" role="status" data-testid="booking-no-times">There are no open times in the next 8 weeks. Please contact {page.displayName} directly.</p> : <>
               <select id="book-day" className="auth-input" value={dayKey} onChange={(e) => pickDay(e.target.value)} aria-invalid={Boolean(errors.time) && !dayKey}>
                 <option value="">Choose a day...</option>
                 {days.map((d) => <option key={d.dateKey} value={d.dateKey}>{d.label}</option>)}
@@ -102,7 +104,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
                 <div className="booking-slots">
                   {day.slots.map((s, index) => (
                     <label key={s.startIso} className={`booking-slot${startIso === s.startIso ? " is-picked" : ""}`}>
-                      <input id={index === 0 ? "book-time" : undefined} type="radio" name="book-slot" value={s.startIso} checked={startIso === s.startIso} onChange={() => { setStartIso(s.startIso); setErrors((e) => ({ ...e, time: undefined })); }} />
+                      <input id={index === 0 ? "book-time" : undefined} type="radio" name="book-slot" value={s.startIso} checked={startIso === s.startIso} onChange={() => { touch(); setStartIso(s.startIso); setErrors((e) => ({ ...e, time: undefined })); }} />
                       <span>{s.label}</span>
                     </label>
                   ))}
@@ -127,7 +129,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
           {errors.notes ? <p className="field-error" id="err-notes" role="alert">{errors.notes}</p> : null}
 
           {/* A field real visitors never see or fill in: a simple trap for bots. */}
-          <div className="booking-hp" aria-hidden="true"><label>Leave this empty<input tabIndex={-1} autoComplete="off" name="website" value={form.website} onChange={(e) => setField("website", e.target.value)} /></label></div>
+          <div className="booking-hp" aria-hidden="true" inert><label>Leave this empty<input tabIndex={-1} autoComplete="off" name="nxq_extra_field" value={form.website} onChange={(e) => setField("website", e.target.value)} /></label></div>
 
           {page.cancellationPolicy ? <p className="subtle" data-testid="booking-policy"><strong>Cancellation:</strong> {page.cancellationPolicy}</p> : null}
           <p className="subtle">Your name and contact details go to {page.displayName} so they can reply. Nothing is charged.</p>

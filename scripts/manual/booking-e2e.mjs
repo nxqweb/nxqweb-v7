@@ -34,6 +34,9 @@ ok("sending an empty form is refused with a plain message on each field and the 
 ok("nothing was sent after the empty attempt", (await page.evaluate(() => (window.__submits || []).length)) === 0);
 await page.selectOption("#book-service", "cut");
 await page.locator("#book-day").waitFor();
+await page.getByRole("button", { name: "Send request" }).click();
+await page.waitForTimeout(150);
+ok("with a service but no day or time chosen, the cursor moves to the day box (the time box does not exist yet)", (await page.evaluate(() => document.activeElement && document.activeElement.id)) === "book-day");
 const dayOptions = await page.locator("#book-day option").allTextContents();
 ok("days are listed (weekdays only) and start with a prompt", dayOptions.length > 5 && dayOptions[0].startsWith("Choose") && dayOptions.slice(1).every((t) => !/Saturday|Sunday/.test(t)));
 await page.selectOption("#book-day", { index: 2 });
@@ -56,7 +59,7 @@ await page.getByLabel(/Anything we should know/).fill("First visit, <b>please</b
 await page.getByRole("button", { name: "Send request" }).click();
 ok("markup in the note is refused", /cannot contain/.test((await page.locator("#err-notes").textContent()) || ""));
 await page.getByLabel(/Anything we should know/).fill("First visit.");
-ok("the hidden bot field is out of reach of people and screen readers", (await page.locator(".booking-hp").getAttribute("aria-hidden")) === "true" && (await page.locator('.booking-hp input').getAttribute("tabindex")) === "-1");
+ok("the hidden bot field is out of reach of people and screen readers (inert, aria-hidden, tab-proof, unusual name)", (await page.locator(".booking-hp").getAttribute("aria-hidden")) === "true" && (await page.locator(".booking-hp").evaluate((el) => el.inert)) === true && (await page.locator('.booking-hp input').getAttribute("tabindex")) === "-1" && (await page.locator('.booking-hp input').getAttribute("name")) === "nxq_extra_field");
 await page.getByRole("button", { name: "Send request" }).dblclick();
 await page.getByTestId("booking-done").waitFor();
 const submits = await page.evaluate(() => window.__submits);
@@ -88,6 +91,23 @@ await ownerPage.getByTestId("booking-request").first().getByRole("button", { nam
 await ownerPage.getByRole("status").filter({ hasText: "Request deleted" }).waitFor();
 ok("confirming delete removes it", (await ownerPage.getByTestId("booking-request").count()) === 0);
 ok("no sideways scrolling on the manager page", await noSideways(ownerPage));
+
+// ===== owner: typing in one section survives actions in another, warnings, 5-minute hours
+page = await open("?seed=1&reset=1&view=owner");
+await page.getByLabel(/Page name/).fill("Typed But Not Saved");
+await page.getByRole("button", { name: "Hide from page" }).first().click();
+await page.getByRole("status").filter({ hasText: "hidden from your page" }).waitFor();
+ok("unsaved typing in the page-settings box survives clicking a service button", (await page.getByLabel(/Page name/).inputValue()) === "Typed But Not Saved");
+await page.getByLabel("Monday opens").fill("09:07");
+await page.getByRole("button", { name: "Hide from page" }).first().click();
+await page.waitForTimeout(250);
+ok("unsaved opening times survive too, and hiding the last service shows a plain warning that visitors see a closed page", (await page.getByLabel("Monday opens").inputValue()) === "09:07" && (await page.getByTestId("booking-no-active-service").count()) === 1);
+await page.getByRole("button", { name: "Save opening hours" }).click();
+ok("opening times off the 5-minute grid are refused before saving", /5-minute mark/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByLabel("Monday opens").fill("09:00");
+ok("the hours inputs step by 5 minutes", (await page.getByLabel("Monday opens").getAttribute("step")) === "300");
+const reqPage = await open("?seed=1&reset=1&view=owner");
+ok("request times show the year", /20\d\d/.test((await reqPage.getByTestId("booking-request").first().textContent()) || ""));
 
 // ===== owner setup from scratch
 page = await open("?view=owner&reset=1");

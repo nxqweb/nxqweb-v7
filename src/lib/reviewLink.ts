@@ -26,14 +26,19 @@ export function checkBusinessName(input: string): { ok: true; name: string } | {
 }
 
 // A friendly name for where the link goes, shown next to the link so the client can tell they pasted the right one. Anything unknown shows its own host.
+const hostIs = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`);
 export function reviewSiteName(url: string): string {
   const host = (url.match(hostPattern)?.[1] ?? "").toLowerCase().replace(/^www\./, "");
   if (!host) return "your review page";
-  if (host === "g.page" || host === "g.co" || host === "maps.app.goo.gl" || host === "goo.gl" || host.endsWith("google.com") || host.endsWith("google.co.uk")) return "Google";
-  if (host.endsWith("yelp.com")) return "Yelp";
-  if (host.endsWith("facebook.com") || host === "fb.me" || host === "fb.com") return "Facebook";
-  if (host.endsWith("trustpilot.com")) return "Trustpilot";
-  if (host.endsWith("tripadvisor.com")) return "Tripadvisor";
-  if (host.endsWith("nextdoor.com")) return "Nextdoor";
+  if (["g.page", "g.co", "maps.app.goo.gl", "goo.gl"].includes(host) || hostIs(host, "google.com") || hostIs(host, "google.co.uk")) return "Google";
+  if (hostIs(host, "yelp.com")) return "Yelp";
+  if (hostIs(host, "facebook.com") || host === "fb.me" || host === "fb.com") return "Facebook";
+  if (hostIs(host, "trustpilot.com")) return "Trustpilot";
+  if (hostIs(host, "tripadvisor.com")) return "Tripadvisor";
+  if (hostIs(host, "nextdoor.com")) return "Nextdoor";
   return host;
 }
+
+// The printed QR code holds up to this many bytes of link; a longer link still works in the messages, only the card's code cannot carry it.
+export const qrLinkMaxBytes = 213; // equals qrCode.qrMaxBytes (a test checks this); no runtime import so this file stays easy to test
+export function linkFitsQr(url: string): boolean { return new TextEncoder().encode(url).length <= qrLinkMaxBytes; }

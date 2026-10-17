@@ -1,7 +1,8 @@
 // Offline test: "Get more reviews" (Reviews collector v1). The link rules, card words and page wiring are checked here; the QR maker has its own test
 // (scripts/test-qr-code.mjs); the database draft has a sidecar test in the local full-schema harness. Planted-bug controls prove the checks can fail.
 import fs from "node:fs";
-import { checkBusinessName, checkReviewLink, reviewSiteName } from "../src/lib/reviewLink.ts";
+import { checkBusinessName, checkReviewLink, linkFitsQr, qrLinkMaxBytes, reviewSiteName } from "../src/lib/reviewLink.ts";
+import { qrMaxBytes } from "../src/lib/qrCode.ts";
 import { buildReviewTexts, reviewFairnessNotes } from "../src/lib/reviewCard.ts";
 import { friendlyReviewsError, reviewSettingsFromRow } from "../src/lib/reviewsGateway.ts";
 
@@ -60,6 +61,14 @@ check("PLANTED BUG caught: unsafe external link", wiring(page.replace('rel="noop
 check("PLANTED BUG caught: gateway argument name drifts from the SQL", wiring(page, gw.replace("review_url_value", "review_url"), css).gatewayMatchesSql === false);
 check("PLANTED BUG caught: printing no longer hides the page chrome", wiring(page, gw, css.replace(".no-print { display: none !important; }", "")).printHidesChrome === false);
 check("PLANTED BUG caught: a link with a username would be accepted", checkReviewLink("https://user:pass@example.com/x").ok === false && (() => { const loose = /^https:\/\/[^\s<>"'`]+$/i; return loose.test("https://user:pass@example.com/x"); })());
+
+// ---- second-pass fixes (review findings)
+check("look-alike hosts are NOT labelled as the big sites (notgoogle.com, fakeyelp.com), while real subdomains are", reviewSiteName("https://notgoogle.com/r") === "notgoogle.com" && reviewSiteName("https://fakeyelp.com/biz") === "fakeyelp.com" && reviewSiteName("https://evil-facebook.com/x") === "evil-facebook.com" && reviewSiteName("https://m.facebook.com/x/reviews") === "Facebook" && reviewSiteName("https://search.google.com/local/writereview?placeid=x") === "Google" && reviewSiteName("https://g.page.evil.com/r") === "g.page.evil.com");
+check("the review-link helper uses the real QR capacity", qrLinkMaxBytes === qrMaxBytes);
+check("a link that is too long for a QR code is detected before saving (213 bytes), and a normal one fits", linkFitsQr("https://g.page/r/CabcDEF/review") && !linkFitsQr("https://example.com/" + "a".repeat(300)) && linkFitsQr("https://example.com/" + "a".repeat(193)) && !linkFitsQr("https://example.com/" + "a".repeat(194)));
+check("a stored link that is not https is never used (defense in depth for the href)", reviewSettingsFromRow({ has_settings: true, review_url: "javascript:alert(1)", business_name: "X" }).hasSettings === false && reviewSettingsFromRow({ has_settings: true, review_url: "http://insecure.example.com", business_name: "X" }).reviewUrl === "" && reviewSettingsFromRow({ has_settings: true, review_url: "https://g.page/r/a", business_name: "X" }).hasSettings === true);
+check("the page warns about a too-long link before saving", /!linkFitsQr\(link\.trim\(\)\)/.test(page) && /data-testid="review-long-link"/.test(page));
+check("PLANTED BUG caught: the warning is removed", !/!linkFitsQr\(link\.trim\(\)\)/.test(page.replace("!linkFitsQr(link.trim())", "false")));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll reviews checks passed (offline).");
 process.exit(failures ? 1 : 0);

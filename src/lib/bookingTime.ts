@@ -58,8 +58,8 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
 const toMinutes = (time: string) => { const m = /^(\d{2}):(\d{2})/.exec(time); return m ? Number(m[1]) * 60 + Number(m[2]) : NaN; };
 const toClock = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 
-export function formatSlot(utcMs: number, timeZone: string): string {
-  try { return new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(utcMs)); }
+export function formatSlot(utcMs: number, timeZone: string, withYear = false): string {
+  try { return new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short", month: "short", day: "numeric", ...(withYear ? { year: "numeric" as const } : {}), hour: "numeric", minute: "2-digit" }).format(new Date(utcMs)); }
   catch { return new Date(utcMs).toISOString(); }
 }
 const formatTimeOnly = (utcMs: number, timeZone: string) => { try { return new Intl.DateTimeFormat("en-US", { timeZone, hour: "numeric", minute: "2-digit" }).format(new Date(utcMs)); } catch { return ""; } };

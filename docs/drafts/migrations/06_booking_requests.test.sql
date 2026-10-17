@@ -11,6 +11,8 @@ insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_co
 insert into public.projects(client_id, project_name)
 select c.id, 'Booking test site' from public.clients c where c.auth_user_id in ('eeeeeeee-0000-0000-0000-0000000000c1','eeeeeeee-0000-0000-0000-0000000000c2');
 
+update public.clients set status = 'approved' where auth_user_id in ('eeeeeeee-0000-0000-0000-0000000000c1','eeeeeeee-0000-0000-0000-0000000000c2');
+
 create or replace function pg_temp.as_user(uid uuid) returns void language plpgsql as $f$
 begin
   perform set_config('request.jwt.claim.sub', coalesce(uid::text, ''), true);
@@ -37,6 +39,7 @@ declare
   monday_10 timestamptz;
   tz text := 'America/Los_Angeles';
   i integer;
+  n integer;
   req_id uuid;
   ws uuid;
   key text;
@@ -107,6 +110,8 @@ begin
   if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":1,"start":"17:00","end":"09:00"}]'::jsonb)$q$, 'end after it starts') then raise exception 'backwards hours refused'; end if;
   if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":1,"start":"09:00","end":"12:00"},{"weekday":1,"start":"11:00","end":"15:00"}]'::jsonb)$q$, 'cannot overlap') then raise exception 'overlap refused'; end if;
   if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":1,"start":"nope","end":"12:00"}]'::jsonb)$q$, 'day, a start and an end') then raise exception 'junk time refused'; end if;
+  if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":1,"start":"09:07","end":"17:00"}]'::jsonb)$q$, '5-minute mark') then raise exception 'opening times off the 5-minute grid must be refused (visitors could never book them)'; end if;
+  if not pg_temp.fails(format('select public.save_my_booking_settings(intro_value => %L)', 'hello' || chr(7) || 'bell'), 'intro must be') then raise exception 'control characters in the intro must be refused'; end if;
   if (select count(*) from public.booking_availability_rules where workspace_id = ws) <> 0 then raise exception 'a refused hours save must change nothing'; end if;
   r := public.save_my_booking_hours('[{"weekday":1,"start":"09:00","end":"12:00"},{"weekday":1,"start":"13:00","end":"17:00"},{"weekday":2,"start":"09:00","end":"17:00"},{"weekday":3,"start":"09:00","end":"17:00"},{"weekday":4,"start":"09:00","end":"17:00"},{"weekday":5,"start":"09:00","end":"17:00"}]'::jsonb);
   if jsonb_array_length(r->'hours') <> 6 then raise exception 'six periods expected: %', r; end if;
@@ -117,7 +122,7 @@ begin
   -- before going public the page is invisible
   perform pg_temp.as_user(null);
   if public.get_public_booking_page('salon-one') is not null then raise exception 'a page that is not on must be invisible'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Pat Visitor', 'pat@example.com', 'key-not-open-1'), 'not open right now') then raise exception 'a page that is not on must refuse requests'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Pat Visitor', 'pat@example.com', 'key-not-open-1-xxxxxxxxxxxxxxxx'), 'not open right now') then raise exception 'a page that is not on must refuse requests'; end if;
 
   perform pg_temp.as_user(o1);
   r := public.set_my_booking_public(true);
@@ -132,64 +137,91 @@ begin
   if public.get_public_booking_page('nope-nope') is not null then raise exception 'unknown page must be null'; end if;
 
   -- ---- public requests: the happy path
-  req := public.submit_public_booking_request('salon-one', 'cut', monday_10, '  Pat   Visitor ', 'Pat@Example.com', null, 'First visit.', 'key-happy-0001', null);
+  req := public.submit_public_booking_request('salon-one', 'cut', monday_10, '  Pat   Visitor ', 'Pat@Example.com', null, 'First visit.', 'key-happy-0001-xxxxxxxxxxxxxxxx', null);
   if (req->>'ok')::boolean is not true or req->>'request_code' !~ '^BOOK-[A-F0-9]{12}$' or req->>'status' <> 'requested' then raise exception 'happy path wrong: %', req; end if;
   if (select count(*) from public.booking_appointment_requests where workspace_id = ws) <> 1 then raise exception 'exactly one request expected'; end if;
   if (select contact_name || '|' || contact_email || '|' || timezone from public.booking_appointment_requests where workspace_id = ws) <> 'Pat Visitor|pat@example.com|America/Los_Angeles' then raise exception 'values must be tidied and the time zone copied from the business'; end if;
   if (select requested_end_at - requested_start_at from public.booking_appointment_requests where workspace_id = ws) <> interval '60 minutes' then raise exception 'end must be start plus the service length'; end if;
 
   -- the same key never makes a second request
-  r := public.submit_public_booking_request('salon-one', 'cut', monday_10, 'Pat Visitor', 'pat@example.com', null, null, 'key-happy-0001', null);
+  r := public.submit_public_booking_request('salon-one', 'cut', monday_10, 'Pat Visitor', 'pat@example.com', null, 'First visit.', 'key-happy-0001-xxxxxxxxxxxxxxxx', null);
   if r->>'request_code' <> req->>'request_code' or (select count(*) from public.booking_appointment_requests where workspace_id = ws) <> 1 then raise exception 'idempotency failed'; end if;
 
   -- a bot (hidden field filled) gets a fake success and nothing is stored
-  r := public.submit_public_booking_request('salon-one', 'cut', monday_10, 'Bot Name', 'bot@example.com', null, null, 'key-bot-00001', 'http://spam.example');
+  r := public.submit_public_booking_request('salon-one', 'cut', monday_10, 'Bot Name', 'bot@example.com', null, null, 'key-bot-00001-xxxxxxxxxxxxxxxx', 'http://spam.example');
   if (r->>'ok')::boolean is not true or (select count(*) from public.booking_appointment_requests where workspace_id = ws) <> 1 then raise exception 'honeypot must store nothing'; end if;
 
   -- ---- public requests: everything that must be refused
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,null,null,%L)', 'salon-one', 'cut', monday_10, 'No Contact', 'key-nocontact-1'), 'email or a phone') then raise exception 'no contact refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Bad Email', 'not-an-email', 'key-bademail-1'), 'valid email') then raise exception 'bad email refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,%L,null,%L)', 'salon-one', 'cut', monday_10, 'Bad Phone', '12', 'key-badphone-1'), 'valid phone') then raise exception 'bad phone refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'x', 'a@example.com', 'key-shortname-1'), 'your name') then raise exception 'short name refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Evil <script>', 'a@example.com', 'key-markup-001'), 'your name') then raise exception 'markup in name refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', 'hi <b>there</b>', 'key-markup-002'), 'no < or >') then raise exception 'markup in note refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', repeat('n', 1001), 'key-longnote-01'), '1000 characters') then raise exception 'long note refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,null,null,%L)', 'salon-one', 'cut', monday_10, 'No Contact', 'key-nocontact-1-xxxxxxxxxxxxxxxx'), 'email or a phone') then raise exception 'no contact refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Bad Email', 'not-an-email', 'key-bademail-1-xxxxxxxxxxxxxxxx'), 'valid email') then raise exception 'bad email refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,%L,null,%L)', 'salon-one', 'cut', monday_10, 'Bad Phone', '12', 'key-badphone-1-xxxxxxxxxxxxxxxx'), 'valid phone') then raise exception 'bad phone refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'x', 'a@example.com', 'key-shortname-1-xxxxxxxxxxxxxxxx'), 'your name') then raise exception 'short name refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Evil <script>', 'a@example.com', 'key-markup-001-xxxxxxxxxxxxxxxx'), 'your name') then raise exception 'markup in name refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', 'hi <b>there</b>', 'key-markup-002-xxxxxxxxxxxxxxxx'), 'no < or >') then raise exception 'markup in note refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', repeat('n', 1001), 'key-longnote-01-xxxxxxxxxxxxxxxx'), '1000 characters') then raise exception 'long note refused'; end if;
   if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', 'short'), 'reload the page') then raise exception 'short key refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'nope', monday_10, 'Pat', 'a@example.com', 'key-noservice-1'), 'listed services') then raise exception 'unknown service refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', now() + interval '30 minutes', 'Pat', 'a@example.com', 'key-toosoon-001'), 'too soon') then raise exception 'too soon refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', now() + interval '200 days', 'Pat', 'a@example.com', 'key-toofar-0001'), 'too far ahead') then raise exception 'too far refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,null,%L,%L,null,null,%L)', 'salon-one', 'cut', 'Pat', 'a@example.com', 'key-notime-0001'), 'choose a time') then raise exception 'null time refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'nope', monday_10, 'Pat', 'a@example.com', 'key-noservice-1-xxxxxxxxxxxxxxxx'), 'listed services') then raise exception 'unknown service refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', now() + interval '30 minutes', 'Pat', 'a@example.com', 'key-toosoon-001-xxxxxxxxxxxxxxxx'), 'too soon') then raise exception 'too soon refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', now() + interval '200 days', 'Pat', 'a@example.com', 'key-toofar-0001-xxxxxxxxxxxxxxxx'), 'too far ahead') then raise exception 'too far refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,null,%L,%L,null,null,%L)', 'salon-one', 'cut', 'Pat', 'a@example.com', 'key-notime-0001-xxxxxxxxxxxxxxxx'), 'choose a time') then raise exception 'null time refused'; end if;
   -- Saturday (closed), 5-minute mark, and a service that would run past closing
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '5 days', 'Pat', 'a@example.com', 'key-saturday-01'), 'opening hours') then raise exception 'closed day refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '3 minutes', 'Pat', 'a@example.com', 'key-odd-minute-1'), '5-minute mark') then raise exception 'odd minute refused'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '6 hours 30 minutes', 'Pat', 'a@example.com', 'key-too-late-001'), 'opening hours') then raise exception 'running past closing refused (16:30 + 60 min)'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 - interval '2 hours', 'Pat', 'a@example.com', 'key-too-early-01'), 'opening hours') then raise exception 'before opening refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '5 days', 'Pat', 'a@example.com', 'key-saturday-01-xxxxxxxxxxxxxxxx'), 'opening hours') then raise exception 'closed day refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '3 minutes', 'Pat', 'a@example.com', 'key-odd-minute-1-xxxxxxxxxxxxxxxx'), '5-minute mark') then raise exception 'odd minute refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '6 hours 30 minutes', 'Pat', 'a@example.com', 'key-too-late-001-xxxxxxxxxxxxxxxx'), 'opening hours') then raise exception 'running past closing refused (16:30 + 60 min)'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 - interval '2 hours', 'Pat', 'a@example.com', 'key-too-early-01-xxxxxxxxxxxxxxxx'), 'opening hours') then raise exception 'before opening refused'; end if;
   -- exactly at closing time works (16:00 + 60 min = 17:00)
-  r := public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '6 hours', 'Late Pat', null, '(555) 010-2000', null, 'key-edge-fit-001', null);
+  r := public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '6 hours', 'Late Pat', null, '(555) 010-2000', null, 'key-edge-fit-001-xxxxxxxxxxxxxxxx', null);
   if (r->>'ok')::boolean is not true then raise exception 'a request ending exactly at closing must be accepted: %', r; end if;
 
   -- an inactive service cannot be requested
   perform pg_temp.as_user(o1);
   perform public.save_my_booking_service('color', 'Hair color', 120, false);
   perform pg_temp.as_user(null);
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'color', monday_10, 'Pat', 'a@example.com', 'key-inactive-01'), 'listed services') then raise exception 'inactive service refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'color', monday_10, 'Pat', 'a@example.com', 'key-inactive-01-xxxxxxxxxxxxxxxx'), 'listed services') then raise exception 'inactive service refused'; end if;
   if jsonb_array_length(public.get_public_booking_page('salon-one')->'services') <> 1 then raise exception 'inactive service must be hidden from the public page'; end if;
 
   -- per-email cap: three open requests a day, the fourth is refused
-  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000001', null);
-  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day 1 hour', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000002', null);
-  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day 2 hours', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000003', null);
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '1 day 3 hours', 'Cap Test', 'cap@example.com', 'key-cap-000004'), 'several open requests') then raise exception 'per-email cap refused'; end if;
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000001-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day 1 hour', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000002-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '1 day 2 hours', 'Cap Test', 'cap@example.com', null, null, 'key-cap-000003-xxxxxxxxxxxxxxxx', null);
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '1 day 3 hours', 'Cap Test', 'cap@example.com', 'key-cap-000004-xxxxxxxxxxxxxxxx'), 'several open requests') then raise exception 'per-email cap refused'; end if;
 
-  -- per-workspace hourly cap: fill to 30 in the last hour directly, then the next is refused
+  -- per-workspace hourly cap, tested at the exact edge: fill to 29 in the last hour, the 30th request is accepted, the 31st is refused
   perform set_config('request.jwt.claim.role', 'service_role', true);
+  i := (select count(*) from public.booking_appointment_requests where workspace_id = ws and created_at > now() - interval '1 hour');
+  if i >= 29 then raise exception 'test setup: already % recent requests', i; end if;
   insert into public.booking_appointment_requests (workspace_id, client_id, project_id, service_definition_id, idempotency_key, status, requested_start_at, requested_end_at, timezone, contact_name, contact_email)
   select ws, w.client_id, w.project_id, (select id from public.booking_service_definitions where workspace_id = ws and service_key = 'cut'), 'flood-key-' || g, 'requested', monday_10, monday_10 + interval '1 hour', tz, 'Flood ' || g, 'flood' || g || '@example.com'
-  from public.booking_workspaces w, generate_series(1, 30) g where w.id = ws;
+  from public.booking_workspaces w, generate_series(1, 29 - i) g where w.id = ws;
   perform pg_temp.as_user(null);
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days', 'Flood', 'late@example.com', 'key-flood-last-1'), 'a lot of requests') then raise exception 'hourly workspace cap must refuse'; end if;
+  r := public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '2 days', 'Edge Thirty', 'edge30@example.com', null, null, 'key-edge-thirty-xxxxxxxxxxxxxxxx', null);
+  if (r->>'ok')::boolean is not true then raise exception 'the 30th request in an hour must still be accepted: %', r; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 1 hour', 'Flood', 'late@example.com', 'key-flood-last-1-xxxxxxxxxxxxxxxx'), 'a lot of requests') then raise exception 'the 31st request in an hour must be refused'; end if;
   perform set_config('request.jwt.claim.role', 'service_role', true);
-  delete from public.booking_appointment_requests where idempotency_key like 'flood-key-%';
+  delete from public.booking_appointment_requests where idempotency_key like 'flood-key-%' or idempotency_key like 'key-edge-thirty-%';
+
+  -- the daily email cap sees through plus-tags, dots and capital letters (Gmail-style), and counts every state
+  perform pg_temp.as_user(null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '3 days', 'Dot Ted', 'dot.ted@gmail.com', null, null, 'key-gm-0000001-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '3 days 1 hour', 'Dot Ted', 'dotted+promo@gmail.com', null, null, 'key-gm-0000002-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '3 days 2 hours', 'Dot Ted', 'DOT.TED@GOOGLEMAIL.com', null, null, 'key-gm-0000003-xxxxxxxxxxxxxxxx', null);
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '3 days 3 hours', 'Dot Ted', 'd.o.t.t.e.d@gmail.com', 'key-gm-0000004-xxxxxxxxxxxxxxxx'), 'several open requests') then raise exception 'gmail variants must share one daily allowance'; end if;
+  -- phone-only senders have a cap too, however the number is written
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '4 days', 'Phone Pat', null, '(555) 010-3000', null, 'key-ph-0000001-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '4 days 1 hour', 'Phone Pat', null, '555.010.3000', null, 'key-ph-0000002-xxxxxxxxxxxxxxxx', null);
+  perform public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '4 days 2 hours', 'Phone Pat', null, '+1 555 010 3000', null, 'key-ph-0000003-xxxxxxxxxxxxxxxx', null);
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,%L,null,%L)', 'salon-one', 'cut', monday_10 + interval '4 days 3 hours', 'Phone Pat', '555-010-3000', 'key-ph-0000004-xxxxxxxxxxxxxxxx'), 'several open requests') then raise exception 'phone-only flooding must be capped'; end if;
+
+  -- characters: control characters, zero-width characters, spreadsheet-formula names, bad emails and phones are refused; a new line in a note is fine
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat', 'a@example.com', 'bell' || chr(7) || 'char', 'key-ctl-0000001-xxxxxxxxxxxxxxxx'), 'no < or >') then raise exception 'control characters in a note must be refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat', 'a@example.com', 'zero' || chr(8203) || 'width', 'key-ctl-0000002-xxxxxxxxxxxxxxxx'), 'no < or >') then raise exception 'zero-width characters must be refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', '=HYPERLINK("x")', 'a@example.com', 'key-ctl-0000003-xxxxxxxxxxxxxxxx'), 'your name') then raise exception 'a name starting with = must be refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat', 'a..b@example.com', 'key-ctl-0000004-xxxxxxxxxxxxxxxx'), 'valid email') then raise exception 'a double-dot email must be refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,null,%L,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat', '555' || chr(9) || '0100000', 'key-ctl-0000005-xxxxxxxxxxxxxxxx'), 'valid phone') then raise exception 'a tab inside a phone number must be refused'; end if;
+  r := public.submit_public_booking_request('salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat Newline', 'newline@example.com', null, 'line one' || chr(10) || 'line two', 'key-ctl-0000006-xxxxxxxxxxxxxxxx', null);
+  if (r->>'ok')::boolean is not true then raise exception 'a new line in a note must be accepted: %', r; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 4 hours', 'Pat', 'a@example.com', 'short-key'), 'reload the page') then raise exception 'a short key must be refused'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,%L,%L)', 'salon-one', 'cut', monday_10 + interval '2 days 5 hours', 'Pat Newline', 'newline@example.com', 'a different note', 'key-ctl-0000006-xxxxxxxxxxxxxxxx'), 'reload the page') then raise exception 'the same key with different details must be refused, not answered with the old request'; end if;
 
   -- ---- the owner works with requests
   perform pg_temp.as_user(o1);
@@ -221,6 +253,38 @@ begin
   if not pg_temp.fails($q$select public.save_my_booking_settings(public_slug_value => 'salon-one')$q$, 'already taken') then raise exception 'a taken slug must be refused'; end if;
   if (select status from public.booking_appointment_requests where id = req_id) <> 'requested' then raise exception 'client one request must be untouched'; end if;
 
+  -- ---- client two's own saves never touch client one (services, hours), and standing / disabled rules
+  perform pg_temp.as_user(o2);
+  perform public.save_my_booking_service('cut', 'Two Haircut', 15);
+  perform public.save_my_booking_hours('[{"weekday":6,"start":"10:00","end":"12:00"}]'::jsonb);
+  perform pg_temp.as_user(o1);
+  if (select name from public.booking_service_definitions where workspace_id = ws and service_key = 'cut') <> 'Haircut' then raise exception 'client two must not rename client one service'; end if;
+  if (select count(*) from public.booking_availability_rules where workspace_id = ws) <> 5 then raise exception 'client two must not change client one hours'; end if;
+
+  -- a client the owner froze cannot keep a public page: the page disappears, requests are refused, and it cannot be switched back on
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.clients set billing_status = 'frozen' where auth_user_id = o1;
+  perform pg_temp.as_user(null);
+  if public.get_public_booking_page('salon-one') is not null then raise exception 'a frozen account must have no public booking page'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10 + interval '6 days', 'Pat', 'frozen@example.com', 'key-frozen-001-xxxxxxxxxxxxxxxx'), 'not open right now') then raise exception 'a frozen account must refuse requests'; end if;
+  perform pg_temp.as_user(o1);
+  if not pg_temp.fails($q$select public.set_my_booking_public(true)$q$, 'not available for your account') then raise exception 'a frozen account must not switch a page on'; end if;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.clients set billing_status = 'active' where auth_user_id = o1;
+  perform pg_temp.as_user(null);
+  if public.get_public_booking_page('salon-one') is null then raise exception 'the page must come back when the account is back in good standing'; end if;
+
+  -- a workspace the platform disabled cannot be re-enabled by the client
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.booking_workspaces set status = 'disabled', public_enabled = false where id = ws;
+  perform pg_temp.as_user(o1);
+  if not pg_temp.fails($q$select public.set_my_booking_public(true)$q$, 'not available for your account') then raise exception 'a disabled workspace must not be re-enabled by the client'; end if;
+  perform pg_temp.as_user(null);
+  if public.get_public_booking_page('salon-one') is not null then raise exception 'a disabled workspace must have no public page'; end if;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.booking_workspaces set status = 'ready', public_enabled = true where id = ws;
+  perform pg_temp.as_user(o1);
+
   -- ---- delete (privacy) and switching off
   perform pg_temp.as_user(o1);
   r := public.delete_my_booking_request(req_id);
@@ -231,7 +295,7 @@ begin
   if (r->>'public_enabled')::boolean is not false or r->>'status' <> 'paused' then raise exception 'switching off must pause: %', r; end if;
   perform pg_temp.as_user(null);
   if public.get_public_booking_page('salon-one') is not null then raise exception 'a switched-off page must disappear'; end if;
-  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', 'key-after-off-01'), 'not open right now') then raise exception 'a switched-off page must refuse requests'; end if;
+  if not pg_temp.fails(format('select public.submit_public_booking_request(%L,%L,%L,%L,%L,null,null,%L)', 'salon-one', 'cut', monday_10, 'Pat', 'a@example.com', 'key-after-off-01-xxxxxxxxxxxxxxxx'), 'not open right now') then raise exception 'a switched-off page must refuse requests'; end if;
 
   -- clearing all opening hours while on switches the page off by itself
   perform pg_temp.as_user(o1);
