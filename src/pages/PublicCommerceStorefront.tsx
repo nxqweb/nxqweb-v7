@@ -64,7 +64,8 @@ export function PublicCommerceStorefront() {
     // The ordering style (online, email or menu) is waited for too, so an email or menu shop never flashes the online checkout first.
     const modeLoad = loadOrderMode();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
-    await modeLoad;
+    // Never wait longer than 3 seconds for it: a slow answer must not keep an otherwise ready store on the loading screen.
+    await Promise.race([modeLoad, new Promise((resolve) => window.setTimeout(resolve, 3000))]);
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);

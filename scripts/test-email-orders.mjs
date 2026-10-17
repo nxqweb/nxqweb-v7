@@ -76,9 +76,9 @@ const emailSrc = fs.readFileSync("src/lib/emailOrder.ts", "utf8");
 const storeSrc = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
 const second = (lib, page) => ({
   detailsFirst: lib.indexOf("...details,") > 0 && lib.indexOf("...details,") < lib.indexOf("...itemLines,"),
-  wholeCharacters: /Array\.from\(body\)/.test(lib) && /wellFormed\(text\)/.test(lib),
+  wholeCharacters: /Array\.from\(body\)/.test(lib) && /wellFormed\(text\)/.test(lib) && !/\(\?<[!=]/.test(lib),
   noticeShown: /emailOrder\.shortened \? <div[^>]*data-testid="email-order-shortened"/.test(page) && /emailOrderLink\(orderMode\.email/.test(page),
-  waitsForMode: /const modeLoad = loadOrderMode\(\);/.test(page) && page.indexOf("await modeLoad;") > page.indexOf("get_public_stripe_ready_commerce_storefront") && page.indexOf("await modeLoad;") < page.indexOf("setLoading(false);", page.indexOf("await modeLoad;")),
+  waitsForMode: /const modeLoad = loadOrderMode\(\);/.test(page) && /Promise\.race\(\[modeLoad, new Promise\(\(resolve\) => window\.setTimeout\(resolve, 3000\)\)\]\)/.test(page) && page.indexOf("await Promise.race([modeLoad") > page.indexOf("get_public_stripe_ready_commerce_storefront") && page.indexOf("await modeLoad;") < page.indexOf("setLoading(false);", page.indexOf("await modeLoad;")),
 });
 const ok2 = second(emailSrc, storeSrc);
 check("the order text puts who it is from before the items", ok2.detailsFirst);
@@ -87,17 +87,19 @@ check("the shopper sees a notice when the link was shortened", ok2.noticeShown);
 check("the public store waits for its ordering style before showing anything (no online-checkout flash on email or menu shops)", ok2.waitsForMode);
 check("PLANTED BUG caught: details moved to the end", second(emailSrc.replace("...details,", "...itemLines,").replace(/\.\.\.itemLines,\n    "",\n    `Total/, "...details,\n    \"\",\n    `Total"), storeSrc).detailsFirst === false);
 check("PLANTED BUG caught: cutting by raw string slice", second(emailSrc.replace("Array.from(body)", "body"), storeSrc).wholeCharacters === false);
-check("PLANTED BUG caught: mode load no longer awaited", second(emailSrc, storeSrc.replace("await modeLoad;", "")).waitsForMode === false);
+check("the order-text helper uses no regex lookbehind (older iPhones cannot load it)", !/\(\?<[!=]/.test(emailSrc));
+check("PLANTED BUG caught: a lookbehind sneaks back in", second(emailSrc + "\nconst bad = /(?<!a)b/;", storeSrc).wholeCharacters === false);
+check("PLANTED BUG caught: mode load no longer awaited", second(emailSrc, storeSrc.replace("await Promise.race([modeLoad, new Promise((resolve) => window.setTimeout(resolve, 3000))]);", "")).waitsForMode === false);
 
 // ---- owner page: switching to online needs a payment link; saving in email or menu mode reports that the store stayed open
 const liveSrc = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
 const ownerChecks = (t) => ({
-  needsLink: /orderChoice === "online" && \(makeLive \|\| data\?\.status === "active"\) && !stripePaymentLink\.trim\(\) && !paypalUrl\.trim\(\) && !venmoUrl\.trim\(\)/.test(t) && t.indexOf("Online ordering needs a payment link first") < t.indexOf('rpc("save_my_store_order_mode", { order_mode_value: orderChoice'),
+  needsLink: /orderChoice === "online" && \(makeLive \|\| data\?\.status === "active"\) && !data\?\.stripe_payment_link\?\.trim\(\) && !data\?\.paypal_url\?\.trim\(\) && !data\?\.venmo_url\?\.trim\(\)/.test(t) && t.indexOf("Online ordering needs a payment link first") < t.indexOf('rpc("save_my_store_order_mode", { order_mode_value: orderChoice'),
   honestMessage: /let reopened = false;/.test(t) && /reopened = true;/.test(t) && /reopened\s*\? "Saved\. Your store is still open\."/.test(t),
 });
 check("an open store cannot be switched to online ordering without any payment link (shoppers would fail at checkout)", ownerChecks(liveSrc).needsLink);
 check("saving in email or menu mode on an open store says the store is still open, not 'private'", ownerChecks(liveSrc).honestMessage);
-check("PLANTED BUG caught: payment-link guard removed", ownerChecks(liveSrc.replace('!stripePaymentLink.trim() && !paypalUrl.trim()', "false && !paypalUrl.trim()")).needsLink === false);
+check("PLANTED BUG caught: payment-link guard removed", ownerChecks(liveSrc.replace('!data?.stripe_payment_link?.trim() && !data?.paypal_url?.trim()', "false && !data?.paypal_url?.trim()")).needsLink === false);
 check("PLANTED BUG caught: 'still open' message removed", ownerChecks(liveSrc.replace("Saved. Your store is still open.", "Saved. Your store stays private until you press Open storefront.")).honestMessage === false);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll email-order checks passed (offline).");

@@ -38,8 +38,20 @@ export type EmailOrderInput = {
 };
 
 // Lone half-emoji characters make encodeURIComponent throw, so they are swapped for a replacement mark before anything is encoded.
-const loneSurrogates = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
-const wellFormed = (text: string) => text.replace(loneSurrogates, "\uFFFD");
+// Lone half-emoji characters make encodeURIComponent throw, so they are swapped for a replacement mark before anything is encoded.
+// (A plain loop, not a regex lookbehind: older iPhones cannot parse lookbehind and would fail to load the whole store.)
+function wellFormed(text: string): string {
+  let out = "";
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = text.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) { out += text[i] + text[i + 1]; i += 1; } else out += "\uFFFD";
+    } else if (code >= 0xdc00 && code <= 0xdfff) out += "\uFFFD";
+    else out += text[i];
+  }
+  return out;
+}
 const clean = (text: string) => wellFormed(text).replace(/[\r\n]+/g, " ").trim();
 
 export function buildEmailOrder(input: EmailOrderInput): { subject: string; body: string } {

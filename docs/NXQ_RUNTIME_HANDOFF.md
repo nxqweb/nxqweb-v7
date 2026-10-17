@@ -181,6 +181,29 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Overnight bug rounds: 3 independent read-only reviews + a diff re-review (2026-10-17; local/pushed, NOT deployed; the webhook change needs a `deploy_functions` run before staging has it)
+
+Method: three reviewers read (a) Stripe webhook + referral credit + migrations 261/272, (b) the store/Commerce pages + 269-271, (c) portal/public pages; every finding was checked against the real file before any fix; fixes got tests with planted-bug controls; a fourth reviewer re-read the raw diff and found three more real issues (all fixed). Every fix below is local code only (no migration, no workflow, no secret, nothing deployed).
+
+FIXED (real, verified in the code):
+- Referral code left in the browser could be applied to whoever signed in next on a shared computer: the remembered code now expires after 30 days, only counts for an account created in the last 14 days, and is cleared on logout from the client portal (a code saved in the account's own data always counts). `src/lib/referralCode.ts`, `ReferralClaimer.tsx`, `ClientPortal.tsx`.
+- Stripe webhook (`supabase/functions/ingest-stripe-webhook/index.ts`): `charge.dispute.created` has no customer field so every dispute was rejected with 400 (and Stripe retries for days): the customer is now found through the charge (needs `STRIPE_SECRET_KEY`; without it the event fails loudly and Stripe retries, as before); events we do not act on are acknowledged (202) before a customer is demanded; a $0 paid invoice (trial / 100% coupon) can no longer start the referral hold; a failed payment records the amount due instead of 0.
+- Referral credit (`_shared/referral-invoice-credit.ts`): the live invoice is read before any credit is used (a retry used to carry the old draft snapshot, so it could add a second credit line or hand back credit that was already on the invoice); the $10 floor is measured on the discounted total, not the subtotal.
+- Email orders (`src/lib/emailOrder.ts`): the customer's name/email/phone/address now come BEFORE the items (a long order used to lose them when shortened); shortening works on whole characters (an emoji could crash the link and make the button do nothing); lone half-emoji typed by a shopper are replaced; no regex lookbehind (older iPhones cannot parse it); the shopper is told when the link was shortened and to use Copy.
+- Public store waits (max 3 s) for its ordering style so an email or menu shop never flashes the online checkout first.
+- Owner store page: cannot switch an OPEN store to online ordering when no payment link is SAVED; saving in email/menu mode reports "still open".
+
+NOT FIXED, on purpose (each needs a migration, a workflow edit or an owner decision):
+1. `nxq_apply_referral_credit` sums available credit without locking the client row, so two invoices for one client processed at the same moment could over-apply (low likelihood). Needs a migration (lock the client row first).
+2. The server does not enforce the order mode: anyone calling the checkout RPC directly can still create an order for a menu/email store that holds payment links. Needs a migration if wanted.
+3. Amounts are divided by 100 for every currency (wrong for JPY and other zero-decimal currencies). Irrelevant while everything is USD; the credit code already refuses non-USD.
+4. A dispute with no usable charge/customer is retried by Stripe for days (fails loudly on purpose).
+5. Owner store page: `load()` after a toggle/save resets unsaved typed fields (store name/payment link) and briefly unmounts panels. UX nit; not changed.
+6. If the public order-mode request fails, the store falls back to online ordering (the order then fails on the server). Same safe-default as before.
+7. Migration 261: a turned-off link still blocks reusing that customer id for a different client (probably intended).
+8. The offline tests are mostly regex-on-source plus pure-function tests; they prove the code text and the pure logic, not live behavior.
+Checks: `npm run test:store` 25/25 files; `test:edge` (Deno) 44 functions; browser scripts referral-e2e and store-email-e2e (email / MENU=1 / NO_MODE=1) all pass; `test:ci-parity` 66/66.
+
 ## Stripe sandbox webhook LIVE on staging; paid-invoice path proven (2026-10-17, owner-run, sandbox only; no live Stripe, no real money)
 
 - Owner created the Stripe webhook destination in the sandbox (URL `https://wjgtqrpdntfxvtmgwfbf.supabase.co/functions/v1/ingest-stripe-webhook`, 9 events, label "NXQX stagingD" (stray "D" is harmless)) and set the Supabase Edge secrets `STRIPE_WEBHOOK_SECRET` and `NXQ_BILLING_ENABLED=true` by hand (names verified from screenshots; values never shown).

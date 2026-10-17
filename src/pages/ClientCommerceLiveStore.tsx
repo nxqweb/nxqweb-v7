@@ -129,8 +129,8 @@ export function ClientCommerceLiveStore() {
       setError("Type your contact email in the About and contact box below and press Save About and contact first. Orders will be sent to that email.");
       return;
     }
-    // An open store set to online ordering with no payment link would let shoppers fill a cart and then fail at checkout, so it is stopped here.
-    if (orderChoice === "online" && (makeLive || data?.status === "active") && !stripePaymentLink.trim() && !paypalUrl.trim() && !venmoUrl.trim()) {
+    // An open store set to online ordering with no SAVED payment link would let shoppers fill a cart and then fail at checkout, so it is stopped here (typed but unsaved text does not count).
+    if (orderChoice === "online" && (makeLive || data?.status === "active") && !data?.stripe_payment_link?.trim() && !data?.paypal_url?.trim() && !data?.venmo_url?.trim()) {
       setMessage("");
       setError("Online ordering needs a payment link first. Add your Stripe Payment Link (or PayPal or Venmo link) in the payment settings below and press Save private draft, then switch to online ordering.");
       return;
