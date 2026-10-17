@@ -11,11 +11,11 @@ Review deployments -> nxq-staging -> Approve and deploy; Claude never does).
 | 0.2 | Write the number down | e.g. "300 before" |
 | 0.3 | Candle client has not asked for anything urgent | Nothing to wait for |
 
-## Database (nothing to apply on deploy day) - re-verified 2026-10-17
-- Migrations 269, 270 and 271 were applied to staging on 2026-10-16 (run #260, log confirmed). The newest real migration file is 272.
-- **272 (referral credit on Stripe invoices) is NOT applied and must stay that way** until the owner connects real Stripe (it needs `NXQ_REFERRAL_CREDITS_ENABLED`, a Stripe secret key and the referral program switched on). `validate_foundation` run #262 listed exactly `272_referral_invoice_credit.sql` as pending, which is the expected result.
-- Drafts 05 (Reviews) and 06 (Booking) live only in `docs/drafts/migrations/`. They are never part of an apply. The Reviews and Booking pages are built but have NO route and NO menu link, so nothing about them appears on the site after this deploy.
-- If the dry-run list ever shows anything other than 272, STOP and ask before any apply.
+## Database (UPDATED 2026-10-17 after "promote reviews")
+- Migrations 269, 270 and 271 were applied to staging on 2026-10-16 (run #260, log confirmed).
+- **Two migrations are now pending: 272 (referral credit on Stripe invoices, dormant) and 273 (Reviews collector).** The guarded workflow runs `supabase db push --linked`, which applies ALL pending migrations, so they go together. This needs the owner's explicit OK because it also applies 272 (the owner earlier wanted 272 held until Stripe). 272 is inert: service-role-only functions, off unless `NXQ_REFERRAL_CREDITS_ENABLED`, a Stripe secret key and the referral program are all switched on.
+- Order: (1) `validate_foundation`, read the "Migration dry run" list: it must list exactly `272_referral_invoice_credit.sql` and `273_reviews_collector.sql`, nothing else (anything else: STOP and ask). (2) `apply_migrations`: owner fills the form, branch `safe/checkpoint-autonomy-wave35-sales`, types `APPLY-NXQ-SUPABASE-STAGING` exactly, Approves; Claude reads the log for "Applying migration 272..." and "Applying migration 273...". (3) Only then deploy functions and the site (a site deployed before 273 exists shows a calm "could not be loaded" on `/client/reviews`).
+- Booking draft 06 stays a draft (never part of an apply); the Booking pages have no route.
 
 ## Edge functions (only if needed) (C then O)
 | # | Step | Notes |
@@ -35,7 +35,8 @@ Review deployments -> nxq-staging -> Approve and deploy; Claude never does).
 ## What this deploy puts on the site (so nothing is a surprise)
 Public: `/about`, `/contact`, `/privacy`, `/terms` (draft banner until a lawyer reviews them), referral links (`/portal/signup?ref=CODE`), Order-by-email and Menu store modes, the store page that waits for its ordering style.
 Client portal: Rewards page, AI assistant chat, Report a problem button, "?" help words, store profile (About/contact), the new owner guards (cannot switch an open store to online ordering without a saved payment link).
-NOT on the site: Reviews collector, Booking (no routes), referral credits on invoices (off), live Stripe (not connected), shopper accounts (leave off).
+NOT on the site: Booking (no route), referral credits on invoices (off), live Stripe (not connected), shopper accounts (leave off).
+NEW on the site once 273 is applied: `/client/reviews` ("Get reviews" link in the client portal): paste a review link, get a printable QR card and messages. Proof: open it on a phone, save a real review link, press "Test my link", scan the printed or on-screen QR with a second phone.
 
 ## Prove it (O on a real phone, C watching screenshots) - use `docs/COMMERCE_TEST_PLAN.md`
 Order of importance:

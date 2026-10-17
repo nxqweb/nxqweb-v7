@@ -1,7 +1,5 @@
-// DRAFT (not compiled, not in src/). The real connection for the Reviews page. Copy it to src/lib/reviewsSupabaseGateway.ts ONLY after migration
-// 05_reviews_collector has been promoted to supabase/migrations and applied: the CI contract rejects code that calls a database function which does not
-// exist in a real migration yet. Then wire the page (see docs/drafts/ui/README.md) and run scripts/test-reviews.mjs, which checks these exact call names
-// and argument names against the SQL.
+// The real connection for the Reviews page (migration 273_reviews_collector). scripts/test-reviews.mjs checks these exact call names and argument names
+// against the SQL, so the two cannot drift apart. The page itself only knows the small ReviewsGateway interface (src/lib/reviewsGateway.ts).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { reviewSettingsFromRow, type ReviewsGateway } from "./reviewsGateway";
 

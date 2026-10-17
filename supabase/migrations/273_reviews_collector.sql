@@ -1,4 +1,4 @@
--- DRAFT 05: "Get more reviews" (Reviews collector v1). NOT a real migration; promotion and apply are stop-and-ask gates.
+-- Migration 273: "Get more reviews" (Reviews collector v1). Promoted from draft 05 on 2026-10-17 (owner said "promote reviews" in chat). NOT applied to staging: applying is a separate guarded step (validate_foundation, then apply_migrations with the owner's exact confirmation phrase and Approve click).
 --
 -- What it does: a client saves ONE public review link (Google, Yelp, Facebook, Trustpilot or any https page) and, optionally, the name
 -- to print on their review card. The portal then builds a printable card with a QR code and ready-to-send messages from that link.

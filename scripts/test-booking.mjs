@@ -41,7 +41,7 @@ const checks = (s, g, o, p, t, c, a) => ({
   unavailableStates: /data-testid="booking-unavailable"/.test(o) && /data-testid="booking-closed"/.test(p),
   labelsOnEverything: ["book-service", "book-day", "book-name", "book-email", "book-phone", "book-notes"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /aria-invalid/.test(p) && /role="alert"/.test(p),
   themeFix: /\.store-theme \.portal-shell \.booking-slot \{ display: inline-flex; margin: 0; \}/.test(c) && /\.booking-hp \{ position: absolute; left: -10000px;/.test(c),
-  notRouted: !/ClientBooking|PublicBooking|ClientReviews/.test(a),
+  notRouted: !/ClientBooking|PublicBooking/.test(a),
 });
 const good = checks(sql, gw, owner, pub, types, css, app);
 check("the draft gateway calls exactly the functions and argument names the SQL defines", good.argsMatch);

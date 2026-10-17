@@ -32,8 +32,8 @@ check("database errors turn into plain words and never leak raw text", friendlyR
 
 // ---- wiring
 const page = read("src/pages/ClientReviews.tsx");
-const sql = read("docs/drafts/migrations/05_reviews_collector.sql");
-const gw = read("docs/drafts/ui/reviewsSupabaseGateway.ts");
+const sql = read("supabase/migrations/273_reviews_collector.sql");
+const gw = read("src/lib/reviewsSupabaseGateway.ts");
 const css = read("src/styles/plan-forms.css");
 const wiring = (p, g, c) => ({
   noRawHtml: !/dangerouslySetInnerHTML/.test(p) && !/dangerouslySetInnerHTML/.test(read("src/components/ReviewQr.tsx")),
@@ -52,7 +52,7 @@ check("no raw HTML is injected anywhere on the page", w.noRawHtml);
 check("the test-my-link button opens the client's own link safely in a new tab", w.safeExternalLink);
 check("when the feature is not connected the page says so instead of failing", w.unavailableState);
 check("the link is checked on the page before anything is saved, and removing needs a confirm", w.checksBeforeSave && w.confirmBeforeRemove);
-check("no database call lives in src yet (the real one is a draft until migration 05 is approved)", w.noSrcRpc);
+check("the page and its interface make no database calls themselves (only the one gateway file does)", w.noSrcRpc);
 check("the draft gateway calls exactly the functions and argument names the SQL defines", w.gatewayMatchesSql);
 check("printing shows only the card, and the card is black on white so phones can scan it", w.printHidesChrome && w.cardIsBlackOnWhite);
 check("the QR code has a text label for screen readers", w.qrHasLabel);
@@ -69,6 +69,27 @@ check("a link that is too long for a QR code is detected before saving (213 byte
 check("a stored link that is not https is never used (defense in depth for the href)", reviewSettingsFromRow({ has_settings: true, review_url: "javascript:alert(1)", business_name: "X" }).hasSettings === false && reviewSettingsFromRow({ has_settings: true, review_url: "http://insecure.example.com", business_name: "X" }).reviewUrl === "" && reviewSettingsFromRow({ has_settings: true, review_url: "https://g.page/r/a", business_name: "X" }).hasSettings === true);
 check("the page warns about a too-long link before saving", /!linkFitsQr\(link\.trim\(\)\)/.test(page) && /data-testid="review-long-link"/.test(page));
 check("PLANTED BUG caught: the warning is removed", !/!linkFitsQr\(link\.trim\(\)\)/.test(page.replace("!linkFitsQr(link.trim())", "false")));
+
+// ---- promoted to migration 273 and wired (owner said "promote reviews", 2026-10-17)
+const app = read("src/App.tsx");
+const route = read("src/pages/ClientReviewsRoute.tsx");
+const portal = read("src/pages/ClientPortal.tsx");
+const migDir = fs.readdirSync("supabase/migrations");
+const promo = (a, r, pt, m, d) => ({
+  routed: /const ClientReviewsRoute = named\(\(\) => import\("\.\/pages\/ClientReviewsRoute"\), "ClientReviewsRoute"\);/.test(a) && /if \(path === "\/client\/reviews"\) return <ClientReviewsRoute \/>;/.test(a),
+  linked: /<a className="icon-btn" href="\/client\/reviews">Get reviews<\/a>/.test(pt),
+  signedInOnly: /getSession\(\)/.test(r) && /window\.location\.replace\("\/portal\/login"\)/.test(r) && /isSupabaseConfigured && supabase \? createReviewsGateway\(supabase\) : null/.test(r),
+  migrationInPlace: m.includes("273_reviews_collector.sql") && !d.includes("05_reviews_collector.sql") && !d.includes("05_reviews_collector.test.sql"),
+  onlyTwoCalls: [...read("src/lib/reviewsSupabaseGateway.ts").matchAll(/\.rpc\("([a-z_]+)"/g)].map((x) => x[1]).sort().join(",") === "get_my_review_settings,save_my_review_settings",
+});
+const pr = promo(app, route, portal, migDir, fs.readdirSync("docs/drafts/migrations"));
+check("the draft became migration 273 (draft files are gone, the regression test lives with the other migration tests)", pr.migrationInPlace && fs.existsSync("scripts/sql/local-full-schema/regression/273_reviews_collector.test.sql"));
+check("/client/reviews is a real route and the portal links to it", pr.routed && pr.linked);
+check("the route sends signed-out visitors to the login page and passes no connection when Supabase is not configured", pr.signedInOnly);
+check("the only database calls are the two functions migration 273 defines", pr.onlyTwoCalls);
+check("PLANTED BUG caught: route removed", promo(app.replace('if (path === "/client/reviews") return <ClientReviewsRoute />;', ""), route, portal, migDir, fs.readdirSync("docs/drafts/migrations")).routed === false);
+check("PLANTED BUG caught: signed-out visitors no longer redirected", promo(app, route.replace('window.location.replace("/portal/login")', "void 0"), portal, migDir, fs.readdirSync("docs/drafts/migrations")).signedInOnly === false);
+check("PLANTED BUG caught: a stray third database call", promo(app, route, portal, migDir, []).onlyTwoCalls === true && [...(read("src/lib/reviewsSupabaseGateway.ts") + 'client.rpc("owner_secret_thing")').matchAll(/\.rpc\("([a-z_]+)"/g)].map((x) => x[1]).sort().join(",") !== "get_my_review_settings,save_my_review_settings");
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll reviews checks passed (offline).");
 process.exit(failures ? 1 : 0);

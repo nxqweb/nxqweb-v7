@@ -1094,6 +1094,7 @@ export function ClientPortal() {
             <strong>{projectStageLabel}</strong>
             <a className="icon-btn" href="/client/settings">Settings</a>
             <a className="icon-btn" href="/client/rewards">Rewards</a>
+            <a className="icon-btn" href="/client/reviews">Get reviews</a>
             <button className="icon-btn" onClick={toggleNxqTheme} type="button">{nxqTheme === "dark" ? "Light mode" : "Dark mode"}</button>
             <button className="icon-btn" onClick={handleLogout} type="button"><LogOut size={16} /> Log out</button>
           </div>
