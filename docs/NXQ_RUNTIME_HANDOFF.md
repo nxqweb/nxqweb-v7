@@ -200,6 +200,7 @@ state. Update this file, not a new one, at every handoff.
 - OWNER CHOSE OPTION A (2026-10-17, "A. i think"): apply 272 + 273 together on deploy day. This is a plan, not an approval to apply now; the apply itself still needs validate_foundation first, the owner typing the exact phrase, and the owner's Approve click, all in that day's chat.
 - IMPORTANT COUPLING: the guarded workflow runs `supabase db push --linked`, which applies EVERY pending migration. Applying 273 therefore also applies 272 (referral credit on invoices; service-role-only functions, dormant unless the referral switches and a Stripe key exist). Owner decision needed before the apply: (A) apply 272 + 273 together (recommended; 272 is inert and tested) or (B) hold Reviews until Stripe day.
 - Order on deploy day: validate_foundation (expect exactly 272 and 273 pending) -> apply_migrations (owner types the phrase, owner Approves) -> deploy_functions -> site deploy. Do not deploy the site before the apply, or the Reviews page shows a calm "could not be loaded" until 273 exists.
+- DRY RUN RE-CHECK (2026-10-17, owner-approved read-only run #264, head `029a7fb`): "Migration dry run" listed EXACTLY `272_referral_invoice_credit.sql` and `273_reviews_collector.sql`; all mutation steps skipped; nothing applied. Re-run `validate_foundation` right before the real apply on deploy day so the list is proven current.
 
 ## Overnight build 2: Reviews collector, Booking v1, QR maker, deploy runbook, funnel walk, scans (2026-10-17; local/pushed; nothing deployed, NO migration applied, no route added)
 
