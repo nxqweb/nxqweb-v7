@@ -359,9 +359,11 @@ export function ClientPortal() {
     window.location.replace("/portal/login");
   }
 
-  async function loadClientPortalData() {
+  // keepNotice: the caller just showed a success message ("submitted") that the reload must not erase. keepForms: a background refresh (for example the chat history)
+  // must not replace what the client is typing in the setup form or reset their package choice and agreement tick.
+  async function loadClientPortalData(options: { keepNotice?: boolean; keepForms?: boolean } = {}) {
     setIsLoading(true);
-    setNotice("");
+    if (!options.keepNotice) setNotice("");
     setErrorMessage("");
     setMessagesVerified(false);
     setFilesVerified(false);
@@ -411,10 +413,12 @@ export function ClientPortal() {
       const matchingPackage =
         Object.entries(packageOptions).find(([, option]) => option.price === Number(loadedClient.monthly_price))?.[0] ||
         "starter";
-      setSelectedPackage(matchingPackage as PackageTier);
+      if (!options.keepForms) setSelectedPackage(matchingPackage as PackageTier);
 
       const setupFields = parseClientSetupReport(loadedClient.notes);
-      if (setupFields.size > 0) {
+      if (setupFields.size > 0 && options.keepForms) {
+        // leave every form exactly as the client has it
+      } else if (setupFields.size > 0) {
         const savedPackage = getSetupReportValue(setupFields, "Selected package");
         const savedPackageTier = Object.entries(packageOptions).find(([, option]) =>
           savedPackage.toLowerCase().includes(option.label.toLowerCase())
@@ -680,7 +684,7 @@ export function ClientPortal() {
       );
       setAgreementAccepted(false);
       setTypedSignature("");
-      await loadClientPortalData();
+      await loadClientPortalData({ keepNotice: true });
     } catch {
       setErrorMessage("Website setup could not be submitted. Nothing was approved, published, or activated.");
     } finally {
@@ -724,7 +728,8 @@ export function ClientPortal() {
       case "style_direction":
         return { label: "Website style direction", value: styleDirection, onChange: setStyleDirection, placeholder: "Example: Premium, dark, modern, trustworthy, local, bold, clean, professional." };
       case "assistant_rules":
-        return { label: "Website assistant rules", value: [aiCanAnswer, aiNeverPromise, escalationRules].filter(Boolean).join("\n\n"), onChange: (value: string) => setAiCanAnswer(value), placeholder: "Tell us what the website assistant can answer, should never promise, and should escalate." };
+        // one box shows all three joined: typing replaces them as ONE text (otherwise every keystroke copied the other two back into the first)
+        return { label: "Website assistant rules", value: [aiCanAnswer, aiNeverPromise, escalationRules].filter(Boolean).join("\n\n"), onChange: (value: string) => { setAiCanAnswer(value); setAiNeverPromise(""); setEscalationRules(""); }, placeholder: "Tell us what the website assistant can answer, should never promise, and should escalate." };
       default:
         return { label: "Other requested information", value: brandNotes, onChange: setBrandNotes, placeholder: "Add the requested missing information here." };
     }
@@ -829,7 +834,7 @@ export function ClientPortal() {
       }
 
       setNotice("Requested update submitted. We will review your answer.");
-      await loadClientPortalData();
+      await loadClientPortalData({ keepNotice: true });
     } catch {
       setErrorMessage("The requested update could not be submitted. The previous setup remains unchanged.");
     } finally {
@@ -872,7 +877,7 @@ export function ClientPortal() {
     try {
       const messageResult = await supabase.rpc("send_client_portal_message", { message_text: text });
       if (messageResult.error) return false;
-      void loadClientPortalData(); // refresh the history in the background; the chat confirms right away
+      void loadClientPortalData({ keepNotice: true, keepForms: true }); // refresh the history in the background; the chat confirms right away and nothing typed is replaced
       return true;
     } catch {
       return false;
@@ -1049,7 +1054,7 @@ export function ClientPortal() {
       setDomainDnsProvider("");
       setDomainNotes("");
       setDomainOwnershipConfirmed(false);
-      await loadClientPortalData();
+      await loadClientPortalData({ keepNotice: true });
     } catch {
       setErrorMessage("The domain request could not be submitted. No DNS or ownership changes were made.");
     } finally {

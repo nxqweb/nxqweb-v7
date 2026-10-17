@@ -26,6 +26,8 @@ export function ClientBusinessDashboard() {
         if (active) { setError("Your Business workspace is temporarily unavailable."); setLoading(false); }
         return;
       }
+      const session = await supabase.auth.getSession();
+      if (!session.data.session) { window.location.replace("/portal/login"); return; }
       const [summaryResult, healthResult, analyticsResult, seoResult, mouseResult, locationsResult] = await Promise.all([
         supabase.rpc("current_client_business_summary"),
         supabase.rpc("current_client_operational_health"),

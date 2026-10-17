@@ -24,6 +24,7 @@ export function ClientRewards() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false); // a failed load must show NO figures (never "$0.00" for a real balance)
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | undefined>(undefined);
 
@@ -34,7 +35,8 @@ export function ClientRewards() {
     setBusy(true); setError("");
     const result = await supabase.rpc("nxq_referral_dashboard");
     setBusy(false); setLoaded(true);
-    if (result.error) { setError(genericRewardsError); return; }
+    if (result.error) { setLoadFailed(true); setError(genericRewardsError); return; }
+    setLoadFailed(false);
     setData((result.data || {}) as Dashboard);
   }, []);
   useEffect(() => { void load(); return () => window.clearTimeout(copiedTimer.current); }, [load]);
@@ -78,7 +80,9 @@ export function ClientRewards() {
       {notice ? <div className="auth-success" role="status">{notice}</div> : null}
       {!loaded ? <div className="empty-state" role="status">Loading your rewards...</div> : null}
 
-      {loaded ? <>
+      {loaded && loadFailed ? <div className="empty-state" role="status" data-testid="rewards-load-failed">Your rewards could not be loaded, so nothing is shown here rather than a wrong number. Press Refresh to try again.</div> : null}
+
+      {loaded && !loadFailed ? <>
         <section className="panel panel-wide" data-testid="rewards-invite">
           <h2>Your invite link</h2>
           {program.enabled ? <>

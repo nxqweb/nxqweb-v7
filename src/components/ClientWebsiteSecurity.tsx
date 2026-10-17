@@ -81,8 +81,8 @@ export function ClientWebsiteSecurity() {
       setLatestCheck(overview.latest_check);
       setActiveIncidents(Number(overview.active_incidents || 0));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown security overview error";
-      setLoadError(`Security overview could not be loaded: ${message}`);
+      void error; // the technical reason is never shown to clients
+      setLoadError("Your security overview could not be loaded right now. Nothing was changed. Please try again shortly.");
     } finally {
       setLoading(false);
     }

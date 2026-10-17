@@ -26,8 +26,12 @@ const steps = [
   },
 ];
 
+// Browsers can block storage (private mode, blocked site data). That must never take the whole portal down: the tour simply shows again next time.
+function readTutorialDone(): boolean { try { return window.localStorage.getItem(tutorialKey) === "true"; } catch { return false; } }
+function markTutorialDone() { try { window.localStorage.setItem(tutorialKey, "true"); } catch { /* the tour will show again next time */ } }
+
 export function ClientPortalTutorialOverlay() {
-  const [open, setOpen] = useState(() => window.localStorage.getItem(tutorialKey) !== "true");
+  const [open, setOpen] = useState(() => readTutorialDone() !== true);
   const [index, setIndex] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +45,7 @@ export function ClientPortalTutorialOverlay() {
     dialog?.querySelector<HTMLElement>("button")?.focus();
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        window.localStorage.setItem(tutorialKey, "true");
+        markTutorialDone();
         setOpen(false);
         return;
       }
@@ -63,7 +67,7 @@ export function ClientPortalTutorialOverlay() {
   if (!open) return null;
 
   function finish() {
-    window.localStorage.setItem(tutorialKey, "true");
+    markTutorialDone();
     setOpen(false);
   }
 

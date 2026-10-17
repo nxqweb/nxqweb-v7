@@ -34,6 +34,9 @@ export function PublicCommerceStorefront() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
+  // The order button sits far below the top banner on a phone: bring a failure into view so a shopper who tapped it can see why nothing happened.
+  useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [error]);
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
@@ -266,7 +269,7 @@ export function PublicCommerceStorefront() {
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
       <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
-      {error ? <div className="auth-error" role="alert">{error}</div> : null}
+      {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
 
       {order ? <section className="panel panel-wide">
         <h2>Order {order.order_number} created</h2>
@@ -350,12 +353,12 @@ export function PublicCommerceStorefront() {
         {cart.length > 0 ? <form className="panel panel-wide" noValidate onSubmit={(event) => { event.preventDefault(); if (orderMode.mode === "email") sendEmailOrder(); else void placeOrder(); }}>
           <h2>Customer details</h2>
           <div className="setup-form-grid">
-            <label><span>Name <em className="required-mark">(required)</em></span><input className="auth-input" id="field-name" autoComplete="name" value={form.name} aria-invalid={fieldErrors.name ? true : undefined} aria-describedby={fieldErrors.name ? "err-name" : undefined} onChange={(e) => setField("name", e.target.value)} />{fieldErrors.name ? <small className="store-field-error" id="err-name">{fieldErrors.name}</small> : null}</label>
-            <label><span>Email <em className="required-mark">(required)</em></span><input className="auth-input" id="field-email" type="email" autoComplete="email" value={form.email} aria-invalid={fieldErrors.email ? true : undefined} aria-describedby={fieldErrors.email ? "err-email" : undefined} onChange={(e) => setField("email", e.target.value)} />{fieldErrors.email ? <small className="store-field-error" id="err-email">{fieldErrors.email}</small> : null}</label>
-            <label><span>Phone <em className="optional-tag">(optional)</em></span><input className="auth-input" type="tel" autoComplete="tel" value={form.phone} onChange={(e) => setField("phone", e.target.value)} /></label>
-            <label><span>Shipping address {needsShipping ? <em className="required-mark">(required)</em> : <em className="optional-tag">(not needed for pickup items)</em>}</span><input className="auth-input" id="field-address" autoComplete="street-address" value={form.address} aria-invalid={fieldErrors.address ? true : undefined} aria-describedby={fieldErrors.address ? "err-address" : undefined} onChange={(e) => setField("address", e.target.value)} />{fieldErrors.address ? <small className="store-field-error" id="err-address">{fieldErrors.address}</small> : null}</label>
+            <label><span>Name <em className="required-mark">(required)</em></span><input className="auth-input" id="field-name" autoComplete="name" maxLength={160} value={form.name} aria-invalid={fieldErrors.name ? true : undefined} aria-describedby={fieldErrors.name ? "err-name" : undefined} onChange={(e) => setField("name", e.target.value)} />{fieldErrors.name ? <small className="store-field-error" id="err-name">{fieldErrors.name}</small> : null}</label>
+            <label><span>Email <em className="required-mark">(required)</em></span><input className="auth-input" id="field-email" type="email" autoComplete="email" maxLength={254} value={form.email} aria-invalid={fieldErrors.email ? true : undefined} aria-describedby={fieldErrors.email ? "err-email" : undefined} onChange={(e) => setField("email", e.target.value)} />{fieldErrors.email ? <small className="store-field-error" id="err-email">{fieldErrors.email}</small> : null}</label>
+            <label><span>Phone <em className="optional-tag">(optional)</em></span><input className="auth-input" type="tel" autoComplete="tel" maxLength={80} value={form.phone} onChange={(e) => setField("phone", e.target.value)} /></label>
+            <label><span>Shipping address {needsShipping ? <em className="required-mark">(required)</em> : <em className="optional-tag">(not needed for pickup items)</em>}</span><input className="auth-input" id="field-address" autoComplete="street-address" maxLength={1000} value={form.address} aria-invalid={fieldErrors.address ? true : undefined} aria-describedby={fieldErrors.address ? "err-address" : undefined} onChange={(e) => setField("address", e.target.value)} />{fieldErrors.address ? <small className="store-field-error" id="err-address">{fieldErrors.address}</small> : null}</label>
           </div>
-          <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+          <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
           {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
           <button className="wide-btn" disabled={busy} type="submit">{orderMode.mode === "email" ? "Email my order" : busy ? "Creating order..." : "Place order and continue to payment"}</button>
         </form> : null}

@@ -33,7 +33,7 @@ export function StoreProductDialog({ product, currency, onClose, onAdd, viewOnly
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(event) => { if (event.target === ref.current) ref.current?.close(); }}
-      onKeyDown={(event) => { if (event.key === "ArrowRight") go(1); if (event.key === "ArrowLeft") go(-1); }}
+      onKeyDown={(event) => { if ((event.target as HTMLElement).closest("input, select, textarea")) return; /* arrows belong to the option radios there */ if (event.key === "ArrowRight") go(1); if (event.key === "ArrowLeft") go(-1); }}
     >
       <div className="store-dialog-card">
         <button type="button" className="store-dialog-close icon-btn" onClick={() => ref.current?.close()} aria-label="Close"><X size={18} /></button>

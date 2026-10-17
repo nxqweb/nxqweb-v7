@@ -150,6 +150,13 @@ const checkoutSafe: Array<[RegExp, string | null]> = [
   [/^Checkout session is invalid\. Please refresh and try again\.$/i, null],
   [/^Storefront (is not available\.|not found)$/i, "This store is not taking orders right now."],
   [/does not have a direct payment method available/i, "This store cannot take orders right now. Please contact the shop."],
+  // The database's own limits, in plain words (the shopper form also stops these before sending).
+  [/160 characters or fewer/i, "Your name is too long (160 characters at most)."],
+  [/phone must be 80 characters or fewer/i, "Your phone number is too long (80 characters at most)."],
+  [/Order note must be 2000 characters or fewer/i, "Your order note is too long (2000 characters at most)."],
+  [/Shipping address is invalid or too large/i, "Your address is too long. Please shorten it."],
+  [/Too many recent order attempts/i, "Several orders were tried with this email recently. Please wait a little and try again."],
+  [/too many order attempts right now/i, "This store is very busy right now. Please try again in a few minutes."],
 ];
 export const genericCheckoutError = "We could not place your order. Please check your details and try again.";
 export function friendlyCheckoutError(message: string | null | undefined): string {

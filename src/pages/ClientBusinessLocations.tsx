@@ -67,13 +67,14 @@ export function ClientBusinessLocations() {
 
   async function enableAddon() {
     if (!supabase || addonBusy) return;
+    if (!window.confirm("Add the paid location add-on? This adds a recurring monthly charge to your NXQX-Web bill.")) return;
     setAddonBusy(true);
     setError("");
     setMessage("");
     const result = await supabase.rpc("current_client_enable_location_addon");
     setAddonBusy(false);
     if (result.error) {
-      setError(result.error.message || "The location add-on could not be enabled.");
+      setError("The location add-on could not be enabled right now. Nothing was changed. Please try again or contact us.");
       return;
     }
     const data = result.data as { message?: string } | null;
@@ -83,13 +84,14 @@ export function ClientBusinessLocations() {
 
   async function cancelAddon() {
     if (!supabase || addonBusy) return;
+    if (!window.confirm("Cancel the paid location add-on? It stops adding to your bill, and extra locations may stop working.")) return;
     setAddonBusy(true);
     setError("");
     setMessage("");
     const result = await supabase.rpc("current_client_cancel_location_addon");
     setAddonBusy(false);
     if (result.error) {
-      setError(result.error.message || "The location add-on could not be cancelled.");
+      setError("The location add-on could not be cancelled right now. Nothing was changed. Please try again or contact us.");
       return;
     }
     const data = result.data as { message?: string } | null;
@@ -99,13 +101,14 @@ export function ClientBusinessLocations() {
 
   async function closeLocation(locationId: string) {
     if (!supabase || closingId) return;
+    if (!window.confirm("Close this location? Its data is kept, but it stops being active.")) return;
     setClosingId(locationId);
     setError("");
     setMessage("");
     const result = await supabase.rpc("current_client_close_location", { target_location_id: locationId });
     setClosingId(null);
     if (result.error) {
-      setError(result.error.message || "This location could not be closed.");
+      setError("This location could not be closed right now. Nothing was changed. Please try again.");
       return;
     }
     setMessage("Location closed. Its data was not deleted.");

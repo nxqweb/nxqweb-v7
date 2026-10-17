@@ -98,7 +98,7 @@ export function ClientPlanManagement() {
       .maybeSingle();
 
     if (clientResult.error || !clientResult.data) {
-      setError(`Plan load failed: ${clientResult.error?.message || "Client workspace was not found."}`);
+      setError("Your plan could not be loaded right now. Nothing was changed. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -131,7 +131,7 @@ export function ClientPlanManagement() {
     const relatedError = familyResult.error || tierResult.error || historyResult.error;
 
     if (relatedError) {
-      setError(`Plan details failed to load: ${relatedError.message}`);
+      setError("Some plan details could not be loaded right now. Nothing was changed. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -256,7 +256,7 @@ export function ClientPlanManagement() {
     setSubmitting(false);
 
     if (result.error) {
-      setError(`Plan change request failed: ${result.error.message}`);
+      setError("Your plan change request could not be sent right now. Nothing was changed. Please try again shortly.");
       return;
     }
 

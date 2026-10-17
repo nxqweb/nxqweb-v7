@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BadgeCheck, ChevronDown, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -81,6 +81,7 @@ export function ClientCommerceOrders() {
   const summary = data?.summary || {};
   const sortedOrders = useMemo(() => [...orders].sort((a, b) => Date.parse(b.placed_at) - Date.parse(a.placed_at)), [orders]);
 
+  const serverDrafts = useRef<Record<string, { status: string; tracking: string; note: string }>>({});
   async function loadOrders() {
     setLoading(true);
     setVerified(false);
@@ -101,15 +102,22 @@ export function ClientCommerceOrders() {
       const next = (result.data as OrdersResult) || { orders: [], summary: {} };
       setData(next);
       setVerified(true);
-      const nextDrafts: Record<string, { status: string; tracking: string; note: string }> = {};
+      // What the server holds now, per order. An order whose draft the owner has changed since the last load keeps what they typed (a refresh or saving ANOTHER
+      // order must never wipe a tracking number or note that is still being typed); untouched drafts follow the server.
+      const fresh: Record<string, { status: string; tracking: string; note: string }> = {};
       for (const order of next.orders || []) {
-        nextDrafts[order.id] = {
-          status: order.fulfillment_status,
-          tracking: order.tracking_number || "",
-          note: order.fulfillment_note || "",
-        };
+        fresh[order.id] = { status: order.fulfillment_status, tracking: order.tracking_number || "", note: order.fulfillment_note || "" };
       }
-      setDrafts(nextDrafts);
+      const previousServer = serverDrafts.current;
+      serverDrafts.current = fresh;
+      setDrafts((current) => {
+        const merged: Record<string, { status: string; tracking: string; note: string }> = {};
+        for (const [id, value] of Object.entries(fresh)) {
+          const typed = current[id]; const before = previousServer[id];
+          merged[id] = typed && before && (typed.status !== before.status || typed.tracking !== before.tracking || typed.note !== before.note) ? typed : value;
+        }
+        return merged;
+      });
     }
     setLoading(false);
   }

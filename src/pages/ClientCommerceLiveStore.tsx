@@ -48,13 +48,18 @@ export function ClientCommerceLiveStore() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load({ initial: true, resetFields: true }); }, []);
 
-  async function load() {
-    setLoading(true);
-    setVerified(false);
-    setError("");
-    setData(null);
+  // initial: the first load shows "Loading..." and starts clean. A refresh after a save or a product toggle keeps the page on screen (no flash, scroll position kept).
+  // resetFields: only true when the values on screen should be replaced by what the server now holds (first load, or right after saving the payment settings).
+  // A refresh after something else (a product toggle, the ordering choice) must NEVER replace a payment link or store name the owner is still typing.
+  async function load({ initial, resetFields }: { initial: boolean; resetFields: boolean }) {
+    if (initial) {
+      setLoading(true);
+      setVerified(false);
+      setError("");
+      setData(null);
+    }
 
     if (!isSupabaseConfigured || !supabase) {
       setError("Commerce storefront settings are temporarily unavailable. No storefront changes were made.");
@@ -77,11 +82,13 @@ export function ClientCommerceLiveStore() {
 
     const next = result.data as LiveSettings;
     setData(next);
-    setStoreName(next.store_name || "");
-    setStripePaymentLink(next.stripe_payment_link || "");
-    setPaypalUrl(next.paypal_url || "");
-    setVenmoUrl(next.venmo_url || "");
-    setPaymentNote(next.payment_note || "");
+    if (resetFields) {
+      setStoreName(next.store_name || "");
+      setStripePaymentLink(next.stripe_payment_link || "");
+      setPaypalUrl(next.paypal_url || "");
+      setVenmoUrl(next.venmo_url || "");
+      setPaymentNote(next.payment_note || "");
+    }
     setVerified(true);
     setLoading(false);
     // The About and contact form is optional: if it cannot load, the rest of the page still works.
@@ -144,7 +151,7 @@ export function ClientCommerceLiveStore() {
     else {
       setOrderMode(orderChoice);
       setMessage(orderChoice === "menu" ? (makeLive ? "Your menu is open. Customers call or email you to order." : "Saved. Your menu will show once your store is open.") : orderChoice === "email" ? (makeLive ? "Your store is open. Customers send you their orders by email." : "Saved. Customers will send you their orders by email once your store is open.") : "Saved. Customers will pay online with your payment link.");
-      await load();
+      await load({ initial: false, resetFields: false });
     }
     setBusy("");
   }
@@ -202,7 +209,7 @@ export function ClientCommerceLiveStore() {
     if (!result.error && (orderMode === "email" || orderMode === "menu") && data.status === "active" && !makeLive) {
       reopened = true;
       const reopen = await supabase.rpc("save_my_store_order_mode", { order_mode_value: orderMode, make_live: true });
-      if (reopen.error) { setError("Saved, but your store went back to private. Press Open my store in How do customers order?"); setBusy(""); await load(); return; }
+      if (reopen.error) { setError("Saved, but your store went back to private. Press Open my store in How do customers order?"); setBusy(""); await load({ initial: false, resetFields: true }); return; }
     }
 
     if (result.error) {
@@ -225,7 +232,7 @@ export function ClientCommerceLiveStore() {
           ? "Saved. Your store is still open."
           : "Saved. Your store stays private until you press Open storefront."
     );
-    await load();
+    await load({ initial: false, resetFields: true });
     setBusy("");
   }
 
@@ -260,7 +267,7 @@ export function ClientCommerceLiveStore() {
     }
 
     setMessage(`${product.name} is now ${makingLive ? "visible" : "hidden"} on the storefront.`);
-    await load();
+    await load({ initial: false, resetFields: false });
     setBusy("");
   }
 
@@ -298,8 +305,8 @@ export function ClientCommerceLiveStore() {
           {orderChoice === "menu" ? <p className="subtle">Customers are told to contact you at your saved contact email or phone{profile.contactEmail.trim() || profile.contactPhone.trim() ? <>: <strong>{[profile.contactPhone.trim(), profile.contactEmail.trim()].filter(Boolean).join(" or ")}</strong></> : " (type them in About and contact below first)"}.</p> : null}
           {orderChoice === "email" ? <p className="subtle">Orders are sent to your contact email{profile.contactEmail.trim() ? <>: <strong>{profile.contactEmail.trim()}</strong></> : " (type it in About and contact below first)"}. Nothing is reserved in your stock until you confirm an order.</p> : null}
           <div className="settings-grid">
-            <button className="wide-btn" disabled={busy === "mode"} onClick={() => void saveOrderMode(false)} type="button">{busy === "mode" ? "Saving..." : "Save ordering choice"}</button>
-            {orderChoice === "email" || orderChoice === "menu" ? <button className="wide-btn" disabled={busy === "mode"} onClick={() => void saveOrderMode(true)} type="button">{busy === "mode" ? "Saving..." : orderChoice === "menu" ? "Open my menu" : "Open my store"}</button> : null}
+            <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void saveOrderMode(false)} type="button">{busy === "mode" ? "Saving..." : "Save ordering choice"}</button>
+            {orderChoice === "email" || orderChoice === "menu" ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void saveOrderMode(true)} type="button">{busy === "mode" ? "Saving..." : orderChoice === "menu" ? "Open my menu" : "Open my store"}</button> : null}
           </div>
         </section> : null}
 
@@ -317,8 +324,8 @@ export function ClientCommerceLiveStore() {
             </>}
           </div>
           <div className="settings-grid">
-            <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(false)} type="button">{busy === "settings" ? "Saving..." : "Save private draft"}</button>
-            {orderMode === "email" || orderMode === "menu" ? null : <button className="wide-btn" disabled={busy === "settings"} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>}
+            <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void save(false)} type="button">{busy === "settings" ? "Saving..." : "Save private draft"}</button>
+            {orderMode === "email" || orderMode === "menu" ? null : <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>}
           </div>
           {orderMode === "email" || orderMode === "menu" ? null : <p className="subtle" style={{ marginTop: ".75rem" }}>How amounts work: a Stripe Payment Link has its price set inside Stripe, and a store link cannot change it. If your orders can have different totals, create the link in Stripe with the option that lets customers choose what to pay (if your Stripe account offers it); customers are told the exact amount to enter. PayPal.me and Venmo links get each order's exact total added automatically. Every order number appears in your Orders page so you can match payments.</p>}
           <p className="subtle" style={{ marginTop: ".75rem" }}>Never enter a Stripe secret key, webhook secret, password, bank account, login code, or other protected credential here. Only a public Stripe Payment Link (https://buy.stripe.com/...) belongs in this field.</p>
