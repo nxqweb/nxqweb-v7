@@ -16,7 +16,7 @@ or workflow inputs. The owner enters secrets in Supabase (Edge function secrets)
 
 **The gap that matters:** the money-back step does not exist yet. The database can account for credits, but nothing sends a credit to Stripe.
 
-### Design options for "give them their money back" (owner decision, not built)
+### Design options for "give them their money back" (OWNER CHOSE OPTION A on 2026-10-17)
 - **Option A (recommended): negative invoice line on each new draft invoice.** On Stripe's `invoice.created` event (invoice still draft for about an
   hour), NXQX calls `nxq_apply_referral_credit` (idempotent per invoice id, enforces the $10 floor), then adds a negative invoice item through the Stripe API
   with an idempotency key. Exact per invoice. Needs: `STRIPE_SECRET_KEY`, an Edge function change, a small database function to give the credit back if the Stripe call
@@ -24,6 +24,19 @@ or workflow inputs. The owner enters secrets in Supabase (Edge function secrets)
 - **Option B: Stripe customer balance credit.** Grant a credit balance that Stripe applies by itself to the next invoice. Simpler timing, but the $10 floor is
   not enforced by Stripe, so NXQX would have to grant only (plan price minus $10) per cycle and would have to track plan changes.
 - **Either way:** add a scheduled call to `nxq_mature_referral_credits`, and keep the program OFF until the test-mode proof passes.
+
+### Option A: what is built (local only) and what is left
+Built and tested without Stripe or any key:
+- `supabase/functions/_shared/referral-invoice-credit.ts`: the decisions and the order of steps, run against a pretend database and a pretend Stripe in `scripts/test-referral-invoice-credit.mjs` (`npm run test:referral-credit`, also in `npm run test:store` so GitHub CI runs it). Rules proven: only DRAFT, USD, renewal (`subscription_cycle`) invoices of at least $10; never below the $10 protected minimum (checked in code and in the database); never a second credit line on the same invoice; credit used up in the database first; handed back ONLY when Stripe definitely refuses (a 4xx answer); if the answer is unknown (network error, timeout, 5xx, 408/409/429) it is NOT handed back, because Stripe may have added the line, so the owner checks; the key only ever appears in the request header.
+- Draft migration `docs/drafts/migrations/07_referral_invoice_credit.sql` (+ test): `nxq_reserve_referral_credit_for_invoice` (does nothing while the program is OFF; reuses the existing 229 function so the floor and per-invoice idempotency stay) and `nxq_release_referral_credit_for_invoice` (restores the credit with an audit trail and lets the invoice be retried). Service role only. Local harness 34/34 with four planted bugs caught.
+- Due rewards mature on their own: the plan is to call `nxq_mature_referral_credits` at the start of every credit attempt, so no scheduler is needed.
+
+NOT done yet, and why:
+1. **Wiring into `ingest-stripe-webhook`** (handle `invoice.created`, behind `NXQ_REFERRAL_CREDITS_ENABLED=true`, billing enabled and the program ON). The repo's CI rule requires every database function the app calls to exist in a real migration, so this waits for the owner to approve promoting draft 07 (to migration 272).
+2. A way to show the owner a "credit uncertain, check Stripe" alert. For now the webhook would return an error and write `activity_logs`; surfacing it in the owner exception center is a follow-up.
+3. Real proof in Stripe TEST mode (needs the card, the account and the keys).
+
+Known limit (product, not code): a new subscription's FIRST invoice is created and charged at once, so there is no draft window to add a line to. A friend's $10 first-invoice discount is therefore applied to their next renewal invoice, unless the owner gives a Stripe coupon by hand at signup.
 
 ## 2. Stripe: ready vs not
 | Piece | Status |
@@ -53,7 +66,6 @@ or workflow inputs. The owner enters secrets in Supabase (Edge function secrets)
 
 ## 5. What can be done now without a card
 - Referral link capture (done today).
-- Writing and testing the credit functions against a pretend Stripe (stubbed requests), so plug-in day is only "add the key and prove it".
-- The scheduled maturation job (draft).
-- Owner alerts for failed credit applications.
+- DONE 2026-10-17: the credit logic and database functions tested against a pretend Stripe (see Option A above), so plug-in day is only "add the key and prove it".
+- Still open: the webhook wiring (needs draft 07 promoted) and an owner alert for "credit uncertain".
 Everything involving a migration or a deploy stays a draft until the owner approves it.

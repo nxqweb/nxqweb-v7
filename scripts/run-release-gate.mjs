@@ -45,6 +45,7 @@ run(npm, ["run", "test:email-orders"]);
 run(npm, ["run", "test:portal-help"]);
 run(npm, ["run", "test:menu-mode"]);
 run(npm, ["run", "test:referral-link"]);
+run(npm, ["run", "test:referral-credit"]);
 run(npm, ["run", "test:store-profile"]);
 run(npm, ["run", "test:client-wording"]);
 run(npm, ["run", "test:links"]);
