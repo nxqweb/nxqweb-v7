@@ -159,3 +159,6 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .help-term-btn:hover, .help-term-btn:focus-visible { opacity: 1; outline: 2px solid currentColor; outline-offset: 1px; }
 .help-term-text { display: block; margin: 0.35rem 0; padding: 0.6rem 0.8rem; border-radius: 12px; background: rgba(255, 255, 255, 0.08); font-size: 0.9rem; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.4; max-width: 46ch; }
 .field-hint { display: block; font-weight: 400; text-transform: none; letter-spacing: normal; opacity: 0.8; font-size: 0.82rem; margin-top: 0.15rem; }
+.rewards-steps { margin: 0.5rem 0 1rem; padding-left: 1.25rem; line-height: 1.6; }
+.rewards-steps li { margin-bottom: 0.35rem; }
+.rewards-meta { display: block; margin-top: 0.2rem; }

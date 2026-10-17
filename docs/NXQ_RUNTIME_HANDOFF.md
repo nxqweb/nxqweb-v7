@@ -181,6 +181,12 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Rewards page rewritten in plain words (2026-10-17; local/pushed, NOT deployed)
+
+- `/client/rewards` (`src/pages/ClientRewards.tsx`, new `src/lib/rewardsCopy.ts`): three-step "how it works" using the program's real numbers, Copy link (with feedback and a failure message) and Share, plain credit labels (Ready to use / Waiting for review / Already used), friends as sentences, and the rare parts tucked away (code entry, Founding Business Grant, credit history). Removed: the per-referral "risk review N/100" (it exposed anti-fraud scoring to clients) and raw database error text (now a whitelist of kind sentences). Same three database calls and argument names.
+- `scripts/test-rewards-page.mjs` (in `npm run test:store`, now 23 files; six planted bugs caught) and real-browser `scripts/manual/rewards-e2e.mjs` (axe 0 violations, no sideways scroll at 390px).
+- Still open: a lawyer-reviewed referral terms page, an owner-visible alert for "credit uncertain" (today it is only an `activity_logs` row), and the Founding Grant wording is NOT legal-reviewed.
+
 ## Referral link fixed + Stripe/AI/referral readiness audit (2026-10-17; local/pushed, nothing deployed)
 
 - **Fixed:** the referral share link `/portal/signup?ref=CODE` was never read by the signup page. Now `src/lib/referralCode.ts`, `PortalSignup.tsx` and a silent `src/components/ReferralClaimer.tsx` (mounted on `/client*`) remember the code, store it on the new account, and apply it once after sign-in with the existing `nxq_claim_referral`. `scripts/test-referral-link.mjs` (in `npm run test:store`, now 21 files) with planted-bug controls; real-browser check `scripts/manual/referral-e2e.mjs` passes.

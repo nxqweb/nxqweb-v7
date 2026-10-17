@@ -35,6 +35,7 @@
     "test:menu-mode": "node scripts/test-menu-mode.mjs",
     "test:referral-link": "node scripts/test-referral-link.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
+    "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:store-profile": "node scripts/test-store-profile.mjs",
     "test:client-wording": "node scripts/test-client-wording.mjs",
     "test:links": "node scripts/test-link-integrity.mjs",
