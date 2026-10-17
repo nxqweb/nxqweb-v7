@@ -34,6 +34,8 @@
     "test:portal-help": "node scripts/test-portal-help.mjs",
     "test:menu-mode": "node scripts/test-menu-mode.mjs",
     "test:referral-link": "node scripts/test-referral-link.mjs",
+    "test:reviews": "node scripts/test-reviews.mjs",
+    "test:qr-code": "node scripts/test-qr-code.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",
