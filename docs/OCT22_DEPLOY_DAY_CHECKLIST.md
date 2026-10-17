@@ -29,7 +29,7 @@ Review deployments -> nxq-staging -> Approve and deploy; Claude never does).
 ## The one site deploy (C then O)
 | # | Step | Notes |
 |---|---|---|
-| 2.1 | C: run `npm run test:ci-parity` and `npm run test:store`, confirm the branch tip on origin equals local HEAD | All green before anything is published |
+| 2.1 | C: run `npm run preflight` (read-only: branch tip on origin equals local HEAD, clean tree, pending migrations are exactly 272 + 273, whether `deploy_functions` is needed, and a production-style rehearsal of ~36 pages under Netlify's real security headers), then `npm run test:ci-parity` and `npm run test:store` | All green before anything is published. If preflight says a migration other than 272/273 is pending, STOP and ask |
 | 2.2 | O: tell Claude "go, one deploy" | One production deploy costs 15 credits |
 | 2.3 | O: publish the branch build (Netlify: the one-time "Activate builds" for the safe branch, then publish that deploy) | Write down the credits after; expect about 285 |
 

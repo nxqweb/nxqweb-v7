@@ -17,7 +17,7 @@ for (const width of [390, 1280]) {
     ok(`${width} ${path} shows its own page, not the home page`, (await page.locator("h1").first().innerText()).trim() === h1);
     ok(`${width} ${path} tab title is set`, (await page.title()).startsWith(h1));
     ok(`${width} ${path} draft notice ${draft ? "shown" : "absent"}`, (await page.getByTestId("legal-draft-notice").count()) === (draft ? 1 : 0));
-    await page.addScriptTag({ path: axePath });
+    await page.evaluate((await import("node:fs")).readFileSync(axePath, "utf8")); // evaluate (not an inline script tag) so a production Content-Security-Policy cannot block the scanner
     const v = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.map((x) => x.id + ":" + x.nodes.length));
     ok(`${width} ${path} has no accessibility violations`, v.length === 0, v.join(","));
     ok(`${width} ${path} has no sideways scroll`, (await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 1);

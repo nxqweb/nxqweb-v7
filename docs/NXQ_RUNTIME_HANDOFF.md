@@ -181,6 +181,11 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Deploy-day rehearsal tooling (2026-10-17; local/pushed; nothing deployed)
+
+- `npm run preflight` (`scripts/preflight-deploy-day.mjs`, read-only): branch tip on origin equals local HEAD, clean tree, pending migrations exactly 272 + 273 (edit `expectedPendingMigrations`/`lastAppliedMigration`/`lastFunctionsDeploy` at the top when the plan changes), whether `deploy_functions` is needed (yes today: commit 8a6559e touched the webhook after run #263), and a production-style rehearsal.
+- Rehearsal = a production build against a mocked Supabase, served by `scripts/manual/serve-dist.mjs` with the exact headers from `netlify.toml` (the dev server applies none of them), then `scripts/manual/prod-rehearsal.mjs` opens 36 public and signed-in pages (planted bug: an inline script is caught as a CSP violation). Result 2026-10-17: 36/36 clean; funnel, reviews-route, referral, rewards, info-pages, portal-help, store and store-email walkthroughs and axe scans also pass against the production build. Finding: the old axe loader (`addScriptTag`) is blocked by the production CSP, which is correct; the scripts now use `evaluate`.
+
 ## Owner approved the candle client's Commerce intake (2026-10-17, owner action in the owner portal; read from screenshots)
 
 - The owner pressed APPROVE on "Commerce intake ready for review: Light of the world candles and soap" (confirm dialog "This will update the approval request in Supabase"). The dashboard then showed "No completed intake is waiting" and one more "accepted" row. Earlier notes said "do not approve this"; that was a caution, and the owner has now decided. Do not repeat the old warning.

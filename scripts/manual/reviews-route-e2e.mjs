@@ -47,7 +47,8 @@ await page.getByTestId("review-card").waitFor();
 const save = calls.find((c) => c.fn === "save_my_review_settings");
 ok("saving calls save_my_review_settings with the exact argument names the SQL defines", save && save.body.review_url_value === "https://g.page/r/CabcDEF/review" && save.body.business_name_value === "Light of the World Candles" && Object.keys(save.body).sort().join(",") === "business_name_value,review_url_value");
 ok("the card shows the business name and a labelled QR code", /Light of the World Candles/.test((await page.getByTestId("review-card").textContent()) || "") && (await page.getByTestId("review-qr").getAttribute("aria-label")) !== null);
-if (process.env.AXE) { await page.waitForTimeout(1500); await page.addScriptTag({ path: process.env.AXE }); const v = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.map((x) => `${x.impact} ${x.id}`)); ok(`accessibility scan finds no violations${v.length ? `: ${v.join("; ")}` : ""}`, v.length === 0); }
+// (the scanner is loaded with evaluate, not an inline script tag, so a production Content-Security-Policy cannot block it)
+if (process.env.AXE) { await page.waitForTimeout(1500); await page.evaluate((await import("node:fs")).readFileSync(process.env.AXE, "utf8")); const v = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.map((x) => `${x.impact} ${x.id}`)); ok(`accessibility scan finds no violations${v.length ? `: ${v.join("; ")}` : ""}`, v.length === 0); }
 ({ page } = await open("/client", true));
 ok("the client portal has a Get reviews link to the page", (await page.getByRole("link", { name: "Get reviews" }).count()) === 1 && (await page.getByRole("link", { name: "Get reviews" }).getAttribute("href")) === "/client/reviews");
 ok("no page errors happened", errors.length === 0 || (console.log(errors.join("\n")), false));

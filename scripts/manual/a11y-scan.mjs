@@ -34,7 +34,7 @@ for (const { path, signedIn, width, label } of pages) {
   await page.route("**/auth/v1/**", (route) => route.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(route.request().url().includes("/user") ? user : {}) }));
   await page.goto(base + path, { waitUntil: "networkidle" }).catch(() => {});
   await page.waitForTimeout(500);
-  await page.addScriptTag({ path: axePath });
+  await page.evaluate((await import("node:fs")).readFileSync(axePath, "utf8")); // evaluate (not an inline script tag) so a production Content-Security-Policy cannot block the scanner
   const res = await page.evaluate(async () => { const r = await window.axe.run(document, { resultTypes: ["violations"] }); return r.violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.length, sample: v.nodes.slice(0, 2).map((n) => n.target.join(" ") + " :: " + (n.failureSummary || "").split("\n")[1]) })); });
   console.log(`\n== ${label || path} @${width}px: ${res.length} violation type(s)`);
   for (const v of res) console.log(`  [${v.impact}] ${v.id} x${v.nodes} - ${v.help}\n      ${v.sample.join("\n      ")}`);

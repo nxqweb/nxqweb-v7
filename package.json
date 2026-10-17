@@ -36,6 +36,7 @@
     "test:referral-link": "node scripts/test-referral-link.mjs",
     "test:reviews": "node scripts/test-reviews.mjs",
     "test:qr-code": "node scripts/test-qr-code.mjs",
+    "preflight": "node scripts/preflight-deploy-day.mjs",
     "test:booking": "node scripts/test-booking.mjs",
     "test:booking-time": "node scripts/test-booking-time.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
