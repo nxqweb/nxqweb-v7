@@ -51,6 +51,7 @@ run(npm, ["run", "test:booking"]);
 run(npm, ["run", "test:booking-time"]);
 run(npm, ["run", "test:membership"]);
 run(npm, ["run", "test:smoke-script"]);
+run(npm, ["run", "test:deploy-day"]);
 run(npm, ["run", "test:referral-credit"]);
 run(npm, ["run", "test:rewards-page"]);
 run(npm, ["run", "test:info-pages"]);

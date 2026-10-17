@@ -42,6 +42,8 @@
     "test:membership": "node scripts/test-membership.mjs",
     "test:smoke-script": "node scripts/smoke-live-site.mjs --self-test",
     "smoke": "node scripts/smoke-live-site.mjs",
+    "ready": "node scripts/deploy-day-ready.mjs",
+    "test:deploy-day": "node scripts/test-deploy-day-ready.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",

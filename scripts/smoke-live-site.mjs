@@ -46,6 +46,8 @@ export async function smoke(base, storeSlug, get) {
   return results;
 }
 
+// Node's fetch ignores HTTPS_PROXY unless NODE_USE_ENV_PROXY=1 (Node 22.21+/24+). On a normal computer you do not need it. Behind a proxy, run it as:
+//   NODE_USE_ENV_PROXY=1 node scripts/smoke-live-site.mjs <address>
 const realGet = async (url) => {
   const res = await fetch(url, { redirect: "follow", headers: { "user-agent": "nxq-smoke/1" } });
   return { status: res.status, headers: Object.fromEntries([...res.headers.entries()].map(([k, v]) => [k.toLowerCase(), v])), text: await res.text() };
@@ -90,7 +92,7 @@ if (args[0] === "--self-test") await selfTest();
 else if (import.meta.url === `file://${process.argv[1]}`) {
   const [base, slug] = args;
   if (!base || !/^https?:\/\//.test(base)) { console.log("Usage: node scripts/smoke-live-site.mjs <https://site address> [store-slug]   (or --self-test)"); process.exit(2); }
-  const results = await smoke(base, slug, realGet).catch((e) => { console.log(`FAIL  could not reach ${base}: ${e.message}`); process.exit(1); });
+  const results = await smoke(base, slug, realGet).catch((e) => { console.log(`FAIL  could not reach ${base}: ${e.message}${e.cause?.message ? ` (${e.cause.message})` : ""}. Check the address, your internet, or (behind a proxy) run with NODE_USE_ENV_PROXY=1.`); process.exit(1); });
   for (const r of results) console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.name}${r.ok || !r.detail ? "" : ` - ${r.detail}`}`);
   const failed = results.filter((r) => !r.ok).length;
   console.log(failed ? `\n${failed} of ${results.length} smoke check(s) failed.` : `\nAll ${results.length} smoke checks passed.`);
