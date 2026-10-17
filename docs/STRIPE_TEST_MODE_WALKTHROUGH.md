@@ -65,4 +65,5 @@ use your browser: Chrome, `chrome://flags`, search "Auto Dark Mode for Web Conte
 - Webhook + secrets + customer link + $10 invoice paid with 4242: `invoice.paid` delivered **200** (`ok:true`, new event id), `invoice.created` **202** (ignored on purpose while referral credits are off). Error rate 0%.
 - Easiest way to make events without a subscription: Customers, your test customer, **Create invoice**, add a $10 item, Review invoice, **Finalize only**, open the payment page link in a new tab, pay with a test card (untick "Save my information", it asks for a phone number otherwise).
 - Deploy tip: `deploy_functions` can fail with `toomanyrequests: Data limit exceeded` from public.ecr.aws (shared runner throttle). Nothing changes; wait ~30 minutes and "Re-run all jobs".
-- Not yet run: failed payment (4000 0000 0000 0341), refund, dispute.
+- Failed payment (4000 0000 0000 0341) also run: `invoice.payment_failed` 200, test client went **past due** (14 grace days, Frozen at: Not set), candle client unchanged, 0 freeze decisions.
+- Not yet run: refund, dispute, and paying the failed invoice to restore the client to active.
