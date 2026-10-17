@@ -1,7 +1,7 @@
 // Offline test: referral links. The shared link (/portal/signup?ref=CODE) must actually be read at signup, stored with the new account, and applied
 // once after sign-in; bad codes are ignored, and the retry/finished decision matches the database's real messages.
 import fs from "node:fs";
-import { claimOutcome, claimedReferralKey, normalizeReferralCode, pendingReferralKey, referralCodeFromSearch, referralCodeFromUser } from "../src/lib/referralCode.ts";
+import { claimOutcome, claimedReferralKey, isFreshStamp, isNewAccount, newAccountMaxAgeMs, normalizeReferralCode, pendingReferralAtKey, pendingReferralKey, pendingReferralMaxAgeMs, referralCodeFromSearch, referralCodeFromUser } from "../src/lib/referralCode.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -34,6 +34,17 @@ check("the claimer calls the existing database function with its real argument n
 check("a code is applied once per person: a done flag is checked first and set after success or a final answer", /claimedReferralKey\(user\.id\)\)\) return/.test(claimer) && /!result\.error \|\| claimOutcome\(result\.error\.message\) === "done"/.test(claimer) && claimedReferralKey("u1") === "nxq-referral-done-v1-u1" && pendingReferralKey === "nxq-pending-referral-v1");
 check("two overlapping runs cannot both claim (guard flag, released at the end)", /let attempting = false;/.test(claimer) && /if \(attempting \|\| /.test(claimer) && /finally \{ attempting = false; \}/.test(claimer));
 check("failures stay silent and never block the page", /catch \{ \/\* try again on a later visit \*\/ \}/.test(claimer));
+
+// ---- a remembered code cannot leak to a different person on a shared computer
+const day = 24 * 60 * 60 * 1000;
+const now = Date.UTC(2026, 9, 20);
+const lib = read("src/lib/referralCode.ts");
+const portal = read("src/pages/ClientPortal.tsx");
+check("a browser-remembered code expires (fresh stamp ok, old, missing, junk and future stamps are refused)", isFreshStamp(now - day, now) && !isFreshStamp(now - pendingReferralMaxAgeMs - 1, now) && !isFreshStamp(null, now) && !isFreshStamp("abc", now) && !isFreshStamp(now + 10 * day, now) && !isFreshStamp(0, now));
+check("the browser-remembered code only counts for a brand-new account", isNewAccount(new Date(now - day).toISOString(), now) && !isNewAccount(new Date(now - newAccountMaxAgeMs - day).toISOString(), now) && !isNewAccount(undefined, now) && !isNewAccount("not a date", now));
+check("reading the remembered code requires the fresh stamp, and clearing removes both keys", /isFreshStamp\(window\.localStorage\.getItem\(pendingReferralAtKey\), nowMs\)/.test(lib) && /removeItem\(pendingReferralKey\); window\.localStorage\.removeItem\(pendingReferralAtKey\)/.test(lib) && pendingReferralAtKey === "nxq-pending-referral-at-v1");
+check("the claimer only uses the browser's code for a new account, and the account's own code always counts", /referralCodeFromUser\(user\) \|\| \(isNewAccount\(user\.created_at, Date\.now\(\)\) \? readPendingReferral\(\) : ""\)/.test(claimer));
+check("logging out forgets any remembered code", /async function handleLogout\(\) \{[\s\S]{0,160}clearPendingReferral\(\);/.test(portal) && /import \{ clearPendingReferral \} from "\.\.\/lib\/referralCode"/.test(portal));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll referral-link checks passed (offline).");
 process.exit(failures ? 1 : 0);

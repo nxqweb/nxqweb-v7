@@ -1,7 +1,7 @@
 // Offline test: "order by email" stores. The email text and link are built safely (nothing a customer types can add mail fields), an unusable setup
 // falls back to normal online ordering, and the pages and database draft are wired together.
 import fs from "node:fs";
-import { buildEmailOrder, emailOrderHref, maxMailtoLength, orderModeFromRow } from "../src/lib/emailOrder.ts";
+import { buildEmailOrder, emailOrderHref, emailOrderLink, maxMailtoLength, orderModeFromRow } from "../src/lib/emailOrder.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -54,6 +54,51 @@ check("email mode needs a contact email before saving, and opening asks first", 
 check("email mode hides the payment link boxes and the Open storefront button", /\{orderMode === "email" \|\| orderMode === "menu" \? null : <>\s*<label><span>Stripe Payment Link/.test(live) && /\{orderMode === "email" \|\| orderMode === "menu" \? null : <button className="wide-btn" disabled=\{busy === "settings"\} onClick=\{\(\) => void save\(true\)\}/.test(live));
 check("saving the store name in email mode does not leave an open store closed", /\(orderMode === "email" \|\| orderMode === "menu"\) && data\.status === "active" && !makeLive/.test(live) && /save_my_store_order_mode", \{ order_mode_value: orderMode, make_live: true \}/.test(live));
 check("the database migration refuses email mode without a contact email and never returns payment links", /Add a contact email before taking orders by email/.test(draft) && !/'(stripe_payment_link|paypal_url|venmo_url)'/.test(draft.slice(draft.indexOf("get_public_store_order_mode"))));
+
+// ---- second review pass: long orders keep the customer's details, emoji cannot crash the link, shoppers are told when it was shortened
+{
+  const manyLines = Array.from({ length: 40 }, (_, i) => line(`Candle number ${i} with a long name`, "Default", 12, 1));
+  const longOrder = buildEmailOrder(input({ lines: manyLines, note: "please gift wrap ".repeat(40) }));
+  const link = emailOrderLink("shop@example.com", longOrder.subject, longOrder.body);
+  const decoded = decodeURIComponent(link.href.split("&body=")[1]);
+  check("a very long order is shortened to fit, and the shopper is told", link.shortened === true && link.href.length <= maxMailtoLength + 12);
+  check("when shortened, the customer's name, email, phone and address are still in the link (items are trimmed, not contact details)", /Name: Sam Customer/.test(decoded) && /Email: sam@example\.com/.test(decoded) && /Phone: 555 0100/.test(decoded) && /Ship to: 1 Main St, Town/.test(decoded));
+  check("a short order is not marked as shortened", emailOrderLink("shop@example.com", built.subject, built.body).shortened === false);
+  const emojiNote = "🕯️✨".repeat(300);
+  let threw = false; let emojiLink = { href: "" };
+  try { emojiLink = emailOrderLink("shop@example.com", "S", buildEmailOrder(input({ note: emojiNote })).body); } catch { threw = true; }
+  check("emoji in a long order never crash the link or get cut in half", !threw && emojiLink.href.startsWith("mailto:") && (() => { try { decodeURIComponent(emojiLink.href.split("&body=")[1]); return true; } catch { return false; } })());
+  let loneThrew = false;
+  try { emailOrderLink("shop@example.com", "S\ud800", buildEmailOrder(input({ note: "bad \ud83d here", customer: { name: "A\udc00", email: "a@b.co", phone: "", address: "" } })).body); } catch { loneThrew = true; }
+  check("a stray half-emoji typed by a shopper is replaced, not fatal", loneThrew === false);
+}
+const emailSrc = fs.readFileSync("src/lib/emailOrder.ts", "utf8");
+const storeSrc = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
+const second = (lib, page) => ({
+  detailsFirst: lib.indexOf("...details,") > 0 && lib.indexOf("...details,") < lib.indexOf("...itemLines,"),
+  wholeCharacters: /Array\.from\(body\)/.test(lib) && /wellFormed\(text\)/.test(lib),
+  noticeShown: /emailOrder\.shortened \? <div[^>]*data-testid="email-order-shortened"/.test(page) && /emailOrderLink\(orderMode\.email/.test(page),
+  waitsForMode: /const modeLoad = loadOrderMode\(\);/.test(page) && page.indexOf("await modeLoad;") > page.indexOf("get_public_stripe_ready_commerce_storefront") && page.indexOf("await modeLoad;") < page.indexOf("setLoading(false);", page.indexOf("await modeLoad;")),
+});
+const ok2 = second(emailSrc, storeSrc);
+check("the order text puts who it is from before the items", ok2.detailsFirst);
+check("shortening works on whole characters and encodes only well-formed text", ok2.wholeCharacters);
+check("the shopper sees a notice when the link was shortened", ok2.noticeShown);
+check("the public store waits for its ordering style before showing anything (no online-checkout flash on email or menu shops)", ok2.waitsForMode);
+check("PLANTED BUG caught: details moved to the end", second(emailSrc.replace("...details,", "...itemLines,").replace(/\.\.\.itemLines,\n    "",\n    `Total/, "...details,\n    \"\",\n    `Total"), storeSrc).detailsFirst === false);
+check("PLANTED BUG caught: cutting by raw string slice", second(emailSrc.replace("Array.from(body)", "body"), storeSrc).wholeCharacters === false);
+check("PLANTED BUG caught: mode load no longer awaited", second(emailSrc, storeSrc.replace("await modeLoad;", "")).waitsForMode === false);
+
+// ---- owner page: switching to online needs a payment link; saving in email or menu mode reports that the store stayed open
+const liveSrc = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
+const ownerChecks = (t) => ({
+  needsLink: /orderChoice === "online" && \(makeLive \|\| data\?\.status === "active"\) && !stripePaymentLink\.trim\(\) && !paypalUrl\.trim\(\) && !venmoUrl\.trim\(\)/.test(t) && t.indexOf("Online ordering needs a payment link first") < t.indexOf('rpc("save_my_store_order_mode", { order_mode_value: orderChoice'),
+  honestMessage: /let reopened = false;/.test(t) && /reopened = true;/.test(t) && /reopened\s*\? "Saved\. Your store is still open\."/.test(t),
+});
+check("an open store cannot be switched to online ordering without any payment link (shoppers would fail at checkout)", ownerChecks(liveSrc).needsLink);
+check("saving in email or menu mode on an open store says the store is still open, not 'private'", ownerChecks(liveSrc).honestMessage);
+check("PLANTED BUG caught: payment-link guard removed", ownerChecks(liveSrc.replace('!stripePaymentLink.trim() && !paypalUrl.trim()', "false && !paypalUrl.trim()")).needsLink === false);
+check("PLANTED BUG caught: 'still open' message removed", ownerChecks(liveSrc.replace("Saved. Your store is still open.", "Saved. Your store stays private until you press Open storefront.")).honestMessage === false);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll email-order checks passed (offline).");
 process.exit(failures ? 1 : 0);

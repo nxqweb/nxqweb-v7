@@ -91,5 +91,42 @@ check("an uncertain result leaves a record for the owner and never prints the ke
 check("the call to Stripe has a time limit and never follows the secret into a response", /AbortController/.test(body) && /setTimeout\(\(\)=>controller\.abort\(\),15000\)/.test(body) && !/response\([^)]*stripeKey/.test(body));
 check("the migration is service-role only and does nothing while the program is off", /grant execute on function public\.nxq_reserve_referral_credit_for_invoice\(uuid, text, text, numeric\) to service_role;/.test(mig) && /not coalesce\(program_on, false\)/.test(mig) && !/to authenticated/.test(mig.replace(/revoke[^;]*;/g, "")));
 
+// ---- bugs found in the second review pass (stale retries, coupons, $0 invoices, disputes)
+{
+  const w1 = world(); const live = { ...invoice(), lines: { data: [{ metadata: { nxq_referral_credit: "true" } }] } };
+  w1.deps.fetchInvoice = async () => live;
+  const r1 = await run(invoice(), w1);
+  check("a retry whose live invoice already carries our credit line adds nothing and uses no credit", r1.outcome === "skipped" && r1.reason === "credit_line_already_present" && w1.calls.reserve.length === 0 && w1.calls.send.length === 0 && w1.calls.release.length === 0);
+  const w2 = world(); w2.deps.fetchInvoice = async () => ({ ...invoice(), status: "open" });
+  const r2 = await run(invoice(), w2);
+  check("a retry after the invoice was finalized never touches the credit (no restore, no second line)", r2.outcome === "skipped" && r2.reason === "invoice_not_draft" && w2.calls.reserve.length === 0 && w2.calls.release.length === 0 && w2.calls.send.length === 0);
+  const w3 = world(); w3.deps.fetchInvoice = async () => { throw new Error(`down ${KEY}`); };
+  const r3 = await run(invoice(), w3);
+  check("if the live invoice cannot be read nothing is used up, and the key is not leaked", r3.outcome === "skipped" && r3.reason === "live_invoice_unavailable" && w3.calls.reserve.length === 0 && !JSON.stringify(r3).includes(KEY));
+  const w4 = world(); w4.deps.fetchInvoice = async () => invoice();
+  const r4 = await run(invoice(), w4);
+  check("a clean live draft still gets its credit exactly as before", r4.outcome === "applied" && w4.calls.reserve.length === 1 && w4.calls.send.length === 1);
+  const w5 = world({ credit: 40 });
+  const r5 = await run(invoice({ subtotal: 5000, total: 2500 }), w5);
+  check("with a 50% coupon the $10 floor is measured on the $25 total: credit above $15 is refused and handed back", r5.outcome === "failed_released" && w5.calls.send.length === 0 && w5.calls.reserve[0].subtotalDollars === 25);
+  check("an invoice whose total is under $10 after discounts is skipped", creditableInvoice(invoice({ subtotal: 5000, total: 900 })).ok === false && creditableInvoice(invoice({ subtotal: 5000, total: 5000 })).ok === true && creditableInvoice(invoice({ subtotal: 5000, total: "x" })).ok === true);
+}
+const wiring = (text) => ({
+  ignoresBeforeCustomer: text.indexOf('if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true') > 0 && text.indexOf('if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true') < text.indexOf("const providerCustomerId="),
+  disputeResolved: /eventType==="charge\.dispute\.created"&&typeof object\.customer!=="string"\?await customerFromCharge\(object\.charge\)/.test(text) && /api\.stripe\.com\/v1\/charges\//.test(text),
+  zeroDollarGuard: /paidCents>0/.test(text) && text.indexOf("paidCents>0") < text.indexOf('rpc("nxq_record_referral_first_payment"'),
+  liveInvoice: /fetchInvoice:async\(invoiceId\)=>/.test(text) && /api\.stripe\.com\/v1\/invoices\/\$\{invoiceId\}/.test(text),
+  keyOnlyInHeader: !/error\([^)]*key/i.test(text.replace(/new Error\("A Stripe secret key is required[^"]*"\)/, "")) && (text.match(/Bearer \$\{/g) || []).length === 2,
+});
+const good = wiring(hook);
+check("the webhook ignores events it does not use BEFORE demanding a customer (no 3-day retries for customer-less events)", good.ignoresBeforeCustomer);
+check("a dispute's customer is found through its charge, since a dispute object has none", good.disputeResolved);
+check("a $0 paid invoice (trial or 100% coupon) can never start the referral hold", good.zeroDollarGuard);
+check("the webhook reads the live invoice before any credit is used, and the key only travels in two request headers", good.liveInvoice && good.keyOnlyInHeader);
+check("PLANTED BUG caught: customer check moved ahead of the ignore check", wiring(hook.replace('const providerCustomerId=', 'const __x="";const providerCustomerId=').replace('    if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true,event_type:eventType},202);\n', '')).ignoresBeforeCustomer === false);
+check("PLANTED BUG caught: dispute resolution removed", wiring(hook.replace("await customerFromCharge(object.charge)", 'String(object.customer||"")')).disputeResolved === false);
+check("PLANTED BUG caught: $0 guard removed", wiring(hook.replace("&&Number.isFinite(paidCents)&&paidCents>0", "")).zeroDollarGuard === false);
+check("PLANTED BUG caught: live invoice read removed", wiring(hook.replace("fetchInvoice:async(invoiceId)=>", "fetchInvoiceX:async(invoiceId)=>")).liveInvoice === false);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll referral-invoice-credit checks passed (offline).");
 process.exit(failures ? 1 : 0);

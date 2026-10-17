@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
 import { fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
-import { buildEmailOrder, emailOrderHref, onlineMode, orderModeFromRow, type OrderMode } from "../lib/emailOrder";
+import { buildEmailOrder, emailOrderLink, onlineMode, orderModeFromRow, type OrderMode } from "../lib/emailOrder";
 import { StoreCredit } from "../components/StoreCredit";
 import { StoreProductCard } from "../components/store/StoreProductCard";
 import { StoreProductDialog } from "../components/store/StoreProductDialog";
@@ -38,7 +38,7 @@ export function PublicCommerceStorefront() {
   const [orderCopied, setOrderCopied] = useState(false);
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
-  const [emailOrder, setEmailOrder] = useState<{ href: string; text: string } | null>(null);
+  const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
   const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
   const [toast, setToast] = useState("");
@@ -61,8 +61,10 @@ export function PublicCommerceStorefront() {
     // The About block and the sign-in option do not depend on the store response, so they load alongside it (no late layout jump).
     void loadAccountHelp();
     void loadProfile();
-    void loadOrderMode();
+    // The ordering style (online, email or menu) is waited for too, so an email or menu shop never flashes the online checkout first.
+    const modeLoad = loadOrderMode();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
+    await modeLoad;
     if (result.error || !result.data) setError("This storefront is not open yet.");
     else setData(result.data as StoreData);
     setLoading(false);
@@ -95,9 +97,9 @@ export function PublicCommerceStorefront() {
     }
     setError("");
     const built = buildEmailOrder({ storeName: data?.store.name || "the shop", lines: cart, currency: data?.store.currency || "USD", customer: form, note, needsShipping });
-    const href = emailOrderHref(orderMode.email, built.subject, built.body);
+    const { href, shortened } = emailOrderLink(orderMode.email, built.subject, built.body);
     if (!href) { setError("This store cannot take email orders right now. Please contact the shop."); return; }
-    setEmailOrder({ href, text: `To: ${orderMode.email}\nSubject: ${built.subject}\n\n${built.body}` });
+    setEmailOrder({ href, shortened, text: `To: ${orderMode.email}\nSubject: ${built.subject}\n\n${built.body}` });
     window.setTimeout(() => document.getElementById("email-order-panel")?.scrollIntoView({ block: "center" }), 0);
   }
 
@@ -293,6 +295,7 @@ export function PublicCommerceStorefront() {
       </section> : <>
         {emailOrder ? <section className="panel panel-wide" id="email-order-panel" data-testid="email-order-panel">
           <h2>Almost done: send your order email</h2>
+          {emailOrder.shortened ? <div className="notice-card" role="note" data-testid="email-order-shortened">Your order is long, so the email link may show only part of it. If anything is missing, press <strong>Copy order text</strong> and paste the whole order into an email instead.</div> : null}
           <ol className="store-next-steps">
             <li>Press <strong>Open my email app</strong>. Your email opens with the order already written. Press send.</li>
             <li>If nothing opens, press <strong>Copy order text</strong> and paste it into an email to <strong>{orderMode.email}</strong>.</li>

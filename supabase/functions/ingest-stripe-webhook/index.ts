@@ -36,6 +36,15 @@ async function creditNewInvoice(admin:ReturnType<typeof createClient<DynamicData
       const released=await admin.rpc("nxq_release_referral_credit_for_invoice",{target_provider_key:"stripe",target_provider_invoice_id:invoiceId,target_reason:reason});
       if(released.error)throw new Error(`Referral credit release failed: ${released.error.message}`);
     },
+    fetchInvoice:async(invoiceId)=>{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),15000);
+      try{
+        const result=await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}`,{headers:{Authorization:`Bearer ${stripeKey}`},signal:controller.signal});
+        if(!result.ok){await result.body?.cancel();throw new Error(`Stripe invoice lookup failed (${result.status}).`);}
+        return await result.json() as StripeInvoiceObject;
+      }finally{clearTimeout(timer);}
+    },
     send:async(request)=>{
       const controller=new AbortController();
       const timer=setTimeout(()=>controller.abort(),15000);
@@ -52,6 +61,22 @@ async function creditNewInvoice(admin:ReturnType<typeof createClient<DynamicData
   if(result.outcome==="failed_released")return response({ok:false,reason:result.reason,credit_returned:true},202);
   if(result.outcome==="applied")return response({ok:true,referral_credit_cents:result.creditCents},200);
   return response({ok:true,ignored:true,reason:result.reason},202);
+}
+
+// Reads one charge from Stripe so a dispute can be tied to its customer. The key only goes into the request header and never into an error message.
+async function customerFromCharge(charge:unknown):Promise<string>{
+  const chargeId=typeof charge==="string"?charge:"";
+  if(!/^(ch|py)_[A-Za-z0-9_]{4,120}$/.test(chargeId))throw new Error("Stripe dispute has no usable charge reference.");
+  const key=Deno.env.get("STRIPE_SECRET_KEY")?.trim();
+  if(!key)throw new Error("A Stripe secret key is required to match a dispute to its customer.");
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),10000);
+  try{
+    const result=await fetch(`https://api.stripe.com/v1/charges/${chargeId}`,{headers:{Authorization:`Bearer ${key}`},signal:controller.signal});
+    if(!result.ok){await result.body?.cancel();throw new Error(`Stripe charge lookup failed (${result.status}).`);}
+    const body=await result.json() as {customer?:unknown};
+    return typeof body.customer==="string"?body.customer:"";
+  }finally{clearTimeout(timer);}
 }
 
 type StripeEvent={id?:string;type?:string;created?:number;livemode?:boolean;data?:{object?:Record<string,unknown>}};
@@ -78,12 +103,14 @@ Deno.serve(async(req)=>{
     const eventId=String(event.id||"").slice(0,180);
     const eventType=String(event.type||"").slice(0,120);
     const createdSeconds=Number(event.created);
-    const providerCustomerId=String(object.customer||"").slice(0,180);
     const mappedType=normalizedType(eventType,object);
+    // Events we do not act on are acknowledged before anything else, so a customer-less event never makes Stripe retry for days.
+    if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true,event_type:eventType},202);
+    // A dispute object has no customer field: its customer is found through the charge (needs the Stripe key; without it the event fails loudly and Stripe retries).
+    const providerCustomerId=(eventType==="charge.dispute.created"&&typeof object.customer!=="string"?await customerFromCharge(object.charge):String(object.customer||"")).slice(0,180);
     if(!eventId||!providerCustomerId)throw new Error("Stripe event identity is incomplete.");
     if(!Number.isFinite(createdSeconds)||createdSeconds<=0||Math.abs(Date.now()/1000-createdSeconds)>31536000)throw new Error("Stripe event creation time is invalid or outside the replay window.");
     if(event.livemode&&Deno.env.get("NXQ_STRIPE_LIVE_MODE_ENABLED")?.trim().toLowerCase()!=="true")throw new Error("Live-mode Stripe events are disabled.");
-    if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true,event_type:eventType},202);
 
     const admin=createClient(secret("SUPABASE_URL"),secret("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false}});
     const link=await admin.from("billing_provider_customer_links").select("client_id,status").eq("provider_key","stripe").eq("provider_customer_id",providerCustomerId).eq("status","active").maybeSingle();
@@ -96,7 +123,7 @@ Deno.serve(async(req)=>{
     const existing=await admin.from("billing_provider_events").select("id").eq("provider_key","stripe").eq("provider_event_id",eventId).maybeSingle();
     let recordId=existing.data?.id as string|undefined;
     if(!recordId){
-      const amountRaw=object.amount_paid??object.amount_due??object.amount_refunded??object.amount;
+      const amountRaw=mappedType==="payment_failed"?(object.amount_due??object.amount_paid):(object.amount_paid??object.amount_due??object.amount_refunded??object.amount);
       const amount=typeof amountRaw==="number"?amountRaw/100:null;
       const inserted=await admin.from("billing_provider_events").insert({
         provider_key:"stripe",provider_event_id:eventId,provider_customer_id:providerCustomerId,
@@ -109,7 +136,9 @@ Deno.serve(async(req)=>{
     }
     const applied=await admin.rpc("apply_verified_billing_provider_event",{target_event_id:recordId});
     if(applied.error)throw new Error(`Stripe event apply failed: ${applied.error.message}`);
-    if(mappedType==="payment_succeeded"){
+    const paidCents=Number(object.amount_paid??object.amount_due);
+    // A $0 invoice (trial, 100% coupon) is not evidence of a real first payment, so it never starts the referral hold.
+    if(mappedType==="payment_succeeded"&&Number.isFinite(paidCents)&&paidCents>0){
       const amountRaw=object.amount_paid??object.amount_due;
       const referral=await admin.rpc("nxq_record_referral_first_payment",{
         target_client_id:client.data.id,target_provider:"stripe",target_event_id:eventId,

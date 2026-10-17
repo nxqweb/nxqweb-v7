@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 const require = createRequire(process.env.PW_FROM || "/node-tools/node_modules/");
 const { chromium } = require("playwright");
 const base = process.env.BASE_URL || "http://127.0.0.1:5199";
-const user = { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", role: "authenticated", email: "client@example.com", app_metadata: {}, user_metadata: { business_name: "Light of the world candles and soap", intake_family_answers: { services: "Candles and soap" } }, created_at: "2026-10-15T00:00:00Z" };
+const user = { id: "00000000-0000-0000-0000-000000000001", aud: "authenticated", role: "authenticated", email: "client@example.com", app_metadata: {}, user_metadata: { business_name: "Light of the world candles and soap", intake_family_answers: { services: "Candles and soap" } }, created_at: new Date().toISOString() };
 const session = { access_token: "mock.jwt.token", refresh_token: "mock-refresh", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, user };
 const client = { id: "1d6f34f7", business_name: "Light of the world candles and soap", status: "approved", billing_status: "active", billing_provider: "manual", monthly_price: 150, notes: "", auth_user_id: user.id, product_family_slug: "commerce", product_tier_key: "intelligence" };
 const product = { id: "p1", name: "Vanilla Bean Candle", slug: "vanilla", status: "draft", base_price: 18, image_url: null, short_description: "Hand-poured soy candle", variants: [{ id: "v1", title: "8 oz", price: 18, sku: "VAN-8", on_hand: 10, available_quantity: 10 }], image_urls: [] };
@@ -43,7 +43,7 @@ ok("the code is kept in this browser", (await page.evaluate(() => localStorage.g
 await page.goto(base + "/portal/signup?ref=%3Cscript%3E", { waitUntil: "networkidle" });
 ok("a bad code shows no note", (await page.getByTestId("referral-note").count()) === 0);
 // 2. signed in, program not open yet: kept, then applied once it is
-await page.evaluate(() => localStorage.setItem("nxq-pending-referral-v1", "NXQ1A2B3C4D5"));
+await page.evaluate(() => { localStorage.setItem("nxq-pending-referral-v1", "NXQ1A2B3C4D5"); localStorage.setItem("nxq-pending-referral-at-v1", String(Date.now())); });
 claimError = "The referral program is not open yet.";
 await page.goto(base + "/client", { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
@@ -56,7 +56,7 @@ await page.goto(base + "/client", { waitUntil: "networkidle" });
 await page.waitForTimeout(800);
 ok("it is never applied a second time", claims.length === 2, String(claims.length));
 // 3. a code that can never work is dropped
-await page.evaluate(() => { localStorage.removeItem("nxq-referral-done-v1-00000000-0000-0000-0000-000000000001"); localStorage.setItem("nxq-pending-referral-v1", "NXQ9Z9Z9Z9Z9"); });
+await page.evaluate(() => { localStorage.removeItem("nxq-referral-done-v1-00000000-0000-0000-0000-000000000001"); localStorage.setItem("nxq-pending-referral-v1", "NXQ9Z9Z9Z9Z9"); localStorage.setItem("nxq-pending-referral-at-v1", String(Date.now())); });
 claimError = "Referral code not found.";
 await page.goto(base + "/client", { waitUntil: "networkidle" });
 await page.waitForTimeout(800);

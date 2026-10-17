@@ -37,7 +37,10 @@ export type EmailOrderInput = {
   needsShipping: boolean;
 };
 
-const clean = (text: string) => text.replace(/[\r\n]+/g, " ").trim();
+// Lone half-emoji characters make encodeURIComponent throw, so they are swapped for a replacement mark before anything is encoded.
+const loneSurrogates = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+const wellFormed = (text: string) => text.replace(loneSurrogates, "\uFFFD");
+const clean = (text: string) => wellFormed(text).replace(/[\r\n]+/g, " ").trim();
 
 export function buildEmailOrder(input: EmailOrderInput): { subject: string; body: string } {
   const total = input.lines.reduce((sum, line) => sum + Number(line.variant.price) * line.quantity, 0);
@@ -51,15 +54,16 @@ export function buildEmailOrder(input: EmailOrderInput): { subject: string; body
     input.customer.phone.trim() ? `Phone: ${clean(input.customer.phone)}` : "",
     input.needsShipping && input.customer.address.trim() ? `Ship to: ${clean(input.customer.address)}` : "",
   ].filter(Boolean);
+  // Who the order is from comes FIRST: if a long order has to be shortened to fit a link, the items are trimmed, never the customer's contact details.
   const body = [
     `Hi ${clean(input.storeName)}, I would like to place this order:`,
+    "",
+    ...details,
     "",
     ...itemLines,
     "",
     `Total: ${formatMoney(total, input.currency)}`,
-    "",
-    ...details,
-    input.note.trim() ? `\nNote: ${input.note.trim()}` : "",
+    input.note.trim() ? `\nNote: ${wellFormed(input.note.trim())}` : "",
     "",
     "Please reply with how to pay and when I can expect it. Thank you!",
   ].join("\n");
@@ -68,11 +72,18 @@ export function buildEmailOrder(input: EmailOrderInput): { subject: string; body
 
 // Some email apps refuse very long links, so the body is shortened to fit. The full text is always available through the Copy button.
 export const maxMailtoLength = 1800;
-export function emailOrderHref(email: string, subject: string, body: string): string {
+export function emailOrderLink(email: string, subject: string, body: string): { href: string; shortened: boolean } {
   const to = email.trim();
-  if (!emailPattern.test(to)) return "";
-  const build = (text: string) => `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-  let text = body;
-  while (build(text).length > maxMailtoLength && text.length > 80) text = `${text.slice(0, Math.floor(text.length * 0.9)).trimEnd()}…`;
-  return build(text);
+  if (!emailPattern.test(to)) return { href: "", shortened: false };
+  const build = (text: string) => `mailto:${to}?subject=${encodeURIComponent(wellFormed(subject))}&body=${encodeURIComponent(wellFormed(text))}`;
+  let chars = Array.from(body); // whole characters, so an emoji is never cut in half
+  let shortened = false;
+  while (build(chars.join("")).length > maxMailtoLength && chars.length > 80) {
+    chars = [...Array.from(chars.slice(0, Math.floor(chars.length * 0.9)).join("").trimEnd()), "…"];
+    shortened = true;
+  }
+  return { href: build(chars.join("")), shortened };
+}
+export function emailOrderHref(email: string, subject: string, body: string): string {
+  return emailOrderLink(email, subject, body).href;
 }

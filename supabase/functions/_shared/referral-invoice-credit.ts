@@ -25,8 +25,11 @@ export function creditableInvoice(object: StripeInvoiceObject): { ok: true; invo
   if (object.status !== "draft") return { ok: false, reason: "invoice_not_draft" };
   if (object.billing_reason !== "subscription_cycle") return { ok: false, reason: "not_a_renewal_invoice" };
   if (String(object.currency || "").toLowerCase() !== "usd") return { ok: false, reason: "currency_not_usd" };
-  const subtotal = object.subtotal;
-  if (typeof subtotal !== "number" || !Number.isInteger(subtotal) || subtotal < minimumInvoiceCents || subtotal > 100_000_000) return { ok: false, reason: "subtotal_unusable" };
+  const listed = object.subtotal;
+  if (typeof listed !== "number" || !Number.isInteger(listed)) return { ok: false, reason: "subtotal_unusable" };
+  // The protected minimum is measured on what the customer would actually owe: with a discount the total is lower than the subtotal.
+  const subtotal = typeof object.total === "number" && Number.isInteger(object.total) ? Math.min(listed, object.total) : listed;
+  if (subtotal < minimumInvoiceCents || subtotal > 100_000_000) return { ok: false, reason: "subtotal_unusable" };
   return { ok: true, invoice: { invoiceId, customerId, subtotalCents: subtotal, subtotalDollars: subtotal / 100 } };
 }
 
@@ -75,6 +78,9 @@ export type CreditDeps = {
   release: (input: { invoiceId: string; reason: string }) => Promise<void>;
   // Sends the request to Stripe. Must resolve with the HTTP status (never throw on a non-2xx answer); may throw on a network failure.
   send: (request: StripeRequest) => Promise<{ status: number }>;
+  // Optional: reads the invoice as it is NOW. A retry carries the old snapshot, so without this a retry could add a second line or hand back credit that
+  // was already used. When present it is checked before any credit is used up; when it fails the credit is not touched.
+  fetchInvoice?: (invoiceId: string) => Promise<StripeInvoiceObject>;
 };
 
 export type CreditOutcome =
@@ -96,6 +102,14 @@ export async function applyReferralCreditToDraftInvoice(
   if (hasCreditLine(object)) return { outcome: "skipped", reason: "credit_line_already_present" };
   if (!secretKey) return { outcome: "skipped", reason: "stripe_key_missing" };
   const invoice = checked.invoice;
+
+  if (deps.fetchInvoice) {
+    let live: StripeInvoiceObject;
+    try { live = await deps.fetchInvoice(invoice.invoiceId); }
+    catch { return { outcome: "skipped", reason: "live_invoice_unavailable" }; }
+    if (live.status !== "draft") return { outcome: "skipped", reason: "invoice_not_draft" };
+    if (hasCreditLine(live)) return { outcome: "skipped", reason: "credit_line_already_present" };
+  }
 
   try { await deps.matureCredits(); } catch { /* late credit is better than a broken invoice */ }
 

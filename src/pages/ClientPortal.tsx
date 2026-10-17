@@ -17,6 +17,7 @@ import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } fr
 import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
 import { AssistantChat } from "../components/AssistantChat";
 import { HelpTerm } from "../components/HelpTerm";
+import { clearPendingReferral } from "../lib/referralCode";
 
 type ClientRow = {
   id: string;
@@ -348,6 +349,7 @@ export function ClientPortal() {
 
   async function handleLogout() {
     if (!supabase) return;
+    clearPendingReferral();
 
     await Promise.race([
       supabase.auth.signOut(),

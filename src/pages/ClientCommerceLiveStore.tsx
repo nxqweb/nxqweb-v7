@@ -129,6 +129,12 @@ export function ClientCommerceLiveStore() {
       setError("Type your contact email in the About and contact box below and press Save About and contact first. Orders will be sent to that email.");
       return;
     }
+    // An open store set to online ordering with no payment link would let shoppers fill a cart and then fail at checkout, so it is stopped here.
+    if (orderChoice === "online" && (makeLive || data?.status === "active") && !stripePaymentLink.trim() && !paypalUrl.trim() && !venmoUrl.trim()) {
+      setMessage("");
+      setError("Online ordering needs a payment link first. Add your Stripe Payment Link (or PayPal or Venmo link) in the payment settings below and press Save private draft, then switch to online ordering.");
+      return;
+    }
     if (makeLive && !window.confirm(orderChoice === "menu" ? "Open your menu now? Customers will be able to see your items and prices, and call or email you to order. Nothing is charged online." : "Open this store now? Customers will be able to see it and send you orders by email. Nothing is charged online.")) return;
     setBusy("mode");
     setError("");
@@ -192,7 +198,9 @@ export function ClientCommerceLiveStore() {
     });
 
     // In email mode saving the name must not close an open store (the save above puts a store without a payment link back to private).
+    let reopened = false;
     if (!result.error && (orderMode === "email" || orderMode === "menu") && data.status === "active" && !makeLive) {
+      reopened = true;
       const reopen = await supabase.rpc("save_my_store_order_mode", { order_mode_value: orderMode, make_live: true });
       if (reopen.error) { setError("Saved, but your store went back to private. Press Open my store in How do customers order?"); setBusy(""); await load(); return; }
     }
@@ -213,7 +221,9 @@ export function ClientCommerceLiveStore() {
     setMessage(
       makeLive
         ? "Your store is open. Customers can now order from it."
-        : "Saved. Your store stays private until you press Open storefront."
+        : reopened
+          ? "Saved. Your store is still open."
+          : "Saved. Your store stays private until you press Open storefront."
     );
     await load();
     setBusy("");

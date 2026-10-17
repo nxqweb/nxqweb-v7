@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
-import { claimOutcome, claimedReferralKey, clearPendingReferral, readPendingReferral, referralCodeFromUser } from "../lib/referralCode";
+import { claimOutcome, claimedReferralKey, clearPendingReferral, isNewAccount, readPendingReferral, referralCodeFromUser } from "../lib/referralCode";
 
 let attempting = false;
 
@@ -17,7 +17,8 @@ export function ReferralClaimer() {
         const user = session.data.session?.user;
         if (!user) return;
         try { if (window.localStorage.getItem(claimedReferralKey(user.id))) return; } catch { /* continue: the database rejects a second claim anyway */ }
-        const code = referralCodeFromUser(user) || readPendingReferral();
+        // The browser-remembered code only counts for a brand-new account (see referralCode.ts); the account's own saved code always counts.
+        const code = referralCodeFromUser(user) || (isNewAccount(user.created_at, Date.now()) ? readPendingReferral() : "");
         if (!code) return;
         const result = await client.rpc("nxq_claim_referral", { target_referral_code: code });
         if (!result.error || claimOutcome(result.error.message) === "done") {

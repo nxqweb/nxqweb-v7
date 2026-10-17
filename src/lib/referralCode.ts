@@ -18,18 +18,39 @@ export function referralCodeFromUser(user: { user_metadata?: Record<string, unkn
 }
 
 export const pendingReferralKey = "nxq-pending-referral-v1";
+export const pendingReferralAtKey = "nxq-pending-referral-at-v1";
 export const claimedReferralKey = (userId: string) => `nxq-referral-done-v1-${userId}`;
+
+// A code remembered in the browser (not in the account) is only trusted for a short time and only for a new account, so a link opened on a shared
+// computer weeks ago can never be applied to whoever signs in next. A code stored in the account's own data has no such limit.
+export const pendingReferralMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
+export const newAccountMaxAgeMs = 14 * 24 * 60 * 60 * 1000;
+
+export function isFreshStamp(stamp: unknown, nowMs: number, maxAgeMs = pendingReferralMaxAgeMs): boolean {
+  const at = Number(stamp);
+  return Number.isFinite(at) && at > 0 && nowMs - at >= -60_000 && nowMs - at <= maxAgeMs;
+}
+export function isNewAccount(createdAt: unknown, nowMs: number): boolean {
+  const at = typeof createdAt === "string" ? Date.parse(createdAt) : NaN;
+  return Number.isFinite(at) && nowMs - at >= -60_000 && nowMs - at <= newAccountMaxAgeMs;
+}
 
 export function savePendingReferral(code: string): void {
   const clean = normalizeReferralCode(code);
   if (!clean) return;
-  try { window.localStorage.setItem(pendingReferralKey, clean); } catch { /* private browsing: the code still travels in the account data */ }
+  try {
+    window.localStorage.setItem(pendingReferralKey, clean);
+    window.localStorage.setItem(pendingReferralAtKey, String(Date.now()));
+  } catch { /* private browsing: the code still travels in the account data */ }
 }
-export function readPendingReferral(): string {
-  try { return normalizeReferralCode(window.localStorage.getItem(pendingReferralKey)); } catch { return ""; }
+export function readPendingReferral(nowMs: number = Date.now()): string {
+  try {
+    if (!isFreshStamp(window.localStorage.getItem(pendingReferralAtKey), nowMs)) return "";
+    return normalizeReferralCode(window.localStorage.getItem(pendingReferralKey));
+  } catch { return ""; }
 }
 export function clearPendingReferral(): void {
-  try { window.localStorage.removeItem(pendingReferralKey); } catch { /* nothing to clear */ }
+  try { window.localStorage.removeItem(pendingReferralKey); window.localStorage.removeItem(pendingReferralAtKey); } catch { /* nothing to clear */ }
 }
 
 // What a failed claim means. "retry" keeps the code for the next visit (the program may simply not be open yet, or the network failed);
