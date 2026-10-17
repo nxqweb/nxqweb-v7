@@ -54,7 +54,8 @@ const ClientLaunchJourneyPage = named(() => import("./pages/ClientLaunchJourney"
 const ClientFiles = named(() => import("./pages/ClientFiles"), "ClientFiles");
 const ClientNotificationPreferences = named(() => import("./pages/ClientNotificationPreferences"), "ClientNotificationPreferences");
 const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal");
-const PublicInfoPage = named(() => import("./pages/PublicInfoPage"), "PublicInfoPage");
+// This one page takes a prop (which page to show), so it is loaded directly instead of through the prop-less `named` helper above.
+const PublicInfoPage = lazy(async () => ({ default: (await import("./pages/PublicInfoPage")).PublicInfoPage }));
 const ClientRewards = named(() => import("./pages/ClientRewards"), "ClientRewards");
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
