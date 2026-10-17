@@ -181,6 +181,11 @@ state. Update this file, not a new one, at every handoff.
 
 **CI finding (FIXED 2026-10-16, see the Mega Extended CI entry above; not caused by us):** `NXQ Mega Extended CI` had failed on every non-skipped run in the last 100 (never green), failing step **"Edge function type checks"**; `NXQ Safe CI` and `NXQ Security Audit` pass. It probably emails the owner on every push. Not investigated (log download is blocked from this environment); candidate safe task: reproduce the edge-function type check locally.
 
+## Referral terms draft written for a lawyer (2026-10-17; docs only)
+
+- `docs/REFERRAL_TERMS_DRAFT.md`: plain-words terms built from what the code really enforces, with a checklist of decisions the code does NOT enforce (credit on cancellation, expiry, tax, link-advertising rules, disputes, governing law). NOT legal advice; the referral program stays OFF until an attorney reviews it. One honest note in it: a new subscription's first invoice is charged at once, so the friend's discount lands on their next renewal invoice unless a Stripe coupon is given by hand at signup.
+- Correction to an earlier remark: an owner-visible "credit uncertain" alert is NOT a purely local job. The owner exception center is a database function, so surfacing it needs a migration (owner approval). Today it is only an `activity_logs` row.
+
 ## Rewards page rewritten in plain words (2026-10-17; local/pushed, NOT deployed)
 
 - `/client/rewards` (`src/pages/ClientRewards.tsx`, new `src/lib/rewardsCopy.ts`): three-step "how it works" using the program's real numbers, Copy link (with feedback and a failure message) and Share, plain credit labels (Ready to use / Waiting for review / Already used), friends as sentences, and the rare parts tucked away (code entry, Founding Business Grant, credit history). Removed: the per-referral "risk review N/100" (it exposed anti-fraud scoring to clients) and raw database error text (now a whitelist of kind sentences). Same three database calls and argument names.
