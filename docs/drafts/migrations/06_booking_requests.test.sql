@@ -304,6 +304,18 @@ begin
   if (r->>'public_enabled')::boolean is not false then raise exception 'no hours means the page must switch off: %', r; end if;
 end $$;
 
+-- an opening period with a missing field is refused in plain words (not a raw NOT NULL error) and changes nothing
+do $$
+declare o1 uuid := 'eeeeeeee-0000-0000-0000-0000000000c1'; before_count integer; after_count integer;
+begin
+  perform pg_temp.as_user(o1);
+  select count(*) into before_count from public.booking_availability_rules;
+  if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":1,"start":null,"end":"17:00"}]'::jsonb)$q$, 'a day, a start and an end') then raise exception 'a null start must be refused in plain words'; end if;
+  if not pg_temp.fails($q$select public.save_my_booking_hours('[{"weekday":null,"start":"09:00","end":"17:00"}]'::jsonb)$q$, 'a day, a start and an end') then raise exception 'a null weekday must be refused in plain words'; end if;
+  select count(*) into after_count from public.booking_availability_rules;
+  if before_count <> after_count then raise exception 'a refused save must change nothing'; end if;
+end $$;
+
 -- retention purge: service role only, 30-day floor, deletes only what is older than the retention, never more than asked
 do $$
 declare

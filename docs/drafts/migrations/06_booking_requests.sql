@@ -286,6 +286,7 @@ begin
       start_value := (item ->> 'start')::time;
       end_value := (item ->> 'end')::time;
     exception when others then raise exception 'Each opening period must have a day, a start and an end.'; end;
+    if day_value is null or start_value is null or end_value is null then raise exception 'Each opening period must have a day, a start and an end.'; end if;
     if day_value not between 0 and 6 then raise exception 'The day must be from 0 (Sunday) to 6 (Saturday).'; end if;
     if start_value >= end_value then raise exception 'Each opening period must end after it starts.'; end if;
     if mod(extract(minute from start_value)::integer, 5) <> 0 or mod(extract(minute from end_value)::integer, 5) <> 0 or extract(second from start_value) <> 0 or extract(second from end_value) <> 0 then raise exception 'Opening times must be on a 5-minute mark (for example 09:00 or 09:05).'; end if;

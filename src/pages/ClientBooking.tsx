@@ -64,6 +64,8 @@ export function ClientBooking({ gateway }: { gateway: OwnerBookingGateway | null
     if (!Number.isInteger(lead) || lead < 0 || lead > 43200) { setError("Notice time must be a whole number of minutes between 0 and 43200 (30 days)."); return; }
     if (!Number.isInteger(advance) || advance < 1 || advance > 365) { setError("How far ahead people can ask must be between 1 and 365 days."); return; }
     if (!isValidTimeZone(page.timezone)) { setError("Choose a valid time zone."); return; }
+    if (setup.displayName && !page.displayName.trim()) { setError("Your page needs a name. Type one before saving."); return; }
+    if (setup.publicSlug && !page.publicSlug.trim()) { setError("Your page needs an address. Type one before saving."); return; }
     void run("settings", async () => adopt(await gateway!.saveSettings({ displayName: page.displayName, intro: page.intro, timezone: page.timezone, minimumLeadMinutes: lead, maximumAdvanceDays: advance, cancellationPolicy: page.policy, publicSlug: page.publicSlug.trim().toLowerCase() }), { settings: true }), "Saved.");
   }
   function addService() {

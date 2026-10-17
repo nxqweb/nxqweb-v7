@@ -140,5 +140,16 @@ check("PLANTED BUG caught: an empty note is sent as null again", round2(gwNow.re
 check("PLANTED BUG caught: the list is back to 50", round2(gwNow.replace("limit_value: 200", "limit_value: 50"), formNow, pubNow, ownerNow).listIsNotTiny === false);
 check("PLANTED BUG caught: focus is not moved after sending", round2(gwNow, formNow, pubNow.replace("doneRef.current?.focus()", "void 0"), ownerNow).focusAfterSend === false);
 
+// leftover minor items from the reviews (2026-10-17)
+const ownerMinor = read("src/pages/ClientBooking.tsx");
+const minor = (o, q) => ({
+  nameCannotBeSilentlyKept: /if \(setup\.displayName && !page\.displayName\.trim\(\)\) \{ setError\("Your page needs a name\./.test(o) && /if \(setup\.publicSlug && !page\.publicSlug\.trim\(\)\) \{ setError\("Your page needs an address\./.test(o),
+  nullHoursRefused: /if day_value is null or start_value is null or end_value is null then raise exception 'Each opening period must have a day, a start and an end\.'/.test(q),
+});
+check("emptying the page name or address is refused with a plain message (the database would silently keep the old value)", minor(ownerMinor, sql).nameCannotBeSilentlyKept);
+check("an opening period with a missing field is refused in plain words by the database", minor(ownerMinor, sql).nullHoursRefused);
+check("PLANTED BUG caught: the page lets an emptied name through", minor(ownerMinor.replace("Your page needs a name.", "x"), sql).nameCannotBeSilentlyKept === false);
+check("PLANTED BUG caught: the null-field check is removed", minor(ownerMinor, sql.replace("if day_value is null or start_value is null or end_value is null then raise exception 'Each opening period must have a day, a start and an end.'; end if;", "")).nullHoursRefused === false);
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll booking checks passed (offline).");
 process.exit(failures ? 1 : 0);
