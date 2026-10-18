@@ -11,7 +11,7 @@ const p = signupPrefillForSetup(meta, " a@b.co ");
 check("services come from the signup services answer, trimmed", p.services === "Candles and soap");
 check("service area and email are carried over, trimmed", p.locations === "Sacramento CA" && p.businessEmail === "a@b.co");
 check("falls back to the signup details when there is no services answer", signupPrefillForSetup({ intake_family_details: "  Handmade  " }, "").services === "Handmade");
-check("missing, null or wrong-typed data gives empty strings, never a crash", JSON.stringify(signupPrefillForSetup(null, undefined)) === JSON.stringify({ services: "", locations: "", businessEmail: "" })
+check("missing, null or wrong-typed data gives empty strings, never a crash", JSON.stringify(signupPrefillForSetup(null, undefined)) === JSON.stringify({ services: "", locations: "", businessEmail: "", industry: "", businessPhone: "" })
   && signupPrefillForSetup({ intake_family_answers: "nope", intake_service_area: 5 }, 7).locations === "");
 check("very long text is cut to a safe length", signupPrefillForSetup({ intake_family_details: "x".repeat(9000) }, "").services.length === 2000);
 

@@ -65,13 +65,16 @@ const labelInput = (text) => page.locator("label", { hasText: text }).locator("i
 await labelInput("Business name").fill("Funnel Test Plumbing");
 ok("then asks for the person's name", /your name/i.test(await submit()));
 await labelInput("Your name").fill("Fran Funnel").catch(async () => page.locator("input[autocomplete=name]").fill("Fran Funnel"));
+ok("then asks what kind of business it is", /kind of business/i.test(await submit()));
+await page.locator("#signup-industry").fill("Plumbing");
 ok("then asks to complete the project-fit questions", /project-fit|Complete/i.test(await submit()));
+ok("the optional business phone is clearly optional and does not block the form", (await page.locator("label", { hasText: "Business phone (optional)" }).count()) === 1);
 // fill every remaining field generically
 const fields = await page.$$("form.premium-signup-card input.auth-input, form.premium-signup-card textarea.auth-input");
 for (const f of fields) {
   const type = (await f.getAttribute("type")) || "text";
   if (["email", "password", "hidden", "checkbox", "radio"].includes(type)) continue;
-  if (!(await f.inputValue())) await f.fill("Residential repairs and installs");
+  if (!(await f.inputValue())) await f.fill((await f.getAttribute("id")) === "signup-phone" ? "(555) 010-2000" : "Residential repairs and installs");
 }
 await page.locator("#signup-email").fill("new@example.com");
 await page.locator("form.premium-signup-card input[type=password]").first().fill("short");
@@ -84,6 +87,7 @@ await axe(page, "the signup page");
 await Promise.all([page.waitForURL("**/portal/check-email", { timeout: 8000 }).catch(() => {}), page.locator("form.premium-signup-card button[type=submit]").click()]);
 ok("a good signup goes to the check-your-email page", page.url().endsWith("/portal/check-email") && /Check your email/.test((await page.textContent("h1")) || ""));
 ok("exactly one signup was sent, with the business, family, tier and project answers attached", signups.length === 1 && signups[0].email === "new@example.com" && signups[0].data?.business_name === "Funnel Test Plumbing" && signups[0].data?.product_family_slug === "business" && signups[0].data?.product_tier_key === "growth" && Object.keys(signups[0].data?.intake_family_answers || {}).length >= 1);
+ok("the industry and phone typed at signup are sent with the account (so the website brief can reuse them)", signups[0].data?.intake_industry === "Plumbing" && signups[0].data?.intake_phone === "(555) 010-2000");
 ok("no referral code is sent when there was no referral link", !("referral_code" in (signups[0].data || {})));
 ok("the check-email page offers a way back to login and home", (await page.getByRole("link", { name: "Back to login" }).count()) === 1 && (await page.getByRole("link", { name: "Return home" }).count()) === 1);
 await axe(page, "the check-email page");

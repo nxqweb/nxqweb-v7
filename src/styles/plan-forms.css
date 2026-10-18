@@ -219,3 +219,20 @@ body[data-nxq-theme="light"] .plan-resolution-card {
   .outreach-sheet { grid-template-columns: repeat(2, 1fr); gap: 0; margin: 0; }
   .outreach-card { border: 1px dashed #000; border-radius: 0; padding: 0.6cm; }
 }
+
+/* Request-your-website flow (client portal): the steps card, the website look options, the signup summary, and the owner's billing chip. */
+.request-steps { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .6rem; }
+.request-steps li { display: grid; gap: .15rem; padding: .8rem 1rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; }
+.request-steps li.done { border-color: rgba(114, 225, 180, .45); }
+.request-steps li span { color: var(--muted, #a9acb7); font-size: .92rem; }
+.website-look { border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; padding: 1rem; margin: 1rem 0; display: grid; gap: .75rem; min-width: 0; }
+.website-look legend { padding: 0 .4rem; font-weight: 700; }
+.website-look-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .6rem; }
+.look-mode, .look-check { display: flex; align-items: flex-start; gap: .6rem; padding: .7rem .8rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 12px; cursor: pointer; }
+.look-mode.active { border-color: var(--gold, #e4c476); }
+.look-mode input, .look-check input { margin-top: .25rem; flex: 0 0 auto; }
+.look-mode small, .look-check small { display: block; margin-top: .15rem; color: var(--muted, #a9acb7); font-weight: 400; }
+.signup-answers-summary { border: 1px dashed var(--line, rgba(255, 255, 255, .22)); border-radius: 12px; padding: .7rem 1rem; margin: .8rem 0; }
+.signup-answers-summary summary { cursor: pointer; font-weight: 600; }
+.signup-answers-summary ul { margin: .6rem 0 0; padding-left: 1.1rem; }
+.billing-chip { display: inline-block; margin: 0 0 .6rem; padding: .25rem .7rem; border-radius: 999px; font-size: .85rem; font-weight: 600; border: 1px solid var(--line, rgba(255, 255, 255, .2)); }

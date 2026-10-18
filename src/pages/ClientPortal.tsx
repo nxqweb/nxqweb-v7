@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -12,6 +12,10 @@ import {
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { signupPrefillForSetup } from "../lib/signupPrefill";
+import {
+  briefOptionLines, briefOptionsFromReport, clearDraft, colourModeOptions, defaultBriefOptions, hasSignupAnswers, loadDraft, paymentConfirmed,
+  saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
+} from "../lib/websiteBrief";
 import { OptionalSection } from "../components/OptionalSection";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
@@ -314,6 +318,12 @@ export function ClientPortal() {
   const [escalationRules, setEscalationRules] = useState("");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [typedSignature, setTypedSignature] = useState("");
+  const [colourMode, setColourMode] = useState<ColourMode>(defaultBriefOptions.colourMode);
+  const [seoPreference, setSeoPreference] = useState(defaultBriefOptions.seo);
+  const [smoothScroll, setSmoothScroll] = useState(defaultBriefOptions.smoothScroll);
+  const [signupAnswers, setSignupAnswers] = useState<SignupAnswers>({ bestCustomers: "", mainAction: "", proof: "", goal: "", firstPriority: "" });
+  const [requestOpen, setRequestOpen] = useState(false);
+  const draftReadyFor = useRef("");
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -448,6 +458,10 @@ export function ClientPortal() {
         setAiNeverPromise(getSetupReportValue(setupFields, "Assistant should never promise"));
         setEscalationRules(getSetupReportValue(setupFields, "Escalation rules"));
         setTypedSignature(getSetupReportValue(setupFields, "Typed signature"));
+        const savedOptions = briefOptionsFromReport((label) => getSetupReportValue(setupFields, label));
+        setColourMode(savedOptions.colourMode);
+        setSeoPreference(savedOptions.seo);
+        setSmoothScroll(savedOptions.smoothScroll);
         setAgreementAccepted(false);
       } else {
         // First visit: start from what the client already told us at signup instead of an empty sheet. Never overwrites typing.
@@ -455,7 +469,41 @@ export function ClientPortal() {
         setServices((current) => current || prefill.services);
         setLocations((current) => current || prefill.locations);
         setBusinessEmail((current) => current || prefill.businessEmail);
+        setIndustry((current) => current || prefill.industry);
+        setBusinessPhone((current) => current || prefill.businessPhone);
       }
+      setSignupAnswers(signupAnswersFromMetadata(session.user.user_metadata));
+      if (setupFields.size === 0 && draftReadyFor.current !== loadedClient.id) {
+        // A brief that was started but not submitted comes back exactly as the client left it (typing always wins over signup answers).
+        const draft = loadDraft(loadedClient.id);
+        const text = (key: keyof BriefDraft) => (typeof draft[key] === "string" ? (draft[key] as string) : "");
+        if (text("companyScale")) setCompanyScale(text("companyScale"));
+        if (text("locationType")) setLocationType(text("locationType"));
+        if (text("locations")) setLocations(text("locations"));
+        if (text("businessPhone")) setBusinessPhone(text("businessPhone"));
+        if (text("businessEmail")) setBusinessEmail(text("businessEmail"));
+        if (text("businessAddress")) setBusinessAddress(text("businessAddress"));
+        if (text("businessHours")) setBusinessHours(text("businessHours"));
+        if (text("emergencyAvailability")) setEmergencyAvailability(text("emergencyAvailability"));
+        if (text("industry")) setIndustry(text("industry"));
+        if (text("services")) setServices(text("services"));
+        if (text("pagesNeeded")) setPagesNeeded(text("pagesNeeded"));
+        if (text("styleDirection")) setStyleDirection(text("styleDirection"));
+        if (text("brandNotes")) setBrandNotes(text("brandNotes"));
+        if (text("competitors")) setCompetitors(text("competitors"));
+        if (text("preferredContactMethod")) setPreferredContactMethod(text("preferredContactMethod"));
+        if (text("urgentLeadRules")) setUrgentLeadRules(text("urgentLeadRules"));
+        if (text("rejectedJobs")) setRejectedJobs(text("rejectedJobs"));
+        if (text("areasNotServed")) setAreasNotServed(text("areasNotServed"));
+        if (text("aiCanAnswer")) setAiCanAnswer(text("aiCanAnswer"));
+        if (text("aiNeverPromise")) setAiNeverPromise(text("aiNeverPromise"));
+        if (text("escalationRules")) setEscalationRules(text("escalationRules"));
+        if (draft.colourMode) setColourMode(draft.colourMode);
+        if (typeof draft.seo === "boolean") setSeoPreference(draft.seo);
+        if (typeof draft.smoothScroll === "boolean") setSmoothScroll(draft.smoothScroll);
+        if (Object.keys(draft).length > 0) setRequestOpen(true);
+      }
+      draftReadyFor.current = loadedClient.id;
 
       const projectResult = await supabase
         .from("projects")
@@ -551,6 +599,22 @@ export function ClientPortal() {
     }
   }
 
+  const planActive = paymentConfirmed(client?.billing_status);
+
+  useEffect(() => {
+    if (!client || setupComplete || draftReadyFor.current !== client.id) return;
+    const timer = window.setTimeout(() => {
+      saveDraft(client.id, {
+        companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
+        pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer,
+        aiNeverPromise, escalationRules, colourMode, seo: seoPreference, smoothScroll,
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [client, setupComplete, companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
+    pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise,
+    escalationRules, colourMode, seoPreference, smoothScroll]);
+
   const leadAndAssistantHaveContent = [preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise, escalationRules].some((value) => value.trim());
 
   async function submitWebsiteSetup() {
@@ -593,6 +657,7 @@ export function ClientPortal() {
     const previousMoreInfoRequest = getLatestMoreInfoRequest(client.notes);
     const isMoreInfoResubmission = Boolean(previousMoreInfoRequest);
 
+    if (!paymentConfirmed(client.billing_status)) return setErrorMessage("Your plan has to be active before you can request your website. NXQX confirms payment by hand for now: message support below and we will switch it on. Everything you typed here is kept.");
     if (!cleanIndustry) return setErrorMessage("Enter the client's industry before submitting.");
     if (!cleanServices) return setErrorMessage("Enter the services/products this website needs to explain.");
     if (!cleanPagesNeeded) return setErrorMessage("Enter the pages or sections the website needs.");
@@ -642,6 +707,9 @@ export function ClientPortal() {
         `Competitors / examples:`,
         cleanCompetitors || "Not provided",
         ``,
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...signupAnswerLines(signupAnswers),
+        ``,
         `Lead handling rules:`,
         `Preferred contact method: ${cleanPreferredContactMethod || "Not provided"}`,
         `Urgent lead rules: ${cleanUrgentLeadRules || "Not provided"}`,
@@ -684,6 +752,7 @@ export function ClientPortal() {
       );
       setAgreementAccepted(false);
       setTypedSignature("");
+      clearDraft(client.id);
       await loadClientPortalData({ keepNotice: true });
     } catch {
       setErrorMessage("Website setup could not be submitted. Nothing was approved, published, or activated.");
@@ -793,6 +862,9 @@ export function ClientPortal() {
         `Brand difference / positioning:`, brandNotes.trim() || "Not provided",
         ``,
         `Competitors / examples:`, competitors.trim() || "Not provided",
+        ``,
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...signupAnswerLines(signupAnswers),
         ``,
         `Lead handling rules:`,
         `Preferred contact method: ${preferredContactMethod.trim() || "Not provided"}`,
@@ -1140,14 +1212,33 @@ export function ClientPortal() {
               <textarea id="targeted-more-info-answer" onChange={(event) => targetedMoreInfoField.onChange(event.target.value)} placeholder={targetedMoreInfoField.placeholder} value={targetedMoreInfoField.value} />
               <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)} type="button">{isSubmittingSetup ? "Submitting update..." : "Submit requested update"}</button>
             </section>
+          ) : !setupComplete && !requestOpen ? (
+            <section className="panel panel-wide request-website-card" data-testid="request-website-card" id="website-setup-sheet">
+              <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
+              <ol className="request-steps">
+                <li className="done"><strong>1. Account</strong><span>Done. We kept everything you told us at signup.</span></li>
+                <li className={planActive ? "done" : ""}><strong>2. Plan</strong><span>{planActive ? "Active." : "Not active yet. NXQX confirms payment by hand for now: message support below and we will switch it on."}</span></li>
+                <li><strong>3. Request your website</strong><span>A short form, already filled in with what we know. You can start it now; it is saved on this device until you send it.</span></li>
+              </ol>
+              <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">Request your website</button>
+            </section>
           ) : !setupComplete ? (
             <section className="panel panel-wide" id="website-setup-sheet">
-              <div className="panel-title"><Send size={20} /><h2>Website setup sheet</h2></div>
+              <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
               <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
               <div className="notice-card success" data-testid="setup-sheet-quickstart">
                 <strong>Only the fields marked (required) are needed.</strong>
-                <p>Everything else is optional. Skip what you do not know and add it later. We filled in what you told us at signup, and you can change it.</p>
+                <p>Everything else is optional. Skip what you do not know and add it later. We filled in what you told us at signup, and you can change it. What you type is kept on this device until you send it.</p>
               </div>
+              {!planActive ? <div className="notice-card warning" data-testid="plan-not-active-notice"><strong>Your plan is not active yet.</strong><p>You can fill this in now. The send button unlocks once NXQX confirms your payment (we do that by hand for now: message support below).</p></div> : null}
+              {hasSignupAnswers(signupAnswers) ? (
+                <details className="signup-answers-summary" data-testid="signup-answers-summary">
+                  <summary>What you told us at signup (we use this, you do not need to type it again)</summary>
+                  <ul>
+                    {signupAnswerLines(signupAnswers).map((line) => <li key={line}>{line}</li>)}
+                  </ul>
+                </details>
+              ) : null}
 
               <div className="package-grid">
                 {(Object.keys(packageOptions) as PackageTier[]).map((tier) => {
@@ -1172,6 +1263,20 @@ export function ClientPortal() {
               <label className="auth-label" htmlFor="services">Services/products the website needs to explain <em className="required-mark">(required)</em></label><textarea id="services" onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
               <label className="auth-label" htmlFor="pages-needed">Pages or sections needed <em className="required-mark">(required)</em></label><textarea id="pages-needed" onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
               <label className="auth-label" htmlFor="style-direction">Website style direction <em className="required-mark">(required)</em></label><textarea id="style-direction" onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
+              <fieldset className="website-look" data-testid="website-look">
+                <legend>Your website's look</legend>
+                <p className="subtle">This is about your website, not this portal.</p>
+                <div className="website-look-modes" role="radiogroup" aria-label="Website colour mode">
+                  {colourModeOptions.map((option) => (
+                    <label className={colourMode === option.value ? "look-mode active" : "look-mode"} key={option.value}>
+                      <input checked={colourMode === option.value} name="website-colour-mode" onChange={() => setColourMode(option.value)} type="radio" value={option.value} />
+                      <span><strong>{option.label}</strong><small>{option.hint}</small></span>
+                    </label>
+                  ))}
+                </div>
+                <label className="look-check"><input checked={seoPreference} onChange={(event) => setSeoPreference(event.target.checked)} type="checkbox" /><span><strong>Set up search-engine basics (SEO)</strong><small>Page titles, descriptions and the things Google looks for. Recommended.</small></span></label>
+                <label className="look-check"><input checked={smoothScroll} onChange={(event) => setSmoothScroll(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong><small>Pages glide instead of jumping when someone taps a menu link.</small></span></label>
+              </fieldset>
               <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
               <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
 
@@ -1194,10 +1299,11 @@ export function ClientPortal() {
                 <label className="auth-label" htmlFor="typed-signature">Typed signature <em className="required-mark">(required)</em></label><input className="auth-input" id="typed-signature" onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
               </div>
 
-              <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitWebsiteSetup()} type="button">{isSubmittingSetup ? "Submitting setup..." : "Submit website setup"}</button>
+              {!planActive ? <p className="subtle" data-testid="submit-locked-note">Sending unlocks once your plan is active. Your answers are saved on this device in the meantime.</p> : null}
+              <button className="wide-btn" disabled={isSubmittingSetup || !client || !planActive} onClick={() => void submitWebsiteSetup()} type="button">{isSubmittingSetup ? "Submitting setup..." : planActive ? "Request my website" : "Request my website (unlocks when your plan is active)"}</button>
             </section>
           ) : (
-            <section className="panel panel-wide setup-complete-card"><div className="panel-title"><CheckCircle2 size={20} /><h2>Website setup submitted</h2></div><p className="subtle">Your website setup sheet has been submitted for review. The setup form is now out of the way, and this portal will focus on project messages, files, approvals, and progress updates.</p></section>
+            <section className="panel panel-wide setup-complete-card"><div className="panel-title"><CheckCircle2 size={20} /><h2>Website setup submitted</h2></div><p className="subtle">Your website setup sheet has been submitted for review. The setup form is now out of the way, and this portal will focus on project messages, files, approvals, and progress updates.</p>{["approved", "active", "overdue"].includes(clientDecisionStatus) ? <p><a className="icon-btn" data-testid="redesign-link" href="/client/business/changes?mode=redesign">Redesign my website</a></p> : null}</section>
           )}
 
           <section className="panel panel-wide domain-panel">

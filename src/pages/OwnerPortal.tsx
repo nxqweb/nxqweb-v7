@@ -216,8 +216,21 @@ function groupSetupReportFields(fields: { label: string; value: string }[]) {
         "Services / products",
         "Pages / sections needed",
         "Style direction",
+        "Website colour mode",
+        "Search-engine setup (SEO)",
+        "Smooth scrolling",
         "Brand difference / positioning",
         "Competitors / examples",
+      ],
+    },
+    {
+      title: "From signup",
+      labels: [
+        "Best customers",
+        "Main visitor action",
+        "Proof to build around",
+        "Primary website goal",
+        "First-version priority",
       ],
     },
     {
@@ -1046,6 +1059,9 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                     </div>
 
                     <h3>{clientName}</h3>
+                    {client && isPipelineStartApproval(approval) ? (
+                      <p className="billing-chip" data-testid="approval-billing-chip">Billing: {formatStatus(client.billing_status || "not_configured")}</p>
+                    ) : null}
                     {isSetupResubmission ? (
                       <p className="recommendation">
                         Resubmission: This is an updated setup sheet after NXQX requested more information.

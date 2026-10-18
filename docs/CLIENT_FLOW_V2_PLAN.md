@@ -28,5 +28,28 @@
 - **Phase 3, template work:** light mode, SEO switch, optional smooth scroll, "My work" gallery section filled from tagged uploads.
 - **Phase 4, other product lines:** a shared "product flow" config so Commerce, Booking, Menu, etc. get the same one-form flow.
 
-## Decisions waiting on the owner
-See the questions asked in chat on 2026-10-18 (payment gate, where the questions live, what to build first). This file is updated when they are answered.
+## Owner decisions (2026-10-18)
+- Pay at **Request a website** (client can fill the brief first; SENDING is locked until NXQX marks the plan active; payment is confirmed by hand while Stripe is parked).
+- The website questions live in the **setup brief** (not at signup). Light/dark is for the CLIENT'S WEBSITE, not their portal: Dark / Light / Both (visitors can switch) / NXQX recommends.
+- Build **Phase 1 now** (Business only).
+
+## Phase 1: BUILT 2026-10-18 (local, pushed, NOT deployed, no migration)
+- Signup asks "What kind of business is it?" (required) and an optional business phone; both are saved with the account and prefill the brief.
+- Portal: a **Request your website** card (3 steps: account, plan, request) opens the brief. The brief is prefilled (industry, services, area, email, phone), shows the signup answers back (best customers, main action, proof, goal) and writes them into the report so nothing is asked twice. New **Your website's look** block: colour mode, SEO on/off, smooth scrolling on/off (written into the same signed setup report). Optional lead/assistant rules stay collapsed. What is typed is kept per client on this device (never the signature or agreement) and cleared after sending.
+- Payment lock is on the SEND button only, with a plain explanation. The owner screen only DISPLAYS billing (a CI test, `scripts/test-owner-billing-safety.mjs`, forbids the owner screen from being blocked by billing).
+- **Redesign my website** (link appears once approved) opens the changes page with a guided form that sends one **design** change request (what to change, style, pages, the same look options). No migration: it reuses `submit_current_client_change_request`.
+- Owner approval card groups the new labels (Website colour mode, SEO, Smooth scrolling, "From signup") and shows a Billing label.
+- Tests: `scripts/test-website-brief.mjs` (in `npm run test:store`, with planted-bug controls), browser checks `scripts/manual/request-website-e2e.mjs` and `scripts/manual/funnel-e2e.mjs` (updated).
+
+## What Phase 1 could NOT do (honest, found while building)
+- **Photos in the same box are blocked by the SERVER.** `nxq_authorize_storage_upload` (migration 246) only allows uploads when the client's status is approved/active/overdue AND billing is active/past_due, so a brand-new client cannot upload before approval. That rule exists to stop free accounts abusing storage. Because the plan is now "pay first", it can safely be relaxed for clients whose billing is already active: a Phase 2 migration (gated, after the 22nd).
+- **Light mode / Both are recorded but not built yet**: the site template only has four dark themes, no light mode, no SEO switch, no gallery section, and smooth scroll is always on. The brief says so in plain words ("Being added"). Phase 3 (template work).
+- **"My work" photos filling a gallery automatically** needs both of the above.
+- **Redesign with new pictures in the same form** has the same upload restriction, so for now it points to the Files card.
+- **Redesign through the setup form** is impossible server-side after approval (`submit_current_client_website_setup` only accepts lead / intake_received / needs_owner_review clients), which is why it uses the change-request path.
+- The AI Desk task does not yet read the colour-mode line (the template could not honour it anyway); wire it when Phase 3 lands.
+
+## Next phases (each its own approval)
+- **Phase 2 (migration, gated, after the 22nd):** allow uploads for paid-but-not-yet-approved clients (storage quota unchanged), photo roles ("Website photo" / "My work") stored as real data, brief stored as columns instead of notes text, a server-side paid check on Request.
+- **Phase 3 (template):** light mode + Both switch, SEO on/off, smooth-scroll toggle, a "My work" gallery section filled from tagged uploads (deterministic, in upload order, owner can reorder; never AI-placed).
+- **Phase 4:** the same one-flow for Commerce, Booking, Menu and the rest through one shared product-flow config.

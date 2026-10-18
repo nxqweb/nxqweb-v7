@@ -34,6 +34,8 @@ export function PortalSignup() {
   );
   const [businessName, setBusinessName] = useState("");
   const [contactName, setContactName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [familyDetails, setFamilyDetails] = useState("");
@@ -81,6 +83,7 @@ export function PortalSignup() {
 
     const trimmedBusinessName = businessName.trim();
     const trimmedContactName = contactName.trim();
+    const trimmedIndustry = industry.trim();
     const trimmedEmail = email.trim();
     const trimmedFamilyDetails = familyDetails.trim();
     const trimmedPrimaryGoal = primaryGoal.trim();
@@ -103,6 +106,11 @@ export function PortalSignup() {
 
     if (!trimmedContactName) {
       setErrorMessage("Enter your name.");
+      return;
+    }
+
+    if (trimmedIndustry.length < 2) {
+      setErrorMessage("Enter what kind of business this is, for example plumbing, tree service, or candles.");
       return;
     }
 
@@ -147,6 +155,8 @@ export function PortalSignup() {
           intake_family_details: trimmedFamilyDetails,
           intake_family_answers: sanitizedFamilyAnswers,
           intake_service_area: serviceArea.trim(),
+          intake_industry: trimmedIndustry.slice(0, 120),
+          intake_phone: businessPhone.trim().slice(0, 40),
           intake_primary_goal: trimmedPrimaryGoal,
           intake_tier_goal: tierGoal.trim(),
           ...(referralCode ? { referral_code: referralCode } : {}),
@@ -239,6 +249,16 @@ export function PortalSignup() {
               <label>
                 <span>Your name</span>
                 <input autoComplete="name" className="auth-input" onChange={(event) => setContactName(event.target.value)} placeholder="John Smith" type="text" value={contactName} />
+              </label>
+
+              <label>
+                <span>What kind of business is it?</span>
+                <input className="auth-input" id="signup-industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Plumbing, tree service, granite, candles..." type="text" value={industry} />
+              </label>
+
+              <label>
+                <span>Business phone (optional)</span>
+                <input autoComplete="tel" className="auth-input" id="signup-phone" onChange={(event) => setBusinessPhone(event.target.value)} placeholder="(555) 123-4567" type="tel" value={businessPhone} />
               </label>
 
               <label className="full">

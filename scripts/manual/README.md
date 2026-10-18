@@ -34,3 +34,5 @@ Do not point these at a real project: they only make sense with the mocked respo
 - The accessibility scanner is loaded with `page.evaluate`, not an inline script tag, because a production Content-Security-Policy correctly blocks inline scripts.
 - `ai-desk-e2e.mjs`: the owner's AI Desk panel via `harness/ai-desk.html` (no network, clipboard permissions granted): copy task, good/bad/fenced/garbage replies, Copy fix request, 390/360px. `SHOT=dir` saves screenshots.
 - `ai-desk-server-e2e.mjs`: the AI Desk panel in SERVER mode (`harness/ai-desk.html?server=1`, in-memory fake of the AI Desk functions; the test plays the pipeline through `window.deskSim`): nothing yet -> task waiting -> copy -> bad reply (no Save) -> good reply -> refused save -> save -> saved -> used -> pipeline rejection with its reason.
+- `request-website-e2e.mjs`: the client portal's Request your website flow against a mocked Supabase: steps card, prefilled brief, signup answers shown back, plan-not-active lock, draft kept across a reload (signature never kept), unlock, send (report lines checked), Redesign my website, 390/360px. `SHOT=dir` saves screenshots.
+
