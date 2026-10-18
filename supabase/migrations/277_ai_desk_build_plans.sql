@@ -1,5 +1,6 @@
--- DRAFT 09: AI Desk build plans (owner decision 2026-10-18: until the paid AI key exists, the owner carries the build-plan task to a
--- separate "NXQX AI Desk" chat and saves the checked answer back). LOCAL ONLY, NOT promoted, NOT applied.
+-- Migration 277: AI Desk build plans (owner decision 2026-10-18: until the paid AI key exists, the owner carries the build-plan task to a
+-- separate "NXQX AI Desk" chat and saves the checked answer back). Promoted from draft 09 on 2026-10-18 on the owner's choice "A". NOT APPLIED: the owner applies it
+-- with the guarded workflow (docs/OCT22_DEPLOY_DAY_CHECKLIST.md); the panel stays in its no-server mode until the switch in src/lib/aiDeskConfig.ts is set.
 --
 -- How it fits the pipeline (the server builds the task, so it can never disagree with what the pipeline later checks):
 --  1. Owner approves a client. The existing prepare-build-plan worker runs. With no AI key configured it records the EXACT task it would have

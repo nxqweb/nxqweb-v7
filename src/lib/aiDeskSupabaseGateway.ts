@@ -1,5 +1,5 @@
-// DRAFT (not compiled, not in src/). The real connection for the owner's AI Desk panel. Copy to src/lib/aiDeskSupabaseGateway.ts ONLY after migration
-// 09_ai_desk_build_plans has been promoted to supabase/migrations and applied (the CI contract rejects calls to database functions that are not in a real migration).
+// The real connection for the owner's AI Desk panel (promoted from docs/drafts/ui with migration 277). It is NOT used anywhere until the one switch in
+// src/lib/aiDeskConfig.ts is set, which happens only after migration 277 has been applied to the database (docs/AI_DESK_KIT.md, "Switching it on").
 // scripts/test-ai-desk-gateway.mjs checks these exact call names and argument names against the SQL.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { deskStatusFromRow, type AiDeskGateway } from "./aiDeskGateway";

@@ -28,7 +28,8 @@ To go live (each step is an owner decision/approval):
 
 Page `src/pages/ClientMembership.tsx` and `src/lib/membershipGateway.ts` are built and tested but NOT routed. The real connection is `membershipSupabaseGateway.ts` here (copy it to `src/lib/` only after migration 08 is promoted and applied). Wiring: route `/client/members` in `src/App.tsx` (`named(() => import("./pages/ClientMembershipRoute"), ...)`, mirror `ClientReviewsRoute`), a "Members" link in `ClientPortal.tsx`, then update `scripts/test-membership.mjs` (`notRouted` and `noSrcRpc` expectations).
 
-## AI Desk save-to-project (draft 09)
+## AI Desk save-to-project: PROMOTED 2026-10-18 (migration 277; draft 09)
+The real gateway is now `src/lib/aiDeskSupabaseGateway.ts`; the panel stays in its no-server mode until the one switch in `src/lib/aiDeskConfig.ts` is set, which happens only after 277 is applied. Earlier notes below are kept for history.
 
 Built and tested: panel `src/components/OwnerAiDesk.tsx` (already on the owner screen in its no-server mode: copies a browser-built task and only CHECKS the reply), types + safe parser `src/lib/aiDeskGateway.ts`, the worker side in `supabase/functions/prepare-build-plan` + `supabase/functions/_shared/ai-desk-plan.mjs` (already in source; tolerant of the table not existing, so deploying functions BEFORE the migration is harmless: it behaves exactly as before). Tests: `scripts/test-ai-desk.mjs`, `scripts/test-ai-desk-plan.mjs` (fake database), `scripts/test-ai-desk-gateway.mjs`, browser checks `scripts/manual/ai-desk-e2e.mjs` and `ai-desk-server-e2e.mjs`.
 To go live (each step is an owner decision/approval):

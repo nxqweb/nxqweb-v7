@@ -9,8 +9,8 @@ function check(name, ok, detail = "") {
   else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); }
 }
 
-const gateway = fs.readFileSync("docs/drafts/ui/aiDeskSupabaseGateway.ts", "utf8");
-const sql = fs.readFileSync("docs/drafts/migrations/09_ai_desk_build_plans.sql", "utf8");
+const gateway = fs.readFileSync("src/lib/aiDeskSupabaseGateway.ts", "utf8");
+const sql = fs.readFileSync("supabase/migrations/277_ai_desk_build_plans.sql", "utf8");
 
 function sqlArgs(name) {
   const match = sql.match(new RegExp(`create or replace function public\\.${name}\\(([^)]*)\\)`));
@@ -29,12 +29,16 @@ for (const name of ["get_ai_desk_status", "save_ai_desk_build_plan"]) {
 // Control: a renamed argument would be caught.
 check("control: the comparison notices a wrong argument name", JSON.stringify(sqlArgs("get_ai_desk_status")) !== JSON.stringify(["client_id"]));
 
-// CI contract: nothing in src/ may call a draft function yet.
+// Where the real calls live, and the one switch that keeps them off until migration 277 is applied.
 const srcFiles = [];
 (function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const full = `${dir}/${entry.name}`; if (entry.isDirectory()) walk(full); else if (/\.(ts|tsx)$/.test(entry.name)) srcFiles.push(full); } })("src");
-check("no file in src/ calls the draft AI Desk functions yet (CI would reject it)", !srcFiles.some((f) => /rpc\(\s*"(?:get_ai_desk_status|save_ai_desk_build_plan)"/.test(fs.readFileSync(f, "utf8"))));
-check("the draft gateway is not compiled (it lives in docs/drafts/ui)", !fs.existsSync("src/lib/aiDeskSupabaseGateway.ts"));
-check("the owner screen does not pass a gateway until promotion", !/gateway=\{/.test(fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8")));
+check("only the gateway file calls the two AI Desk functions from src/", srcFiles.filter((f) => /rpc\(\s*"(?:get_ai_desk_status|save_ai_desk_build_plan)"/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/aiDeskSupabaseGateway.ts");
+check("the gateway is imported nowhere yet (the switch is what turns Save to project on)", !srcFiles.some((f) => f !== "src/lib/aiDeskSupabaseGateway.ts" && /from\s+["'][^"']*aiDeskSupabaseGateway/.test(fs.readFileSync(f, "utf8"))));
+const config = fs.readFileSync("src/lib/aiDeskConfig.ts", "utf8");
+check("the one switch is still null (it is turned on only AFTER migration 277 is applied)", /export const aiDeskGateway: AiDeskGateway \| null = null;/.test(config) && !/= createAiDeskGateway/.test(config));
+const ownerScreen = fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8");
+check("the owner screen hands the panel the switch, nothing else", ownerScreen.includes("gateway={aiDeskGateway}") && ownerScreen.includes('from "../lib/aiDeskConfig"'));
+check("the real SQL the gateway points at is a real migration (not a draft)", fs.existsSync("supabase/migrations/277_ai_desk_build_plans.sql") && !fs.existsSync("docs/drafts/migrations/09_ai_desk_build_plans.sql"));
 
 // Status parser
 check("a waiting row keeps its request", deskStatusFromRow({ status: "waiting", request: { task: "x" } }).request?.task === "x");

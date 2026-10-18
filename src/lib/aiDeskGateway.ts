@@ -1,5 +1,5 @@
 // What the owner's AI Desk panel needs from the server once the AI Desk migration is live. Types only: the real connection is a draft
-// (docs/drafts/ui/aiDeskSupabaseGateway.ts) until the migration is promoted, because CI rejects database calls that are not in a real migration.
+// (src/lib/aiDeskSupabaseGateway.ts, promoted with migration 277; switched on in src/lib/aiDeskConfig.ts only after the migration is applied).
 import type { DeskRequest } from "./aiDesk";
 
 export type DeskStatus = {

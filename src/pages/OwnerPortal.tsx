@@ -14,6 +14,7 @@ import { OwnerOverviewGraph } from "../components/OwnerOverviewGraph";
 import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
 import { setupFieldsFromNotes } from "../lib/aiDesk";
 import { OwnerAiDesk } from "../components/OwnerAiDesk";
+import { aiDeskGateway } from "../lib/aiDeskConfig";
 
 type ApprovalStatus =
   | "pending"
@@ -1016,7 +1017,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                 </p>
               </div>
 
-              <OwnerAiDesk clients={deskClients} selectedId={deskClientId} onSelect={setDeskClientId} />
+              <OwnerAiDesk clients={deskClients} selectedId={deskClientId} onSelect={setDeskClientId} gateway={aiDeskGateway} />
 
               {!isLoading && pendingApprovals.length === 0 ? (
                 <div className="empty-state">

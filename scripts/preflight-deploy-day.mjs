@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = ["272_referral_invoice_credit.sql", "273_reviews_collector.sql", "274_fix_duplicate_variant_oversell.sql", "275_revoke_client_direct_table_writes.sql", "276_site_photos.sql"]; // owner chose to apply all four together (2026-10-17: "A")
+const expectedPendingMigrations = ["272_referral_invoice_credit.sql", "273_reviews_collector.sql", "274_fix_duplicate_variant_oversell.sql", "275_revoke_client_direct_table_writes.sql", "276_site_photos.sql", "277_ai_desk_build_plans.sql"]; // owner chose to apply all four together (2026-10-17: "A")
 const lastAppliedMigration = 271; // applied to staging 2026-10-16 (run #260)
 const lastFunctionsDeploy = "2026-10-17T04:30:00Z"; // run #263; later commits that touch supabase/functions need deploy_functions again
 
