@@ -42,7 +42,7 @@ Aim for a list of 30 to 50 before you start, in the tracker (section 8). Mixed i
 > **[Your name], NXQX-Web.** Simple, good-looking websites for local businesses, set up and looked after for you.
 > First month free. After that $50 to $150 a month, cancel any time.
 > See examples and plans: **[your site address]/plans**   ·   Call or text: **[your number]**
-(Optional later: a QR code to the plans page. The QR maker used for Reviews can encode any web address; asking me to add a "print your card" page is a small job.)
+**Printable version built:** open **`/owner/outreach-card`** (owner screen, "Outreach card" link on the command center), type your name, number and website once, and press Print: six cards per sheet, each with a QR code that opens your plans page. Point a phone at the first card before printing a stack. The boxes are remembered in your browser only; nothing is sent anywhere.
 
 ## 7. Honest answers to common questions
 | They say | You say |
@@ -69,6 +69,5 @@ date contacted, result (no / call back / yes / pilot), next step and date, notes
 6. Never publish their story, name or numbers without their written OK.
 
 ## 10. What I can build next for this (optional, all local first)
-- A printable one-page "card" page from the app (name, number, plans link, QR).
 - A small "first month" tracker on the owner client page (start date, invoice date) so you never miss the day-30 invoice.
 - A short intake you can fill in on your phone while standing in the shop.

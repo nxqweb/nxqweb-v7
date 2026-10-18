@@ -299,6 +299,7 @@ export function OwnerCommandCenter() {
         <a href="/owner/exceptions">Exception center</a>
         <a href="/owner/launch-readiness">Launch readiness</a>
         <a href="/owner/sales">Sales pipeline</a>
+        <a href="/owner/outreach-card">Outreach card</a>
         <a href="/owner/growth">Growth controls</a>
       </div>
     </section>,

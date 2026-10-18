@@ -206,3 +206,16 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .store-theme .portal-shell .booking-slot span { display: inline; margin: 0; }
 .store-theme .portal-shell .booking-hp label { display: block; margin: 0; }
 .store-theme .portal-shell .booking-times legend { margin-bottom: 0.4rem; }
+
+/* Owner outreach card: black on white so phone cameras read the code; six cards per sheet. */
+.outreach-sheet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+.outreach-card, .outreach-card h3, .outreach-card p { color: #111 !important; }
+.outreach-card { background: #fff; border-radius: 12px; padding: 1rem; text-align: center; border: 1px solid #bbb; break-inside: avoid; }
+.outreach-card h3 { margin: 0 0 0.3rem; font-size: 1.15rem; }
+.outreach-card p { margin: 0.25rem 0; font-size: 0.9rem; }
+.outreach-card .review-qr { width: 130px; margin: 0.5rem auto; }
+@media (max-width: 520px) { .outreach-sheet { grid-template-columns: minmax(0, 1fr); } }
+@media print {
+  .outreach-sheet { grid-template-columns: repeat(2, 1fr); gap: 0; margin: 0; }
+  .outreach-card { border: 1px dashed #000; border-radius: 0; padding: 0.6cm; }
+}

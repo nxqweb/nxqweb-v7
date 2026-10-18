@@ -81,6 +81,7 @@ const OwnerProductionLaunches = named(() => import("./pages/OwnerProductionLaunc
 const OwnerProductionStatus = named(() => import("./pages/OwnerProductionStatus"), "OwnerProductionStatus");
 const OwnerProviderHealth = named(() => import("./pages/OwnerProviderHealth"), "OwnerProviderHealth");
 const OwnerSalesPipeline = named(() => import("./pages/OwnerSalesPipeline"), "OwnerSalesPipeline");
+const OwnerOutreachCard = named(() => import("./pages/OwnerOutreachCard"), "OwnerOutreachCard");
 const OwnerStorefrontProvisioning = named(() => import("./pages/OwnerStorefrontProvisioning"), "OwnerStorefrontProvisioning");
 const PortalLanding = named(() => import("./pages/PortalLanding"), "PortalLanding");
 const PortalLogin = named(() => import("./pages/PortalLogin"), "PortalLogin");
@@ -113,6 +114,7 @@ function AppRoutes() {
   if (path === "/owner/launch-readiness") return <OwnerProtectedRoute><OwnerLaunchReadiness /></OwnerProtectedRoute>;
   if (path === "/owner/growth") return <OwnerProtectedRoute><OwnerGrowthCenter /></OwnerProtectedRoute>;
   if (path === "/owner/sales") return <OwnerProtectedRoute><OwnerSalesPipeline /></OwnerProtectedRoute>;
+  if (path === "/owner/outreach-card") return <OwnerProtectedRoute><OwnerOutreachCard /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
   if (path === "/owner") return <OwnerProtectedRoute><><OwnerCommandCenter /><OwnerPortal /></></OwnerProtectedRoute>;
