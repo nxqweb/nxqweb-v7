@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, ArrowRightLeft, BadgeDollarSign, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import {
   productFamilies as PRODUCT_FAMILIES,
-  comingSoonTiers as COMING_SOON_TIERS,
+  byRequestTiers as BY_REQUEST_TIERS,
   productTiers as PRODUCT_TIERS,
   type ProductFamilySlug,
   type ProductTierKey,
@@ -347,8 +347,8 @@ export function ClientPlanManagement() {
                   ))}
                 </select>
                 <small className="subtle">Enterprise is custom and starts at $300+/mo.</small>
-                {COMING_SOON_TIERS.map((tier) => (
-                  <small className="subtle" data-testid="coming-soon-note" key={tier.key}>Coming later, not available to request yet: {tier.name} ({tier.priceLabel}). Ask us if you are interested.</small>
+                {BY_REQUEST_TIERS.map((tier) => (
+                  <small className="subtle" data-testid="by-request-note" key={tier.key}>{tier.name} ({tier.priceLabel}) is arranged by hand: choose Enterprise, write "{tier.name}" in your note, and we will confirm what is included and the price before anything changes.</small>
                 ))}
               </label>
             </div>

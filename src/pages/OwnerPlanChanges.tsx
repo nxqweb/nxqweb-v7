@@ -381,7 +381,7 @@ export function OwnerPlanChanges() {
                               className="auth-input"
                               inputMode="decimal"
                               min="1"
-                              placeholder="$500"
+                              placeholder="e.g. 300 for NXQX Web Pro v1"
                               type="number"
                               value={monthlyPrices[request.id] || ""}
                               onChange={(event) =>

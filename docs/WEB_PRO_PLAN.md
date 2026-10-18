@@ -4,6 +4,9 @@ Source: the owner's "NXQX Everything Summary" notes (2026-10-16): *"$500/month, 
 missed-call text-back, review requests, Google Business Profile, local SEO, lead dashboard, booking and payments, monthly report."* Prices in those notes are "directions, not final".
 Today it is shown on `/plans` as a **coming-soon** card only (not buyable). This plan is what it takes to turn it into something clients can really pay for.
 
+**DECIDED 2026-10-18 (owner, multiple choice): architecture C (owner-approved Enterprise package, no database change), Pro v1 first with phone features later, price from $300/mo, shown on `/plans` as "By request".
+The by-request card and the hand-selling steps are built: see `docs/WEB_PRO_V1_ORDER_PROCESS.md`. Sections 3-5 below remain the reference for the later A/B promotion and the phone features.**
+
 **Nothing in this document is built, applied or deployed. No outside service was contacted.** Facts about outside providers are general knowledge and MUST be re-checked with each
 provider's own documents (and a lawyer for the legal rows) before anything is promised to a client.
 

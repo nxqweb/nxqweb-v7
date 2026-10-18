@@ -440,38 +440,47 @@ export function getRequestedProductFamily(slug: string | null) {
   return productFamilyCatalog.find((family) => family.slug === slug) || null;
 }
 
-// A tier that is PLANNED but not for sale. It lives apart from `productTiers` on purpose: that list feeds signup, plan changes and billing, so nothing here can be chosen,
-// requested or charged. Everything shown is a plan, marked as such. (From the owner's notes of 2026-10-16: built after NXQX Web launches; prices are directions, not final.)
-export type ComingSoonTierDefinition = {
+// A package that is offered BY REQUEST only. It lives apart from `productTiers` on purpose: that list feeds signup, plan changes and billing, so nothing here can be chosen
+// in a form, requested through the tier dropdown or charged automatically. It is sold by hand as an owner-approved Enterprise package (owner decisions of 2026-10-18:
+// "C: sell it as an Enterprise package", "Pro v1 first, phone features later", "From $300/mo", "show it as available by request"). The notes of 2026-10-16 plan $500/mo
+// once the phone features exist; prices there are "directions, not final". Only things that exist in the app belong in `availableNow`.
+export type ByRequestTierDefinition = {
   key: string;
   name: string;
+  badge: string;
   priceLabel: string;
   priceNote: string;
   description: string;
-  badge: string;
-  features: string[];
+  availableNow: string[];
+  comingLater: string[];
+  laterPriceNote: string;
   honestNote: string;
+  ctaLabel: string;
 };
 
-export const comingSoonTiers: ComingSoonTierDefinition[] = [
+export const byRequestTiers: ByRequestTierDefinition[] = [
   {
     key: "web-pro",
     name: "NXQX Web Pro",
-    priceLabel: "$500/mo planned",
-    priceNote: "The price is a plan and may change before launch.",
-    description: "A done-with-you growth system for local businesses that want the phones answered, reviews coming in and leads tracked.",
-    badge: "Coming soon",
-    features: [
+    badge: "By request",
+    priceLabel: "From $300/mo",
+    priceNote: "Set with you per business. Not a checkout price.",
+    description: "A done-with-you growth package for local businesses that want leads, reviews and reporting handled in one place. Version 1 starts today; the phone features arrive later.",
+    availableNow: [
+      "Everything in Intelligence",
+      "Lead dashboard and monthly report",
+      "Review link, QR code and printable review card",
+    ],
+    comingLater: [
       "AI receptionist (monthly minutes have a fair-use cap)",
       "Missed-call text-back",
-      "Review requests",
-      "Google Business Profile",
-      "Local SEO",
-      "Lead dashboard",
-      "Booking and payments",
-      "Monthly report",
+      "Automatic review requests",
+      "Google Business Profile connection",
+      "Booking requests, then booking payments",
     ],
-    honestNote: "Not available to order yet. It is built after NXQX-Web launches, and the features above are planned and may change.",
+    laterPriceNote: "The price is planned to rise to about $500/mo once the phone features are live. That is a plan and may change.",
+    honestNote: "Pro is arranged by hand: tell us you are interested and we confirm what is included and the price before anything starts. The 'coming later' items are planned and may change.",
+    ctaLabel: "Talk to us about",
   },
 ];
 

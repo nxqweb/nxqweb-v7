@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 
 const tests = [
   "test-shopper-account", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
-  "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-portal-help", "test-menu-mode", "test-referral-link", "test-reviews", "test-qr-code", "test-booking", "test-booking-time", "test-membership", "test-scan-fixes", "test-coming-soon-tier", "test-referral-invoice-credit", "test-rewards-page", "test-info-pages", "test-owner-billing-safety", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
+  "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-portal-help", "test-menu-mode", "test-referral-link", "test-reviews", "test-qr-code", "test-booking", "test-booking-time", "test-membership", "test-scan-fixes", "test-by-request-tier", "test-referral-invoice-credit", "test-rewards-page", "test-info-pages", "test-owner-billing-safety", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
 ];
 
 const failed = [];

@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Clock3 } from "lucide-react";
 import { ProductFamilySignupSelector } from "../components/ProductFamilySignupSelector";
-import { comingSoonTiers, productTiers } from "../lib/productCatalog";
+import { byRequestTiers, productTiers } from "../lib/productCatalog";
 import { usePremiumRoot, usePointerSpotlight, useScrollReveal } from "../lib/premiumMotion";
 import { usePageWipe } from "../lib/usePageWipe";
 import { PublicFooterLinks } from "../components/PublicFooterLinks";
@@ -68,23 +68,29 @@ export function PublicPlans() {
         </div>
       </section>
 
-      <section id="coming-soon" aria-labelledby="coming-soon-title">
+      <section id="by-request" aria-labelledby="by-request-title">
         <div className="px-wrap">
-          <span className="px-kicker" data-px-reveal>Coming soon</span>
-          <h2 id="coming-soon-title" data-px-reveal>Planned for later, not open yet.</h2>
+          <span className="px-kicker" data-px-reveal>By request</span>
+          <h2 id="by-request-title" data-px-reveal>A done-with-you package, arranged by hand.</h2>
           <div className="px-tiers px-tiers-soon">
-            {comingSoonTiers.map((tier) => (
-              <article className="px-tier" data-px-reveal data-px-spot data-testid="coming-soon-tier" key={tier.key}>
+            {byRequestTiers.map((tier) => (
+              <article className="px-tier" data-px-reveal data-px-spot data-testid="by-request-tier" key={tier.key}>
                 <span className="px-badge">{tier.badge}</span>
                 <h3>{tier.name}</h3>
                 <p>{tier.description}</p>
                 <div className="px-price">{tier.priceLabel}</div>
                 <p className="px-out">{tier.priceNote}</p>
-                <ul>
-                  {tier.features.map((feature) => <li key={feature}>{feature}</li>)}
+                <h4>Available now in version 1</h4>
+                <ul data-testid="by-request-now">
+                  {tier.availableNow.map((feature) => <li key={feature}>{feature}</li>)}
                 </ul>
+                <h4>Coming later (planned, not available yet)</h4>
+                <ul data-testid="by-request-later">
+                  {tier.comingLater.map((feature) => <li key={feature}>{feature}</li>)}
+                </ul>
+                <p className="px-out">{tier.laterPriceNote}</p>
                 <div className="px-out">{tier.honestNote}</div>
-                <a className="px-btn px-ghost" data-px-wipe href="/contact">Ask about {tier.name} <ArrowRight size={16} /></a>
+                <a className="px-btn px-ghost" data-px-wipe href="/contact">{tier.ctaLabel} {tier.name} <ArrowRight size={16} /></a>
               </article>
             ))}
           </div>

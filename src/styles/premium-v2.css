@@ -104,6 +104,7 @@
 /* ---------- pricing ---------- */
 .px-tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px;align-items:stretch}
 .px-tiers.px-tiers-soon{grid-template-columns:minmax(0,520px);justify-content:center}
+.px-tier h4{font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--px-gold-2);margin:18px 0 6px;font-weight:600}
 @property --px-a{syntax:"<angle>";inherits:false;initial-value:0deg}
 .px-tier{position:relative;overflow:hidden;padding:30px 26px;border-radius:var(--px-radius);background:linear-gradient(170deg,var(--px-glass-2),var(--px-glass));border:1px solid var(--px-line);display:flex;flex-direction:column;transition:transform .35s}
 .px-tier:hover{transform:translateY(-6px)}
