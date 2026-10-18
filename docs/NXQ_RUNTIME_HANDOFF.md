@@ -18,7 +18,7 @@ state. Update this file, not a new one, at every handoff.
 
 **Deploy day (Oct 22 or later), in this order** (full checklist: `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`; rollback: `docs/ROLLBACK_AND_EMERGENCY_PLAN.md`; reading the run logs: `docs/HOW_TO_READ_THE_RUN_LOGS.md`):
 1. Owner checks Netlify credits. Claude runs `npm run ready` (preflight + the 66 CI commands, one verdict).
-2. `validate_foundation` (read-only): the dry run must list EXACTLY 272, 273, 274, 275, 276 (276 = website photos, promoted 2026-10-18 on the owner's go; the owner approves this five-item list on the day, or applies 276 in its own later run). Anything else: STOP and ask.
+2. `validate_foundation` (read-only): the dry run must list EXACTLY 272, 273, 274, 275, 276 (276 = website photos, promoted 2026-10-18 on the owner's go; owner chose Option A on 2026-10-18: all five together on deploy day, still approved with the phrase and the Approve click that day). Anything else: STOP and ask.
 3. `apply_migrations` (owner types `APPLY-NXQ-SUPABASE-STAGING`, owner clicks Review deployments -> nxq-staging -> Approve and deploy). Claude reads the log.
 4. `deploy_functions` (a registry throttle `toomanyrequests` means wait ~30 min and re-run). 5. ONE site deploy. 6. `npm run smoke`, then the phone proof (`docs/COMMERCE_TEST_PLAN.md`), including the extra 274/275 proof (one practice order; save a product and an order update as the candle client).
 7. Only after the practice order passes may the candle client be told the store is public (`docs/CANDLE_CLIENT_QUICK_START.md`).
