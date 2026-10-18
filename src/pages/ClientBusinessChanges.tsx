@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquarePlus } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { ClientSitePhotos } from "../components/ClientSitePhotos";
+import { sitePhotosGateway } from "../lib/sitePhotosConfig";
+import { createPhotoUploader } from "../lib/sitePhotoUpload";
 import { colourModeOptions, defaultBriefOptions, redesignDescription, redesignProblem, type ColourMode } from "../lib/websiteBrief";
 
 type RequestRow = {
@@ -19,6 +22,7 @@ type RequestRow = {
 
 export function ClientBusinessChanges() {
   const [projectId, setProjectId] = useState("");
+  const [clientId, setClientId] = useState("");
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [type, setType] = useState("content");
   const [title, setTitle] = useState("");
@@ -81,6 +85,7 @@ export function ClientBusinessChanges() {
     }
 
     setProjectId(project.data.id);
+    setClientId(client.data.id);
 
     const req = await supabase
       .from("website_change_requests")
@@ -205,6 +210,7 @@ export function ClientBusinessChanges() {
               <label className="look-check"><input checked={rdSeo} disabled={sending || loading} onChange={(event) => setRdSeo(event.target.checked)} type="checkbox" /><span><strong>Let search engines list my website (SEO)</strong></span></label>
               <label className="look-check"><input checked={rdSmooth} disabled={sending || loading} onChange={(event) => setRdSmooth(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong></span></label>
             </fieldset>
+            {sitePhotosGateway && supabase && clientId ? <ClientSitePhotos gateway={sitePhotosGateway} upload={createPhotoUploader(supabase, clientId)} /> : null}
             <label className="auth-label" htmlFor="rd-extra">Anything else?</label>
             <textarea className="auth-input" disabled={sending || loading} id="rd-extra" maxLength={1500} rows={2} value={rdExtra} onChange={(event) => setRdExtra(event.target.value)} />
             <button className="wide-btn" disabled={sending || loading || !projectId || rdChange.trim().length < 5} onClick={() => void submitRedesign()} type="button">{sending ? "Submitting…" : "Send redesign request"}</button>

@@ -236,3 +236,16 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .signup-answers-summary summary { cursor: pointer; font-weight: 600; }
 .signup-answers-summary ul { margin: .6rem 0 0; padding-left: 1.1rem; }
 .billing-chip { display: inline-block; margin: 0 0 .6rem; padding: .25rem .7rem; border-radius: 999px; font-size: .85rem; font-weight: 600; border: 1px solid var(--line, rgba(255, 255, 255, .2)); }
+
+/* Website photos panel (client portal brief and redesign form) */
+.site-photos { border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; padding: 1rem; margin: 1rem 0; display: grid; gap: .75rem; min-width: 0; }
+.site-photos legend { padding: 0 .4rem; font-weight: 700; }
+.site-photo-queue, .site-photo-list { display: grid; gap: .9rem; }
+.site-photo-row { display: flex; gap: .9rem; align-items: flex-start; padding: .8rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 12px; min-width: 0; }
+.site-photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; flex: 0 0 auto; }
+.site-photo-fields { display: grid; gap: .45rem; min-width: 0; flex: 1 1 auto; }
+.site-photo-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.scan-pill { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .82rem; border: 1px solid var(--line, rgba(255, 255, 255, .2)); width: fit-content; max-width: 100%; }
+.scan-pill.ok { border-color: rgba(114, 225, 180, .6); }
+.scan-pill.bad { border-color: rgba(255, 140, 140, .7); }
+@media (max-width: 520px) { .site-photo-row { flex-direction: column; } .site-photo-thumb { width: 100%; height: 160px; } }

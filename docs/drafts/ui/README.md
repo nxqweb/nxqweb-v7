@@ -37,3 +37,6 @@ To go live (each step is an owner decision/approval):
 3. Copy `docs/drafts/ui/aiDeskSupabaseGateway.ts` to `src/lib/aiDeskSupabaseGateway.ts` and pass `gateway={supabase ? createAiDeskGateway(supabase) : null}` to `<OwnerAiDesk>` in `src/pages/OwnerPortal.tsx`; flip the "no gateway until promotion" expectations in `scripts/test-ai-desk-gateway.mjs`.
 4. Re-run `npm run test:ci-parity`, both `ai-desk*-e2e.mjs`, and prove it on staging with the candle client or a QA client: Approve, wait for the task, copy, paste into the AI Desk chat, paste the reply back, Save, and read the worker log for "ai_source: owner_ai_desk".
 
+## Website photos (draft 10)
+Built and tested: panel `src/components/ClientSitePhotos.tsx` (in the brief and in the redesign form, only when the one switch is on), rules `src/lib/sitePhotos.ts`, uploader `src/lib/sitePhotoUpload.ts` (uses only functions that already exist), switch `src/lib/sitePhotosConfig.ts` (null now), worker side in `supabase/functions/build-business-website` + `_shared/site-photos.mjs`. The real connection is `sitePhotosSupabaseGateway.ts` here. Exact steps, gates and rollback: `docs/PHOTO_BACKEND_RUNBOOK.md`. Tests: `scripts/test-site-photos.mjs`, `scripts/test-site-photos-ui.mjs`; browser: `scripts/manual/site-photos-e2e.mjs`.
+

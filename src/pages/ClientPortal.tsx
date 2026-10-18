@@ -17,6 +17,9 @@ import {
   saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
 } from "../lib/websiteBrief";
 import { OptionalSection } from "../components/OptionalSection";
+import { ClientSitePhotos } from "../components/ClientSitePhotos";
+import { sitePhotosGateway } from "../lib/sitePhotosConfig";
+import { createPhotoUploader } from "../lib/sitePhotoUpload";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
 import { AssistantChat } from "../components/AssistantChat";
@@ -1279,6 +1282,7 @@ export function ClientPortal() {
               </fieldset>
               <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
               <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
+              {sitePhotosGateway && supabase && client ? <ClientSitePhotos gateway={sitePhotosGateway} upload={createPhotoUploader(supabase, client.id)} /> : null}
 
               <OptionalSection defaultOpen={leadAndAssistantHaveContent} title="Lead handling and website assistant rules" hint="How to treat urgent leads and what the website assistant may say. You can add these later.">
               <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
