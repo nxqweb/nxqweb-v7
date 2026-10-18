@@ -12,6 +12,7 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { OwnerOverviewGraph } from "../components/OwnerOverviewGraph";
 import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
+import { buildDeskRequest, deskTaskText } from "../lib/aiDesk";
 
 type ApprovalStatus =
   | "pending"
@@ -603,6 +604,26 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
     }
   }
 
+  async function copyAiTask(approval: ApprovalRow, client: ClientRow | null, clientName: string) {
+    setActionMessage("");
+    setErrorMessage("");
+    const built = await buildDeskRequest({
+      fields: parseSetupReport(approval.recommended_action || ""),
+      businessName: clientName,
+      businessType: client?.business_type || undefined,
+    });
+    if (!built.ok) {
+      setErrorMessage(`Cannot build the AI task for ${clientName}. Missing from the setup sheet: ${built.missing.join(", ")}.`);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(deskTaskText(built.request));
+      setActionMessage(`AI task for ${clientName} copied. Paste it into your NXQX AI Desk chat.`);
+    } catch {
+      setErrorMessage("Your browser blocked copying. Click the page once, then press Copy AI task again.");
+    }
+  }
+
   async function requestMoreSetupInfo(
     _approval: ApprovalRow,
     client: ClientRow | null,
@@ -1160,6 +1181,16 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                       >
                         APPROVE
                       </button>
+
+                      {isPipelineStartApproval(approval) && approval.recommended_action ? (
+                        <button
+                          type="button"
+                          className="copy-ai-task-button"
+                          onClick={() => copyAiTask(approval, client, clientName)}
+                        >
+                          Copy AI task
+                        </button>
+                      ) : null}
 
                       <button
                         type="button"
