@@ -18,8 +18,7 @@ Known weaknesses left as they were: the claimed file type of an upload is client
    client whose billing is **already active** while they are still in setup. Unpaid clients still cannot upload anything. (Tested with 7 planted bugs.)
 2. **Storage limits did not exist before approval.** The monthly storage allowance is a per-client policy created only at approval, so even with rule 1 a paid client
    in setup would be refused ("No server-side resource policy is configured"). Migration 276 creates that policy when billing turns active. (Tested.)
-3. **Photos stay locked until the malware scanner runs.** Every upload is "restricted" until a scan says clean. The scanner needs a provider key (see step C). Until
-   it is live, photos will show "Being checked for safety" and **never reach the website**. That is the safe behaviour, but it means step C is required for the gallery.
+3. **Photos stay locked until the malware scanner says clean.** Every upload is "restricted" until a scan says clean. The scanner (Scanii) is already live and proven on staging (step C), but its free trial is 50 scans in total, so photo uploads are a limited resource until a paid plan is possible.
 
 ## The steps, in order
 
@@ -35,13 +34,12 @@ GitHub -> Actions -> **NXQ Manual Supabase Stage** -> Run workflow:
 3. Read the log for `Applying migration 276_site_photos.sql` and a green result. (If you tell me which run, I will read the log and report what actually happened. I can also
    start the run for you through the GitHub tool once you have approved the exact migration list in chat; the Approve click stays yours.)
 
-### C. The scanner (GATE: external service + secrets + function deploy)
-Photos only publish after a clean scan. The code for the free-trial scanner Scanii is already in the repo (`docs/MALWARE_PROVIDER_SCANII_PLAN.md`).
-1. Create a Scanii account yourself (their trial, no card). Note: this sends client files to a third party for scanning; the public privacy page must say so before launch.
-2. Supabase dashboard -> your **staging** project -> Edge Functions -> Secrets: add `NXQ_SCANII_API_KEY` and `NXQ_SCANII_API_SECRET` (and `NXQ_SCANII_REGION` if not us1).
-   **Never paste these into chat, code, logs or workflow inputs.**
-3. Run `deploy_functions` (same workflow, same phrase and Approve click). This ships the scanner adapter AND the builder/worker changes for photos and site options.
-4. Proof with a harmless file: upload one normal photo (must come back clean) and the standard harmless EICAR test file (must come back infected).
+### C. The scanner: ALREADY DONE on staging (correction 2026-10-18)
+I wrongly listed "create a Scanii account" here. The owner already has it: Scanii account created 2026-10-05, the key, secret and region (`NXQ_SCANII_API_KEY`, `NXQ_SCANII_API_SECRET`, `NXQ_SCANII_REGION=us1`) are set in the staging Supabase Edge secrets, the adapter and `scan-client-file` were deployed (run #233), migration 263 was applied (run #242), and the scanner was **proven both ways on staging** (a normal file came back "clean and released", the EICAR test file "infected and quarantined"; see the handoff notes of 2026-10-05/06 and `docs/MALWARE_PROVIDER_SCANII_PLAN.md`). Nothing to create or paste.
+What is still true:
+1. **The trial has a limit.** The Scanii dashboard (Account -> Usage, 2026-10-18) shows a **50-credit trial with 46 left**. Every uploaded file is one scan. A client who uploads 12 work photos uses 12 credits, so the trial covers only a few clients' photos. Rough rule: credits left / photos per client. Past the trial, Scanii is a paid plan, which is on hold under the spending hold (about July 2027). Options when credits run low: (a) keep photo uploads limited per client (the panel already caps work photos at 12), (b) turn the photo panel off again (`sitePhotosGateway = null`), (c) upgrade Scanii when the hold lifts. Check Account -> Usage before offering photos to a new client. Files that cannot be scanned stay restricted and never publish (fail closed).
+2. The builder and worker changes still have to be shipped with `deploy_functions` on deploy day (same workflow, same phrase and Approve click).
+3. Keep every key and secret value out of chat, screenshots and code. (A dashboard screenshot that shows key IDs is not a leak of the secret, but crop it next time.)
 
 ### D. Turn the panel on  (code change, then a site deploy)
 After B succeeds, tell me **"migration 276 is applied, switch the photo panel on."** I will set the one switch in `src/lib/sitePhotosConfig.ts` to `createSitePhotosGateway(supabase)` (the gateway file is already in `src/lib`), flip the "switch is still null" expectation in `scripts/test-site-photos-ui.mjs`, run all checks, and push.
