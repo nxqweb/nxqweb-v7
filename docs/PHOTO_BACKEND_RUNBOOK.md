@@ -62,6 +62,6 @@ approve, run the build, open the preview, and confirm the Our work section shows
 - **A photo looks wrong on the site:** remove it from the client's photo list (the client can, or tell me) and rebuild; the builder only publishes what is in the list.
 
 ## What I cannot do for you
-- Create the Scanii account or enter the secrets (yours alone).
+- Anything involving key or secret values (they are already set; if one ever needs rotating, that is yours alone).
 - Click Approve and deploy (yours alone, always).
 - Make photos appear on a site before the scanner is live.
