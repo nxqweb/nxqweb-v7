@@ -216,6 +216,11 @@ state. Update this file, not a new one, at every handoff.
 - NOT built: the shopper-side 'my membership' line (touches the public store and customer-accounts UI; wait for the Membership promotion decision).
 - Candidate next steps: the enforcement decision for members-only products (probably never), a daily purge job approval, then more polish.
 
+## Local outreach kit written (2026-10-18; docs only)
+- Owner decisions (multiple choice): not industry-specific (any local business), found in the owner's own area in person and by phone, lead offer = free first month then $50-$150/mo. Legal review PARKED by the owner ('i dont want to do legal stuff yet, ill do that later'): the open items stay in `docs/LEGAL_AND_DATA_CHECKLIST.md`; nothing was changed in the public legal pages.
+- `docs/LOCAL_OUTREACH_KIT.md`: qualifier, ways to find businesses, in-person and phone scripts, the offer in plain words, a leave-behind card, honest objection answers, tracking with the existing `/owner/sales` screen, day-after-yes checklist. NOTE for the owner: 'free first month then paid' is NOT the Founding-Client Program (5 testers at 50% off for 12 months, 10 free spots under written terms); decide whether it replaces or sits beside it before publishing either. In the app a free month needs no code (invoices are manual): no invoice until day 30.
+- Possible small builds, not started: a printable card page with QR, a first-month tracker on the owner client page, a phone-friendly intake.
+
 ## NXQX Web Pro ($500) added as a COMING-SOON tier (2026-10-18; local/pushed; NOT deployed; no database or billing change)
 - SOURCE: the owner's 'NXQX Everything Summary' notes (2026-10-16), Pricing table: 'NXQX Web Growth $500/month (built after Web launches; AI receptionist minutes have a fair-use cap): AI receptionist, missed-call text-back, review requests, Google Business Profile, local SEO, lead dashboard, booking and payments, monthly report'. The same notes say Web stays '$50-$150/month (unchanged)' and 'prices below are directions, not final'.
 - OWNER DECISIONS (multiple choice): (1) show it as 'A: coming soon, not buyable'; (2) name it 'NXQX Web Pro' (the app already has a $100 'Growth' tier, so the notes' 'NXQX Web Growth' name was not used).
