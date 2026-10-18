@@ -43,7 +43,7 @@
 
 ## What Phase 1 could NOT do (honest, found while building)
 - **Photos in the same box are blocked by the SERVER.** `nxq_authorize_storage_upload` (migration 246) only allows uploads when the client's status is approved/active/overdue AND billing is active/past_due, so a brand-new client cannot upload before approval. That rule exists to stop free accounts abusing storage. Because the plan is now "pay first", it can safely be relaxed for clients whose billing is already active: a Phase 2 migration (gated, after the 22nd).
-- **Light mode / Both are recorded but not built yet**: the site template only has four dark themes, no light mode, no SEO switch, no gallery section, and smooth scroll is always on. The brief says so in plain words ("Being added"). Phase 3 (template work).
+- ~~Light mode / Both not built~~ **BUILT 2026-10-18 (Phase 3a)**: see the Phase 3 section below.
 - **"My work" photos filling a gallery automatically** needs both of the above.
 - **Redesign with new pictures in the same form** has the same upload restriction, so for now it points to the Files card.
 - **Redesign through the setup form** is impossible server-side after approval (`submit_current_client_website_setup` only accepts lead / intake_received / needs_owner_review clients), which is why it uses the change-request path.
@@ -53,3 +53,9 @@
 - **Phase 2 (migration, gated, after the 22nd):** allow uploads for paid-but-not-yet-approved clients (storage quota unchanged), photo roles ("Website photo" / "My work") stored as real data, brief stored as columns instead of notes text, a server-side paid check on Request.
 - **Phase 3 (template):** light mode + Both switch, SEO on/off, smooth-scroll toggle, a "My work" gallery section filled from tagged uploads (deterministic, in upload order, owner can reorder; never AI-placed).
 - **Phase 4:** the same one-flow for Commerce, Booking, Menu and the rest through one shared product-flow config.
+
+## Phase 3a/3b: BUILT 2026-10-18 (local, pushed, NOT deployed, no migration)
+- **Site template (`templates/business-v1`)**: light mode (a real palette for all four themes, accent colours darkened for contrast), **Both** with a visitor switch (remembers the choice, starts from the visitor's system setting), **SEO on** = Open Graph tags + LocalBusiness structured data from the client's own facts only, **SEO off** = `noindex, nofollow` and nothing extra, **smooth scrolling** on/off, and an **"Our work" gallery** (config-driven, max 12, only `./gallery/<name>.(jpg|jpeg|png|webp)` paths, captions as plain text, accessible large view). Lead-form inputs follow the theme. Trust strip no longer shows an empty cell with 3 points. axe: 0 WCAG A/AA violations in dark, light, all four themes and the gallery; no sideways scroll at 390/360px.
+- **Meaning of the SEO switch (my call, change if you disagree):** On = "list my site and add the search basics"; Off = "ask search engines not to list it". The brief says so in plain words.
+- **Plumbing:** the brief's three options travel signed report -> `prepare-build-plan` (`plan.site_options`, set on every plan so changing them never needs a new AI answer) -> `build-business-website` (`design.colorMode`, `site.smoothScroll`, `seo.enabled`) via `supabase/functions/_shared/site-options.mjs`. "NXQX recommends" builds dark until a smarter choice exists. Example sites regenerate with SEO off (fictional businesses).
+- Tests: `scripts/test-site-options.mjs` (drift between brief text and the Edge helper, worker/builder wiring with planted bugs, template safety rules) and `scripts/manual/site-options-e2e.mjs` (real browser, axe in every mode).

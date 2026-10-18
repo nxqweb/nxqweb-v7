@@ -4,6 +4,7 @@ import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shared/business-industry-presets.ts";
 import * as defaultCopy from "../_shared/business-default-copy.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { normalizeSiteOptions, resolveColourMode } from "../_shared/site-options.mjs";
 
 type AutomationJob = {
   id: string;
@@ -295,6 +296,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
   const primaryCta = clean(architecture.primary_cta) || "Contact us";
   const secondaryCta = clean(architecture.secondary_cta) || "View Services";
   const tierKey = clean(buildPlan.product_tier_key).toLowerCase() || "starter";
+  const siteOptions = normalizeSiteOptions(buildPlan.site_options);
   const requestedThemeKey = clean(designStrategy.theme_key).toLowerCase();
   const themeKey = supportedThemeKeys.has(requestedThemeKey) ? requestedThemeKey : "midnight_blue";
   const analyticsEndpoint = clean(runtime.analytics_endpoint);
@@ -346,9 +348,14 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       title: clean(strategySeo.title) || `${businessName} | ${businessType}`,
       description: clipText(clean(strategySeo.description) || `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`, 160),
       keywords: textList(strategySeo.keywords, 10).length ? textList(strategySeo.keywords, 10) : (industryPreset?.seoKeywords || []),
+      enabled: siteOptions.seo,
+    },
+    site: {
+      smoothScroll: siteOptions.smooth_scroll,
     },
     design: {
       themeKey,
+      colorMode: resolveColourMode(siteOptions.color_mode),
       mood: clean(designStrategy.mood),
       paletteGuidance: textList(designStrategy.palette_guidance, 6),
       typographyGuidance: clean(designStrategy.typography_guidance),

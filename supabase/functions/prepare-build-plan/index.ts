@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertGroundedMarketingClaims } from "../_shared/ai-grounding.mjs";
 import { markDeskPlanUsed, rejectDeskPlan, resolveDeskPlan } from "../_shared/ai-desk-plan.mjs";
+import { siteOptionsFromReport } from "../_shared/site-options.mjs";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
@@ -597,6 +598,9 @@ Deno.serve(async (request) => {
         created_at: new Date().toISOString(),
       };
     }
+
+    // The client's look options (colour mode, SEO, smooth scrolling) are carried on every plan, reused or new, so changing them never needs a new AI answer.
+    buildPlan = { ...buildPlan, site_options: siteOptionsFromReport((label: string) => setupField(setupFields, label)) };
 
     const projectSave = await admin.from("projects").update({
       build_plan: buildPlan,

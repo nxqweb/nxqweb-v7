@@ -21,9 +21,11 @@
       </a>
       <nav aria-label="Primary navigation">
         <a href="#services">Services</a>
+        <a href="#work" id="nav-work" hidden>My work</a>
         <a href="#about">About</a>
         <a href="#contact">Contact</a>
       </nav>
+      <button class="mode-toggle" id="mode-toggle" type="button" hidden>Light mode</button>
       <a class="header-cta" id="header-cta" href="#contact">Request a Quote</a>
     </header>
 
@@ -60,6 +62,23 @@
         </div>
         <div class="service-grid" id="service-grid"></div>
       </section>
+
+      <section class="section-shell work-section" id="work" aria-labelledby="work-heading" hidden>
+        <div class="section-heading">
+          <p class="eyebrow">My work</p>
+          <h2 id="work-heading">Recent work</h2>
+          <p id="work-intro"></p>
+        </div>
+        <div class="work-grid" id="work-grid"></div>
+      </section>
+
+      <dialog class="work-dialog" id="work-dialog" aria-label="Photo from my work">
+        <form method="dialog">
+          <img id="work-dialog-img" alt="" />
+          <p id="work-dialog-caption"></p>
+          <button class="secondary-button" value="close">Close</button>
+        </form>
+      </dialog>
 
       <section class="section-shell about-section" id="about">
         <div class="about-number">NXQX-Web</div>

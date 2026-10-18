@@ -24,4 +24,5 @@ export const siteConfig = {
   analytics: { enabled: false, endpoint: "", ingestKey: "", consentRequired: true, consentVersion: "v1", clicks: true, scrollDepth: true, mouseTracking: false },
   demo: { fictional: true, salesUseOnly: true, liveLeadCapture: false, liveAnalytics: false },
 };
+siteConfig.seo = { ...siteConfig.seo, enabled: false }; // fictional businesses: no structured data
 siteConfig.design = { themeKey: "charcoal_gold" };

@@ -34,7 +34,7 @@ export function buildExampleFiles() {
     html = html.replace('    <script type="module" src="./lead-form.js"></script>\n', "").replace('    <script type="module" src="./analytics.js"></script>\n', "");
     must('<a href="/privacy.html">Privacy</a>', "the footer privacy link");
     html = html.replace(/<a href="\/privacy\.html">Privacy<\/a>\s*<a href="\/terms\.html">Terms<\/a>\s*<a href="\/accessibility\.html">Accessibility<\/a>/, '<a href="/privacy">NXQX Privacy</a>\n        <a href="/terms">NXQX Terms</a>');
-    const config = `${read(`${templateDir}/${site.config}`).trimEnd()}\nsiteConfig.design = { themeKey: ${JSON.stringify(site.theme)} };\n`;
+    const config = `${read(`${templateDir}/${site.config}`).trimEnd()}\nsiteConfig.seo = { ...siteConfig.seo, enabled: false }; // fictional businesses: no structured data\nsiteConfig.design = { themeKey: ${JSON.stringify(site.theme)} };\n`;
     const dir = `${outDir}/${site.slug}`;
     files.set(`${dir}/index.html`, html);
     files.set(`${dir}/site.config.js`, config);

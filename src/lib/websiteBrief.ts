@@ -5,10 +5,10 @@
 export type ColourMode = "recommend" | "dark" | "light" | "both";
 
 export const colourModeOptions: { value: ColourMode; label: string; hint: string }[] = [
-  { value: "recommend", label: "NXQX recommends", hint: "We pick what suits your business." },
-  { value: "dark", label: "Dark", hint: "The look we build today." },
-  { value: "light", label: "Light", hint: "Being added. We build the closest match now and tell you when light is ready." },
-  { value: "both", label: "Both (visitors can switch)", hint: "Being added. Same note as Light." },
+  { value: "recommend", label: "NXQX recommends", hint: "We pick what suits your business (a dark look today)." },
+  { value: "dark", label: "Dark", hint: "A dark look." },
+  { value: "light", label: "Light", hint: "A light look." },
+  { value: "both", label: "Both (visitors can switch)", hint: "Visitors get a button to switch between light and dark." },
 ];
 
 const colourModeValues = colourModeOptions.map((option) => option.value);

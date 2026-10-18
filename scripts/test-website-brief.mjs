@@ -18,7 +18,7 @@ function check(name, ok, detail = "") {
 check("four colour modes, recommend first", colourModeOptions.map((o) => o.value).join() === "recommend,dark,light,both");
 check("unknown colour modes fall back to recommend", normalizeColourMode("neon") === "recommend" && normalizeColourMode(5) === "recommend" && normalizeColourMode(null) === "recommend");
 check("labels round-trip back to the option", colourModeOptions.every((o) => colourModeFromLabel(colourModeLabel(o.value)) === o.value) && colourModeFromLabel("nonsense") === "recommend");
-check("light and both are honest that they are still being added", colourModeOptions.filter((o) => o.value === "light" || o.value === "both").every((o) => /being added/i.test(o.hint)) && /today/i.test(colourModeOptions.find((o) => o.value === "dark").hint));
+check("each colour mode explains itself in plain words, and Both mentions the visitor switch", colourModeOptions.every((o) => o.hint.length > 5) && /switch/i.test(colourModeOptions.find((o) => o.value === "both").hint) && !colourModeOptions.some((o) => /being added/i.test(o.hint)));
 
 // ---- report lines round trip
 const lines = briefOptionLines({ colourMode: "both", seo: false, smoothScroll: true });

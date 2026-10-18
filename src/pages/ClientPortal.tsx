@@ -1274,7 +1274,7 @@ export function ClientPortal() {
                     </label>
                   ))}
                 </div>
-                <label className="look-check"><input checked={seoPreference} onChange={(event) => setSeoPreference(event.target.checked)} type="checkbox" /><span><strong>Set up search-engine basics (SEO)</strong><small>Page titles, descriptions and the things Google looks for. Recommended.</small></span></label>
+                <label className="look-check"><input checked={seoPreference} onChange={(event) => setSeoPreference(event.target.checked)} type="checkbox" /><span><strong>Let search engines list my website (SEO)</strong><small>Recommended. Adds page titles, descriptions and the details Google looks for. Turn it off only if you do not want your website to appear in search results.</small></span></label>
                 <label className="look-check"><input checked={smoothScroll} onChange={(event) => setSmoothScroll(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong><small>Pages glide instead of jumping when someone taps a menu link.</small></span></label>
               </fieldset>
               <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />

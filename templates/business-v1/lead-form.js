@@ -34,11 +34,11 @@ if (config.enabled === true && endpoint && formKey) {
     wrapper.innerHTML = `
       <form id="nxq-lead-form" style="display:grid;gap:.8rem;max-width:720px">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.8rem">
-          <label>Name<input name="name" required maxlength="160" autocomplete="name" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid #ffffff22;background:#ffffff08;color:inherit"></label>
-          <label>Email<input name="email" type="email" maxlength="200" autocomplete="email" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid #ffffff22;background:#ffffff08;color:inherit"></label>
-          <label>Phone<input name="phone" maxlength="40" autocomplete="tel" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid #ffffff22;background:#ffffff08;color:inherit"></label>
+          <label>Name<input name="name" required maxlength="160" autocomplete="name" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:inherit"></label>
+          <label>Email<input name="email" type="email" maxlength="200" autocomplete="email" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:inherit"></label>
+          <label>Phone<input name="phone" maxlength="40" autocomplete="tel" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:inherit"></label>
         </div>
-        <label>What can we help with?<textarea name="message" required maxlength="4000" rows="5" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid #ffffff22;background:#ffffff08;color:inherit"></textarea></label>
+        <label>What can we help with?<textarea name="message" required maxlength="4000" rows="5" style="width:100%;box-sizing:border-box;margin-top:.35rem;padding:.8rem;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:inherit"></textarea></label>
         <input name="company_website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
         <div id="nxq-turnstile" style="min-height:${turnstileEnabled ? "65px" : "0"}"></div>
         <button type="submit" class="primary-button" style="border:0;cursor:pointer;justify-self:start">Send request</button>

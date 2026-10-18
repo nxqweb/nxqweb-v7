@@ -202,7 +202,7 @@ export function ClientBusinessChanges() {
                   </label>
                 ))}
               </div>
-              <label className="look-check"><input checked={rdSeo} disabled={sending || loading} onChange={(event) => setRdSeo(event.target.checked)} type="checkbox" /><span><strong>Set up search-engine basics (SEO)</strong></span></label>
+              <label className="look-check"><input checked={rdSeo} disabled={sending || loading} onChange={(event) => setRdSeo(event.target.checked)} type="checkbox" /><span><strong>Let search engines list my website (SEO)</strong></span></label>
               <label className="look-check"><input checked={rdSmooth} disabled={sending || loading} onChange={(event) => setRdSmooth(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong></span></label>
             </fieldset>
             <label className="auth-label" htmlFor="rd-extra">Anything else?</label>
