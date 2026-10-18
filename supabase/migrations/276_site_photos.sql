@@ -1,5 +1,5 @@
--- DRAFT 10: Website photos at setup (owner request 2026-10-18: "the pictures at one set up, then update the site and add pictures").
--- LOCAL ONLY, NOT promoted, NOT applied. The owner runs the backend steps by hand: see docs/PHOTO_BACKEND_RUNBOOK.md.
+-- Migration 276: Website photos at setup (owner request 2026-10-18: "the pictures at one set up, then update the site and add pictures").
+-- Promoted from draft 10 on 2026-10-18 on the owner's go ("lets do all of that"). NOT APPLIED: the owner applies it with the guarded workflow, see docs/PHOTO_BACKEND_RUNBOOK.md.
 --
 -- What it changes and adds:
 --  1. nxq_authorize_storage_upload (migration 246) is redefined with ONE rule relaxed: a client whose billing is already active (paid) may upload IMAGES

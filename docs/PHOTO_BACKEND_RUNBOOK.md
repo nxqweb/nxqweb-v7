@@ -1,6 +1,6 @@
 # Photos at setup: what to run, and where (owner runbook)
 
-Written 2026-10-18. Status: **everything below is built and tested locally; nothing is promoted, applied, deployed or switched on.** You asked to do the
+Written 2026-10-18. Status (2026-10-18): **migration 276 is PROMOTED (in `supabase/migrations`, owner said "lets do all of that") and the builder change and the real photo gateway are in the code; NOTHING is applied, deployed or switched on.** Step A below is DONE. You asked to do the
 backend part yourself. This is the exact list. Every step marked **GATE** is one of the stop-and-ask items in `CLAUDE.md`, so it needs your explicit go and your
 own click; the rest is just so you know what is happening.
 
@@ -14,27 +14,24 @@ Two real bugs were found and fixed: stale gallery files staying public after a p
 Known weaknesses left as they were: the claimed file type of an upload is client-supplied (the builder's byte check and the scanner bound the damage); the old upload-ticket re-authorize behaviour from migration 246 is unchanged (the new fingerprint check is what stops a post-scan swap from reaching the site).
 
 ## Why this needs YOUR backend steps (found while building it)
-1. **Uploads were blocked before approval.** Migration 246 only lets a client upload after you approve them. Draft 10 allows **images only** to the files bucket for a
+1. **Uploads were blocked before approval.** Migration 246 only lets a client upload after you approve them. Migration 276 allows **images only** to the files bucket for a
    client whose billing is **already active** while they are still in setup. Unpaid clients still cannot upload anything. (Tested with 7 planted bugs.)
 2. **Storage limits did not exist before approval.** The monthly storage allowance is a per-client policy created only at approval, so even with rule 1 a paid client
-   in setup would be refused ("No server-side resource policy is configured"). Draft 10 creates that policy when billing turns active. (Tested.)
+   in setup would be refused ("No server-side resource policy is configured"). Migration 276 creates that policy when billing turns active. (Tested.)
 3. **Photos stay locked until the malware scanner runs.** Every upload is "restricted" until a scan says clean. The scanner needs a provider key (see step C). Until
    it is live, photos will show "Being checked for safety" and **never reach the website**. That is the safe behaviour, but it means step C is required for the gallery.
 
 ## The steps, in order
 
-### A. Promote the draft to a real migration  (GATE: migrations)
-Tell me, in these words or similar: **"Promote draft 10 as migration 276."** I will then, in one commit on the safe branch: move
-`docs/drafts/migrations/10_site_photos.sql` to `supabase/migrations/276_site_photos.sql`, move its test to `scripts/sql/local-full-schema/regression/276_site_photos.test.sql`,
-apply the builder patch `docs/drafts/functions/build-business-website-photos.diff` (`git apply`; it calls the new database function, which CI only allows once the migration is real),
-add 276 to `expectedPendingMigrations` in `scripts/preflight-deploy-day.mjs` and to `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`, and run the full checks. I will not apply it.
+### A. Promote the draft to a real migration  (GATE: migrations) **DONE 2026-10-18**
+Done in one commit on the safe branch: `supabase/migrations/276_site_photos.sql` (promoted from draft 10), its test in `scripts/sql/local-full-schema/regression/276_site_photos.test.sql`, the builder change live in `supabase/functions/build-business-website` (it calls the new database function, which CI only allows once the migration is real), the real gateway in `src/lib/sitePhotosSupabaseGateway.ts`, 276 added to `expectedPendingMigrations` in `scripts/preflight-deploy-day.mjs` and to `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`. Nothing is applied.
 (Do NOT paste the SQL into the Supabase SQL editor: that skips the migration record, and the next `apply_migrations` run would try to apply it again and collide.)
 
 ### B. Apply it with the guarded workflow  (GATE: workflow + migration apply)
 GitHub -> Actions -> **NXQ Manual Supabase Stage** -> Run workflow:
 1. First run `validate_foundation` (read-only). Open the run, read the **"Migration dry run"** step. It must list exactly the migrations you approved:
    `272, 273, 274, 275` plus `276` if you promoted it before deploy day (or only `276` if 272-275 are already applied). Anything else: stop and ask.
-2. Then run `apply_migrations`. Type the confirmation phrase `APPLY-NXQ-SUPABASE-STAGING`, then click **Review deployments -> nxq-staging -> Approve and deploy**.
+2. Then run `apply_migrations` (this applies ALL pending migrations, so on deploy day it is the same run as 272-275). Type the confirmation phrase `APPLY-NXQ-SUPABASE-STAGING`, then click **Review deployments -> nxq-staging -> Approve and deploy**.
 3. Read the log for `Applying migration 276_site_photos.sql` and a green result. (If you tell me which run, I will read the log and report what actually happened. I can also
    start the run for you through the GitHub tool once you have approved the exact migration list in chat; the Approve click stays yours.)
 
@@ -47,8 +44,7 @@ Photos only publish after a clean scan. The code for the free-trial scanner Scan
 4. Proof with a harmless file: upload one normal photo (must come back clean) and the standard harmless EICAR test file (must come back infected).
 
 ### D. Turn the panel on  (code change, then a site deploy)
-After B succeeds, tell me **"migration 276 is applied, switch the photo panel on."** I will: copy `docs/drafts/ui/sitePhotosSupabaseGateway.ts` to `src/lib/`, set the one switch in
-`src/lib/sitePhotosConfig.ts` to `createSitePhotosGateway(supabase)`, flip the "not on yet" expectations in `scripts/test-site-photos-ui.mjs`, run all checks, and push.
+After B succeeds, tell me **"migration 276 is applied, switch the photo panel on."** I will set the one switch in `src/lib/sitePhotosConfig.ts` to `createSitePhotosGateway(supabase)` (the gateway file is already in `src/lib`), flip the "switch is still null" expectation in `scripts/test-site-photos-ui.mjs`, run all checks, and push.
 Then ONE site deploy (Netlify) publishes it. (Deploying the site before 276 exists would just show a calm "could not be loaded" in the photo box, nothing else breaks.)
 
 ### E. Per-client habit  (your normal owner screen, no code)

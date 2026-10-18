@@ -18,7 +18,7 @@
 - Payment: Stripe live is parked (spending hold to about July 2027), so "paid" is confirmed by the owner by hand for now (billing status), not by a card form.
 
 ## Honest constraints
-- Changing what signup/setup stores touches the database and a public contract: any migration is a stop-and-ask gate, and nothing here may break the 22nd deploy day (272-275 only).
+- Changing what signup/setup stores touches the database and a public contract: any migration is a stop-and-ask gate, and nothing here may break the 22nd deploy day (272-275, plus 276 website photos, promoted 2026-10-18 on the owner's go).
 - Photo placement should be deterministic ("My work" uploads fill the gallery in upload order, owner can reorder), NOT decided by an AI: pictures can carry claims (awards, licenses) and an AI cannot verify them.
 - Pay-before-build needs the payment step to exist. Until Stripe is allowed, the gate is "owner marked the client paid", and the Request button says so in plain words.
 
@@ -60,8 +60,8 @@
 - **Plumbing:** the brief's three options travel signed report -> `prepare-build-plan` (`plan.site_options`, set on every plan so changing them never needs a new AI answer) -> `build-business-website` (`design.colorMode`, `site.smoothScroll`, `seo.enabled`) via `supabase/functions/_shared/site-options.mjs`. "NXQX recommends" builds dark until a smarter choice exists. Example sites regenerate with SEO off (fictional businesses).
 - Tests: `scripts/test-site-options.mjs` (drift between brief text and the Edge helper, worker/builder wiring with planted bugs, template safety rules) and `scripts/manual/site-options-e2e.mjs` (real browser, axe in every mode).
 
-## Phase 2 (photos at setup): BUILT as a draft 2026-10-18, NOT promoted/applied/deployed. Owner runs the backend: `docs/PHOTO_BACKEND_RUNBOOK.md`
-- Draft migration `docs/drafts/migrations/10_site_photos.sql` (+ test, 7 planted bugs caught): paid clients in setup may upload images before approval, the storage-allowance policy is created when billing turns active, photo roles/alt text/captions/order (12 in Our work, 24 in all), and a service-role-only read that returns only clean + released photos.
-- Panel `ClientSitePhotos` (brief + redesign form, off until promoted), uploader that shrinks big photos in the browser, and a builder PATCH (`docs/drafts/functions/build-business-website-photos.diff`, applied when the migration is promoted) that downloads each clean photo, checks its real type from its bytes and that its SHA-256 equals the scan's, commits it as `gallery/work-NN.ext`, deletes gallery files it did not write, and writes the gallery block in `site.config.js`.
+## Phase 2 (photos at setup): BUILT and PROMOTED as migration 276 on 2026-10-18 (owner: "lets do all of that"); NOT applied/deployed/switched on. Owner runs the backend: `docs/PHOTO_BACKEND_RUNBOOK.md`
+- Migration `supabase/migrations/276_site_photos.sql` (+ regression test, 12 planted bugs caught): paid clients in setup may upload images before approval, the storage-allowance policy is created when billing turns active, photo roles/alt text/captions/order (12 in Our work, 24 in all), and a service-role-only read that returns only clean + released photos.
+- Panel `ClientSitePhotos` (brief + redesign form, off until promoted), uploader that shrinks big photos in the browser, and a builder step (live in `supabase/functions/build-business-website`) that downloads each clean photo, checks its real type from its bytes and that its SHA-256 equals the scan's, commits it as `gallery/work-NN.ext`, deletes gallery files it did not write, and writes the gallery block in `site.config.js`.
 - **Hard dependency found:** photos only publish after the malware scan (Scanii free trial, owner secrets, `deploy_functions`). Without the scanner they stay "Being checked" forever.
 - Not done (honest): "Other photos" are kept for the NXQX team; the template has no slot for them yet. Old gallery files are not deleted from a client's repo when a photo is removed (the config simply stops listing them). HEIC (iPhone default) is refused with a tip.

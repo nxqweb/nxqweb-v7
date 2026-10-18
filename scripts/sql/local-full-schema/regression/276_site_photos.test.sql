@@ -1,4 +1,4 @@
--- Test for draft 10 (website photos at setup). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 276 (website photos at setup). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

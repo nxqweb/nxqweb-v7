@@ -1,7 +1,6 @@
 // "Our work" photos on the client site: the pure rules (supabase/functions/_shared/site-photos.mjs), the builder wiring and the template's own limits agree.
 // Offline, no network, no secrets. Planted-bug controls included.
 import fs from "node:fs";
-import { spawnSync } from "node:child_process";
 import {
   imageKindFromBytes, cleanPhotoText, selectGalleryPhotos, galleryFileName, buildGalleryConfig, bytesToBase64, isMissingPhotoFunction, sha256Hex, staleGalleryFiles,
   MAX_GALLERY_PHOTOS, MAX_PUBLISH_BYTES, IMAGE_TYPES,
@@ -56,14 +55,12 @@ check("sha256Hex matches the platform hash", (await sha256Hex(Buffer.from("abc")
 check("stale gallery files: only our own work-NN.ext names that this build did not write again", JSON.stringify(staleGalleryFiles(["work-01.jpg", "work-02.png", "work-03.jpg", "README.md", "logo.png", "work-1.jpg", "work-04.gif", "../work-05.jpg"], ["work-01.jpg", "work-02.png"])) === JSON.stringify(["work-03.jpg"]));
 check("a slot that changed type leaves a stale file to remove; removing every photo removes every file; junk input is harmless", JSON.stringify(staleGalleryFiles(["work-01.jpg"], ["work-01.png"])) === JSON.stringify(["work-01.jpg"]) && staleGalleryFiles(["work-01.jpg", "work-02.png"], []).length === 2 && staleGalleryFiles(null, null).length === 0 && staleGalleryFiles([5, null, "work-01.jpg"], ["work-01.jpg"]).length === 0);
 
-// ---- builder patch (the builder change waits in docs/drafts/functions until the photo migration is promoted)
-const patchPath = "docs/drafts/functions/build-business-website-photos.diff";
-const patch = fs.readFileSync(patchPath, "utf8");
-const added = patch.split("\n").filter((line) => line.startsWith("+") && !line.startsWith("+++")).map((line) => line.slice(1)).join("\n");
+// ---- builder wiring (the photo step is live in the builder since migration 276 was promoted; the database function now exists in a real migration)
 const live = fs.readFileSync("supabase/functions/build-business-website/index.ts", "utf8");
-check("the builder patch still applies cleanly to the current builder (it cannot rot unnoticed)", spawnSync("git", ["apply", "--check", patchPath], { encoding: "utf8" }).status === 0);
-check("the live builder does NOT call the draft database function yet (CI would reject it)", !live.includes("get_site_photos_for_build") && !live.includes("site-photos.mjs"));
-const builder = added; // the added lines of the draft patch
+const migration = fs.readFileSync("supabase/migrations/276_site_photos.sql", "utf8");
+check("the database function the builder calls exists in a REAL migration (CI requires it)", /create or replace function public\.get_site_photos_for_build\(/.test(migration));
+check("no leftover draft patch is waiting", !fs.existsSync("docs/drafts/functions/build-business-website-photos.diff"));
+const builder = live;
 const wiring = {
   "the builder asks the database (clean + released only) instead of listing files itself": (b) => b.includes('admin.rpc("get_site_photos_for_build", { target_client_id: job.client_id })') && !/from\("client_files"\)/.test(b),
   "each photo is type-checked from its bytes against the type it claims": (b) => b.includes("imageKindFromBytes(bytes)") && /kind !== String\(row\.file_type\)\.toLowerCase\(\)/.test(b),

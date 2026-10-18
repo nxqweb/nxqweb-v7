@@ -5,6 +5,7 @@ import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shar
 import * as defaultCopy from "../_shared/business-default-copy.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 import { normalizeSiteOptions, resolveColourMode } from "../_shared/site-options.mjs";
+import { buildGalleryConfig, bytesToBase64, galleryFileName, imageKindFromBytes, isMissingPhotoFunction, MAX_PUBLISH_BYTES, selectGalleryPhotos, sha256Hex, staleGalleryFiles } from "../_shared/site-photos.mjs";
 
 type AutomationJob = {
   id: string;
@@ -240,6 +241,25 @@ async function upsertRepoFile(owner: string, repo: string, branch: string, path:
   return body;
 }
 
+async function listRepoDirectory(owner: string, repo: string, branch: string, path: string, token: string) {
+  const res = await timedFetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`, { headers: githubHeaders(token) });
+  if (res.status === 404) return [] as { name: string; sha: string }[];
+  if (!res.ok) throw new Error(`GitHub folder lookup failed for ${path} (${res.status}).`);
+  const body = await readJson(res);
+  return (Array.isArray(body) ? body : [])
+    .filter((item: JsonRecord) => item && item.type === "file" && typeof item.name === "string" && typeof item.sha === "string")
+    .map((item: JsonRecord) => ({ name: String(item.name), sha: String(item.sha) }));
+}
+
+async function deleteRepoFile(owner: string, repo: string, branch: string, path: string, sha: string, token: string, message: string) {
+  const res = await timedFetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+    method: "DELETE",
+    headers: githubHeaders(token),
+    body: JSON.stringify({ message, sha, branch }),
+  });
+  if (!res.ok && res.status !== 404) throw new Error(`GitHub file delete failed for ${path} (${res.status}).`);
+}
+
 function encodeBase64(value: string) {
   return btoa(unescape(encodeURIComponent(value)));
 }
@@ -271,7 +291,7 @@ function serviceDescription(service: string, businessType: string) {
   return defaultCopy.defaultServiceDescription(service, businessType);
 }
 
-function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
+function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}, extras: { gallery?: JsonRecord | null } = {}) {
   const business = record(buildPlan.business);
   const architecture = record(buildPlan.information_architecture);
   const enrichment = record(buildPlan.ai_enrichment);
@@ -368,6 +388,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {
       pageStrategy: Array.isArray(architecture.page_strategy) ? architecture.page_strategy.slice(0, 8) : [],
       industryPresetKey: industryPreset?.key || null,
     },
+    ...(extras.gallery ? { gallery: extras.gallery } : {}),
     leads: {
       enabled: Boolean(leadEndpoint && leadFormKey),
       endpoint: leadEndpoint,
@@ -524,6 +545,46 @@ async function findReadyBranchDeploy(siteId: string, branch: string, expectedCom
   };
 }
 
+// "Our work" photos: the database hands over only photos whose malware scan came back clean AND released. Each file is downloaded with the service role,
+// its real type is checked from its bytes, and it is committed under a name WE choose (gallery/work-01.jpg ...). Nothing here can fail the whole build:
+// a missing function (migration not applied), an unreadable file or a wrong-type file just means that photo is not shown, and the step output says why.
+async function publishGalleryPhotos(admin: AdminClient, job: AutomationJob, owner: string, repo: string, branch: string, token: string) {
+  const none = { config: null as JsonRecord | null, published: 0, skipped: [] as JsonRecord[] };
+  const photoRes = await admin.rpc("get_site_photos_for_build", { target_client_id: job.client_id });
+  if (photoRes.error) {
+    if (isMissingPhotoFunction(photoRes.error)) return none; // migration not applied yet: no photos, and no folder to clean
+    // Never publish a site that silently lost its photos because of a hiccup: fail so the build retries.
+    throw new Error("Website photos could not be read, so the build will retry.");
+  }
+  const { selected, skipped } = selectGalleryPhotos(photoRes.data);
+  const published: { name: string; alt: string; caption: string }[] = [];
+  const notes: JsonRecord[] = [...skipped];
+  for (const row of selected) {
+    await assertProviderMutationAllowed(admin, job); // a paused client or a kill switch always stops the build; it is never swallowed below
+    try {
+      const download = await admin.storage.from(String(row.bucket_id)).download(String(row.storage_path));
+      if (download.error || !download.data) { notes.push({ file_id: row.file_id, reason: "could not be downloaded" }); continue; }
+      const bytes = new Uint8Array(await download.data.arrayBuffer());
+      if (bytes.length > MAX_PUBLISH_BYTES) { notes.push({ file_id: row.file_id, reason: "larger than 4 MB" }); continue; }
+      const kind = imageKindFromBytes(bytes);
+      if (!kind || kind !== String(row.file_type).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file is not the image type it claims" }); continue; }
+      if (await sha256Hex(bytes) !== String(row.content_sha256).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file changed after its safety check" }); continue; }
+      const name = galleryFileName(published.length, kind);
+      await upsertRepoFile(owner, repo, branch, `gallery/${name}`, bytesToBase64(bytes), token, `NXQX Business v1: sync website photo ${name}`);
+      published.push({ name, alt: String(row.alt_text || ""), caption: String(row.caption || "") });
+    } catch {
+      notes.push({ file_id: row.file_id, reason: "could not be published" });
+    }
+  }
+  // Remove gallery files this build did not write (removed, flagged or re-typed photos) so nothing stale stays public. A failure here fails the build on purpose.
+  const existing = await listRepoDirectory(owner, repo, branch, "gallery", token);
+  for (const stale of existing.filter((file) => staleGalleryFiles([file.name], published.map((item) => item.name)).length > 0)) {
+    await assertProviderMutationAllowed(admin, job);
+    await deleteRepoFile(owner, repo, branch, `gallery/${stale.name}`, stale.sha, token, `NXQ Business v1: remove website photo ${stale.name}`);
+  }
+  return { config: buildGalleryConfig(published) as JsonRecord | null, published: published.length, skipped: notes };
+}
+
 async function processBuild(admin: AdminClient, job: AutomationJob) {
   const [clientRes, projectRes, configRes, approvalRes] = await Promise.all([
     admin.from("clients").select("id,status,business_name").eq("id", job.client_id).single(),
@@ -587,15 +648,16 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     await assertProviderMutationAllowed(admin, job);
     await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQX Business v1: sync ${file}`);
   }
-  const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig), null, 2)};\n`;
+  const gallery = await publishGalleryPhotos(admin, job, configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
+  const generatedConfig = `export const siteConfig = ${JSON.stringify(buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig, { gallery: gallery.config }), null, 2)};\n`;
   await assertProviderMutationAllowed(admin, job);
   await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, "site.config.js", encodeBase64(generatedConfig), token, "NXQX: generate client website config");
   const expectedPreviewCommitSha = await getBranchSha(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, token);
   if (!expectedPreviewCommitSha) throw new Error("Generated preview branch commit could not be resolved.");
-  await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1", expected_preview_commit_sha: expectedPreviewCommitSha });
+  await updateStep(admin, runId, "generate_website_draft", "completed", { blueprint: "business-v1", expected_preview_commit_sha: expectedPreviewCommitSha, gallery_photos: gallery.published, gallery_skipped: gallery.skipped });
 
   await updateStep(admin, runId, "run_quality_checks", "running");
-  const generated = buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig);
+  const generated = buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig, { gallery: gallery.config });
   const quality = {
     business_name: Boolean(generated.business.name),
     services: generated.services.length > 0,

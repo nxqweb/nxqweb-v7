@@ -1,5 +1,5 @@
-// DRAFT (not compiled, not in src/). The real connection for the website photos panel. Copy to src/lib/sitePhotosSupabaseGateway.ts ONLY after migration
-// 10_site_photos has been promoted to supabase/migrations and applied (the CI contract rejects calls to database functions that are not in a real migration).
+// The real connection for the website photos panel (promoted from docs/drafts/ui with migration 276). It is NOT used anywhere until the one switch in
+// src/lib/sitePhotosConfig.ts is set, which happens only after migration 276 has been applied to the database (docs/PHOTO_BACKEND_RUNBOOK.md, step D).
 // scripts/test-site-photos-ui.mjs checks these exact call names and argument names against the SQL.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { photosFromRows, type SitePhotosGateway } from "./sitePhotos";

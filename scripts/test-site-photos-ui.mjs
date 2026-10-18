@@ -1,4 +1,4 @@
-// Website photos panel: the pure rules (src/lib/sitePhotos.ts), the draft gateway against the draft SQL, and the "off until promoted" switch.
+// Website photos panel: the pure rules (src/lib/sitePhotos.ts), the gateway against the real migration 276, and the "off until applied" switch.
 // Offline, no network. Node >= 22.18 imports the .ts helpers directly. Planted-bug controls included.
 import fs from "node:fs";
 import {
@@ -41,9 +41,9 @@ check("a non-list result gives an empty list", photosFromRows(null).length === 0
 check("the database's refusals become friendly sentences, never internals", /12 photos/.test(photoErrorMessage(new Error("You can show up to 12 photos in Our work."))) && /24/.test(photoErrorMessage(new Error("You can keep up to 24 website photos."))) && /characters/.test(photoErrorMessage(new Error("Photo descriptions cannot contain the characters < or >."))) && !/syntax|relation|pg_/.test(photoErrorMessage(new Error('relation "x" does not exist'))));
 check("both groups have plain labels", /my work/i.test(roleLabels.work) && /other photos/i.test(roleLabels.site));
 
-// ---- draft gateway vs the draft SQL
-const gateway = fs.readFileSync("docs/drafts/ui/sitePhotosSupabaseGateway.ts", "utf8");
-const sql = fs.readFileSync("docs/drafts/migrations/10_site_photos.sql", "utf8");
+// ---- gateway vs the real migration SQL
+const gateway = fs.readFileSync("src/lib/sitePhotosSupabaseGateway.ts", "utf8");
+const sql = fs.readFileSync("supabase/migrations/276_site_photos.sql", "utf8");
 const sqlArgs = (name) => { const m = sql.match(new RegExp(`create or replace function public\\.${name}\\(([^)]*)\\)`)); return m ? m[1].split(",").map((p) => p.trim().split(/\s+/)[0]).filter(Boolean) : null; };
 const callArgs = (name) => { const m = gateway.match(new RegExp(`rpc\\("${name}"(?:,\\s*\\{([\\s\\S]*?)\\}\\))?`)); return m ? (m[1] || "").split(",").map((p) => p.split(":")[0].trim()).filter(Boolean) : null; };
 for (const name of ["list_my_site_photos", "save_my_site_photo", "remove_my_site_photo"]) {
@@ -55,10 +55,10 @@ check("control: the comparison would notice a wrong argument name", JSON.stringi
 // ---- off until promoted
 const srcFiles = [];
 (function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const full = `${dir}/${entry.name}`; if (entry.isDirectory()) walk(full); else if (/\.(ts|tsx)$/.test(entry.name)) srcFiles.push(full); } })("src");
-check("no file in src/ calls the draft photo functions yet (CI would reject it)", !srcFiles.some((f) => /rpc\(\s*"(?:list_my_site_photos|save_my_site_photo|remove_my_site_photo|get_site_photos_for_build)"/.test(fs.readFileSync(f, "utf8"))));
-check("the draft gateway is not compiled yet", !fs.existsSync("src/lib/sitePhotosSupabaseGateway.ts"));
+check("only the gateway file calls the three photo functions from src/", srcFiles.filter((f) => /rpc\(\s*"(?:list_my_site_photos|save_my_site_photo|remove_my_site_photo)"/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/sitePhotosSupabaseGateway.ts");
+check("the gateway is not imported anywhere yet (the switch below is what turns the panel on)", !srcFiles.some((f) => f !== "src/lib/sitePhotosSupabaseGateway.ts" && /from\s+["'][^"']*sitePhotosSupabaseGateway/.test(fs.readFileSync(f, "utf8"))));
 const config = fs.readFileSync("src/lib/sitePhotosConfig.ts", "utf8");
-check("the one switch is null, so the panel is not shown anywhere in the live portal", /export const sitePhotosGateway: SitePhotosGateway \| null = null;/.test(config));
+check("the one switch is still null (it is turned on only AFTER migration 276 is applied), so the panel is not shown anywhere in the live portal", /export const sitePhotosGateway: SitePhotosGateway \| null = null;/.test(config));
 const portal = fs.readFileSync("src/pages/ClientPortal.tsx", "utf8");
 const changes = fs.readFileSync("src/pages/ClientBusinessChanges.tsx", "utf8");
 check("the brief and the redesign form show the panel only when the switch is on", /sitePhotosGateway && supabase && client \? <ClientSitePhotos/.test(portal) && /sitePhotosGateway && supabase && clientId \? <ClientSitePhotos/.test(changes));

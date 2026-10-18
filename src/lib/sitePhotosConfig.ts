@@ -1,5 +1,5 @@
-// The ONE switch for website photos in the client portal. It stays null until the photo migration (docs/drafts/migrations/10_site_photos.sql) is promoted and
-// applied; then set it to createSitePhotosGateway(supabase) after copying docs/drafts/ui/sitePhotosSupabaseGateway.ts into src/lib (steps in docs/PHOTO_BACKEND_RUNBOOK.md).
+// The ONE switch for website photos in the client portal. It stays null until migration 276 (supabase/migrations/276_site_photos.sql) has been APPLIED to the
+// database; then set it to createSitePhotosGateway(supabase) from ./sitePhotosSupabaseGateway (steps in docs/PHOTO_BACKEND_RUNBOOK.md, step D).
 // While it is null the photo panel is not shown anywhere, so nothing in the live portal changes.
 import type { SitePhotosGateway } from "./sitePhotos";
 
