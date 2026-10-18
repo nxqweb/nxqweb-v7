@@ -440,6 +440,41 @@ export function getRequestedProductFamily(slug: string | null) {
   return productFamilyCatalog.find((family) => family.slug === slug) || null;
 }
 
+// A tier that is PLANNED but not for sale. It lives apart from `productTiers` on purpose: that list feeds signup, plan changes and billing, so nothing here can be chosen,
+// requested or charged. Everything shown is a plan, marked as such. (From the owner's notes of 2026-10-16: built after NXQX Web launches; prices are directions, not final.)
+export type ComingSoonTierDefinition = {
+  key: string;
+  name: string;
+  priceLabel: string;
+  priceNote: string;
+  description: string;
+  badge: string;
+  features: string[];
+  honestNote: string;
+};
+
+export const comingSoonTiers: ComingSoonTierDefinition[] = [
+  {
+    key: "web-pro",
+    name: "NXQX Web Pro",
+    priceLabel: "$500/mo planned",
+    priceNote: "The price is a plan and may change before launch.",
+    description: "A done-with-you growth system for local businesses that want the phones answered, reviews coming in and leads tracked.",
+    badge: "Coming soon",
+    features: [
+      "AI receptionist (monthly minutes have a fair-use cap)",
+      "Missed-call text-back",
+      "Review requests",
+      "Google Business Profile",
+      "Local SEO",
+      "Lead dashboard",
+      "Booking and payments",
+      "Monthly report",
+    ],
+    honestNote: "Not available to order yet. It is built after NXQX-Web launches, and the features above are planned and may change.",
+  },
+];
+
 export function getProductTier(key: string | null) {
   return productTiers.find((tier) => tier.key === key) || productTiers[0];
 }

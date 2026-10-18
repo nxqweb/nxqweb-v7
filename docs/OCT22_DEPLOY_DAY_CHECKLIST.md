@@ -36,7 +36,7 @@ Review deployments -> nxq-staging -> Approve and deploy; Claude never does).
 | 2.3 | O: publish the branch build (Netlify: the one-time "Activate builds" for the safe branch, then publish that deploy) | Write down the credits after; expect about 285 |
 
 ## What this deploy puts on the site (so nothing is a surprise)
-Public: `/about`, `/contact`, `/privacy`, `/terms` (draft banner until a lawyer reviews them), referral links (`/portal/signup?ref=CODE`), Order-by-email and Menu store modes, the store page that waits for its ordering style.
+Public: a 'Coming soon' card for NXQX Web Pro ($500, planned, not for sale) at the bottom of `/plans`; `/about`, `/contact`, `/privacy`, `/terms` (draft banner until a lawyer reviews them), referral links (`/portal/signup?ref=CODE`), Order-by-email and Menu store modes, the store page that waits for its ordering style.
 Client portal: Rewards page, AI assistant chat, Report a problem button, "?" help words, store profile (About/contact), the new owner guards (cannot switch an open store to online ordering without a saved payment link).
 NOT on the site: Booking (no route), referral credits on invoices (off), live Stripe (not connected), shopper accounts (leave off).
 NEW on the site once 273 is applied: `/client/reviews` ("Get reviews" link in the client portal): paste a review link, get a printable QR card and messages. Proof: open it on a phone, save a real review link, press "Test my link", scan the printed or on-screen QR with a second phone.

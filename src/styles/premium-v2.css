@@ -103,6 +103,7 @@
 .px-fam.px-live-fam{border-color:var(--px-line-gold);background:linear-gradient(170deg,rgba(217,183,95,.16),rgba(217,183,95,.04))}.px-fam.px-live-fam .px-st{color:var(--px-green)}
 /* ---------- pricing ---------- */
 .px-tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px;align-items:stretch}
+.px-tiers.px-tiers-soon{grid-template-columns:minmax(0,520px);justify-content:center}
 @property --px-a{syntax:"<angle>";inherits:false;initial-value:0deg}
 .px-tier{position:relative;overflow:hidden;padding:30px 26px;border-radius:var(--px-radius);background:linear-gradient(170deg,var(--px-glass-2),var(--px-glass));border:1px solid var(--px-line);display:flex;flex-direction:column;transition:transform .35s}
 .px-tier:hover{transform:translateY(-6px)}
@@ -149,7 +150,7 @@
 @media (prefers-reduced-motion:reduce){.px-bg .px-logo i,.px-bg .px-glow,.px-bg .px-ripple,.px-bg .px-shine,.px h1 em,.px-eyebrow i,.px-tier.px-featured,.px-cta-band,.px-marquee div,.px-cue span,.px-scrollpage,.px-live i,.px-tier::before{animation:none!important}
   .px-js .px-reveal{opacity:1;transform:none;filter:none;transition:none}.px-rise{animation:none;opacity:1;transform:none}.px-bg .px-logo i{opacity:.25}.px-wipe{display:none}html{scroll-behavior:auto}}
 @media (max-width:980px){.px-grid4,.px-tiers{grid-template-columns:repeat(2,1fr)}.px-grid3{grid-template-columns:repeat(2,1fr)}.px-steps{grid-template-columns:repeat(2,1fr);row-gap:44px}.px-links a:not(.px-cta){display:none}.px-story{grid-template-columns:1fr}.px-story-card{position:relative;top:0}.px-story-steps{gap:22px;padding:0}.px-story-steps .px-card{opacity:1}.px-portal{grid-template-columns:1fr}.px-side{display:none}.px-devs{grid-template-columns:1fr}.px-kpis{grid-template-columns:repeat(2,1fr)}.px-vs{grid-template-columns:1fr}}
-@media (max-width:620px){.px-grid4,.px-grid3,.px-tiers,.px-steps{grid-template-columns:1fr}.px-cta-band{padding:44px 22px}section{padding:64px 0}.px-nav{top:8px}.px-hero{padding:40px 0 80px}.px-main{padding:20px 16px}.px-big b{font-size:2.3rem}}
+@media (max-width:620px){.px-grid4,.px-grid3,.px-tiers,.px-steps{grid-template-columns:1fr}.px-tiers.px-tiers-soon{grid-template-columns:minmax(0,1fr)}.px-cta-band{padding:44px 22px}section{padding:64px 0}.px-nav{top:8px}.px-hero{padding:40px 0 80px}.px-main{padding:20px 16px}.px-big b{font-size:2.3rem}}
 
 .px-brandtext strong{display:block;line-height:1.2}
 .px-fam.px-muted{opacity:.72}.px-fam .px-fam-meta{display:flex;justify-content:space-between;align-items:center;gap:10px}
