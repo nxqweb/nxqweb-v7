@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buildDeskRequest, deskTaskText, fixRequestText, type DeskRequest, type SetupField } from "../lib/aiDesk";
 import { parseDeskReply, validateDeskResult } from "../lib/aiDeskCheck";
+import type { AiDeskGateway, DeskStatus } from "../lib/aiDeskGateway";
 
 export type DeskClient = { id: string; name: string; businessType: string | null; fields: SetupField[] };
 
-type Props = { clients: DeskClient[]; selectedId: string; onSelect: (id: string) => void };
+// With a gateway (after the AI Desk migration is live) the SERVER hands out the exact task and saves the answer.
+// Without one, the task is built here from the setup sheet and the reply is only checked, never saved.
+type Props = { clients: DeskClient[]; selectedId: string; onSelect: (id: string) => void; gateway?: AiDeskGateway | null };
+
+const POLL_MS = 10000;
 
 async function copyText(text: string) {
   try {
@@ -15,34 +20,66 @@ async function copyText(text: string) {
   }
 }
 
-export function OwnerAiDesk({ clients, selectedId, onSelect }: Props) {
+function friendly(error: unknown) {
+  return error instanceof Error && error.message ? error.message : "Something went wrong. Try again in a moment.";
+}
+
+export function OwnerAiDesk({ clients, selectedId, onSelect, gateway = null }: Props) {
   const client = clients.find((item) => item.id === selectedId) ?? null;
-  const [request, setRequest] = useState<DeskRequest | null>(null);
+  const [localRequest, setLocalRequest] = useState<DeskRequest | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
+  const [status, setStatus] = useState<DeskStatus | null>(null);
+  const [statusError, setStatusError] = useState("");
   const [reply, setReply] = useState("");
   const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!gateway || !client) return;
+    try {
+      setStatus(await gateway.getStatus(client.id));
+      setStatusError("");
+    } catch (error) {
+      setStatusError(friendly(error));
+    }
+  }, [gateway, client]);
 
   useEffect(() => {
     let cancelled = false;
-    setRequest(null);
+    setLocalRequest(null);
     setMissing([]);
+    setStatus(null);
+    setStatusError("");
     setReply("");
     setNote("");
     if (!client) return;
-    buildDeskRequest({ fields: client.fields, businessName: client.name, businessType: client.businessType || undefined }).then((built) => {
-      if (cancelled) return;
-      if (built.ok) setRequest(built.request);
-      else setMissing(built.missing);
-    });
+    if (gateway) {
+      gateway.getStatus(client.id).then((next) => { if (!cancelled) setStatus(next); }).catch((error) => { if (!cancelled) setStatusError(friendly(error)); });
+    } else {
+      buildDeskRequest({ fields: client.fields, businessName: client.name, businessType: client.businessType || undefined }).then((built) => {
+        if (cancelled) return;
+        if (built.ok) setLocalRequest(built.request);
+        else setMissing(built.missing);
+      });
+    }
     return () => { cancelled = true; };
-  }, [client]);
+  }, [client, gateway]);
+
+  // While the pipeline is still preparing the task (or still using a saved answer), look again every few seconds.
+  useEffect(() => {
+    if (!gateway || !client || !status || (status.status !== "none" && status.status !== "saved")) return;
+    const timer = window.setInterval(() => { void refresh(); }, POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [gateway, client, status, refresh]);
+
+  const request = gateway ? status?.request ?? null : localRequest;
 
   const verdict = useMemo(() => {
     if (!request || !reply.trim()) return null;
     const parsed = parseDeskReply(reply);
-    if (!parsed.ok) return { good: false, problems: [parsed.error], notes: [] as string[] };
+    if (!parsed.ok) return { good: false, problems: [parsed.error], notes: [] as string[], value: null as unknown };
     const problems = validateDeskResult(parsed.value, request);
-    return { good: problems.length === 0, problems, notes: parsed.notes };
+    return { good: problems.length === 0, problems, notes: parsed.notes, value: parsed.value as unknown };
   }, [request, reply]);
 
   async function copyTask() {
@@ -50,15 +87,44 @@ export function OwnerAiDesk({ clients, selectedId, onSelect }: Props) {
     setNote((await copyText(deskTaskText(request))) ? "AI task copied. Paste it into your NXQX AI Desk chat." : "Your browser blocked copying. Click the page once, then try again.");
   }
 
+  async function pasteReply() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) { setNote("Your clipboard is empty. Copy the AI Desk reply first, then press this again."); return; }
+      setReply(text);
+      setNote("");
+    } catch {
+      setNote("Your browser would not let me read the clipboard. Paste the reply into the box below instead.");
+    }
+  }
+
   async function copyFix() {
     if (!verdict || verdict.good) return;
     setNote((await copyText(fixRequestText(verdict.problems))) ? "Fix request copied. Paste it into the AI Desk chat." : "Your browser blocked copying. Click the page once, then try again.");
   }
 
+  async function save() {
+    if (!gateway || !client || !verdict?.good || saving) return;
+    setSaving(true);
+    try {
+      await gateway.save(client.id, verdict.value);
+      setReply("");
+      setNote("Saved. The pipeline will use it on its next run, usually within a minute.");
+      await refresh();
+    } catch (error) {
+      setNote(`Could not save: ${friendly(error)}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const serverWaiting = gateway ? status?.status === "waiting" : false;
+  const showWorkArea = gateway ? serverWaiting && Boolean(request) : Boolean(request);
+
   return (
     <section className="owner-ai-desk" aria-labelledby="owner-ai-desk-title">
       <h3 id="owner-ai-desk-title">AI Desk</h3>
-      <p className="subtle">Step 1: copy the task. Step 2: paste it into your NXQX AI Desk chat. Step 3: paste its reply below to check it.</p>
+      <p className="subtle">Step 1: copy the task. Step 2: paste it into your NXQX AI Desk chat. Step 3: copy the chat's reply, then press Paste and check{gateway ? ", then Save." : "."}</p>
       {clients.length === 0 ? (
         <p className="subtle">No client has a signed setup sheet yet.</p>
       ) : (
@@ -70,20 +136,38 @@ export function OwnerAiDesk({ clients, selectedId, onSelect }: Props) {
           </select>
         </>
       )}
-      {client && missing.length > 0 ? (
+      {client && !gateway && missing.length > 0 ? (
         <p className="auth-error" role="alert">The setup sheet is missing: {missing.join(", ")}. Ask the client for these first.</p>
       ) : null}
-      {request ? (
+      {client && gateway && statusError ? <p className="auth-error" role="alert">{statusError}</p> : null}
+      {client && gateway && status ? (
+        <div className="owner-ai-desk-status" role="status">
+          {status.status === "none" ? <p>No task yet. After you approve this client, the pipeline prepares it, usually within a minute. This page checks again by itself.</p> : null}
+          {status.status === "saved" ? <p>Your answer is saved. The pipeline will use it on its next run, usually within a minute.</p> : null}
+          {status.status === "used" ? <p>Done: your answer was used{status.usedAt ? ` on ${new Date(status.usedAt).toLocaleString()}` : ""}. The plan is in the client's project.</p> : null}
+          {status.lastError ? <p className="auth-error">The last answer was refused by the pipeline: {status.lastError} Copy the task again and ask the AI Desk for a fresh answer.</p> : null}
+          <button className="wide-btn" type="button" onClick={() => void refresh()}>Check again</button>
+        </div>
+      ) : null}
+      {showWorkArea ? (
         <div className="owner-ai-desk-actions">
           <button className="wide-btn" type="button" onClick={copyTask}>Copy AI task</button>
-          <label className="auth-label" htmlFor="ai-desk-reply">Paste the AI Desk reply here</label>
+          <button className="wide-btn" type="button" onClick={pasteReply}>Paste and check the AI Desk reply</button>
+          <label className="auth-label" htmlFor="ai-desk-reply">Or paste the reply into this box</label>
           <textarea className="auth-input" id="ai-desk-reply" rows={8} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Paste the JSON the AI Desk chat replied with" />
           {verdict ? (
             verdict.good ? (
-              <p className="auth-success" role="status">
-                Good to go. This reply passes every check the live pipeline will run (shape, limits, only your approved services and pages, no links, no invented claims).
-                {verdict.notes.map((item) => ` ${item}`).join("")} Saving it to the client's project is not connected yet, so keep the reply with the client's notes for now.
-              </p>
+              <div className="auth-success" role="status">
+                <p>
+                  Good to go. This reply passes every check the live pipeline will run (shape, limits, only your approved services and pages, no links, no invented claims).
+                  {verdict.notes.map((item) => ` ${item}`).join("")}
+                </p>
+                {gateway ? (
+                  <button className="wide-btn" type="button" disabled={saving} onClick={save}>{saving ? "Saving..." : "Save to project"}</button>
+                ) : (
+                  <p>Saving it to the client's project is not connected yet, so keep the reply with the client's notes for now.</p>
+                )}
+              </div>
             ) : (
               <div role="alert" className="auth-error">
                 <strong>Not ready. Fix these first:</strong>

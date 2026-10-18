@@ -9,6 +9,8 @@ import "../../../src/styles/plan-forms.css";
 import "../../../src/styles/nxqx-neural-glass.css";
 import "../../../src/styles/premium-v2.css";
 import { OwnerAiDesk, type DeskClient } from "../../../src/components/OwnerAiDesk";
+import { buildDeskRequest } from "../../../src/lib/aiDesk";
+import type { AiDeskGateway, DeskStatus } from "../../../src/lib/aiDeskGateway";
 
 const full = [
   { label: "Business phone", value: "555-0100" },
@@ -23,9 +25,31 @@ const clients: DeskClient[] = [
   { id: "c2", name: "Half Filled Sheet Co", businessType: null, fields: [{ label: "Industry", value: "Plumbing" }] },
 ];
 
+// ?server=1 mounts the panel in server mode with an in-memory fake of the AI Desk functions. The test drives the "pipeline" through window.deskSim.
+type Sim = { state: DeskStatus; saved: unknown[]; failSave: string; calls: string[]; prepare: () => Promise<void> };
+const sim: Sim = {
+  state: { status: "none", request: null, savedAt: null, usedAt: null, lastError: null },
+  saved: [], failSave: "", calls: [],
+  async prepare() {
+    const built = await buildDeskRequest({ fields: full, businessName: clients[0].name, businessType: "Candles and soap" });
+    if (built.ok) sim.state = { status: "waiting", request: built.request, savedAt: null, usedAt: null, lastError: sim.state.lastError };
+  },
+};
+(window as unknown as { deskSim: Sim }).deskSim = sim;
+const fakeGateway: AiDeskGateway = {
+  async getStatus(clientId) { sim.calls.push(`status:${clientId}`); return { ...sim.state }; },
+  async save(clientId, answer) {
+    sim.calls.push(`save:${clientId}`);
+    if (sim.failSave) throw new Error(sim.failSave);
+    sim.saved.push(answer);
+    sim.state = { status: "saved", request: null, savedAt: new Date().toISOString(), usedAt: null, lastError: null };
+  },
+};
+const serverMode = new URLSearchParams(window.location.search).get("server") === "1";
+
 // eslint-disable-next-line react-refresh/only-export-components -- harness file mounts itself and exports nothing
 function Harness() {
   const [id, setId] = useState(new URLSearchParams(window.location.search).get("pick") || "");
-  return <OwnerAiDesk clients={clients} selectedId={id} onSelect={setId} />;
+  return <OwnerAiDesk clients={clients} selectedId={id} onSelect={setId} gateway={serverMode ? fakeGateway : null} />;
 }
 createRoot(document.getElementById("root") as HTMLElement).render(<Harness />);

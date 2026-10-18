@@ -42,6 +42,14 @@ const good = {
     design: { theme_key: "charcoal_gold", mood: "Warm and simple with a cream and gold feel.", palette_guidance: ["Cream background", "Gold accents"], typography_guidance: "Clean serif headings with simple body text.", motion_guidance: "Gentle fades only." },
   },
 };
+await page.evaluate((text) => navigator.clipboard.writeText(text), JSON.stringify(good));
+await page.getByRole("button", { name: "Paste and check the AI Desk reply" }).click();
+await page.waitForTimeout(250);
+ok("the one-press Paste and check button reads the clipboard and shows Good to go", /Good to go/.test((await page.getByRole("status").first().textContent()) || "") && (await page.inputValue("#ai-desk-reply")).includes("request_fingerprint"));
+await page.evaluate(() => navigator.clipboard.writeText("   "));
+await page.getByRole("button", { name: "Paste and check the AI Desk reply" }).click();
+await page.waitForTimeout(250);
+ok("an empty clipboard says so in plain words", /clipboard is empty/.test((await page.getByRole("status").last().textContent()) || ""));
 await page.fill("#ai-desk-reply", JSON.stringify(good));
 ok("a good reply shows Good to go, with no problems list", /Good to go/.test((await page.getByRole("status").first().textContent()) || "") && (await page.getByRole("alert").count()) === 0);
 ok("it is honest that saving to the project is not connected yet", /not connected yet/.test((await page.getByRole("status").first().textContent()) || ""));

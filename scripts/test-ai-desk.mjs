@@ -179,7 +179,7 @@ check("control: drift guard notices a changed limit", !prep.includes('"positioni
 // Front-end wiring
 const portal = fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8");
 const lib = fs.readFileSync("src/lib/aiDesk.ts", "utf8");
-check("owner screen has a Copy AI task button on setup approvals", portal.includes("Copy AI task") && portal.includes("copyAiTask(approval, client, clientName)"));
+check("the old per-approval Copy button is gone (the panel is the one place to copy from)", !portal.includes("copyAiTask") && !portal.includes("Copy AI task"));
 check("Copy AI task only builds text (no network, no database)", !/fetch\(|supabase|\.rpc\(|XMLHttpRequest/.test(lib));
 check("builder never reads contact fields", !/Business phone|Business email|contact_email|contact_phone|contact_name/.test(lib));
 

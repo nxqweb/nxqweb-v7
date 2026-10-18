@@ -9,7 +9,7 @@ const migration = read("supabase/migrations/178_business_build_plan_ai_enrichmen
 const app = read("templates/business-v1/app.js");
 const css = read("templates/business-v1/styles.css");
 const aiInputStart = worker.indexOf("const aiInput = {");
-const aiInputEnd = worker.indexOf("const aiResult =", aiInputStart);
+const aiInputEnd = worker.indexOf("aiResult", aiInputStart); // first mention after the input object (const or let)
 const aiInputBlock = aiInputStart >= 0 && aiInputEnd > aiInputStart ? worker.slice(aiInputStart, aiInputEnd) : "";
 
 const styleOnlyInput = {

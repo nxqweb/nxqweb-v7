@@ -36,11 +36,16 @@ node scripts/validate-ai-output.mjs build-plan <task-file> <answer-file>
 
 Includes: business name, industry, area, services, positioning, style, suggested pages, plan name. **Never** includes: phone, email, address, contact name, payment info, passwords or keys. It builds text on your screen only: no network call, no database write.
 
-## What is NOT built yet (honest list)
+## Two modes of the owner-screen panel
 
-- **Saving the answer to the client's project.** The panel checks the reply but does not save it. Saving needs a worker change and a database change, both behind the stop-and-ask gates, and should wait until after the Oct 22 deploy.
-- The desk fingerprint is computed in the browser and is not yet verified by the pipeline. It only ties the answer to the exact task you copied.
-- Other tasks (classifying leads, drafting outreach) have no Copy button yet. The build-plan task is the first and the template for them.
+- **Now (no server part yet):** you pick the client, press **Copy AI task** (a task built in your browser from the setup sheet), paste it into the chat, press **Paste and check the AI Desk reply**. It says Good to go or lists problems. It does NOT save: keep the reply with the client's notes.
+- **After the AI Desk migration is promoted and applied (needs your approval, see `docs/drafts/ui/README.md`):** the pipeline itself prepares the task. Approve -> within about a minute **Copy AI task** appears (the server's exact task, so a saved answer can never mismatch) -> paste into the chat -> **Paste and check** -> **Save to project**. The plan job wakes up, runs the same full validator as for a real AI, and builds the plan. If the pipeline refuses the answer, the panel shows its plain reason next to a fresh task. Your clicks: Approve, Copy, Paste and check, Save.
+
+## What is built, what is not (honest list)
+
+Built and tested locally (nothing deployed or applied): the panel in both modes, the checker (browser and command line), the draft database part (`docs/drafts/migrations/09_ai_desk_build_plans.sql`, tested in the local full-schema harness with planted bugs), and the worker change in `prepare-build-plan` (already in source; if the table does not exist it behaves exactly as before).
+NOT done, each needs your explicit approval: promoting draft 09 to a real migration and applying it (it would make the deploy-day list five migrations, 272 to 276), deploying the functions, and the final one-line hookup of the panel to the server. After that, one real staging run proves it.
+Still true: fully hands-off (no copy and paste at all) needs an API key.
 
 ## Swapping to the real API later
 

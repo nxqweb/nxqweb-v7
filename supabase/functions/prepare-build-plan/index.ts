@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { assertGroundedMarketingClaims } from "../_shared/ai-grounding.mjs";
+import { markDeskPlanUsed, rejectDeskPlan, resolveDeskPlan } from "../_shared/ai-desk-plan.mjs";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 
@@ -273,6 +274,26 @@ async function sha256(value: unknown) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+// The exact task sent to the AI adapter, or recorded for the owner's AI Desk when no adapter is configured.
+function adapterRequestBody(requestFingerprint: string, input: JsonRecord, services: string[], pages: string[]) {
+  return {
+    task: "enrich_business_build_plan_v1",
+    schema_version: adapterSchemaVersion,
+    request_fingerprint: requestFingerprint,
+    input,
+    contract: {
+      plain_text_only: true,
+      no_links_or_markup: true,
+      allowed_services: services.slice(0, 8),
+      allowed_pages: pages,
+      allowed_theme_keys: [...supportedThemes],
+      minimum_confidence: minimumConfidence,
+      production_or_provider_actions_forbidden: true,
+      legal_financial_medical_guarantees_forbidden: true,
+    },
+  };
+}
+
 async function requestAiStrategy(adapterUrl: string, adapterToken: string, requestFingerprint: string, input: JsonRecord, services: string[], pages: string[]) {
   const endpoint = validateAdapterUrl(adapterUrl);
   const controller = new AbortController();
@@ -282,22 +303,7 @@ async function requestAiStrategy(adapterUrl: string, adapterToken: string, reque
       method: "POST",
       redirect: "error",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${adapterToken}` },
-      body: JSON.stringify({
-        task: "enrich_business_build_plan_v1",
-        schema_version: adapterSchemaVersion,
-        request_fingerprint: requestFingerprint,
-        input,
-        contract: {
-          plain_text_only: true,
-          no_links_or_markup: true,
-          allowed_services: services.slice(0, 8),
-          allowed_pages: pages,
-          allowed_theme_keys: [...supportedThemes],
-          minimum_confidence: minimumConfidence,
-          production_or_provider_actions_forbidden: true,
-          legal_financial_medical_guarantees_forbidden: true,
-        },
-      }),
+      body: JSON.stringify(adapterRequestBody(requestFingerprint, input, services, pages)),
       signal: controller.signal,
     });
     const bodyText = await res.text();
@@ -384,8 +390,6 @@ Deno.serve(async (request) => {
   if (!job) return response({ ok: true, message: "No build-plan jobs are ready.", adapter_configured: adapterConfigured });
 
   try {
-    if (!adapterConfigured) throw new Error("AI build-plan adapter is not configured.");
-
     const [clientRes, intakeRes, approvalRes] = await Promise.all([
       admin.from("clients").select("id,business_name,status,business_type,service_area,contact_name,contact_email,contact_phone,product_family_id,product_tier_id,notes").eq("id", job.client_id).single(),
       admin.from("client_intakes").select("*").eq("client_id", job.client_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -478,6 +482,7 @@ Deno.serve(async (request) => {
     const existingPlan = reusableBuildPlan(projectRes.data.build_plan, inputFingerprint);
     let buildPlan: JsonRecord;
     let adapterReused = false;
+    let deskPlanId = "";
 
     if (existingPlan) {
       buildPlan = existingPlan;
@@ -494,7 +499,45 @@ Deno.serve(async (request) => {
         approved_pages: pages,
         product_tier_key: tierKey,
       };
-      const aiResult = await requestAiStrategy(adapterUrl, adapterToken, inputFingerprint, aiInput, services, pages);
+      let aiResult: AiAdapterResult;
+      if (adapterConfigured) {
+        aiResult = await requestAiStrategy(adapterUrl, adapterToken, inputFingerprint, aiInput, services, pages);
+      } else {
+        // No AI key yet: the owner's AI Desk supplies the answer (docs/AI_DESK_KIT.md). It goes through the same full validator as an adapter reply.
+        const deskRequest = adapterRequestBody(inputFingerprint, aiInput, services, pages);
+        const desk = await resolveDeskPlan(admin, { clientId: job.client_id, request: deskRequest });
+        if (desk.kind === "error") throw new Error(desk.message);
+        if (desk.kind === "unavailable") throw new Error("AI build-plan adapter is not configured.");
+        if (desk.kind === "waiting") {
+          const waited = await admin.rpc("defer_external_automation_job_v2", {
+            target_job_id: job.id,
+            target_lock_token: job.lock_token,
+            worker_name: workerName,
+            target_reason: "Waiting for the owner's AI Desk answer.",
+            retry_after: "5 minutes",
+          });
+          if (waited.error) throw new Error(`AI Desk wait deferral failed: ${waited.error.message}`);
+          return response({ ok: true, deferred: true, ai_desk: "waiting", job_id: job.id, input_fingerprint: inputFingerprint });
+        }
+        try {
+          aiResult = validateAiStrategy(desk.result, services, pages, aiInput);
+          if (aiResult.request_fingerprint !== inputFingerprint) throw new Error("AI Desk answer fingerprint did not match this intake.");
+          deskPlanId = desk.id;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : "AI Desk answer was rejected.";
+          const rejected = await rejectDeskPlan(admin, { clientId: job.client_id, id: desk.id, reason, request: deskRequest });
+          if (!rejected.ok) throw new Error(`AI Desk bookkeeping failed: ${rejected.message}`, { cause: error });
+          const waitedAgain = await admin.rpc("defer_external_automation_job_v2", {
+            target_job_id: job.id,
+            target_lock_token: job.lock_token,
+            worker_name: workerName,
+            target_reason: `AI Desk answer rejected: ${reason}`.slice(0, 500),
+            retry_after: "5 minutes",
+          });
+          if (waitedAgain.error) throw new Error(`AI Desk wait deferral failed: ${waitedAgain.error.message}`, { cause: error });
+          return response({ ok: true, deferred: true, ai_desk: "rejected", job_id: job.id, reason });
+        }
+      }
       buildPlan = {
         version: workerVersion,
         generated_by: "nxq_ai_build_plan_worker",
@@ -542,6 +585,7 @@ Deno.serve(async (request) => {
           deterministic_safety_merge: true,
           deterministic_grounding_validator: "v1",
           adapter_contract: "provider_neutral",
+          ai_source: deskPlanId ? "owner_ai_desk" : "ai_adapter",
           validated_at: new Date().toISOString(),
         },
         source: {
@@ -587,6 +631,10 @@ Deno.serve(async (request) => {
       },
     });
     if (completed.error) throw new Error(completed.error.message);
+    if (deskPlanId) {
+      const used = await markDeskPlanUsed(admin, deskPlanId);
+      if (!used.ok) console.error("Failed to mark the AI Desk plan used", used.message);
+    }
 
     await admin.rpc("record_worker_heartbeat", {
       target_worker_key: workerName,
