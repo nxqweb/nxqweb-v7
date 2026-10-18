@@ -1,4 +1,4 @@
--- DRAFT 10: close two cross-tenant write holes found by an independent security review (2026-10-17). LOCAL ONLY, NOT promoted, NOT applied.
+-- Migration 275: close two cross-tenant write holes found by an independent security review (2026-10-17; promoted the same day on the owner's choice 'A': apply with 272, 273 and 274 on deploy day). NOT yet applied.
 --
 -- HOLE 1 (medium-high), the Commerce tables (migration 036): signed-in clients were granted insert/update/delete on commerce_storefronts, categories, products,
 -- product_variants, inventory_movements, customers, carts, cart_items, orders and order_items. The row-level policy only checks that the row's OWN client_id is the
@@ -16,7 +16,6 @@
 -- src/ found no direct insert/update/delete on these tables. The pages only READ them, and select grants are left exactly as they are. Row-level policies are left in place
 -- (harmless once the grants are gone, and a second layer if a grant ever comes back).
 --
--- Promotion would be migration 274 (or the next free number) and is an owner decision: it adds a pending migration to the Oct 22 plan.
 
 revoke insert, update, delete on table public.commerce_storefronts from authenticated;
 revoke insert, update, delete on table public.commerce_categories from authenticated;

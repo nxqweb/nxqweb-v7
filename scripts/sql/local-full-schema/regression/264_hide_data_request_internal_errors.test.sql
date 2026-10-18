@@ -20,7 +20,8 @@ do $$ declare col text; begin
   if exists (select 1 from information_schema.columns c where c.table_schema='public' and c.table_name='data_subject_requests' and c.column_name <> 'last_error'
              and not has_column_privilege('authenticated', 'public.data_subject_requests', c.column_name, 'select')) then raise exception 'a non-error column is not readable by authenticated'; end if;
   if not has_column_privilege('service_role', 'public.data_subject_requests', 'last_error', 'select') then raise exception 'service_role lost last_error'; end if;
-  if not has_table_privilege('authenticated', 'public.data_subject_requests', 'insert') then raise exception 'authenticated lost insert'; end if;
+  -- migration 264 left the direct insert grant alone; migration 275 later closed it on purpose (a forged row could name another client). Final state: no direct insert.
+  if has_table_privilege('authenticated', 'public.data_subject_requests', 'insert') then raise exception 'authenticated must not insert directly any more (migration 275)'; end if;
   if has_table_privilege('anon', 'public.data_subject_requests', 'select') then raise exception 'anon has select'; end if;
 end $$;
 

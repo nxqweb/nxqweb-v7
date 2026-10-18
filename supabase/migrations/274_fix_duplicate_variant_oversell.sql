@@ -1,4 +1,4 @@
--- DRAFT 09: close an oversell hole in public checkout (found by an independent review, 2026-10-17). LOCAL ONLY, NOT promoted, NOT applied.
+-- Migration 274: close an oversell hole in public checkout (found by an independent review, 2026-10-17; promoted the same day on the owner's choice 'A': apply with 272, 273 and 275 on deploy day). NOT yet applied.
 --
 -- THE BUG (migration 115, create_public_direct_payment_order): the duplicate-cart-line guard compares the variant ids as TEXT, but the stock check and the stock
 -- reservation use the id cast to uuid, and the uuid cast accepts upper case, curly braces and hyphen-less forms. An anonymous caller can therefore send the same
@@ -9,7 +9,6 @@
 -- and a second line for the same uuid is refused with the existing "Combine duplicate product options..." message. Nothing else changes: same signature, same
 -- grants (restated below), same pricing, same stock rules, same errors. The Stripe-ready wrapper from 227 calls this function and is untouched.
 --
--- Promotion would be migration 274, an owner decision (it adds a third pending migration to the Oct 22 plan: 272 + 273 + 274).
 
 create or replace function public.create_public_direct_payment_order(
   store_slug_value text,

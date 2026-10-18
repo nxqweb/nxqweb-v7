@@ -8,16 +8,16 @@ Lines marked (seen) were really seen in earlier runs on this project. Lines mark
 
 ## 1. `validate_foundation` (read-only, nothing changes)
 Expand **Migration dry run**.
-- KEEP GOING (seen): `DRY RUN: migrations will *not* be pushed to the database.` then `Would push these migrations:` then exactly two bullets, `272_referral_invoice_credit.sql` and `273_reviews_collector.sql`, then `Finished supabase db push.`
-- STOP if there is any other file name in that list, or if there are zero or three or more. Screenshot it.
+- KEEP GOING (seen): `DRY RUN: migrations will *not* be pushed to the database.` then `Would push these migrations:` then exactly four bullets, `272_referral_invoice_credit.sql`, `273_reviews_collector.sql`, `274_fix_duplicate_variant_oversell.sql` and `275_revoke_client_direct_table_writes.sql`, then `Finished supabase db push.`
+- STOP if there is any other file name in that list, or if there are fewer or more than those four. Screenshot it.
 - Ignore (seen): "A new version of Supabase CLI is available". It is just advertising.
 - The steps that say **Apply migrations** / **Deploy ...** with a grey circle-slash icon were skipped on purpose. That is correct for a read-only run.
 - Also expand **Verify staging Edge secret names**: green is good (it only checks that the names exist, never the values).
 
 ## 2. `apply_migrations` (changes the database; you type `APPLY-NXQ-SUPABASE-STAGING` exactly)
 Expand **Apply migrations**.
-- KEEP GOING (expected): `Applying migration 272_referral_invoice_credit.sql...` then `Applying migration 273_reviews_collector.sql...` then `Finished supabase db push.`
-- STOP if you see the word `ERROR`, a red cross on that step, or only one of the two "Applying" lines. Do not re-run. Screenshot the step and send it.
+- KEEP GOING (expected): `Applying migration 272_referral_invoice_credit.sql...` then `Applying migration 273_reviews_collector.sql...`, `274...` and `275...` then `Finished supabase db push.`
+- STOP if you see the word `ERROR`, a red cross on that step, or fewer than four "Applying" lines. Do not re-run. Screenshot the step and send it.
 - If the run stops at **Require explicit mutation confirmation**, the phrase was typed wrong. Nothing was applied (this happened once before, safely). Run it again and paste the phrase carefully.
 
 ## 3. `deploy_functions` (redeploys the 44 server functions)

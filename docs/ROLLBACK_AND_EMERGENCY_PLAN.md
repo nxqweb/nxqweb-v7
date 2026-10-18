@@ -11,7 +11,7 @@ Golden rules (also in `CLAUDE.md`): stop and ask before anything destructive; ne
 |---|---|---|
 | The website (Netlify deploy) | Yes, quickly | Netlify -> Deploys -> open the previous good deploy -> **Publish deploy**. Check the Netlify credit page first: the credit rules for publishing an old deploy could not be verified from this repo |
 | Edge functions (44 of them) | No one-click undo | Stop the damage by setting `NXQ_BILLING_ENABLED` to `false` in Supabase (the Stripe webhook then does nothing). Claude fixes locally and redeploys once |
-| Migrations 272 and 273 | **Never undo.** They only ADD (a table, functions). Nothing is deleted or changed in old data | Leave them. If the Reviews page misbehaves, simply do not link to it; the rest of the site never touches 273 |
+| Migrations 272, 273, 274, 275 | **Never undo.** 272 and 273 only ADD (a table, functions). 274 adds one check inside the public order function; 275 removes permissions the app never used (direct writes to Commerce tables). Nothing is deleted from old data | Leave them. If the Reviews page misbehaves, simply do not link to it. If an order or a product/order save fails after the apply, stop and send Claude the exact message: the fix is a NEW migration, never an edit or an un-apply |
 | A practice order | Yes | Cancel it in Orders afterwards (step 4.2 of the checklist) |
 | Stripe sandbox state | Not real money | Nothing to undo; it is test mode |
 
@@ -19,7 +19,7 @@ Golden rules (also in `CLAUDE.md`): stop and ask before anything destructive; ne
 
 | You see | Probably | Do this |
 |---|---|---|
-| Dry run (`validate_foundation`) lists anything besides 272 and 273 | Something else got pending | **STOP.** Screenshot it, send it to Claude. Do not click Approve on `apply_migrations` |
+| Dry run (`validate_foundation`) lists anything besides 272, 273, 274 and 275 | Something else got pending | **STOP.** Screenshot it, send it to Claude. Do not click Approve on `apply_migrations` |
 | `apply_migrations` fails | A migration did not apply (the run stops at the first failure; whether a half-applied file rolls back was not verified, so Claude checks the database state read-only before anything else) | Screenshot the failing step and the last 20 log lines. Do NOT re-run blindly. Claude reads it and tells you whether re-running is safe |
 | `deploy_functions` says `toomanyrequests: Data limit exceeded` | Amazon registry throttle, seen once on 2026-10-17 | Nothing changed. Wait ~30 minutes, then "Re-run all jobs" |
 | The site deploy finishes but a page looks broken | A front-end bug | Do **not** deploy again right away (each deploy costs credits). Screenshot it. If it is the candle store itself, use **Publish deploy** on the previous good deploy; otherwise leave it and send Claude the screenshot |

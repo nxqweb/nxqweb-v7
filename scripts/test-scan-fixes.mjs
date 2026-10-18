@@ -16,8 +16,8 @@ const locs = read("src/pages/ClientBusinessLocations.tsx");
 const store = read("src/pages/PublicCommerceStorefront.tsx");
 const dialog = read("src/components/store/StoreProductDialog.tsx");
 const rawFiles = ["src/pages/ClientBusinessLocations.tsx", "src/components/ClientPlanManagement.tsx", "src/components/ClientWebsiteSecurity.tsx", "src/pages/ClientValueHistory.tsx"].map((p) => [p, read(p)]);
-const d09 = read("docs/drafts/migrations/09_fix_duplicate_variant_oversell.sql");
-const d10 = read("docs/drafts/migrations/10_revoke_client_direct_table_writes.sql");
+const d09 = read("supabase/migrations/274_fix_duplicate_variant_oversell.sql");
+const d10 = read("supabase/migrations/275_revoke_client_direct_table_writes.sql");
 
 const c = (live, orders, portal, tour, rewards, biz, locs, store, dialog, raw, d09, d10) => ({
   liveKeepsTyping: /async function load\(\{ initial, resetFields \}/.test(live) && /if \(resetFields\) \{/.test(live) && (live.match(/load\(\{ initial: false, resetFields: false \}\)/g) || []).length === 2 && (live.match(/load\(\{ initial: true, resetFields: true \}\)/g) || []).length === 1 && /if \(initial\) \{\s*setLoading\(true\)/.test(live),
@@ -52,7 +52,7 @@ check("adding, cancelling and closing paid locations each ask first", good.billi
 check("clients never see raw database text on the plan, security, locations and history pages", good.noRawErrors);
 check("store checkout: input length limits match the database, a failed order scrolls into view, arrow keys on size options no longer flip the photo", good.storeInputsLimited && good.storeErrorVisible && good.dialogArrows);
 check("checkout limit and rate-limit messages are plain words, and unknown database text still becomes the generic message", /too long/.test(friendlyCheckoutError("Customer name is required and must be 160 characters or fewer.")) && /too long/.test(friendlyCheckoutError("Order note must be 2000 characters or fewer.")) && /wait a little/.test(friendlyCheckoutError("Too many recent order attempts for this email. Please wait before trying again.")) && /busy/.test(friendlyCheckoutError("This store is receiving too many order attempts right now. Please try again shortly.")) && friendlyCheckoutError('duplicate key value violates unique constraint "x"') === genericCheckoutError);
-check("DRAFT 09 (oversell) changes only the duplicate-variant check and keeps the same grants; DRAFT 10 revokes direct writes on all 10 Commerce tables and the two privacy tables", good.d09 && good.d10);
+check("migration 274 (oversell) changes only the duplicate-variant check and keeps the same grants; migration 275 revokes direct writes on all 10 Commerce tables and the two privacy tables", good.d09 && good.d10);
 
 check("PLANTED BUG caught: a refresh overwrites typed payment links again", plant(0, "if (resetFields) {", "if (true) {").liveKeepsTyping === false);
 check("PLANTED BUG caught: product toggle reloads with the loading flash", plant(0, "load({ initial: false, resetFields: false })", "load({ initial: true, resetFields: true })").liveKeepsTyping === false);
@@ -65,8 +65,8 @@ check("PLANTED BUG caught: a location add-on is added without asking", plant(6, 
 check("PLANTED BUG caught: raw database text is shown again", plant(9, 'setError("The location add-on could not be enabled right now. Nothing was changed. Please try again or contact us.")', "setError(result.error.message)").noRawErrors === false);
 check("PLANTED BUG caught: the order note has no length limit", plant(7, "maxLength={2000}", "").storeInputsLimited === false);
 check("PLANTED BUG caught: arrow keys flip photos while choosing an option", plant(8, 'closest("input, select, textarea")) return;', 'closest("nothing")) return;').dialogArrows === false);
-check("PLANTED BUG caught: draft 09 stops remembering variants", plant(10, "seen_variants := seen_variants || variant_uuid;", "").d09 === false);
-check("PLANTED BUG caught: draft 10 forgets a table", plant(11, "revoke insert, update, delete on table public.commerce_order_items from authenticated;", "").d10 === false);
+check("PLANTED BUG caught: migration 274 stops remembering variants", plant(10, "seen_variants := seen_variants || variant_uuid;", "").d09 === false);
+check("PLANTED BUG caught: migration 275 forgets a table", plant(11, "revoke insert, update, delete on table public.commerce_order_items from authenticated;", "").d10 === false);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll scan-fix checks passed (offline).");
 process.exit(failures ? 1 : 0);
