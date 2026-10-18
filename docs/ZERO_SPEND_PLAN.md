@@ -52,5 +52,5 @@ This file is the reference for that period. Prices and free-tier terms of outsid
 - AI-free improvements: template-based review-request messages, a plain-words monthly report from real data, better onboarding checklists, in-app help words.
 - The first-month tracker on the owner client page (needs a migration: free but a gated step), a phone-friendly intake (collects personal data: do it with the legal parts later).
 - Promote Booking or Membership when a client asks.
-- Example pages for outreach (see `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`), more scans, and keeping tests and docs healthy.
+- DONE 2026-10-18: example pages for outreach at `/examples` (five fictional sites, `scripts/build-example-sites.mjs`). More scans, and keeping tests and docs healthy.
 - Anything that would call an outside service stays a local draft with a pretend service, like the Stripe credit logic.

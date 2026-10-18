@@ -23,6 +23,7 @@ export function PublicPlans() {
         </a>
         <nav className="px-links" aria-label="Main navigation">
           <a href="/"><ArrowLeft size={16} /> Back home</a>
+          <a href="/examples">Examples</a>
           <a className="px-cta" data-px-wipe href="/portal">Client portal</a>
         </nav>
       </header>

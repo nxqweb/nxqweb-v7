@@ -92,6 +92,7 @@ const PublicCommerceStorefront = named(() => import("./pages/PublicCommerceStore
 const PublicShopperAccount = named(() => import("./pages/PublicShopperAccount"), "PublicShopperAccount");
 const PublicHome = named(() => import("./pages/PublicHome"), "PublicHome");
 const PublicPlans = named(() => import("./pages/PublicPlans"), "PublicPlans");
+const PublicExamples = named(() => import("./pages/PublicExamples"), "PublicExamples");
 const ResetPassword = named(() => import("./pages/ResetPassword"), "ResetPassword");
 
 function AppRoutes() {
@@ -163,6 +164,7 @@ function AppRoutes() {
   if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (/^\/store\/[^/]+\/account\/?$/.test(path)) return <PublicShopperAccount />;
   if (path === "/plans") return <PublicPlans />;
+  if (path === "/examples") return <PublicExamples />;
   if (path === "/about") return <PublicInfoPage slug="about" />;
   if (path === "/contact") return <PublicInfoPage slug="contact" />;
   if (path === "/privacy") return <PublicInfoPage slug="privacy" />;
@@ -180,7 +182,7 @@ function AppRoutes() {
 // The emblem backdrop sits behind every page except public storefronts, which keep their own look.
 function backdropVariant(path: string): "home" | "app" | null {
   if (path.startsWith("/store")) return null;
-  return path === "/" || path === "/plans" ? "home" : "app";
+  return path === "/" || path === "/plans" || path === "/examples" ? "home" : "app";
 }
 
 function App() {

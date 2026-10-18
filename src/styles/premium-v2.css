@@ -334,3 +334,7 @@ body[data-nxq-theme="light"] .px-ob-label, body[data-nxq-theme="light"] .px-ob-s
 .px-foot-links { display: flex; flex-wrap: wrap; gap: 1rem; }
 .px-foot-links a { color: inherit; text-decoration: underline; text-underline-offset: 3px; padding: 4px 2px; }
 .px-foot-links a:hover, .px-foot-links a:focus-visible { color: var(--px-ink, #fff); }
+.px-tiers.px-examples{grid-template-columns:repeat(3,1fr)}
+.px-example-shot{display:block;width:100%;height:auto;border-radius:12px;margin:12px 0;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);aspect-ratio:8/5;object-fit:cover}
+@media (max-width:980px){.px-tiers.px-examples{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.px-tiers.px-examples{grid-template-columns:1fr}}

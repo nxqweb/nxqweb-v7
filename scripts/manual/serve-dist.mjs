@@ -22,7 +22,9 @@ http.createServer((req, res) => {
   let file = path.join(root, url);
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
   let servedPath = url;
-  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) { file = path.join(root, "index.html"); servedPath = "/index.html"; }
+  // like Netlify: a folder with an index.html is served for "/folder/" (a real static page); anything else unknown falls back to the app
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory() && fs.existsSync(path.join(file, "index.html"))) { file = path.join(file, "index.html"); servedPath = path.posix.join(url, "index.html"); }
+  else if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) { file = path.join(root, "index.html"); servedPath = "/index.html"; }
   const headers = { "Content-Type": types[path.extname(file)] || "application/octet-stream" };
   for (const block of blocks) if (matches(block.pattern, servedPath) || matches(block.pattern, url)) Object.assign(headers, block.values);
   res.writeHead(200, headers);

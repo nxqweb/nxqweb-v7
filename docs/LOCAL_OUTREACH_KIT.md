@@ -17,6 +17,9 @@ Good signals: Facebook page but no website, a website that does not work on a ph
 - **Your own network and your current clients' referrals** (the Rewards page and referral link already exist; today nothing is paid out automatically).
 Aim for a list of 30 to 50 before you start, in the tracker (section 8). Mixed industries is fine: the pitch below does not depend on the type.
 
+## 2b. Show, don't tell: the examples page
+Open **`/examples`** on your phone when you talk to an owner: five fictional businesses (a tree service, a cafe, a cleaning company, a salon, a plumber) built from the same template their site would use, each with its own colors. Every example is clearly labelled as a fictional example, carries no reviews, prices or promises, and ends with "Talk to us". Say it plainly: "These are examples, not real clients. Yours would use your own services and area." The page works with any industry, which keeps the pitch from leaning toward one type.
+
 ## 3. In-person script (about 30 seconds)
 > "Hi, I'm [name]. I build and look after websites for local businesses in [town]. I noticed [specific thing: no website / your site is hard to use on a phone]. I'd like to build you a simple
 > one and look after it, and the first month is free so you can see it before you decide. Do you have two minutes, or is there a better time?"
