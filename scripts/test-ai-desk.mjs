@@ -116,6 +116,13 @@ badRequest("confidence floor lowered", (r) => { r.contract.minimum_confidence = 
 badRequest("unsupported input field (contact leaked in)", (r) => { r.input.contact_email = "a@b.com"; });
 badRequest("bad fingerprint", (r) => { r.request_fingerprint = "nope"; });
 
+check("several kinds of problem are all reported in one pass", (() => {
+  const c = clone(good); c.request_fingerprint = "0".repeat(64); c.strategy.positioning = "Premium hand-poured soy candles from Chico, California."; c.confidence = 0.1;
+  const text = validateDeskResult(c, request).join(" | ");
+  return /fingerprint/.test(text) && /confidence/.test(text) && /premium business claim/.test(text);
+})());
+check("a malformed strategy does not crash the claim scan", (() => { const c = clone(good); c.strategy.hero = "oops"; c.strategy.audiences = 5; c.strategy.service_descriptions = null; try { return validateDeskResult(c, request).length > 0; } catch { return false; } })());
+
 // Reply parsing
 check("reply parsing: plain JSON", parseDeskReply(JSON.stringify(good)).ok === true && parseDeskReply(JSON.stringify(good)).notes.length === 0);
 const fenced = parseDeskReply("Here you go:\n```json\n" + JSON.stringify(good) + "\n```\nHope that helps!");
@@ -175,6 +182,13 @@ const lib = fs.readFileSync("src/lib/aiDesk.ts", "utf8");
 check("owner screen has a Copy AI task button on setup approvals", portal.includes("Copy AI task") && portal.includes("copyAiTask(approval, client, clientName)"));
 check("Copy AI task only builds text (no network, no database)", !/fetch\(|supabase|\.rpc\(|XMLHttpRequest/.test(lib));
 check("builder never reads contact fields", !/Business phone|Business email|contact_email|contact_phone|contact_name/.test(lib));
+
+const panel = fs.readFileSync("src/components/OwnerAiDesk.tsx", "utf8");
+check("owner screen shows the AI Desk panel with the checker", portal.includes("<OwnerAiDesk clients={deskClients}") && panel.includes("validateDeskResult") && panel.includes("parseDeskReply"));
+check("approving a client preselects them in the AI Desk", /setActionMessage\([\s\S]{0,200}?\);\s*setDeskClientId\(client\.id\)/.test(portal));
+check("the panel never touches the network or database", !/fetch\(|supabase|\.rpc\(|XMLHttpRequest/.test(panel));
+check("the panel is honest that saving is not connected", panel.includes("not connected yet"));
+check("the browser and command-line checker are the same file", fs.readFileSync("scripts/lib/ai-desk.mjs", "utf8").includes("src/lib/aiDeskCheck.ts"));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll AI Desk checks passed.");
 process.exit(failures ? 1 : 0);

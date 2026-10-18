@@ -22,7 +22,8 @@ Keep one chat per client task if you can: it keeps answers from mixing businesse
 
 1. Owner screen -> the client's website-setup request -> **Copy AI task**. If it says something is missing from the setup sheet, use "Request more info" (it names the exact fields). It never guesses.
 2. Paste into the AI Desk chat. It replies with JSON.
-3. Copy the reply into a file and check it before trusting it:
+3. **Easiest:** paste the reply into the **AI Desk** panel on the owner screen (above the approval list). It checks it right there: green "Good to go", or a plain list of problems with a **Copy fix request** button that you paste back into the chat. Approving a client preselects them in that panel, so the whole flow is Approve -> Copy AI task -> paste into the chat -> paste its reply into the box.
+   Command-line alternative (same checks, same code): copy the reply into a file and run:
 
 ```
 node scripts/validate-ai-output.mjs build-plan <task-file> <answer-file>
@@ -37,7 +38,7 @@ Includes: business name, industry, area, services, positioning, style, suggested
 
 ## What is NOT built yet (honest list)
 
-- **Paste-back screen** (a box on the owner screen that takes the answer and attaches it to the client's project). Needs a worker change and a database change, both behind the stop-and-ask gates, and should wait until after the Oct 22 deploy. Today the answer is checked on the command line only.
+- **Saving the answer to the client's project.** The panel checks the reply but does not save it. Saving needs a worker change and a database change, both behind the stop-and-ask gates, and should wait until after the Oct 22 deploy.
 - The desk fingerprint is computed in the browser and is not yet verified by the pipeline. It only ties the answer to the exact task you copied.
 - Other tasks (classifying leads, drafting outreach) have no Copy button yet. The build-plan task is the first and the template for them.
 

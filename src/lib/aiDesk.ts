@@ -179,3 +179,20 @@ export function deskTaskText(request: DeskRequest) {
     "REQUEST_JSON_END",
   ].join("\n");
 }
+
+// Sent back to the AI Desk chat when its answer failed the checks.
+export function fixRequestText(problems: string[]) {
+  return [
+    "NXQX AI DESK FIX REQUEST",
+    "",
+    "Your last answer failed NXQX's checks. Fix exactly these problems, keep everything else, and reply with ONLY the corrected JSON (same request_fingerprint, no explanation, no code fence):",
+    ...problems.map((problem) => `- ${problem}`),
+  ].join("\n");
+}
+
+// The setup report lives in the client's notes; anything after a "more info request" marker is not part of it (same rule as the worker).
+export function setupFieldsFromNotes(notes: string | null | undefined, parse: (report: string) => SetupField[]) {
+  const text = typeof notes === "string" ? notes : "";
+  if (!text.includes("NXQ WEB WEBSITE SETUP REPORT")) return [];
+  return parse(text.split("NXQ MORE INFO REQUEST")[0] || text);
+}

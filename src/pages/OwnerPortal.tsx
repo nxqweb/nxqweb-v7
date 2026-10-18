@@ -12,7 +12,8 @@ import {
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { OwnerOverviewGraph } from "../components/OwnerOverviewGraph";
 import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
-import { buildDeskRequest, deskTaskText } from "../lib/aiDesk";
+import { buildDeskRequest, deskTaskText, setupFieldsFromNotes } from "../lib/aiDesk";
+import { OwnerAiDesk } from "../components/OwnerAiDesk";
 
 type ApprovalStatus =
   | "pending"
@@ -302,6 +303,7 @@ export function OwnerPortal() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
+  const [deskClientId, setDeskClientId] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   function toggleNxqTheme() {
@@ -676,6 +678,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
         resultData?.message ||
           `${clientName}: approved, moved into planning, and build plan created.`
       );
+      setDeskClientId(client.id);
 
       await loadOwnerData(clientSearch);
     } catch (error) {
@@ -860,6 +863,10 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
   }, [loadOwnerData]);
 
   const normalApprovalTypes = new Set(["website_setup_review", "commerce_intake_review"]);
+  const deskClients = clients
+    .map((item) => ({ id: item.id, name: item.business_name, businessType: item.business_type, fields: setupFieldsFromNotes(item.notes, parseSetupReport) }))
+    .filter((item) => item.fields.length > 0);
+
   const pendingApprovals = approvals.filter(
     (approval) => approval.status === "pending" && normalApprovalTypes.has(approval.request_type)
   );
@@ -1015,6 +1022,8 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                     : `${pendingApprovals.length} ready for your decision · ${pendingIntakeClients.length} waiting for client intake.`}
                 </p>
               </div>
+
+              <OwnerAiDesk clients={deskClients} selectedId={deskClientId} onSelect={setDeskClientId} />
 
               {!isLoading && pendingApprovals.length === 0 ? (
                 <div className="empty-state">
@@ -1185,7 +1194,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                       {isPipelineStartApproval(approval) && approval.recommended_action ? (
                         <button
                           type="button"
-                          className="copy-ai-task-button"
+                          className="wide-btn"
                           onClick={() => copyAiTask(approval, client, clientName)}
                         >
                           Copy AI task
