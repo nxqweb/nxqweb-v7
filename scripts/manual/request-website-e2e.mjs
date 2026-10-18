@@ -142,6 +142,32 @@ for (const width of [390, 360]) {
   if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/request-brief-${width}.png`, fullPage: true });
   await ctx.close();
 }
+// ---- other product lines share the same front door
+for (const [family, titleRe, goesToSetup] of [["commerce", /Request your store/, true], ["booking", /Request your booking website/, false]]) {
+  user.user_metadata.product_family_slug = family;
+  ({ page, ctx } = await newPage(390));
+  await page.goto(`${base}/client`, { waitUntil: "networkidle" });
+  await page.waitForSelector("[data-testid=request-website-card]", { timeout: 15000 });
+  const text = (await page.getByTestId("request-website-card").textContent()) || "";
+  ok(`${family}: the same three steps with ${family} words`, titleRe.test(text) && /1\. Account/.test(text) && /2\. Plan/.test(text) && /Not active yet/.test(text));
+  const button = page.getByTestId("request-website-button");
+  if (goesToSetup) {
+    ok(`${family}: the button is a link to the store setup page, not the business brief`, (await button.evaluate((el) => el.tagName)) === "A" && (await button.getAttribute("href")) === "/client/commerce/setup" && (await page.locator("#industry").count()) === 0);
+  } else {
+    await button.click();
+    await page.waitForSelector("#industry");
+    ok(`${family}: the button opens the same brief as Business`, (await page.inputValue("#industry")) === "Tree service");
+  }
+  if (goesToSetup) {
+    await page.goto(`${base}/client/commerce/setup`, { waitUntil: "networkidle" });
+    await page.waitForSelector("text=Store basics", { timeout: 15000 });
+    ok("commerce: a store not saved yet starts with the business name from signup", (await page.locator('label:has-text("Store name") input').inputValue()) === "Oak Ridge Tree Service");
+    ok("commerce: and the products from signup", /Tree removal/.test(await page.locator('label:has-text("What products or services will you sell?") textarea').inputValue()));
+  }
+  ok(`${family}: no sideways scroll at 390px`, (await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+  await ctx.close();
+}
+delete user.user_metadata.product_family_slug;
 ok("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
 await browser.close();
 process.exit(failures ? 1 : 0);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { familySlugFromMetadata, productFlowFor } from "../lib/productFlow";
 import {
   Bell,
   CheckCircle2,
@@ -326,6 +327,7 @@ export function ClientPortal() {
   const [smoothScroll, setSmoothScroll] = useState(defaultBriefOptions.smoothScroll);
   const [signupAnswers, setSignupAnswers] = useState<SignupAnswers>({ bestCustomers: "", mainAction: "", proof: "", goal: "", firstPriority: "" });
   const [requestOpen, setRequestOpen] = useState(false);
+  const [flowFamily, setFlowFamily] = useState("");
   const draftReadyFor = useRef("");
   // A draft is written only after the client typed or chose something (otherwise the signup prefill itself would become a "draft" and the Request card would never show again).
   const draftDirty = useRef(false);
@@ -478,6 +480,7 @@ export function ClientPortal() {
         setBusinessPhone((current) => current || prefill.businessPhone);
       }
       setSignupAnswers(signupAnswersFromMetadata(session.user.user_metadata));
+      setFlowFamily(familySlugFromMetadata(session.user.user_metadata));
       if (setupFields.size === 0 && draftReadyFor.current !== loadedClient.id) {
         // A brief that was started but not submitted comes back exactly as the client left it (typing always wins over signup answers).
         const draft = loadDraft(loadedClient.id);
@@ -605,6 +608,7 @@ export function ClientPortal() {
   }
 
   const planActive = paymentConfirmed(client?.billing_status);
+  const flow = productFlowFor(flowFamily);
 
   useEffect(() => {
     if (!client || setupComplete || draftReadyFor.current !== client.id || !draftDirty.current) return;
@@ -1228,15 +1232,17 @@ export function ClientPortal() {
               <textarea id="targeted-more-info-answer" maxLength={5000} onChange={(event) => targetedMoreInfoField.onChange(event.target.value)} placeholder={targetedMoreInfoField.placeholder} value={targetedMoreInfoField.value} />
               <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)} type="button">{isSubmittingSetup ? "Submitting update..." : "Submit requested update"}</button>
             </section>
-          ) : !setupComplete && !requestOpen ? (
+          ) : !setupComplete && (!requestOpen || flow.setupHref) ? (
             <section className="panel panel-wide request-website-card" data-testid="request-website-card" id="website-setup-sheet">
-              <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
+              <div className="panel-title"><Send size={20} /><h2>{flow.title}</h2></div>
               <ol className="request-steps">
                 <li className="done"><strong>1. Account</strong><span>Done. We kept everything you told us at signup.</span></li>
                 <li className={planActive ? "done" : ""}><strong>2. Plan</strong><span>{planActive ? "Active." : "Not active yet. NXQX confirms payment by hand for now: message support below and we will switch it on."}</span></li>
-                <li><strong>3. Request your website</strong><span>A short form, already filled in with what we know. You can start it now; it is saved on this device until you send it.</span></li>
+                <li><strong>3. {flow.title}</strong><span>{flow.requestStep}</span></li>
               </ol>
-              <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">Request your website</button>
+              {flow.setupHref
+                ? <a className="wide-btn" data-testid="request-website-button" href={flow.setupHref}>{flow.buttonLabel}</a>
+                : <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">{flow.buttonLabel}</button>}
             </section>
           ) : !setupComplete ? (
             <section className="panel panel-wide" id="website-setup-sheet" onClick={() => { draftDirty.current = true; }} onInput={() => { draftDirty.current = true; }}>

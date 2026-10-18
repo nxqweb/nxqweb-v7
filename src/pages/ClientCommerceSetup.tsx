@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { OptionalSection } from "../components/OptionalSection";
 import { ArrowLeft, CheckCircle2, MonitorPlay, Save, ShoppingBag } from "lucide-react";
+import { commerceSetupPrefill } from "../lib/productFlow";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 type CommerceIntake = {
@@ -145,7 +146,16 @@ export function ClientCommerceSetup() {
     if (result.error) {
       setError("Commerce setup could not be verified right now. Unverified setup fields are not shown.");
     } else {
-      setIntake({ ...initialIntake, ...((result.data || {}) as Partial<CommerceIntake>) });
+      const saved = (result.data || {}) as Partial<CommerceIntake>;
+      const next = { ...initialIntake, ...saved };
+      // A store not saved yet starts from what the client typed at signup instead of an empty page (never overwrites anything saved).
+      if (!saved.store_name?.trim() && !saved.product_types?.trim()) {
+        const own = await supabase.from("clients").select("business_name").limit(1).maybeSingle();
+        const prefill = commerceSetupPrefill(sessionResult.data.session.user.user_metadata, own.data?.business_name);
+        next.store_name = next.store_name || prefill.storeName;
+        next.product_types = next.product_types || prefill.productTypes;
+      }
+      setIntake(next);
       setVerified(true);
     }
 

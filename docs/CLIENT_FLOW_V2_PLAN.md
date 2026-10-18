@@ -65,3 +65,9 @@
 - Panel `ClientSitePhotos` (brief + redesign form, off until promoted), uploader that shrinks big photos in the browser, and a builder step (live in `supabase/functions/build-business-website`) that downloads each clean photo, checks its real type from its bytes and that its SHA-256 equals the scan's, commits it as `gallery/work-NN.ext`, deletes gallery files it did not write, and writes the gallery block in `site.config.js`.
 - **Hard dependency found:** photos only publish after the malware scan (Scanii free trial, owner secrets, `deploy_functions`). Without the scanner they stay "Being checked" forever.
 - Not done (honest): "Other photos" are kept for the NXQX team; the template has no slot for them yet. Old gallery files are not deleted from a client's repo when a photo is removed (the config simply stops listing them). HEIC (iPhone default) is refused with a tip.
+
+## Phase 4 (front door only): BUILT 2026-10-18 (local, NOT deployed, no migration)
+- Owner chose "front door only". `src/lib/productFlow.ts` is the one place that decides the words, the third step and the button for each product line. Business and Booking open the same in-portal brief (Booking says "booking website"); Commerce shows "Request your store" with the same three steps and a button that goes to its own setup page `/client/commerce/setup`. Unknown families fall back to Business.
+- The Commerce setup page now starts a never-saved store from signup (business name, products). Nothing already saved is overwritten.
+- Not done on purpose: look options (colour mode, SEO, smooth scroll), photos and a plan lock for Commerce. The Commerce save function only accepts its fixed list of fields and its store is built by a different builder, so real support is a migration plus builder work (a draft for after the 22nd, owner decision).
+- Tests: `scripts/test-product-flow.mjs` (+ planted-bug controls) and the Commerce/Booking cases in `scripts/manual/request-website-e2e.mjs`.
