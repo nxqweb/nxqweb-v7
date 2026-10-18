@@ -4,7 +4,7 @@ import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { getBusinessIndustryPreset, getPresetServiceDescription } from "../_shared/business-industry-presets.ts";
 import * as defaultCopy from "../_shared/business-default-copy.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
-import { normalizeSiteOptions, resolveColourMode } from "../_shared/site-options.mjs";
+import { applyStaticOptionsToBase64, normalizeSiteOptions, resolveColourMode } from "../_shared/site-options.mjs";
 import { buildGalleryConfig, bytesToBase64, galleryFileName, imageKindFromBytes, isMissingPhotoFunction, MAX_PUBLISH_BYTES, selectGalleryPhotos, sha256Hex, staleGalleryFiles } from "../_shared/site-photos.mjs";
 
 type AutomationJob = {
@@ -561,20 +561,18 @@ async function publishGalleryPhotos(admin: AdminClient, job: AutomationJob, owne
   const notes: JsonRecord[] = [...skipped];
   for (const row of selected) {
     await assertProviderMutationAllowed(admin, job); // a paused client or a kill switch always stops the build; it is never swallowed below
-    try {
-      const download = await admin.storage.from(String(row.bucket_id)).download(String(row.storage_path));
-      if (download.error || !download.data) { notes.push({ file_id: row.file_id, reason: "could not be downloaded" }); continue; }
-      const bytes = new Uint8Array(await download.data.arrayBuffer());
-      if (bytes.length > MAX_PUBLISH_BYTES) { notes.push({ file_id: row.file_id, reason: "larger than 4 MB" }); continue; }
-      const kind = imageKindFromBytes(bytes);
-      if (!kind || kind !== String(row.file_type).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file is not the image type it claims" }); continue; }
-      if (await sha256Hex(bytes) !== String(row.content_sha256).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file changed after its safety check" }); continue; }
-      const name = galleryFileName(published.length, kind);
-      await upsertRepoFile(owner, repo, branch, `gallery/${name}`, bytesToBase64(bytes), token, `NXQX Business v1: sync website photo ${name}`);
-      published.push({ name, alt: String(row.alt_text || ""), caption: String(row.caption || "") });
-    } catch {
-      notes.push({ file_id: row.file_id, reason: "could not be published" });
-    }
+    // A photo that is permanently unusable (wrong type, too big, changed after its scan) is skipped and reported. A TEMPORARY problem (a storage or GitHub hiccup,
+    // a rate limit, a timeout) must never silently drop a photo that is already live, so those errors are not caught: the build fails and retries, and the cleanup below never runs.
+    const download = await admin.storage.from(String(row.bucket_id)).download(String(row.storage_path));
+    if (download.error || !download.data) throw new Error("A website photo could not be downloaded, so the build will retry.");
+    const bytes = new Uint8Array(await download.data.arrayBuffer());
+    if (bytes.length > MAX_PUBLISH_BYTES) { notes.push({ file_id: row.file_id, reason: "larger than 4 MB" }); continue; }
+    const kind = imageKindFromBytes(bytes);
+    if (!kind || kind !== String(row.file_type).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file is not the image type it claims" }); continue; }
+    if (await sha256Hex(bytes) !== String(row.content_sha256).toLowerCase()) { notes.push({ file_id: row.file_id, reason: "the file changed after its safety check" }); continue; }
+    const name = galleryFileName(published.length, kind);
+    await upsertRepoFile(owner, repo, branch, `gallery/${name}`, bytesToBase64(bytes), token, `NXQX Business v1: sync website photo ${name}`);
+    published.push({ name, alt: String(row.alt_text || ""), caption: String(row.caption || "") });
   }
   // Remove gallery files this build did not write (removed, flagged or re-typed photos) so nothing stale stays public. A failure here fails the build on purpose.
   const existing = await listRepoDirectory(owner, repo, branch, "gallery", token);
@@ -643,8 +641,11 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
   await updateStep(admin, runId, "prepare_safe_branch", "completed", { branch: sourceBranch });
 
   await updateStep(admin, runId, "generate_website_draft", "running");
+  // Options a crawler or the first paint must see WITHOUT running scripts (a "no search listing" tag, a light-only page) are written into index.html itself.
+  const pageOptions = normalizeSiteOptions((projectRes.data.build_plan as JsonRecord).site_options);
   for (const file of blueprintFiles) {
-    const content = await fetchBlueprintFile(file, token);
+    const fetched = await fetchBlueprintFile(file, token);
+    const content = file === "index.html" ? applyStaticOptionsToBase64(fetched, pageOptions) : fetched;
     await assertProviderMutationAllowed(admin, job);
     await upsertRepoFile(configRes.data.github_owner, configRes.data.github_repo, sourceBranch, file, content, token, `NXQX Business v1: sync ${file}`);
   }

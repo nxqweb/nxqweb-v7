@@ -76,7 +76,8 @@ export function isMissingPhotoFunction(error) {
   if (!error) return false;
   const code = String(error.code || "");
   const message = String(error.message || "").toLowerCase();
-  return code === "42883" || code === "PGRST202" || (message.includes("get_site_photos_for_build") && (message.includes("does not exist") || message.includes("schema cache") || message.includes("could not find")));
+  // Only "this exact function is not there". A bare 42883 ("undefined function") could be a bug INSIDE the function once it exists, which must fail the build, not hide the photos.
+  return code === "PGRST202" || (message.includes("get_site_photos_for_build") && (message.includes("does not exist") || message.includes("schema cache") || message.includes("could not find")));
 }
 
 // The safety scan records the SHA-256 of the exact bytes it checked. A downloaded file whose hash differs was changed after the check and is never published.

@@ -515,7 +515,7 @@ Deno.serve(async (request) => {
             target_lock_token: job.lock_token,
             worker_name: workerName,
             target_reason: "Waiting for the owner's AI Desk answer.",
-            retry_after: "5 minutes",
+            retry_after: "1 minute",
           });
           if (waited.error) throw new Error(`AI Desk wait deferral failed: ${waited.error.message}`);
           return response({ ok: true, deferred: true, ai_desk: "waiting", job_id: job.id, input_fingerprint: inputFingerprint });
@@ -533,7 +533,7 @@ Deno.serve(async (request) => {
             target_lock_token: job.lock_token,
             worker_name: workerName,
             target_reason: `AI Desk answer rejected: ${reason}`.slice(0, 500),
-            retry_after: "5 minutes",
+            retry_after: "1 minute",
           });
           if (waitedAgain.error) throw new Error(`AI Desk wait deferral failed: ${waitedAgain.error.message}`, { cause: error });
           return response({ ok: true, deferred: true, ai_desk: "rejected", job_id: job.id, reason });

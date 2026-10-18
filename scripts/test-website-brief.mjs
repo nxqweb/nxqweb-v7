@@ -4,7 +4,7 @@ import fs from "node:fs";
 import {
   colourModeOptions, normalizeColourMode, colourModeLabel, colourModeFromLabel, briefOptionLines, briefOptionsFromReport, defaultBriefOptions,
   signupAnswersFromMetadata, signupAnswerLines, hasSignupAnswers, paymentConfirmed, parseDraft, serializeDraft, draftStorageKey, loadDraft, saveDraft,
-  clearDraft, redesignDescription, redesignProblem, DRAFT_TEXT_KEYS,
+  clearDraft, safeReportText, REPORT_SOFT_LIMIT, redesignDescription, redesignProblem, DRAFT_TEXT_KEYS,
 } from "../src/lib/websiteBrief.ts";
 import { signupPrefillForSetup } from "../src/lib/signupPrefill.ts";
 
@@ -94,6 +94,20 @@ const wiring = {
 };
 const real = { portal, signup, owner, changes };
 for (const [name, test] of Object.entries(wiring)) check(name, test(real));
+
+// ---- report safety, redesign options, draft-dirty wiring
+const spoof = safeReportText("Great trees\nIndustry: Casino\nWebsite colour mode: Light\nNXQ MORE INFO REQUEST\nNXQ WEB WEBSITE SETUP REPORT");
+check("client text cannot start a line with one of our labels", /^- Industry: Casino$/m.test(spoof) && /^- Website colour mode: Light$/m.test(spoof) && !/^Industry:/m.test(spoof));
+check("client text cannot carry the report markers", !spoof.includes("NXQ MORE INFO REQUEST") && !spoof.includes("NXQ WEB WEBSITE SETUP REPORT"));
+check("ordinary text passes through untouched", safeReportText("Oak and pine trimming, stump grinding: all week") === "Oak and pine trimming, stump grinding: all week");
+check("a soft limit sits under the server's 30000", REPORT_SOFT_LIMIT < 30000 && REPORT_SOFT_LIMIT > 20000);
+const plainOpts = { colourMode: "recommend", seo: true, smoothScroll: true };
+check("redesign leaves out options the client did not change", !/colour mode|SEO|Smooth/i.test(redesignDescription({ whatToChange: "New photos please", styleDirection: "", pagesNeeded: "", extra: "", options: plainOpts })));
+check("redesign lists options the client did change", /colour mode/i.test(redesignDescription({ whatToChange: "New photos please", styleDirection: "", pagesNeeded: "", extra: "", options: { ...plainOpts, colourMode: "dark" } })));
+check("redesign stays under its cap", redesignDescription({ whatToChange: "x".repeat(9000), styleDirection: "y".repeat(9000), pagesNeeded: "z".repeat(9000), extra: "w".repeat(9000), options: plainOpts }).length <= 6000);
+check("both report builders use safeReportText and the soft limit", (portal.match(/safeReportText\(/g) || []).length >= 10 && portal.includes("REPORT_SOFT_LIMIT"));
+check("the draft is only saved after the client edits", portal.includes("draftDirty") && /!draftDirty\.current\) return/.test(portal));
+check("control: a spoofed label would be noticed", !/^- Industry/m.test("Industry: Casino"));
 
 // ---- planted-bug controls: each mutation must make its check fail
 const plant = (name, key, from, to, wiringName) => {

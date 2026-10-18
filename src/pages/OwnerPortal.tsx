@@ -857,9 +857,9 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
   }, [loadOwnerData]);
 
   const normalApprovalTypes = new Set(["website_setup_review", "commerce_intake_review"]);
-  const deskClients = clients
+  const deskClients = useMemo(() => clients
     .map((item) => ({ id: item.id, name: item.business_name, businessType: item.business_type, fields: setupFieldsFromNotes(item.notes, parseSetupReport) }))
-    .filter((item) => item.fields.length > 0);
+    .filter((item) => item.fields.length > 0), [clients]);
 
   const pendingApprovals = approvals.filter(
     (approval) => approval.status === "pending" && normalApprovalTypes.has(approval.request_type)

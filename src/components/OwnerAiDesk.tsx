@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { buildDeskRequest, deskTaskText, fixRequestText, type DeskRequest, type SetupField } from "../lib/aiDesk";
 import { parseDeskReply, validateDeskResult } from "../lib/aiDeskCheck";
 import type { AiDeskGateway, DeskStatus } from "../lib/aiDeskGateway";
@@ -34,15 +34,27 @@ export function OwnerAiDesk({ clients, selectedId, onSelect, gateway = null }: P
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const refresh = useCallback(async () => {
-    if (!gateway || !client) return;
+  // The reply box and notes must survive the page reloading its data; they only reset when the owner picks another client or the setup sheet really changed.
+  const clientId = client?.id ?? "";
+  const contentKey = client ? JSON.stringify([client.name, client.businessType, client.fields]) : "";
+  const clientRef = useRef(client);
+  const currentId = useRef(clientId);
+  useEffect(() => {
+    clientRef.current = client;
+    currentId.current = clientId;
+  });
+
+  async function refresh() {
+    if (!gateway || !clientId) return;
     try {
-      setStatus(await gateway.getStatus(client.id));
+      const next = await gateway.getStatus(clientId);
+      if (currentId.current !== clientId) return;
+      setStatus(next);
       setStatusError("");
     } catch (error) {
-      setStatusError(friendly(error));
+      if (currentId.current === clientId) setStatusError(friendly(error));
     }
-  }, [gateway, client]);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -52,25 +64,27 @@ export function OwnerAiDesk({ clients, selectedId, onSelect, gateway = null }: P
     setStatusError("");
     setReply("");
     setNote("");
-    if (!client) return;
+    const current = clientRef.current;
+    if (!current) return;
     if (gateway) {
-      gateway.getStatus(client.id).then((next) => { if (!cancelled) setStatus(next); }).catch((error) => { if (!cancelled) setStatusError(friendly(error)); });
+      gateway.getStatus(current.id).then((next) => { if (!cancelled) setStatus(next); }).catch((error) => { if (!cancelled) setStatusError(friendly(error)); });
     } else {
-      buildDeskRequest({ fields: client.fields, businessName: client.name, businessType: client.businessType || undefined }).then((built) => {
+      buildDeskRequest({ fields: current.fields, businessName: current.name, businessType: current.businessType || undefined }).then((built) => {
         if (cancelled) return;
         if (built.ok) setLocalRequest(built.request);
         else setMissing(built.missing);
       });
     }
     return () => { cancelled = true; };
-  }, [client, gateway]);
+  }, [clientId, contentKey, gateway]);
 
   // While the pipeline is still preparing the task (or still using a saved answer), look again every few seconds.
   useEffect(() => {
-    if (!gateway || !client || !status || (status.status !== "none" && status.status !== "saved")) return;
+    if (!gateway || !clientId || !status || (status.status !== "none" && status.status !== "saved")) return;
     const timer = window.setInterval(() => { void refresh(); }, POLL_MS);
     return () => window.clearInterval(timer);
-  }, [gateway, client, status, refresh]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gateway, clientId, status]);
 
   const request = gateway ? status?.request ?? null : localRequest;
 
@@ -105,12 +119,15 @@ export function OwnerAiDesk({ clients, selectedId, onSelect, gateway = null }: P
 
   async function save() {
     if (!gateway || !client || !verdict?.good || saving) return;
+    const savingFor = client.id;
     setSaving(true);
     try {
-      await gateway.save(client.id, verdict.value);
-      setReply("");
-      setNote("Saved. The pipeline will use it on its next run, usually within a minute.");
-      await refresh();
+      await gateway.save(savingFor, verdict.value);
+      if (currentId.current === savingFor) {
+        setReply("");
+        setNote("Saved. The pipeline will use it on its next run, usually within a minute.");
+        await refresh();
+      }
     } catch (error) {
       setNote(`Could not save: ${friendly(error)}`);
     } finally {

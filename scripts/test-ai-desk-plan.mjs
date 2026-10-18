@@ -105,8 +105,16 @@ check("missing-table detection covers Postgres and PostgREST wording", isMissing
 out = await resolveDeskPlan(fakeAdmin({ failOn: "insert" }), { clientId: "c1", request: req(FP1) });
 check("a failed insert is reported as an error", out.kind === "error" && /bookkeeping/.test(out.message));
 
+// 9. an oversized task is refused with a plain message, not a database error
+const big = req(FP1); big.input = { ...big.input, goals: "g".repeat(13000) };
+out = await resolveDeskPlan(fakeAdmin(), { clientId: "c1", request: big });
+check("a task too big for the table is refused with a plain message", out.kind === "error" && /too long/.test(out.message));
+
 // Worker wiring (source)
 const worker = fs.readFileSync("supabase/functions/prepare-build-plan/index.ts", "utf8");
+const helper = fs.readFileSync("supabase/functions/_shared/ai-desk-plan.mjs", "utf8");
+check("retiring an old row only touches a row that is still in the state we read", /superseded" \}\)\.eq\("id", stale\.id\)\.eq\("status", stale\.status\)/.test(helper));
+check("the worker looks again after one minute, matching what the owner screen promises", !/retry_after: "5 minutes"/.test(worker.split("resolveDeskPlan(admin")[1] || "") && (worker.match(/retry_after: "1 minute"/g) || []).length >= 2);
 check("worker imports the desk helper", worker.includes('from "../_shared/ai-desk-plan.mjs"'));
 check("the AI adapter wins whenever it is configured; the desk is only the no-key path", /if \(adapterConfigured\) \{\s*aiResult = await requestAiStrategy/.test(worker) && /\} else \{\s*\/\/ No AI key yet/.test(worker));
 check("a desk answer goes through the same validateAiStrategy as an adapter reply", /validateAiStrategy\(desk\.result, services, pages, aiInput\)/.test(worker));

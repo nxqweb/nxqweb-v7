@@ -28,6 +28,9 @@
   --foot: #8896a8;
   --shadow: rgba(0,0,0,.28);
 }
+:root[data-theme="charcoal_gold"] { --bg: #0b0a08; --bg-top: #211b11; --bg-deep: #050403; --accent: #f2c66d; --accent-2: #d78e45; --button-start: #f5d38c; --button-end: #eaaa62; }
+:root[data-theme="forest_emerald"] { --bg: #06100d; --bg-top: #0c2a20; --bg-deep: #030806; --accent: #72e1b4; --accent-2: #7fb7ff; --button-start: #94ebc7; --button-end: #9dc9ff; }
+:root[data-theme="royal_violet"] { --bg: #0a0712; --bg-top: #21143b; --bg-deep: #050308; --accent: #c0a0ff; --accent-2: #ff8fc7; --button-start: #ccb3ff; --button-end: #ffabd2; }
 /* Light mode (the client chose Light or Both): the same layout with a light palette. Accent colours are darkened so text on the page stays readable. */
 :root[data-mode="light"] {
   color-scheme: light;
@@ -40,9 +43,6 @@
 :root[data-mode="light"][data-theme="charcoal_gold"] { --accent: #7a4f06; --accent-2: #a65b12; }
 :root[data-mode="light"][data-theme="forest_emerald"] { --accent: #0a6b4a; --accent-2: #1f5fa8; }
 :root[data-mode="light"][data-theme="royal_violet"] { --accent: #5b34c4; --accent-2: #b1306f; }
-:root[data-theme="charcoal_gold"] { --bg: #0b0a08; --bg-top: #211b11; --bg-deep: #050403; --accent: #f2c66d; --accent-2: #d78e45; --button-start: #f5d38c; --button-end: #eaaa62; }
-:root[data-theme="forest_emerald"] { --bg: #06100d; --bg-top: #0c2a20; --bg-deep: #030806; --accent: #72e1b4; --accent-2: #7fb7ff; --button-start: #94ebc7; --button-end: #9dc9ff; }
-:root[data-theme="royal_violet"] { --bg: #0a0712; --bg-top: #21143b; --bg-deep: #050308; --accent: #c0a0ff; --accent-2: #ff8fc7; --button-start: #ccb3ff; --button-end: #ffabd2; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; background: radial-gradient(circle at top, var(--bg-top) 0, var(--bg) 38%, var(--bg-deep) 100%); color: var(--text); overflow-x: hidden; }

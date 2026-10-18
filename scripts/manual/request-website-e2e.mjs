@@ -58,6 +58,8 @@ if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/request
 await page.getByTestId("request-website-button").click();
 await page.waitForSelector("#industry");
 ok("opening the brief reuses signup: industry, services, area, phone and email are already filled in", (await page.inputValue("#industry")) === "Tree service" && /Tree removal/.test(await page.inputValue("#services")) && (await page.inputValue("#locations")) === "Chico, California" && (await page.inputValue("#business-phone")) === "(555) 010-2000" && (await page.inputValue("#business-email")) === "client@example.com");
+await page.waitForTimeout(900);
+ok("just opening the brief writes no draft (so the Request card is not lost on the next visit)", !(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("nxq-brief-draft-v1")))));
 const summary = (await page.getByTestId("signup-answers-summary").textContent()) || "";
 ok("what they told us at signup is shown back, not asked again", /Homeowners/.test(summary) && /Request an estimate/.test(summary) && /Before and after job photos/.test(summary) && /More estimate requests/.test(summary));
 ok("the look options exist with sensible defaults (NXQX recommends, SEO on, smooth scrolling on)", (await page.locator('input[name="website-colour-mode"]:checked').getAttribute("value")) === "recommend" && (await page.getByLabel(/Let search engines list my website/).isChecked()) && (await page.getByLabel(/Smooth scrolling/).isChecked()));

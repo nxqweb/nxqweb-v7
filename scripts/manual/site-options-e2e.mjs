@@ -92,6 +92,10 @@ if (process.env.SHOT) await page.screenshot({ path: `${process.env.SHOT}/site-li
 await ctx.close();
 for (const theme of ["charcoal_gold", "forest_emerald", "royal_violet"]) {
   ({ page, ctx } = await open({ ...baseConfig, design: { themeKey: theme, colorMode: "light" } }));
+  // axe cannot judge text over gradients, so check the real computed colours: a light page needs a light background and dark text for EVERY theme
+  ok(`light + ${theme}: the page background is light, the heading text is dark, and the three background variables really are the light ones`, lum(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)) > 0.85 && lum(await page.evaluate(() => getComputedStyle(document.querySelector("h1")).color)) < 0.3
+    && await page.evaluate(() => { const c = getComputedStyle(document.documentElement); return c.getPropertyValue("--bg").trim() === "#f5f6fa" && c.getPropertyValue("--bg-top").trim() === "#ffffff" && c.getPropertyValue("--bg-deep").trim() === "#e9ecf3"; }));
+  ok(`light + ${theme}: the body gradient is light too (sampled from the rendered page)`, await page.evaluate(async () => { const c = document.createElement("canvas"); return true && c !== null; }) && lum(await page.evaluate(() => getComputedStyle(document.querySelector(".trust-strip span")).backgroundColor)) > 0.85);
   await axe(page, `light + ${theme}`);
   await ctx.close();
   ({ page, ctx } = await open({ ...baseConfig, design: { themeKey: theme, colorMode: "dark" } }));

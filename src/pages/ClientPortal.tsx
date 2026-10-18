@@ -14,7 +14,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { signupPrefillForSetup } from "../lib/signupPrefill";
 import {
   briefOptionLines, briefOptionsFromReport, clearDraft, colourModeOptions, defaultBriefOptions, hasSignupAnswers, loadDraft, paymentConfirmed,
-  saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
+  REPORT_SOFT_LIMIT, safeReportText, saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
 } from "../lib/websiteBrief";
 import { OptionalSection } from "../components/OptionalSection";
 import { ClientSitePhotos } from "../components/ClientSitePhotos";
@@ -327,6 +327,8 @@ export function ClientPortal() {
   const [signupAnswers, setSignupAnswers] = useState<SignupAnswers>({ bestCustomers: "", mainAction: "", proof: "", goal: "", firstPriority: "" });
   const [requestOpen, setRequestOpen] = useState(false);
   const draftReadyFor = useRef("");
+  // A draft is written only after the client typed or chose something (otherwise the signup prefill itself would become a "draft" and the Request card would never show again).
+  const draftDirty = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
@@ -504,7 +506,7 @@ export function ClientPortal() {
         if (draft.colourMode) setColourMode(draft.colourMode);
         if (typeof draft.seo === "boolean") setSeoPreference(draft.seo);
         if (typeof draft.smoothScroll === "boolean") setSmoothScroll(draft.smoothScroll);
-        if (Object.keys(draft).length > 0) setRequestOpen(true);
+        if (Object.keys(draft).length > 0) { draftDirty.current = true; setRequestOpen(true); }
       }
       draftReadyFor.current = loadedClient.id;
 
@@ -605,7 +607,7 @@ export function ClientPortal() {
   const planActive = paymentConfirmed(client?.billing_status);
 
   useEffect(() => {
-    if (!client || setupComplete || draftReadyFor.current !== client.id) return;
+    if (!client || setupComplete || draftReadyFor.current !== client.id || !draftDirty.current) return;
     const timer = window.setTimeout(() => {
       saveDraft(client.id, {
         companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
@@ -637,31 +639,32 @@ export function ClientPortal() {
     const selectedPlan = packageOptions[selectedPackage];
     const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
     const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
-    const cleanIndustry = industry.trim();
-    const cleanServices = services.trim();
-    const cleanPagesNeeded = pagesNeeded.trim();
-    const cleanStyleDirection = styleDirection.trim();
-    const cleanBrandNotes = brandNotes.trim();
-    const cleanLocations = locations.trim();
-    const cleanBusinessPhone = businessPhone.trim();
-    const cleanBusinessEmail = businessEmail.trim();
-    const cleanBusinessAddress = businessAddress.trim();
-    const cleanBusinessHours = businessHours.trim();
-    const cleanEmergencyAvailability = emergencyAvailability.trim();
-    const cleanCompetitors = competitors.trim();
-    const cleanPreferredContactMethod = preferredContactMethod.trim();
-    const cleanUrgentLeadRules = urgentLeadRules.trim();
-    const cleanRejectedJobs = rejectedJobs.trim();
-    const cleanAreasNotServed = areasNotServed.trim();
-    const cleanAiCanAnswer = aiCanAnswer.trim();
-    const cleanAiNeverPromise = aiNeverPromise.trim();
-    const cleanEscalationRules = escalationRules.trim();
-    const cleanSignature = typedSignature.trim();
+    const cleanIndustry = safeReportText(industry.trim());
+    const cleanServices = safeReportText(services.trim());
+    const cleanPagesNeeded = safeReportText(pagesNeeded.trim());
+    const cleanStyleDirection = safeReportText(styleDirection.trim());
+    const cleanBrandNotes = safeReportText(brandNotes.trim());
+    const cleanLocations = safeReportText(locations.trim());
+    const cleanBusinessPhone = safeReportText(businessPhone.trim());
+    const cleanBusinessEmail = safeReportText(businessEmail.trim());
+    const cleanBusinessAddress = safeReportText(businessAddress.trim());
+    const cleanBusinessHours = safeReportText(businessHours.trim());
+    const cleanEmergencyAvailability = safeReportText(emergencyAvailability.trim());
+    const cleanCompetitors = safeReportText(competitors.trim());
+    const cleanPreferredContactMethod = safeReportText(preferredContactMethod.trim());
+    const cleanUrgentLeadRules = safeReportText(urgentLeadRules.trim());
+    const cleanRejectedJobs = safeReportText(rejectedJobs.trim());
+    const cleanAreasNotServed = safeReportText(areasNotServed.trim());
+    const cleanAiCanAnswer = safeReportText(aiCanAnswer.trim());
+    const cleanAiNeverPromise = safeReportText(aiNeverPromise.trim());
+    const cleanEscalationRules = safeReportText(escalationRules.trim());
+    const cleanSignature = safeReportText(typedSignature.trim());
     const previousMoreInfoRequest = getLatestMoreInfoRequest(client.notes);
     const isMoreInfoResubmission = Boolean(previousMoreInfoRequest);
 
     if (!paymentConfirmed(client.billing_status)) return setErrorMessage("Your plan has to be active before you can request your website. NXQX confirms payment by hand for now: message support below and we will switch it on. Everything you typed here is kept.");
     if (!cleanIndustry) return setErrorMessage("Enter the client's industry before submitting.");
+    if (cleanIndustry.length < 2 || cleanIndustry.length > 120) return setErrorMessage("Industry must be between 2 and 120 characters, for example plumbing or tree service.");
     if (!cleanServices) return setErrorMessage("Enter the services/products this website needs to explain.");
     if (!cleanPagesNeeded) return setErrorMessage("Enter the pages or sections the website needs.");
     if (!cleanStyleDirection) return setErrorMessage("Enter the style direction for the website.");
@@ -731,11 +734,16 @@ export function ClientPortal() {
         `Payment note: Client understands payment/subscription activation will be required before final website access/live service in a later billing step.`,
       ].join("\n");
 
+      if (setupReport.length > REPORT_SOFT_LIMIT) {
+        setErrorMessage("Your answers are too long to send in one piece. Please shorten the longest boxes (for example Services, Pages and Style), then send again. Nothing you typed was lost.");
+        return;
+      }
+
       const setupResult = await supabase.rpc("submit_current_client_website_setup", {
         target_setup_report: setupReport,
         target_tier_key: selectedPackage,
         target_business_type: cleanIndustry,
-        target_service_area: cleanLocations || locationType,
+        target_service_area: (cleanLocations || locationType).replace(/\s+/g, " ").slice(0, 500),
         target_submission_kind: isMoreInfoResubmission ? "resubmission" : "initial",
         target_requested_field_key: null,
         target_requested_field_label: null,
@@ -823,10 +831,15 @@ export function ClientPortal() {
     const selectedPlan = packageOptions[selectedPackage];
     const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
     const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
-    const targetedAnswer = getTargetedFieldValue(request.fieldKey);
+    const targetedAnswer = safeReportText(getTargetedFieldValue(request.fieldKey));
+    const t = (value: string) => safeReportText(value.trim());
 
     if (!targetedAnswer) {
       setErrorMessage(`Please answer: ${request.fieldLabel}`);
+      return;
+    }
+    if (targetedAnswer.length > 5000) {
+      setErrorMessage("Your answer is too long (the limit is 5000 characters). Please shorten it and send again.");
       return;
     }
 
@@ -848,37 +861,37 @@ export function ClientPortal() {
         ``,
         `Company scale: ${companyScale}`,
         `Location setup: ${locationType}`,
-        `Locations: ${locations.trim() || "Not provided / single location"}`,
-        `Business phone: ${businessPhone.trim() || "Not provided"}`,
-        `Business email: ${businessEmail.trim() || "Not provided"}`,
-        `Business address: ${businessAddress.trim() || "Not provided"}`,
-        `Business hours: ${businessHours.trim() || "Not provided"}`,
-        `Emergency / after-hours availability: ${emergencyAvailability.trim() || "Not provided"}`,
-        `Industry: ${industry.trim() || "Not provided"}`,
+        `Locations: ${t(locations) || "Not provided / single location"}`,
+        `Business phone: ${t(businessPhone) || "Not provided"}`,
+        `Business email: ${t(businessEmail) || "Not provided"}`,
+        `Business address: ${t(businessAddress) || "Not provided"}`,
+        `Business hours: ${t(businessHours) || "Not provided"}`,
+        `Emergency / after-hours availability: ${t(emergencyAvailability) || "Not provided"}`,
+        `Industry: ${t(industry) || "Not provided"}`,
         ``,
-        `Services / products:`, services.trim() || "Not provided",
+        `Services / products:`, t(services) || "Not provided",
         ``,
-        `Pages / sections needed:`, pagesNeeded.trim() || "Not provided",
+        `Pages / sections needed:`, t(pagesNeeded) || "Not provided",
         ``,
-        `Style direction:`, styleDirection.trim() || "Not provided",
+        `Style direction:`, t(styleDirection) || "Not provided",
         ``,
-        `Brand difference / positioning:`, brandNotes.trim() || "Not provided",
+        `Brand difference / positioning:`, t(brandNotes) || "Not provided",
         ``,
-        `Competitors / examples:`, competitors.trim() || "Not provided",
+        `Competitors / examples:`, t(competitors) || "Not provided",
         ``,
         ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
         ...signupAnswerLines(signupAnswers),
         ``,
         `Lead handling rules:`,
-        `Preferred contact method: ${preferredContactMethod.trim() || "Not provided"}`,
-        `Urgent lead rules: ${urgentLeadRules.trim() || "Not provided"}`,
-        `Jobs / customers to reject: ${rejectedJobs.trim() || "Not provided"}`,
-        `Areas not served: ${areasNotServed.trim() || "Not provided"}`,
+        `Preferred contact method: ${t(preferredContactMethod) || "Not provided"}`,
+        `Urgent lead rules: ${t(urgentLeadRules) || "Not provided"}`,
+        `Jobs / customers to reject: ${t(rejectedJobs) || "Not provided"}`,
+        `Areas not served: ${t(areasNotServed) || "Not provided"}`,
         ``,
         `Website assistant rules:`,
-        `Assistant can answer: ${aiCanAnswer.trim() || "Not provided"}`,
-        `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
-        `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
+        `Assistant can answer: ${t(aiCanAnswer) || "Not provided"}`,
+        `Assistant should never promise: ${t(aiNeverPromise) || "Not provided"}`,
+        `Escalation rules: ${t(escalationRules) || "Not provided"}`,
         ``,
         `Agreement accepted: Yes`,
         `Typed signature: ${typedSignature.trim() || "Previously verified on the original setup submission"}`,
@@ -894,8 +907,8 @@ export function ClientPortal() {
       const setupResult = await supabase.rpc("submit_current_client_website_setup", {
         target_setup_report: setupReport,
         target_tier_key: selectedPackage,
-        target_business_type: industry.trim() || "Website Client",
-        target_service_area: locations.trim() || locationType,
+        target_business_type: (t(industry) || "Website Client").slice(0, 120),
+        target_service_area: (t(locations) || locationType).replace(/\s+/g, " ").slice(0, 500),
         target_submission_kind: "targeted",
         target_requested_field_key: request.fieldKey,
         target_requested_field_label: request.fieldLabel,
@@ -1212,7 +1225,7 @@ export function ClientPortal() {
               <div className="panel-title"><Send size={20} /><h2>{targetedMoreInfoField.label}</h2></div>
               <p className="subtle">{targetedMoreInfoRequest.requestedInfo}</p>
               <label className="auth-label" htmlFor="targeted-more-info-answer">{targetedMoreInfoField.label}</label>
-              <textarea id="targeted-more-info-answer" onChange={(event) => targetedMoreInfoField.onChange(event.target.value)} placeholder={targetedMoreInfoField.placeholder} value={targetedMoreInfoField.value} />
+              <textarea id="targeted-more-info-answer" maxLength={5000} onChange={(event) => targetedMoreInfoField.onChange(event.target.value)} placeholder={targetedMoreInfoField.placeholder} value={targetedMoreInfoField.value} />
               <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)} type="button">{isSubmittingSetup ? "Submitting update..." : "Submit requested update"}</button>
             </section>
           ) : !setupComplete && !requestOpen ? (
@@ -1226,7 +1239,7 @@ export function ClientPortal() {
               <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">Request your website</button>
             </section>
           ) : !setupComplete ? (
-            <section className="panel panel-wide" id="website-setup-sheet">
+            <section className="panel panel-wide" id="website-setup-sheet" onClick={() => { draftDirty.current = true; }} onInput={() => { draftDirty.current = true; }}>
               <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
               <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
               <div className="notice-card success" data-testid="setup-sheet-quickstart">
@@ -1256,16 +1269,16 @@ export function ClientPortal() {
                 <label><span>Location setup</span><select className="auth-input" onChange={(event) => setLocationType(event.target.value)} value={locationType}><option>Single location</option><option>Multiple locations</option><option>Service areas / no storefront</option><option>National / online</option></select></label>
               </div>
 
-              <label className="auth-label" htmlFor="locations">Locations or service areas</label><textarea id="locations" onChange={(event) => setLocations(event.target.value)} placeholder="Example: Sacramento CA, Roseville CA, Folsom CA, Elk Grove CA. For multi-location brands, list every location you want represented." value={locations} />
-              <label className="auth-label" htmlFor="business-phone">Business phone</label><input className="auth-input" id="business-phone" onChange={(event) => setBusinessPhone(event.target.value)} placeholder="Example: (555) 123-4567" value={businessPhone} />
-              <label className="auth-label" htmlFor="business-email">Business email</label><input className="auth-input" id="business-email" onChange={(event) => setBusinessEmail(event.target.value)} placeholder="Example: contact@business.com" value={businessEmail} />
-              <label className="auth-label" htmlFor="business-address">Business address</label><input className="auth-input" id="business-address" onChange={(event) => setBusinessAddress(event.target.value)} placeholder="Example: 123 Main St, Sacramento CA" value={businessAddress} />
-              <label className="auth-label" htmlFor="business-hours">Business hours</label><textarea id="business-hours" onChange={(event) => setBusinessHours(event.target.value)} placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed." value={businessHours} />
-              <label className="auth-label" htmlFor="emergency-availability">Emergency / after-hours availability</label><textarea id="emergency-availability" onChange={(event) => setEmergencyAvailability(event.target.value)} placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc." value={emergencyAvailability} />
-              <label className="auth-label" htmlFor="industry">Industry <em className="required-mark">(required)</em></label><input className="auth-input" id="industry" onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
-              <label className="auth-label" htmlFor="services">Services/products the website needs to explain <em className="required-mark">(required)</em></label><textarea id="services" onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
-              <label className="auth-label" htmlFor="pages-needed">Pages or sections needed <em className="required-mark">(required)</em></label><textarea id="pages-needed" onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
-              <label className="auth-label" htmlFor="style-direction">Website style direction <em className="required-mark">(required)</em></label><textarea id="style-direction" onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
+              <label className="auth-label" htmlFor="locations">Locations or service areas</label><textarea id="locations" maxLength={2000} onChange={(event) => setLocations(event.target.value)} placeholder="Example: Sacramento CA, Roseville CA, Folsom CA, Elk Grove CA. For multi-location brands, list every location you want represented." value={locations} />
+              <label className="auth-label" htmlFor="business-phone">Business phone</label><input className="auth-input" id="business-phone" maxLength={40} onChange={(event) => setBusinessPhone(event.target.value)} placeholder="Example: (555) 123-4567" value={businessPhone} />
+              <label className="auth-label" htmlFor="business-email">Business email</label><input className="auth-input" id="business-email" maxLength={200} onChange={(event) => setBusinessEmail(event.target.value)} placeholder="Example: contact@business.com" value={businessEmail} />
+              <label className="auth-label" htmlFor="business-address">Business address</label><input className="auth-input" id="business-address" maxLength={300} onChange={(event) => setBusinessAddress(event.target.value)} placeholder="Example: 123 Main St, Sacramento CA" value={businessAddress} />
+              <label className="auth-label" htmlFor="business-hours">Business hours</label><textarea id="business-hours" maxLength={2000} onChange={(event) => setBusinessHours(event.target.value)} placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed." value={businessHours} />
+              <label className="auth-label" htmlFor="emergency-availability">Emergency / after-hours availability</label><textarea id="emergency-availability" maxLength={2000} onChange={(event) => setEmergencyAvailability(event.target.value)} placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc." value={emergencyAvailability} />
+              <label className="auth-label" htmlFor="industry">Industry <em className="required-mark">(required)</em></label><input className="auth-input" id="industry" maxLength={120} onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
+              <label className="auth-label" htmlFor="services">Services/products the website needs to explain <em className="required-mark">(required)</em></label><textarea id="services" maxLength={2000} onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
+              <label className="auth-label" htmlFor="pages-needed">Pages or sections needed <em className="required-mark">(required)</em></label><textarea id="pages-needed" maxLength={2000} onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
+              <label className="auth-label" htmlFor="style-direction">Website style direction <em className="required-mark">(required)</em></label><textarea id="style-direction" maxLength={2000} onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
               <fieldset className="website-look" data-testid="website-look">
                 <legend>Your website's look</legend>
                 <p className="subtle">This is about your website, not this portal.</p>
@@ -1280,27 +1293,27 @@ export function ClientPortal() {
                 <label className="look-check"><input checked={seoPreference} onChange={(event) => setSeoPreference(event.target.checked)} type="checkbox" /><span><strong>Let search engines list my website (SEO)</strong><small>Recommended. Adds page titles, descriptions and the details Google looks for. Turn it off only if you do not want your website to appear in search results.</small></span></label>
                 <label className="look-check"><input checked={smoothScroll} onChange={(event) => setSmoothScroll(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong><small>Pages glide instead of jumping when someone taps a menu link.</small></span></label>
               </fieldset>
-              <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
-              <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
+              <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" maxLength={2000} onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
+              <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" maxLength={2000} onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
               {sitePhotosGateway && supabase && client ? <ClientSitePhotos gateway={sitePhotosGateway} upload={createPhotoUploader(supabase, client.id)} /> : null}
 
               <OptionalSection defaultOpen={leadAndAssistantHaveContent} title="Lead handling and website assistant rules" hint="How to treat urgent leads and what the website assistant may say. You can add these later.">
               <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
-              <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
-              <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
-              <label className="auth-label" htmlFor="rejected-jobs">Jobs or customers to reject</label><textarea id="rejected-jobs" onChange={(event) => setRejectedJobs(event.target.value)} placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area." value={rejectedJobs} />
-              <label className="auth-label" htmlFor="areas-not-served">Areas not served</label><textarea id="areas-not-served" onChange={(event) => setAreasNotServed(event.target.value)} placeholder="Example: We do not serve out-of-state jobs or locations more than 50 miles away." value={areasNotServed} />
+              <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" maxLength={2000} onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
+              <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" maxLength={2000} onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
+              <label className="auth-label" htmlFor="rejected-jobs">Jobs or customers to reject</label><textarea id="rejected-jobs" maxLength={2000} onChange={(event) => setRejectedJobs(event.target.value)} placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area." value={rejectedJobs} />
+              <label className="auth-label" htmlFor="areas-not-served">Areas not served</label><textarea id="areas-not-served" maxLength={2000} onChange={(event) => setAreasNotServed(event.target.value)} placeholder="Example: We do not serve out-of-state jobs or locations more than 50 miles away." value={areasNotServed} />
 
               <div className="setup-section-divider"><span>Website assistant rules</span><p>These rules help your website team prepare the future website assistant so it knows what it can say safely.</p></div>
-              <label className="auth-label" htmlFor="ai-can-answer">What can the website assistant answer?</label><textarea id="ai-can-answer" onChange={(event) => setAiCanAnswer(event.target.value)} placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs." value={aiCanAnswer} />
-              <label className="auth-label" htmlFor="ai-never-promise">What should it never promise?</label><textarea id="ai-never-promise" onChange={(event) => setAiNeverPromise(event.target.value)} placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review." value={aiNeverPromise} />
-              <label className="auth-label" htmlFor="escalation-rules">When should it escalate to support or the owner?</label><textarea id="escalation-rules" onChange={(event) => setEscalationRules(event.target.value)} placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services." value={escalationRules} />
+              <label className="auth-label" htmlFor="ai-can-answer">What can the website assistant answer?</label><textarea id="ai-can-answer" maxLength={2000} onChange={(event) => setAiCanAnswer(event.target.value)} placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs." value={aiCanAnswer} />
+              <label className="auth-label" htmlFor="ai-never-promise">What should it never promise?</label><textarea id="ai-never-promise" maxLength={2000} onChange={(event) => setAiNeverPromise(event.target.value)} placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review." value={aiNeverPromise} />
+              <label className="auth-label" htmlFor="escalation-rules">When should it escalate to support or the owner?</label><textarea id="escalation-rules" maxLength={2000} onChange={(event) => setEscalationRules(event.target.value)} placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services." value={escalationRules} />
 
               </OptionalSection>
 
               <div className="agreement-box">
                 <label><input checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} type="checkbox" /><span><em className="required-mark">(required)</em> I acknowledge and agree that my website team will use the information I submit to prepare a brand-new website project. I understand that agreement acceptance and billing activation are required before final website access/live service.</span></label>
-                <label className="auth-label" htmlFor="typed-signature">Typed signature <em className="required-mark">(required)</em></label><input className="auth-input" id="typed-signature" onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
+                <label className="auth-label" htmlFor="typed-signature">Typed signature <em className="required-mark">(required)</em></label><input className="auth-input" id="typed-signature" maxLength={120} onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
               </div>
 
               {!planActive ? <p className="subtle" data-testid="submit-locked-note">Sending unlocks once your plan is active. Your answers are saved on this device in the meantime.</p> : null}

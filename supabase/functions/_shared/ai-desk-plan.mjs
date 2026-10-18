@@ -17,8 +17,12 @@ export function isMissingDeskTable(error) {
 //   { kind: "plan", id, result }                    a saved answer for exactly this task fingerprint
 //   { kind: "waiting" }                             the task is recorded; the owner has to supply the answer
 //   { kind: "error", message }                      the lookup or the bookkeeping failed (the worker fails the job and retries later)
+const DESK_REQUEST_MAX = 12000;
+
 export async function resolveDeskPlan(admin, { clientId, request }) {
   const fingerprint = request.request_fingerprint;
+  // The table limits what one task may hold; refuse a bigger one with a plain message instead of a database error.
+  if (JSON.stringify(request).length > DESK_REQUEST_MAX) return { kind: "error", message: "This client's setup sheet is too long for one AI Desk task. Ask the client to shorten the long answers." };
   const open = await admin.from(DESK_TABLE).select("id,status,desk_fingerprint,result").eq("client_id", clientId).in("status", ["waiting", "saved"]);
   if (open.error) return isMissingDeskTable(open.error) ? { kind: "unavailable" } : { kind: "error", message: `AI Desk lookup failed: ${open.error.message}` };
   const rows = Array.isArray(open.data) ? open.data : [];
@@ -29,7 +33,7 @@ export async function resolveDeskPlan(admin, { clientId, request }) {
   const current = rows.find((row) => row.status === "waiting" && row.desk_fingerprint === fingerprint);
   // Anything else open was made for an older version of the setup sheet: retire it so the one-open-row-per-client rule lets the new task in.
   for (const stale of rows.filter((row) => row !== current)) {
-    const retired = await admin.from(DESK_TABLE).update({ status: "superseded" }).eq("id", stale.id);
+    const retired = await admin.from(DESK_TABLE).update({ status: "superseded" }).eq("id", stale.id).eq("status", stale.status);
     if (retired.error) return { kind: "error", message: `AI Desk bookkeeping failed: ${retired.error.message}` };
   }
   if (!current) {

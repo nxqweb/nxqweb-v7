@@ -48,7 +48,7 @@ check("every path the config can produce passes the template's own allowlist", (
   return cfg.items.every((item) => regex.test(item.src)) && all.every((item) => regex.test(`./gallery/${item.name}`));
 })());
 check("base64 matches the platform encoder", bytesToBase64(jpeg) === Buffer.from(jpeg).toString("base64") && bytesToBase64(new Uint8Array(70000).fill(255)) === Buffer.from(new Uint8Array(70000).fill(255)).toString("base64"));
-check("a missing database function is recognised as 'no photos', real errors are not", isMissingPhotoFunction({ code: "42883" }) && isMissingPhotoFunction({ code: "PGRST202" }) && isMissingPhotoFunction({ message: "Could not find the function public.get_site_photos_for_build in the schema cache" }) && !isMissingPhotoFunction({ code: "42501", message: "permission denied" }) && !isMissingPhotoFunction(null));
+check("only 'this exact function is missing' counts as no photos; every other error (including a bare 42883 from a bug inside the function) must fail the build", isMissingPhotoFunction({ code: "PGRST202" }) && isMissingPhotoFunction({ message: "Could not find the function public.get_site_photos_for_build in the schema cache" }) && isMissingPhotoFunction({ code: "42883", message: "function public.get_site_photos_for_build(uuid) does not exist" }) && !isMissingPhotoFunction({ code: "42883" }) && !isMissingPhotoFunction({ code: "42883", message: "operator does not exist: text = uuid" }) && !isMissingPhotoFunction({ code: "42501", message: "permission denied" }) && !isMissingPhotoFunction(null));
 
 // ---- the scan fingerprint and stale files
 check("sha256Hex matches the platform hash", (await sha256Hex(Buffer.from("abc"))) === "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" && (await sha256Hex(jpeg)) === (await import("node:crypto")).createHash("sha256").update(jpeg).digest("hex"));
@@ -72,6 +72,7 @@ const wiring = {
   "a read error stops the build to retry instead of silently dropping the photos": (b) => b.includes('throw new Error("Website photos could not be read, so the build will retry.")'),
   "the gallery block reaches both the written config and the quality check": (b) => (b.match(/\{ gallery: gallery\.config \}/g) || []).length === 2,
   "a missing photo function (migration not applied yet) is treated as no photos": (b) => b.includes("isMissingPhotoFunction(photoRes.error)"),
+  "a temporary download or upload problem fails the build (retry) instead of silently dropping a live photo": (b) => b.includes('throw new Error("A website photo could not be downloaded, so the build will retry.")') && !/catch \{\s*notes\.push\(\{ file_id: row\.file_id, reason: "could not be published"/.test(b),
 };
 for (const [name, test] of Object.entries(wiring)) check(name, test(builder));
 const plant = (name, from, to, key) => check(`control: ${name}`, builder.includes(from) && !wiring[key](builder.split(from).join(to)));
@@ -80,6 +81,7 @@ plant("trusting the client's own file name is noticed", "galleryFileName(publish
 plant("dropping the kill-switch check is noticed", "await assertProviderMutationAllowed(admin, job); // a paused client", "// a paused client", "a paused client or kill switch is checked before every photo and never swallowed");
 plant("listing files directly instead of the clean-only function is noticed", 'admin.rpc("get_site_photos_for_build", { target_client_id: job.client_id })', 'admin.from("client_files").select("*")', "the builder asks the database (clean + released only) instead of listing files itself");
 
+plant("swallowing a download failure is noticed", 'throw new Error("A website photo could not be downloaded, so the build will retry.")', 'notes.push({ file_id: row.file_id, reason: "could not be downloaded" }); continue', "a temporary download or upload problem fails the build (retry) instead of silently dropping a live photo");
 plant("skipping the fingerprint comparison is noticed", "await sha256Hex(bytes) !== String(row.content_sha256).toLowerCase()", "false", "each download must hash to the scan's fingerprint, or it is skipped");
 plant("not deleting stale gallery files is noticed", "deleteRepoFile(owner, repo, branch, `gallery/${stale.name}`", "noop(owner, repo, branch, `gallery/${stale.name}`", "gallery files the build did not write are deleted (removed or flagged photos never stay public)");
 plant("swallowing a photo-list read error is noticed", 'throw new Error("Website photos could not be read, so the build will retry.")', "return none", "a read error stops the build to retry instead of silently dropping the photos");

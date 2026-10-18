@@ -45,3 +45,38 @@ export function normalizeSiteOptions(value) {
 export function resolveColourMode(mode) {
   return mode === "light" || mode === "both" ? mode : "dark";
 }
+
+// Options that must be visible WITHOUT running any script are written into the page itself when it is built:
+//  - SEO off: a static noindex tag (the template also adds one at run time, but a crawler that does not run scripts must see it too);
+//  - Light only: data-mode="light" on <html> and the light browser theme colour, so the first paint is already light (no dark flash).
+// "Both" is decided in the visitor's browser (their system setting and saved choice); no inline script is possible under the site's content security policy.
+// Each change needs its anchor text to exist exactly once; if the template changes and an anchor is missing, the page is left untouched rather than guessed at.
+const VIEWPORT = '<meta name="viewport" content="width=device-width, initial-scale=1.0" />';
+const HTML_TAG = '<html lang="en">';
+const THEME_COLOR = '<meta name="theme-color" content="#070b12" />';
+const once = (html, needle) => html.split(needle).length === 2;
+
+export function applyStaticOptions(html, options) {
+  if (typeof html !== "string") return html;
+  const opts = normalizeSiteOptions(options);
+  let out = html;
+  if (!opts.seo && !/name="robots"/i.test(out) && once(out, VIEWPORT)) {
+    out = out.replace(VIEWPORT, `${VIEWPORT}\n    <meta name="robots" content="noindex, nofollow" />`);
+  }
+  if (resolveColourMode(opts.color_mode) === "light" && once(out, HTML_TAG) && once(out, THEME_COLOR)) {
+    out = out.replace(HTML_TAG, '<html lang="en" data-mode="light">').replace(THEME_COLOR, '<meta name="theme-color" content="#f5f6fa" />');
+  }
+  return out;
+}
+
+// The builder moves templates around as base64 text (the GitHub contents API); this applies the options to such a file.
+export function applyStaticOptionsToBase64(base64, options) {
+  const binary = atob(String(base64).replace(/\s/g, ""));
+  const text = new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0)));
+  const changed = applyStaticOptions(text, options);
+  if (changed === text) return base64;
+  const bytes = new TextEncoder().encode(changed);
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) out += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(out);
+}

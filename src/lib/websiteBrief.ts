@@ -149,13 +149,15 @@ export function clearDraft(clientId: string) {
 export type RedesignInput = { whatToChange: string; styleDirection: string; pagesNeeded: string; options: BriefOptions; extra: string };
 
 export function redesignDescription(input: RedesignInput) {
-  const part = (label: string, value: string) => (value.trim() ? `${label}: ${value.trim()}` : "");
+  const part = (label: string, value: string, max: number) => (value.trim() ? `${label}: ${safeReportText(value.trim()).slice(0, max)}` : "");
+  const changed = input.options.colourMode !== defaultBriefOptions.colourMode || input.options.seo !== defaultBriefOptions.seo || input.options.smoothScroll !== defaultBriefOptions.smoothScroll;
+  // Look options are only listed when the client actually changed them: "NXQX recommends / SEO yes / smooth yes" is just the default, not a request.
   return [
-    part("What to change", input.whatToChange),
-    part("New style direction", input.styleDirection),
-    part("Pages or sections wanted", input.pagesNeeded),
-    ...briefOptionLines(input.options),
-    part("Anything else", input.extra),
+    part("What to change", input.whatToChange, 1500),
+    part("New style direction", input.styleDirection, 1200),
+    part("Pages or sections wanted", input.pagesNeeded, 800),
+    ...(changed ? briefOptionLines(input.options) : []),
+    part("Anything else", input.extra, 1000),
   ].filter(Boolean).join("\n").slice(0, 6000);
 }
 
@@ -163,3 +165,32 @@ export function redesignProblem(input: RedesignInput) {
   if (input.whatToChange.trim().length < 5) return "Tell us what you would like to change.";
   return "";
 }
+
+// ---- Free text inside the signed setup report ----
+// The report is plain "Label: value" lines, read later by the build-plan worker and the owner screen. A client's own text must never be able to look like one of OUR
+// lines: a line "Industry: Casino" inside "Services" would override the real Industry for the worker, "Website colour mode: Light" would override a real choice, and the
+// words "NXQ MORE INFO REQUEST" would make every reader cut the report off at that point. So reserved labels at the start of a line get a "- " in front (the text stays
+// readable, it just stops being a field), and the report markers are removed.
+export const RESERVED_REPORT_LABELS = [
+  "Client", "Selected package", "Package badge", "Selected package capabilities", "Package AI/service rules", "Company scale", "Location setup", "Locations",
+  "Business phone", "Business email", "Business address", "Business hours", "Emergency / after-hours availability", "Industry", "Services / products",
+  "Pages / sections needed", "Style direction", "Brand difference / positioning", "Competitors / examples", "Lead handling rules", "Preferred contact method",
+  "Urgent lead rules", "Jobs / customers to reject", "Areas not served", "Website assistant rules", "Assistant can answer", "Assistant should never promise",
+  "Escalation rules", "Agreement accepted", "Typed signature", "Signature date", "Payment note", "Agreement evidence", "Targeted more info response", "Requested field",
+  "Requested info", "Client answer", "Response date", "Website colour mode", "Search-engine setup (SEO)", "Smooth scrolling", "Best customers", "Main visitor action",
+  "Proof to build around", "Primary website goal", "First-version priority",
+];
+
+const reservedLine = new RegExp(`^\\s*(?:${RESERVED_REPORT_LABELS.map((label) => label.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")})\\s*:`, "i");
+const reportMarkers = /NXQ\s+(?:WEB\s+WEBSITE\s+SETUP\s+REPORT|TARGETED\s+MORE\s+INFO\s+REQUEST|MORE\s+INFO\s+REQUEST)/gi;
+
+export function safeReportText(value: string) {
+  return String(value ?? "")
+    .replace(reportMarkers, "")
+    .split("\n")
+    .map((line) => (reservedLine.test(line) ? `- ${line.trim()}` : line))
+    .join("\n");
+}
+
+// The whole report must fit the server's 30000-character limit; leave room for the fixed lines.
+export const REPORT_SOFT_LIMIT = 29000;
