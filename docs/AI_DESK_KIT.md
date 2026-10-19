@@ -43,8 +43,8 @@ Includes: business name, industry, area, services, positioning, style, suggested
 
 ## What is built, what is not (honest list)
 
-Built and tested locally (nothing deployed or applied; the migration was promoted as 277 on 2026-10-18): the panel in both modes, the checker (browser and command line), the draft database part (`docs/drafts/migrations/09_ai_desk_build_plans.sql`, tested in the local full-schema harness with planted bugs), and the worker change in `prepare-build-plan` (already in source; if the table does not exist it behaves exactly as before).
-NOT done, each needs your explicit approval: promoting draft 09 to a real migration and applying it (it would make the deploy-day list five migrations, 272 to 276), deploying the functions, and the final one-line hookup of the panel to the server. After that, one real staging run proves it.
+Built and tested locally (nothing deployed or applied; the migration was promoted as 277 on 2026-10-18): the panel in both modes, the checker (browser and command line), the draft database part (`supabase/migrations/277_ai_desk_build_plans.sql`, tested in the local full-schema harness with planted bugs), and the worker change in `prepare-build-plan` (already in source; if the table does not exist it behaves exactly as before).
+NOT done, each needs your explicit approval (promotion is already done: it is migration 277, the sixth on the deploy-day list 272 to 277): applying 277, deploying the functions, and then telling Claude "277 is applied, switch the AI Desk on", which sets the one switch in `src/lib/aiDeskConfig.ts`. After that, one real staging run proves it.
 Still true: fully hands-off (no copy and paste at all) needs an API key.
 
 ## Swapping to the real API later
