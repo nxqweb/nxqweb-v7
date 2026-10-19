@@ -170,6 +170,8 @@ export function deskTaskText(request: DeskRequest) {
     ...DESK_RULES.map((rule) => `- ${rule}`),
     `- Confidence must be ${request.contract.minimum_confidence} or higher only when the entire strategy is grounded and complete.`,
     `- Allowed themes: ${request.contract.allowed_theme_keys.join(", ")}.`,
+    // The shared rules above say "add a short risk flag", but the pipeline STOPS on any risk flag. A well-behaved AI follows the rule and gets refused, so say it plainly here.
+    "- risk_flags must be an empty list []. NXQX stops any plan that has a risk flag, so when the intake cannot support a claim, leave that claim out and keep the copy general instead of flagging it.",
     "",
     "ANSWER SHAPE (top-level keys exactly: confidence, request_fingerprint, risk_flags, schema_version, strategy)",
     DESK_ANSWER_SHAPE,

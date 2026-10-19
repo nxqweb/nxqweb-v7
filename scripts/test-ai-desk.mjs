@@ -190,5 +190,8 @@ check("the panel never touches the network or database", !/fetch\(|supabase|\.rp
 check("the panel is honest that saving is not connected", panel.includes("not connected yet"));
 check("the browser and command-line checker are the same file", fs.readFileSync("scripts/lib/ai-desk.mjs", "utf8").includes("src/lib/aiDeskCheck.ts"));
 
+check("the task tells the AI that any risk flag stops the plan (the shared rule says to add one, the pipeline refuses it)", taskText.includes("risk_flags must be an empty list []") && taskText.includes("instead of flagging it"));
+check("control: a task without that line would be noticed", !taskText.replace(/- risk_flags must be an empty list \[\][^\n]*\n/, "").includes("risk_flags must be an empty list []"));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll AI Desk checks passed.");
 process.exit(failures ? 1 : 0);
