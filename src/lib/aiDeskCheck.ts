@@ -51,9 +51,15 @@ export function parseDeskReply(raw: unknown): { ok: true; value: Loose; notes: s
   const candidate = fenced ? fenced[1].trim() : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
   try {
     return { ok: true, value: JSON.parse(candidate), notes: ["The reply had extra text or a code fence around the JSON. Ask the AI Desk for the JSON only."] };
-  } catch {
-    return { ok: false, error: "The reply is not valid JSON." };
+  } catch { /* fall through to curly quotes */ }
+  // Selecting and copying text from a chat window turns straight quotes into curly ones, which is not JSON. Straighten them and try once more.
+  const straightened = candidate.replace(/[\u201C\u201D\u201E\u201F]/g, '"');
+  if (straightened !== candidate) {
+    try {
+      return { ok: true, value: JSON.parse(straightened), notes: ["The reply had curly quotes (that happens when text is selected and copied). It still worked, but next time use the copy icon under the reply."] };
+    } catch { /* fall through */ }
   }
+  return { ok: false, error: "The reply is not valid JSON." };
 }
 
 export function validateDeskRequest(root: Loose): string[] {

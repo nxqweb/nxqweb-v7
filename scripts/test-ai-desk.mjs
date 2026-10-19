@@ -127,6 +127,11 @@ check("a malformed strategy does not crash the claim scan", (() => { const c = c
 check("reply parsing: plain JSON", parseDeskReply(JSON.stringify(good)).ok === true && parseDeskReply(JSON.stringify(good)).notes.length === 0);
 const fenced = parseDeskReply("Here you go:\n```json\n" + JSON.stringify(good) + "\n```\nHope that helps!");
 check("reply parsing: tolerates a fence but flags it", fenced.ok === true && fenced.notes.length === 1);
+const curly = JSON.stringify(good).replace(/"/g, (_m, offset, str) => (str.slice(0, offset).split('"').length % 2 === 1 ? "\u201C" : "\u201D"));
+const curlyParsed = parseDeskReply(curly);
+check("reply parsing: curly quotes from select-and-copy still parse, with a note to use the copy icon", curlyParsed.ok === true && JSON.stringify(curlyParsed.value) === JSON.stringify(good) && /copy icon/.test(curlyParsed.notes.join(" ")));
+check("reply parsing: a mixed straight and curly close (as pasted from the chat window) still parses", parseDeskReply(curly.replace("\u201D,", '",')).ok === true);
+check("control: truly broken JSON with curly quotes is still refused", parseDeskReply(curly.slice(0, -5)).ok === false);
 check("reply parsing: rejects empty and garbage", parseDeskReply("").ok === false && parseDeskReply("sorry I cannot").ok === false);
 
 // The command-line checker, end to end, on the exact text the Copy button produces.
