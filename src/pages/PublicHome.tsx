@@ -346,7 +346,7 @@ export function PublicHome() {
             <details><summary>Can I ask for changes after launch?</summary><p>Yes. The client portal includes update requests, so changes stay connected to your project instead of getting lost in email.</p></details>
             <details><summary>Is advanced tracking always on?</summary><p>No. Behavior analytics such as click and scroll insight are tier-gated and consent-gated rather than silently enabled for every client.</p></details>
             <details><summary>When will the other NXQX-Web systems open?</summary><p>NXQX-Business is open now. The others are planned, and signup stays closed for each one until its experience is ready for clients.</p></details>
-            <details><summary>Which plan should I start with?</summary><p>Starter is a polished managed site. Growth adds visibility and lead generation and is the most popular. Intelligence adds deeper insight and a monthly optimization cycle. Enterprise is custom for multi-location and larger teams.</p></details>
+            <details><summary>Which plan should I start with?</summary><p>Starter is a polished managed site. Growth adds visibility and lead generation and is the most popular. Intelligence adds deeper insight and an automatic monthly report with suggestions. Enterprise is custom for multi-location and larger teams.</p></details>
           </div>
         </div>
       </section>

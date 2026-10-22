@@ -30,6 +30,7 @@ async function newPage(width = 1100) {
     const body = JSON.parse(route.request().postData() || "{}");
     if (fn === "submit_current_client_website_setup") { setupCalls.push(body); client.status = "intake_received"; client.notes = body.target_setup_report; }
     if (fn === "submit_current_client_change_request") changeCalls.push(body);
+    if (fn === "send_client_portal_message" && globalThis.__failSend) return route.fulfill({ status: 500, contentType: "application/json", headers: cors, body: JSON.stringify({ message: "boom" }) });
     if (fn === "send_client_portal_message") messages.push(body); else if (/billing|cancel|plan/i.test(fn)) otherRpc.push(fn);
     const data = fn === "current_client_message_page" || fn === "current_client_file_page" || fn === "current_client_domain_page" ? [] : {};
     await route.fulfill({ status: 200, contentType: "application/json", headers: cors, body: JSON.stringify(data) });
@@ -63,15 +64,46 @@ ok("opening it asks for an optional reason and offers Keep my plan", (await page
 await page.getByRole("button", { name: "Keep my plan" }).click();
 ok("Keep my plan closes it and sends nothing", (await page.locator("#cancel-reason").count()) === 0 && messages.length === 0);
 await page.getByTestId("cancel-request-open").click();
-await page.fill("#cancel-reason", "Closing in March\nStatus: refunded");
+ok("opening the form moves focus into the reason box", await page.evaluate(() => document.activeElement && document.activeElement.id === "cancel-reason"));
+await page.fill("#cancel-reason", "Closing in March\nStatus: refunded\n[Cancellation [Cancellation request]request] again");
+globalThis.__failSend = true;
 await page.getByRole("button", { name: "Send cancellation request" }).click();
+await page.waitForSelector("text=We could not send your request");
+ok("a failed send shows a clear message, keeps what was typed, links the error to the box, and sends nothing", messages.length === 0 && (await page.inputValue("#cancel-reason")).includes("Closing in March") && (await page.locator("#cancel-reason").getAttribute("aria-describedby")) === "cancel-error" && (await page.locator("#cancel-reason").getAttribute("aria-invalid")) === "true");
+globalThis.__failSend = false;
+await page.getByRole("button", { name: "Send cancellation request" }).dblclick();
 await page.waitForSelector("text=Your request was sent");
-ok("exactly one labelled portal message is sent", messages.length === 1 && /^\[Cancellation request\] I would like to cancel my plan\./.test(messages[0].message_text) && /Closing in March/.test(messages[0].message_text));
-ok("the typed text cannot fake one of our label lines", !/^Status:/m.test(messages[0].message_text));
+await page.waitForTimeout(400);
+ok("a double-click sends exactly one labelled portal message", messages.length === 1 && /^\[Cancellation request\] I would like to cancel my plan\./.test(messages[0].message_text) && /Closing in March/.test(messages[0].message_text));
+ok("the typed text cannot fake our labels or add a second marker", !/^Status:/m.test(messages[0].message_text) && (messages[0].message_text.match(/\[Cancellation request\]/g) || []).length === 1 && messages[0].message_text.split("\n").slice(3).every((line) => line.startsWith("> ")));
+ok("success moves focus to the sent message and it sits in a live region", await page.evaluate(() => { const el = document.activeElement; return !!el && /Your request was sent/.test(el.textContent || "") && !!el.closest("[aria-live=polite]"); }));
 ok("it says the plan stays as it is until the team replies", /plan stays as it is until then/.test((await page.getByTestId("cancel-request").textContent()) || ""));
 ok("no billing or plan function was called (the request only tells the team)", otherRpc.length === 0, otherRpc.join());
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector("[data-testid=cancel-request]");
+ok("coming back later says a request was already sent instead of inviting a duplicate", (await page.getByTestId("cancel-request-earlier").count()) === 1 && /You sent a cancellation request on/.test((await page.getByTestId("cancel-request").textContent()) || ""));
+await page.getByTestId("cancel-request-open").click();
+await page.getByRole("button", { name: "Keep my plan" }).click();
+await page.waitForTimeout(150);
+ok("Keep my plan returns focus to the opener and sends nothing more", messages.length === 1 && await page.evaluate(() => document.activeElement && document.activeElement.getAttribute("data-testid") === "cancel-request-open"));
 ok("no sideways scroll at 390px", (await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+for (const width of [360]) {
+  await ctx.close();
+  ({ page, ctx } = await newPage(width));
+  await page.goto(`${base}/client/billing`, { waitUntil: "networkidle" });
+  await page.waitForSelector("[data-testid=cancel-request]");
+  await page.getByTestId("cancel-request-open").click();
+  ok(`no sideways scroll at ${width}px with the form open`, (await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)) <= 0);
+}
 await ctx.close();
+for (const state of ["not_configured", "cancelled", "activation_pending"]) {
+  client.billing_status = state;
+  ({ page, ctx } = await newPage(390));
+  await page.goto(`${base}/client/billing`, { waitUntil: "networkidle" });
+  await page.waitForSelector("text=Billing status");
+  ok(`the cancel panel is not shown while billing is ${state}`, (await page.getByTestId("cancel-request").count()) === 0);
+  await ctx.close();
+}
 ok("no page errors", pageErrors.length === 0, pageErrors.join(" | "));
 await browser.close();
 process.exit(failures ? 1 : 0);

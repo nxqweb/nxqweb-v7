@@ -7,7 +7,8 @@ export type CancelCheck = { ok: true; message: string } | { ok: false; error: st
 export function buildCancelRequest(reason: string): CancelCheck {
   const text = String(reason ?? "").replace(/\r\n/g, "\n").trim();
   if (text.length > cancelReasonMax) return { ok: false, error: `Please keep your reason under ${cancelReasonMax} characters.` };
-  // A reason is optional, but it can never start a line that looks like one of our own labels.
-  const safe = text.replace(/\[(Cancellation request|Problem report)\]/gi, "").replace(/^\s*(\w[\w ]{0,30}):/gm, "- $1:");
-  return { ok: true, message: `[Cancellation request] I would like to cancel my plan.${safe ? `\n\nReason (optional): ${safe}` : ""}` };
+  // A reason is optional, but it can never look like one of our own labels or markers: square brackets become round ones (so removing a marker can never
+  // glue a new one together) and every line is quoted, so no line of the client's text can start with a label.
+  const safe = text.replace(/[[\]]/g, (bracket) => (bracket === "[" ? "(" : ")")).split("\n").map((line) => `> ${line}`).join("\n");
+  return { ok: true, message: `[Cancellation request] I would like to cancel my plan.${text ? `\n\nReason (optional):\n${safe}` : ""}` };
 }

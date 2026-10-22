@@ -30,6 +30,7 @@ export type CycleSummary = {
   nextReportAt: string | null; // only set while the cycle is active and the date parses
   months: CycleMonth[]; // oldest to newest, ending with the current month
   latest: CycleMonth | null; // newest month that has a real report row
+  latestReady: CycleMonth | null; // newest month with a finished report (ready or delivered): the one whose numbers are shown, even while a newer month is still being prepared
 };
 
 const KNOWN: ReadonlySet<string> = new Set(["delivered", "ready", "draft", "blocked", "failed"]);
@@ -119,5 +120,7 @@ export function buildCycle(plan: CyclePlan | null, reports: CycleReport[], nowMs
   const nextReportAt = state === "active" && next && !Number.isNaN(next.getTime()) ? next.toISOString() : null;
   const latest = [...months].reverse().find((month) => month.status !== "missing") ?? null;
 
-  return { state, planStatus: plan?.status ?? null, nextReportAt, months, latest };
+  const latestReady = [...months].reverse().find((month) => month.summary !== null) ?? null;
+
+  return { state, planStatus: plan?.status ?? null, nextReportAt, months, latest, latestReady };
 }

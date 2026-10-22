@@ -233,7 +233,7 @@ export function ClientBillingStatus() {
               </section>
             ) : null}
 
-            <ClientCancelRequest />
+            {["active", "past_due", "freeze_review"].includes(client.billing_status) ? <ClientCancelRequest /> : null}
 
             <section className="panel panel-wide">
               <div className="panel-title">

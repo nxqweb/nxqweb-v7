@@ -1,6 +1,6 @@
 // The automatic monthly report: plain rules over counts the database already holds. No AI, no visitor or lead details.
 import fs from "node:fs";
-import { buildPerformanceSummary, buildRecommendations } from "../supabase/functions/_shared/report-insights.mjs";
+import { buildPerformanceSummary, buildRecommendations, reportWindow } from "../supabase/functions/_shared/report-insights.mjs";
 
 let failures = 0;
 function check(name, ok) {
@@ -16,30 +16,43 @@ check("no tracking data means tracking is false, not zero visits", buildPerforma
 check("junk numbers are dropped, never trusted", (() => { const r = buildPerformanceSummary({ rollups: [{ page_views: -5, clicks: "9", max_scroll_depth: 900, heatpoint_count: NaN }], leads: { total: "x" } }); return r.page_views === 0 && r.clicks === 0 && r.avg_scroll_depth === null && r.leads === 0; })());
 check("it never crashes on odd input", [undefined, null, {}, { rollups: null }, { rollups: "x", leads: 5 }, "nope"].every((v) => { try { return buildPerformanceSummary(v).tracking === false; } catch { return false; } }));
 
+const w = reportWindow("2026-01-01");
+check("the report window runs from the first of the month to the first of the next, in UTC", w.startDay === "2026-01-01" && w.endDay === "2026-02-01" && w.prevStartDay === "2025-12-01");
+check("December rolls into January and the previous month crosses the year boundary", reportWindow("2025-12-01").endDay === "2026-01-01" && reportWindow("2025-12-01").prevStartDay === "2025-11-01" && reportWindow("2026-03-01").prevStartDay === "2026-02-01");
+check("with no month given, the PREVIOUS complete month is used, never the current partial one", (() => { const mid = reportWindow(null, new Date("2026-03-15T12:00:00Z")); const jan = reportWindow(undefined, new Date("2026-01-02T00:00:00Z")); return mid.reportMonth === "2026-02-01" && mid.endDay === "2026-03-01" && jan.reportMonth === "2025-12-01"; })());
+check("a junk month falls back safely", ["", "nonsense", "2026-13-01x", 5, null].every((v) => /^\d{4}-\d{2}-01$/.test(reportWindow(v, new Date("2026-05-10T00:00:00Z")).reportMonth)));
 const rec = (summary, health) => buildRecommendations(summary, health);
 const base = { tracking: true, page_views: 100, prev_page_views: 100, leads: 3, still_new_leads: 0, avg_scroll_depth: 70 };
 check("unanswered inquiries are called out", rec({ ...base, still_new_leads: 2 }).some((t) => /2 inquiries are still marked New/.test(t)));
 check("visitors but no inquiries gets a Contact-button suggestion", rec({ ...base, leads: 0 }).some((t) => /nobody sent an inquiry/.test(t)));
 check("very few visits suggests sharing the link", rec({ ...base, page_views: 10, prev_page_views: 10 }).some((t) => /few visits/.test(t)));
 check("visits up or down by a fifth or more are mentioned with the real percentage", rec({ ...base, page_views: 150 }).some((t) => /up 50%/.test(t)) && rec({ ...base, page_views: 60 }).some((t) => /down 40%/.test(t)) && !rec({ ...base, page_views: 105 }).some((t) => /up|down/.test(t)));
-check("low scrolling suggests putting key info near the top", rec({ ...base, avg_scroll_depth: 20 }).some((t) => /do not scroll far/.test(t)));
+check("low scrolling is worded as what was recorded (the deepest scroll on a typical day), never as what most visitors do", rec({ ...base, avg_scroll_depth: 20 }).some((t) => /deepest scroll we recorded was only about 20%/.test(t)) && !rec({ ...base, avg_scroll_depth: 20 }).some((t) => /most visitors/i.test(t)));
 check("failed site checks are mentioned in client-friendly words", rec(base, { unresolved_checks: 2 }).some((t) => /2 website checks need attention\. The NXQX team is looking into them\./.test(t)));
 check("a quiet healthy month still gets one calm line", (() => { const r = rec(base, { unresolved_checks: 0 }); return r.length === 1 && /healthy/.test(r[0]); })());
+check("when visits and inquiries could not be read, the report says so and never says everything is healthy", (() => { const r = rec(null, { unresolved_checks: 0 }); return r.length === 1 && /could not be read/.test(r[0]) && !/healthy/.test(r[0]); })());
+check("failed site checks still show when activity could not be read", rec(null, { unresolved_checks: 1 }).some((t) => /1 website check needs attention/.test(t)));
 check("a plan without tracking gets no visit advice at all", !rec({ tracking: false, page_views: 0, leads: 0, still_new_leads: 0 }).some((t) => /visit|scroll/.test(t)));
 check("at most 5 suggestions, each short plain text", (() => { const r = rec({ tracking: true, page_views: 10, prev_page_views: 100, leads: 0, still_new_leads: 5, avg_scroll_depth: 10 }, { unresolved_checks: 3 }); return r.length <= 5 && r.every((t) => typeof t === "string" && t.length < 300); })());
 check("no promise-words or invented claims in the rule text", !/trusted|guarantee|best|expert|premium|licensed|ranking will|more leads guaranteed/i.test(fs.readFileSync("supabase/functions/_shared/report-insights.mjs", "utf8").replace(/\/\/.*$/gm, "")));
 
 const worker = fs.readFileSync("supabase/functions/run-website-maintenance/index.ts", "utf8");
 const wiring = {
-  "the worker builds the activity summary and suggestions from real reads": (w) => w.includes("buildPerformanceSummary(") && w.includes("buildRecommendations(") && w.includes("performance_summary: performanceSummary") && w.includes('from("website_analytics_daily_rollups")') && w.includes('from("client_leads")'),
-  "a failed read leaves the activity part out instead of claiming zero": (w) => /const activityOk = !thisRollups\.error && !lastRollups\.error && !monthLeads\.error && !lastLeads\.error;/.test(w) && w.includes("activityOk ? performanceSummary : { tracking: false }") && /: \{\};/.test(w),
-  "the worker reads only counts (no lead names, emails or messages)": (w) => w.includes('.select("status,urgency")') && !/select\("[^"]*(contact_name|contact_email|contact_phone|message)/.test(w.split("async function monthlyReport")[1].split("Deno.serve")[0]),
+  "the worker builds the activity summary and suggestions from real reads": (w) => w.includes("buildPerformanceSummary(") && w.includes("buildRecommendations(performanceSummary, healthSummary)") && w.includes("performance_summary: performanceSummary") && w.includes('from("website_analytics_daily_rollups")') && w.includes('from("client_leads")'),
+  "leads are counted for this project only (plus old rows with none), without spam or archived, using database counts instead of a row limit": (w) => w.includes('.or(`project_id.eq.${task.project_id},project_id.is.null`)') && w.includes('.not("status", "in", "(spam,archived)")') && w.includes('{ count: "exact", head: true }') && !/\.limit\(2000\)/.test(w),
+  "the month window comes from the shared helper, not the current date": (w) => w.includes("reportWindow(clean(task.input?.report_month) || null)") && !w.includes('new Date().toISOString().slice(0, 7)'),
+  "a failed read leaves the activity part out, keeps an earlier good one, and is never reported as zero": (w) => /const activityOk = !\[thisRollups, lastRollups, leadsTotal, leadsUrgent, leadsNew, leadsPrev\]\.some\(\(result\) => result\.error\);/.test(w) && w.includes("...(performanceSummary ? { performance_summary: performanceSummary } : {})") && /: null;/.test(w),
+  "the worker reads only counts (no lead names, emails or messages)": (w) => w.includes('.select("id", { count: "exact", head: true })') && !/select\("[^"]*(contact_name|contact_email|contact_phone|message)/.test(w.split("async function monthlyReport")[1].split("Deno.serve")[0]),
 };
 for (const [name, test] of Object.entries(wiring)) check(name, test(worker));
 const plant = (name, from, to, wiringName) => check(`control: ${name}`, worker.includes(from) && !wiring[wiringName](worker.split(from).join(to)));
-plant("dropping the saved activity summary is noticed", "performance_summary: performanceSummary,", "", "the worker builds the activity summary and suggestions from real reads");
-plant("reading lead contact details into the report is noticed", '.select("status,urgency")', '.select("status,urgency,contact_email")', "the worker reads only counts (no lead names, emails or messages)");
-plant("treating a failed read as zero visits is noticed", "const activityOk =", "const activityOk = true || ", "a failed read leaves the activity part out instead of claiming zero");
+plant("dropping the saved activity summary is noticed", "performance_summary: performanceSummary }", "}", "the worker builds the activity summary and suggestions from real reads");
+plant("reading lead contact details into the report is noticed", '.select("id", { count: "exact", head: true })', '.select("id,contact_email", { count: "exact", head: true })', "the worker reads only counts (no lead names, emails or messages)");
+plant("treating a failed read as zero visits is noticed", "const activityOk = ![", "const activityOk = true || ![", "a failed read leaves the activity part out, keeps an earlier good one, and is never reported as zero");
+plant("overwriting an earlier good summary on a failed read is noticed", "...(performanceSummary ? { performance_summary: performanceSummary } : {})", "performance_summary: performanceSummary ?? {}", "a failed read leaves the activity part out, keeps an earlier good one, and is never reported as zero");
+plant("counting leads of every project is noticed", ".or(`project_id.eq.${task.project_id},project_id.is.null`)", "", "leads are counted for this project only (plus old rows with none), without spam or archived, using database counts instead of a row limit");
+plant("counting spam leads is noticed", '.not("status", "in", "(spam,archived)")', "", "leads are counted for this project only (plus old rows with none), without spam or archived, using database counts instead of a row limit");
+plant("going back to the current partial month is noticed", "reportWindow(clean(task.input?.report_month) || null)", "reportWindow(clean(task.input?.report_month) || null); const _x = new Date().toISOString().slice(0, 7)", "the month window comes from the shared helper, not the current date");
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll report insight checks passed.");
 process.exit(failures ? 1 : 0);

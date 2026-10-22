@@ -1,3 +1,6 @@
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 // Tests for the email recipient logic (supabase/functions/_shared/notification-email.ts) with an in-memory store, plus static checks on how the sender uses it.
 import fs from "node:fs";
 import {
@@ -72,7 +75,20 @@ store = makeStore({ clients: { c1: real } });
 await ensureEmailCopies(store, leadAlert({ template_key: "urgent_new_lead", subject: "Urgent new website lead", priority: "high" }), true);
 check("an urgent lead keeps its urgent subject and priority, still with fixed wording", store.inserted[0].subject === "Urgent new website lead" && store.inserted[0].priority === "high" && !/evil/i.test(store.inserted[0].body));
 check("lead emails stay off when email notifications are off, and for QA-only clients", (await ensureEmailCopies(makeStore({ clients: { c1: real } }), leadAlert(), false)).skipped === "email_notifications_off" && (await ensureEmailCopies(makeStore({ clients: { c1: { ...real, qa_only: true } } }), leadAlert(), true)).skipped === "qa_only_client");
-check("control: copying the lead's own text into the email would be noticed", /evil/i.test(leadAlert().body));
+{
+  // Plant the bug for real: copy the source text instead of the fixed wording, and the real check above must fail.
+  const emailSource = fs.readFileSync("supabase/functions/_shared/notification-email.ts", "utf8");
+  const from = "body: FIXED_EMAIL_COPY[source.template_key]?.body ?? source.body,";
+  const mutated = emailSource.replace(from, "body: source.body,");
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nxq-email-plant-"));
+  const file = path.join(dir, "notification-email-planted.ts");
+  fs.writeFileSync(file, mutated);
+  const mutatedModule = await import(pathToFileURL(file).href);
+  const planted = makeStore({ clients: { c1: real } });
+  await mutatedModule.ensureEmailCopies(planted, leadAlert(), true);
+  fs.rmSync(dir, { recursive: true, force: true });
+  check("control: copying the lead's own text into the email is noticed (the real check fails on the planted bug)", emailSource.includes(from) && planted.inserted.length === 1 && /evil|verify|Tree removal/i.test(planted.inserted[0].body));
+}
 
 // ---- address for an email row about to be sent
 const emailRow = (extra = {}) => ({ ...inApp({ channel: "email", id: "e1" }), recipient_reference: null, ...extra });

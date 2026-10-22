@@ -1,4 +1,4 @@
-import { buildPerformanceSummary, buildRecommendations } from "../_shared/report-insights.mjs";
+import { buildPerformanceSummary, buildRecommendations, reportWindow } from "../_shared/report-insights.mjs";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
@@ -281,10 +281,8 @@ async function backupCheck(admin: ReturnType<typeof createClient<DynamicDatabase
 }
 
 async function monthlyReport(admin: ReturnType<typeof createClient<DynamicDatabase>>, task: MaintenanceTask) {
-  const reportMonth = clean(task.input?.report_month) || new Date().toISOString().slice(0, 7) + "-01";
-  const monthStart = new Date(reportMonth + "T00:00:00.000Z");
-  const monthEnd = new Date(monthStart);
-  monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+  const window = reportWindow(clean(task.input?.report_month) || null);
+  const { reportMonth, start: monthStart, end: monthEnd } = window;
   const tasks = await admin.from("website_maintenance_tasks")
     .select("task_type,status,result,last_error,completed_at")
     .eq("project_id", task.project_id)
@@ -302,32 +300,42 @@ async function monthlyReport(admin: ReturnType<typeof createClient<DynamicDataba
     generated_from_real_checks: true,
   };
   // Visits, clicks and leads for this month and the one before (counts only, no visitor or lead details). Starter has no tracking, so its rollups are simply empty.
-  const prevStart = new Date(monthStart);
-  prevStart.setUTCMonth(prevStart.getUTCMonth() - 1);
-  const day = (date: Date) => date.toISOString().slice(0, 10);
+  // Leads belong to this project (older rows with no project are counted for the client), and spam or archived leads are not real inquiries. Counts come from the
+  // database (head queries), so a busy month is never cut off at a row limit.
   const rollupFields = "page_views,clicks,max_scroll_depth,heatpoint_count";
-  const [thisRollups, lastRollups, monthLeads, lastLeads] = await Promise.all([
-    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", day(monthStart)).lt("rollup_date", day(monthEnd)).limit(40),
-    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", day(prevStart)).lt("rollup_date", day(monthStart)).limit(40),
-    admin.from("client_leads").select("status,urgency").eq("client_id", task.client_id).gte("created_at", monthStart.toISOString()).lt("created_at", monthEnd.toISOString()).limit(2000),
-    admin.from("client_leads").select("id", { count: "exact", head: true }).eq("client_id", task.client_id).gte("created_at", prevStart.toISOString()).lt("created_at", monthStart.toISOString()),
+  const leadCount = (from: Date, to: Date, narrow?: "urgent" | "new") => {
+    let query = admin.from("client_leads").select("id", { count: "exact", head: true })
+      .eq("client_id", task.client_id)
+      .or(`project_id.eq.${task.project_id},project_id.is.null`)
+      .not("status", "in", "(spam,archived)")
+      .gte("created_at", from.toISOString()).lt("created_at", to.toISOString());
+    if (narrow === "urgent") query = query.in("urgency", ["urgent", "emergency"]);
+    if (narrow === "new") query = query.eq("status", "new");
+    return query;
+  };
+  const [thisRollups, lastRollups, leadsTotal, leadsUrgent, leadsNew, leadsPrev] = await Promise.all([
+    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", window.startDay).lt("rollup_date", window.endDay).limit(40),
+    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", window.prevStartDay).lt("rollup_date", window.startDay).limit(40),
+    leadCount(monthStart, monthEnd),
+    leadCount(monthStart, monthEnd, "urgent"),
+    leadCount(monthStart, monthEnd, "new"),
+    leadCount(window.prevStart, monthStart),
   ]);
-  // A read problem must not make the report claim "zero visits": leave the activity part out and say nothing about it.
-  const activityOk = !thisRollups.error && !lastRollups.error && !monthLeads.error && !lastLeads.error;
-  const leadRows = monthLeads.data || [];
+  // A read problem must not make the report claim "zero visits": leave the activity part out, keep any earlier good one, and say so.
+  const activityOk = ![thisRollups, lastRollups, leadsTotal, leadsUrgent, leadsNew, leadsPrev].some((result) => result.error);
   const performanceSummary = activityOk
     ? buildPerformanceSummary({
       rollups: thisRollups.data || [],
       prevRollups: lastRollups.data || [],
-      leads: { total: leadRows.length, urgent: leadRows.filter((row) => ["urgent", "emergency"].includes(String(row.urgency))).length, stillNew: leadRows.filter((row) => row.status === "new").length },
-      prevLeads: { total: lastLeads.count ?? 0 },
+      leads: { total: leadsTotal.count ?? 0, urgent: leadsUrgent.count ?? 0, stillNew: leadsNew.count ?? 0 },
+      prevLeads: { total: leadsPrev.count ?? 0 },
     })
-    : {};
-  const recommendations = buildRecommendations(activityOk ? performanceSummary : { tracking: false }, healthSummary);
+    : null;
+  const recommendations = buildRecommendations(performanceSummary, healthSummary);
   const save = await admin.from("website_monthly_reports").update({
     status: "ready",
     health_summary: healthSummary,
-    performance_summary: performanceSummary,
+    ...(performanceSummary ? { performance_summary: performanceSummary } : {}),
     recommendations,
     generated_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
