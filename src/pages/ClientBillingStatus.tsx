@@ -1,3 +1,4 @@
+import { ClientCancelRequest } from "../components/ClientCancelRequest";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Clock3, MessageCircle, Snowflake } from "lucide-react";
 import { appConfig } from "../lib/appConfig";
@@ -231,6 +232,8 @@ export function ClientBillingStatus() {
                 </p>
               </section>
             ) : null}
+
+            <ClientCancelRequest />
 
             <section className="panel panel-wide">
               <div className="panel-title">

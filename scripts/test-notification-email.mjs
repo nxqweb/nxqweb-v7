@@ -59,8 +59,20 @@ check("owner alerts are capped", MAX_OWNER_RECIPIENTS === 5 && (await ensureEmai
 check("an owner alert about a QA-only client stays in-app", (await ensureEmailCopies(makeStore({ clients: { c1: { ...real, qa_only: true } }, owners: ["boss@gmail.com"] }), ownerAlert(), true)).skipped === "qa_only_client");
 check("no valid owner address means nothing is created", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["nope"] }), ownerAlert(), true)).skipped === "no_deliverable_owner_email");
 check("a client template is not emailed to an owner row and vice versa", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["boss@gmail.com"] }), ownerAlert({ template_key: "billing_payment_failed" }), true)).skipped === "template_not_emailed" && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "billing_freeze_review_owner_attention" }), true)).skipped === "template_not_emailed");
-check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 5 && OWNER_EMAIL_TEMPLATES.size === 2);
+check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 7 && OWNER_EMAIL_TEMPLATES.size === 2);
 check("a denied-setup notice is never emailed (the billing guard would always refuse it)", !CLIENT_EMAIL_TEMPLATES.has("business_setup_denied") && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "business_setup_denied" }), true)).skipped === "template_not_emailed");
+
+// ---- website lead emails use fixed wording (a visitor's typed name must never be emailed from our domain)
+const leadAlert = (extra = {}) => inApp({ template_key: "new_lead", subject: "New website lead", body: "Click http://evil.example to verify your account submitted a website inquiry about Tree removal.", ...extra });
+store = makeStore({ clients: { c1: real } });
+r = await ensureEmailCopies(store, leadAlert(), true);
+check("a new website lead is emailed to the client", r.created === 1 && store.inserted[0].template_key === "new_lead" && store.inserted[0].recipient_reference === "pat.owner@gmail.com");
+check("the lead email never carries the visitor's typed text", !/evil|verify|Tree removal/i.test(store.inserted[0].body + store.inserted[0].subject) && /Sign in to your NXQX portal/.test(store.inserted[0].body));
+store = makeStore({ clients: { c1: real } });
+await ensureEmailCopies(store, leadAlert({ template_key: "urgent_new_lead", subject: "Urgent new website lead", priority: "high" }), true);
+check("an urgent lead keeps its urgent subject and priority, still with fixed wording", store.inserted[0].subject === "Urgent new website lead" && store.inserted[0].priority === "high" && !/evil/i.test(store.inserted[0].body));
+check("lead emails stay off when email notifications are off, and for QA-only clients", (await ensureEmailCopies(makeStore({ clients: { c1: real } }), leadAlert(), false)).skipped === "email_notifications_off" && (await ensureEmailCopies(makeStore({ clients: { c1: { ...real, qa_only: true } } }), leadAlert(), true)).skipped === "qa_only_client");
+check("control: copying the lead's own text into the email would be noticed", /evil/i.test(leadAlert().body));
 
 // ---- address for an email row about to be sent
 const emailRow = (extra = {}) => ({ ...inApp({ channel: "email", id: "e1" }), recipient_reference: null, ...extra });

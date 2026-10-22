@@ -126,7 +126,7 @@ const packageOptions: Record<
       "Everything in Starter",
       "Up to 5 core pages",
       "Service-area SEO sections",
-      "Monthly website/content improvements",
+      "Monthly website review, with content updates handled by your NXQX team",
       "Review and testimonial sections",
       "AI-assisted SEO/content suggestions",
     ],

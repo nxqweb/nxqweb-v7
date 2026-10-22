@@ -22,8 +22,8 @@ const comparisonRows = [
   { label: "Premium managed website", starter: "Included", growth: "Included", intelligence: "Included", enterprise: "Included" },
   { label: "Local SEO foundation", help: "seo" as const, starter: "Basic", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
   { label: "Lead + conversion focus", help: "conversion" as const, starter: "Core", growth: "Expanded", intelligence: "Advanced", enterprise: "Custom" },
-  { label: "Behavior analytics", help: "analytics" as const, starter: "—", growth: "Page, click + scroll summaries", intelligence: "Adds heat maps (with consent)", enterprise: "Custom" },
-  { label: "Ongoing optimization", starter: "Maintenance", growth: "Monthly", intelligence: "Priority cycle", enterprise: "Custom cadence" },
+  { label: "Behavior analytics", help: "analytics" as const, starter: "—", growth: "Page, click + scroll summaries", intelligence: "Adds heat-point tracking (with consent)", enterprise: "Custom" },
+  { label: "Ongoing optimization", starter: "Maintenance", growth: "Monthly", intelligence: "Monthly review", enterprise: "Custom cadence" },
   { label: "Multi-location scale", starter: "—", growth: "—", intelligence: "—", enterprise: "Available" },
 ];
 

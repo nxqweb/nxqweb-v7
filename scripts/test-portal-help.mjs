@@ -57,7 +57,7 @@ const growthAnalytics = /\('business','growth','advanced_analytics',true/.test(t
 const starterAnalytics = /\('business','starter','advanced_analytics',false/.test(tiers);
 const intelHeat = /mouse_tracking/.test(tiers) || /\('business','intelligence','mouse_tracking',true/.test(read("supabase/migrations/130_server_side_tier_entitlements.sql"));
 check("Growth is shown as getting click and scroll summaries because the database gives it analytics, and Starter does not", growthAnalytics && starterAnalytics && /label: "Behavior analytics"[^}]*starter: "—", growth: "Page, click \+ scroll summaries"/.test(home));
-check("heat maps are shown as an Intelligence feature because only Intelligence and Enterprise have mouse tracking", intelHeat && /intelligence: "Adds heat maps \(with consent\)"/.test(home));
+check("heat-point tracking is shown as an Intelligence feature (worded honestly: the portal shows heat-point data, not a map yet) because only Intelligence and Enterprise have mouse tracking", intelHeat && /intelligence: "Adds heat-point tracking \(with consent\)"/.test(home) && !/Adds heat maps/.test(home));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll portal-help checks passed (offline).");
 process.exit(failures ? 1 : 0);

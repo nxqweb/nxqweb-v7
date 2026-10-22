@@ -375,8 +375,8 @@ export const productTiers: ProductTierDefinition[] = [
       "Up to 5 core pages",
       "Service-area and local SEO structure",
       "Lead tracking, stronger calls to action, and page, click and scroll summaries",
-      "Monthly website/content improvements",
-      "SEO and content opportunity guidance",
+      "Monthly website review, with content updates handled by your NXQX team",
+      "SEO and content suggestions from your NXQX team",
     ],
   },
   {
@@ -388,11 +388,11 @@ export const productTiers: ProductTierDefinition[] = [
     outcome: "Analyze + optimize",
     features: [
       "Everything in Growth",
-      "Heat map insights (consent-based) and deeper click review",
-      "Conversion and page-interaction review",
-      "Monthly performance and optimization cycle",
+      "Consent-based click and scroll tracking, with heat-point data collected (a heat-map view is coming)",
+      "Page-interaction summaries, reviewed by your NXQX team",
+      "Monthly website health report and review with your NXQX team",
       "Lead-source and funnel insights",
-      "Priority improvement recommendations",
+      "Improvement recommendations from your NXQX team",
     ],
   },
   {

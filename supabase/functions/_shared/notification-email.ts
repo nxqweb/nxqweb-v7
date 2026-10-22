@@ -53,7 +53,16 @@ export const CLIENT_EMAIL_TEMPLATES: ReadonlySet<string> = new Set([
   "billing_past_due_reminder",
   "client_file_quarantined",
   "new_commerce_request",
+  "new_lead",
+  "urgent_new_lead",
 ]);
+
+// A website visitor types their own name and message into a client's contact form. That text must never reach an email sent from our domain (a visitor could write
+// "verify your account at ..." as their name), so these emails use fixed wording and the client reads the real lead after signing in.
+const FIXED_EMAIL_COPY: Readonly<Record<string, { subject: string; body: string }>> = {
+  new_lead: { subject: "New website lead", body: "You have a new inquiry from your website. Sign in to your NXQX portal to read it and reply." },
+  urgent_new_lead: { subject: "Urgent new website lead", body: "You have an urgent inquiry from your website. Sign in to your NXQX portal to read it and reply." },
+};
 
 export const OWNER_EMAIL_TEMPLATES: ReadonlySet<string> = new Set([
   "billing_freeze_review_owner_attention",
@@ -118,8 +127,8 @@ export async function ensureEmailCopies(store: EmailStore, source: DeliveryRow, 
       recipient_kind: source.recipient_kind,
       recipient_reference: recipient,
       template_key: source.template_key,
-      subject: source.subject,
-      body: source.body,
+      subject: FIXED_EMAIL_COPY[source.template_key]?.subject ?? source.subject,
+      body: FIXED_EMAIL_COPY[source.template_key]?.body ?? source.body,
       priority: source.priority,
       metadata: { email_of_delivery_id: source.id, email_copy: true },
     });
