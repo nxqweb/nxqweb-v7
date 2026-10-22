@@ -14,6 +14,7 @@ export type CycleReport = {
   generated_at: string | null;
   delivered_at: string | null;
   health_summary?: unknown;
+  performance_summary?: unknown;
   recommendations?: unknown;
 };
 
@@ -52,7 +53,7 @@ export type ReportSummary = { checks: number; completed: number; needAttention: 
 
 const count = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100000 ? Math.floor(value) : null);
 
-export function summarizeReport(row: Pick<CycleReport, "health_summary" | "recommendations">): ReportSummary | null {
+export function summarizeReport(row: Pick<CycleReport, "health_summary" | "recommendations"> & { performance_summary?: unknown }): ReportSummary | null {
   const health = row.health_summary && typeof row.health_summary === "object" ? (row.health_summary as Record<string, unknown>) : {};
   const checks = count(health.total_checks);
   const completed = count(health.completed_checks);
@@ -60,8 +61,24 @@ export function summarizeReport(row: Pick<CycleReport, "health_summary" | "recom
   const recommendations = Array.isArray(row.recommendations)
     ? row.recommendations.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 300)).slice(0, 5)
     : [];
-  if (checks === null && recommendations.length === 0) return null;
+  const perf = row.performance_summary && typeof row.performance_summary === "object" ? (row.performance_summary as Record<string, unknown>) : {};
+  const hasActivity = perf.generated_from_real_data === true;
+  if (checks === null && recommendations.length === 0 && !hasActivity) return null;
   const sentences: string[] = [];
+  if (hasActivity) {
+    const views = count(perf.page_views);
+    const before = count(perf.prev_page_views);
+    if (perf.tracking === true && views !== null) {
+      let line = `Your website had ${views} visit${views === 1 ? "" : "s"} this month.`;
+      if (before !== null && before > 0 && views !== before) line += ` That is ${views > before ? "up" : "down"} from ${before} last month.`;
+      sentences.push(line);
+    }
+    const leads = count(perf.leads);
+    if (leads !== null) {
+      const urgent = count(perf.urgent_leads) ?? 0;
+      sentences.push(`${leads} ${leads === 1 ? "inquiry" : "inquiries"} came in through your website${urgent > 0 ? `, ${urgent} marked urgent` : ""}.`);
+    }
+  }
   if (checks !== null) {
     sentences.push(checks === 0 ? "No website checks were needed this month." : `${checks} website check${checks === 1 ? " was" : "s were"} run this month.`);
     if (completed !== null && checks > 0) sentences.push(`${completed} finished without a problem.`);

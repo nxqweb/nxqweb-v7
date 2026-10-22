@@ -1,3 +1,4 @@
+import { buildPerformanceSummary, buildRecommendations } from "../_shared/report-insights.mjs";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
@@ -300,12 +301,33 @@ async function monthlyReport(admin: ReturnType<typeof createClient<DynamicDataba
     uptime_checks: rows.filter((row) => row.task_type === "uptime_check").length,
     generated_from_real_checks: true,
   };
-  const recommendations = failed.length
-    ? ["Review unresolved maintenance exceptions in the NXQX owner portal."]
-    : ["No unresolved maintenance exceptions were recorded for this reporting period."];
+  // Visits, clicks and leads for this month and the one before (counts only, no visitor or lead details). Starter has no tracking, so its rollups are simply empty.
+  const prevStart = new Date(monthStart);
+  prevStart.setUTCMonth(prevStart.getUTCMonth() - 1);
+  const day = (date: Date) => date.toISOString().slice(0, 10);
+  const rollupFields = "page_views,clicks,max_scroll_depth,heatpoint_count";
+  const [thisRollups, lastRollups, monthLeads, lastLeads] = await Promise.all([
+    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", day(monthStart)).lt("rollup_date", day(monthEnd)).limit(40),
+    admin.from("website_analytics_daily_rollups").select(rollupFields).eq("project_id", task.project_id).gte("rollup_date", day(prevStart)).lt("rollup_date", day(monthStart)).limit(40),
+    admin.from("client_leads").select("status,urgency").eq("client_id", task.client_id).gte("created_at", monthStart.toISOString()).lt("created_at", monthEnd.toISOString()).limit(2000),
+    admin.from("client_leads").select("id", { count: "exact", head: true }).eq("client_id", task.client_id).gte("created_at", prevStart.toISOString()).lt("created_at", monthStart.toISOString()),
+  ]);
+  // A read problem must not make the report claim "zero visits": leave the activity part out and say nothing about it.
+  const activityOk = !thisRollups.error && !lastRollups.error && !monthLeads.error && !lastLeads.error;
+  const leadRows = monthLeads.data || [];
+  const performanceSummary = activityOk
+    ? buildPerformanceSummary({
+      rollups: thisRollups.data || [],
+      prevRollups: lastRollups.data || [],
+      leads: { total: leadRows.length, urgent: leadRows.filter((row) => ["urgent", "emergency"].includes(String(row.urgency))).length, stillNew: leadRows.filter((row) => row.status === "new").length },
+      prevLeads: { total: lastLeads.count ?? 0 },
+    })
+    : {};
+  const recommendations = buildRecommendations(activityOk ? performanceSummary : { tracking: false }, healthSummary);
   const save = await admin.from("website_monthly_reports").update({
     status: "ready",
     health_summary: healthSummary,
+    performance_summary: performanceSummary,
     recommendations,
     generated_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
