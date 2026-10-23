@@ -12,7 +12,7 @@ export const steps = [
 export const reminders = [
   "Netlify credits: open the Netlify team page and write the number down (docs/OCT22_DEPLOY_DAY_CHECKLIST.md 0.1/0.2).",
   "Find the previous good deploy in Netlify so a rollback is one click (docs/ROLLBACK_AND_EMERGENCY_PLAN.md).",
-  "Next, in order: validate_foundation (dry run must list exactly 272, 273, 274, 275, 276 and 277) -> apply_migrations -> deploy_functions -> ONE site deploy -> npm run smoke -> the phone proof.",
+  "Next, in order: validate_foundation (dry run must list exactly what npm run preflight says is pending; after 2026-10-22 that is nothing until a new migration is promoted) -> apply_migrations -> deploy_functions -> ONE site deploy -> npm run smoke -> the phone proof.",
   "Do not tell the candle client the store is public until the practice order passed.",
 ];
 
