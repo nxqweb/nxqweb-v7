@@ -4,7 +4,7 @@
 shows visitors the matching answer, or says it is not sure and points to the contact form. It is **not AI**: it can only say what the business wrote, it costs $0 to
 run, and it behaves the same every time. When an AI key exists later, only the matching step changes; the tables, the portal page and the widget stay.
 
-**Status: BUILT AS A DRAFT. Nothing is applied, deployed, routed or switched on.** Every client site and the live portal are byte-for-byte unchanged.
+**Status: BUILT AS A DRAFT, independently reviewed once and the verified findings fixed (2026-10-22). Nothing is applied, deployed, routed or switched on.** Every client site and the live portal are byte-for-byte unchanged.
 
 ## What exists (all local)
 | Piece | Where | Tested by |
@@ -23,6 +23,22 @@ run, and it behaves the same every time. When an AI key exists later, only the m
 4. **The assistant starts OFF** and cannot be turned on with no answers; deleting the last answer switches it off.
 5. **Greeting and not-sure message are fetched live when the panel opens**, so edits show without a website rebuild. The button itself needs a rebuild to appear or disappear.
 6. **Two equally good matches are never guessed between**: the visitor gets the not-sure message and the business is told how to fix it in "Try it".
+
+## What the independent review found and what changed (2026-10-22)
+Two reviewers read the code blind. Verified defects, all fixed with tests that fail when the bug is put back:
+- **Quota drain (the serious one).** The first draft charged the client's shared monthly request allowance for every visitor question (the same allowance the contact form needs). A script could have locked a client's contact form out. The function now uses a READ-ONLY plan and billing check (`client_feature_access`).
+- **Unauthenticated work before rate limits.** Cheap refusals (size, JSON, empty or long question, bot trap) now happen before any database call, the per-visitor limit is checked before the per-form total, the greeting call is rate limited, and the heavy lookup comes last.
+- **Form-key oracle.** Every refusal for an outside caller is now the same 404.
+- **Body size.** The body is read with a hard stop, not read in full first.
+- **Negation.** "Do you NOT offer weekends" used to get the "yes" answer. A question and a saved wording must now agree about "not".
+- **Other languages.** Non-English questions were reduced to nothing. Accents are now folded and any language's letters are kept.
+- **Personal-details filter.** It missed phone numbers with wide separators, emails without a dot, bare web addresses and obfuscated links. It is now deliberately broad; names and street addresses still cannot be recognised, so the portal and the Privacy note say "we try not to keep".
+- **Spam flooding the unanswered list.** When full, the least-asked questions are dropped first, not the oldest.
+- **Race.** Settings and delete now take the same per-client lock as saving an answer.
+- **Widget colours.** The first draft used a colour variable the real site template does not define, so light themes had low contrast. It now uses the site's own button colours, and the browser test loads the REAL site stylesheet and runs the accessibility scan in all four themes, dark and light.
+- **Switched-off assistant.** The widget used to keep inviting questions after the business turned it off. It now says it is unavailable, offers the contact form and disables the box.
+- **Portal page.** A failed refresh no longer hides the page; typed greeting text is no longer lost or saved by accident; a half-written answer is not thrown away without asking; fields lock while saving; focus moves sensibly; "Try it" uses saved data and clears when answers change; wording no longer over-promises.
+Known and accepted: the spoofable `Origin` header means the origin check is a courtesy, not a security boundary (the per-visitor and per-form limits are); a determined attacker rotating addresses can still burn the per-form hourly total (300), which at worst makes the assistant say "try again later" for an hour, never touches the client's shared allowance, and the contact form is unaffected.
 
 ## Owner decisions still open
 - **Which plans get it?** Today: any client with an allowed contact form. Gating by tier needs a feature entitlement row (a migration).

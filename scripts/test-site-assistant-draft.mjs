@@ -27,19 +27,30 @@ const rules = {
     ["get_my_assistant()", "save_my_assistant_settings(boolean, text, text)", "save_my_assistant_entry(uuid, text, jsonb, text, boolean)", "delete_my_assistant_entry(uuid)", "dismiss_my_assistant_question(uuid)"]
       .every((f) => s.includes(`revoke all on function public.${f} from public, anon;`) && s.includes(`grant execute on function public.${f} to authenticated;`)),
   "the assistant starts OFF": (s) => /enabled boolean not null default false,\s*\n\s*greeting text/.test(s),
-  "unanswered questions are never kept if they look like personal details": (s) => s.includes("Looks like personal details") && s.includes("[^[:space:]@]+@[^[:space:]@]+") && s.includes("(https?://|www\\.)"),
+  "unanswered questions are never kept if they look like personal details or links (any @, seven digits in total, link schemes, //, bare web addresses)": (s) =>
+    s.includes("if cleaned ~ '@'") && s.includes("regexp_replace(cleaned, '[^[:digit:]]', '', 'g')) >= 7") && s.includes("hxxps?|www") && s.includes("cleaned ~ '//'") && s.includes("(com|net|org|io|co|us|biz|info|me|app|dev|xyz|ly"),
+  "when the unanswered list is full, the least-asked go first (junk cannot push out real questions)": (s) => s.includes("order by times_asked desc, last_asked_at desc, id offset 100"),
+  "settings and delete take the same per-client lock as saving an answer": (s) => (s.match(/hashtextextended\('assistant-entries:'/g) || []).length >= 3,
   "no IP address or visitor identity is stored with a question": (s) => !/ip_address|user_agent|fingerprint|visitor_id/i.test(s.split("create table if not exists public.client_assistant_unanswered")[1].split(");")[0]),
 };
 for (const [name, test] of Object.entries(rules)) check(name, test(sql));
 
+const at = (f, text) => f.indexOf(text);
 const fnRules = {
-  "the function checks the form is active, the origin is allowed, hourly limits, the bot trap, and the plan/billing gate": (f) =>
-    f.includes('form.status !== "active"') && f.includes("allowed_origins") && f.includes("nxq_reserve_ingress_capacity") && f.includes("company_website") && f.includes("nxq_authorize_paid_capability"),
+  "the origin is enforced with the same answer as every other refusal (no oracle for form keys)": (f) =>
+    f.includes('!(form.allowed_origins || []).includes(origin)') && f.includes('form.status !== "active"') && !/Origin is not allowed/.test(f) && /return respond\(UNAVAILABLE, 404, origin\)/.test(f),
+  "the bot trap is checked before any database work": (f) => at(f, "if (clean(payload.company_website, 500))") > 0 && at(f, "if (clean(payload.company_website, 500))") < at(f, "createClient("),
+  "empty, too-long, unknown-action and non-object requests are refused before any database work": (f) =>
+    at(f, "Please type a question.") > 0 && at(f, "Please type a question.") < at(f, "createClient(") && at(f, "Unknown request.") < at(f, "createClient(") && at(f, "must be a JSON object") < at(f, "createClient("),
+  "the plan and billing gate is READ-ONLY (client_feature_access) and never spends the shared monthly request allowance": (f) =>
+    f.includes('admin.rpc("client_feature_access"') && f.includes('target_feature_key: "lead_capture"') && !/nxq_authorize_paid_capability|nxq_finalize_economic_usage/.test(f.replace(/\/\/.*$/gm, "")),
+  "the per-visitor limit is checked before the per-form total, and the greeting call is limited too": (f) =>
+    at(f, '"assistant_visitor_hourly"') > 0 && at(f, '"assistant_visitor_hourly"') < at(f, '"assistant_total_hourly"') && f.includes('"assistant_config_visitor_hourly"'),
+  "the heavy lookup (all answers) happens only after the cheap checks and the rate limits": (f) => at(f, 'admin.rpc("site_assistant_lookup"') > at(f, 'reserve("assistant_total_hourly"') && at(f, 'admin.rpc("site_assistant_lookup"') > at(f, 'admin.rpc("client_feature_access"'),
   "visitors only ever get the matched answer text or the business's own not-sure message (never the list of answers)": (f) =>
     !/entries\s*:\s*site/.test(f) && !/respond\(\{[^}]*entries/.test(f) && f.includes("matched: true, answer: result.answer") && f.includes("message: site.fallback_text"),
-  "unavailable, paused and switched-off all give the same answer": (f) => (f.match(/The assistant is unavailable\./g) || []).length >= 3,
   "it matches with the shared matcher and records only unanswered questions": (f) => f.includes("matchQuestion(question, site.entries)") && f.includes('"site_assistant_record_unanswered"'),
-  "request size is capped": (f) => f.includes("MAX_REQUEST_BYTES = 4096") && f.includes("413"),
+  "request size is capped while reading, not just by the header": (f) => f.includes("MAX_REQUEST_BYTES = 4096") && f.includes("readBodyLimited(req, MAX_REQUEST_BYTES)") && f.includes("await reader.cancel()") && !/await req\.text\(\)/.test(f),
 };
 for (const [name, test] of Object.entries(fnRules)) check(name, test(fn));
 
@@ -60,8 +71,15 @@ plant("a visitor function open to clients is noticed", sql, "revoke all on funct
 plant("an assistant that starts ON is noticed", sql, "enabled boolean not null default false,\n  greeting", "enabled boolean not null default true,\n  greeting", rules["the assistant starts OFF"]);
 plant("a limit that drifts from the matcher is noticed", sql, "between 2 and 600", "between 2 and 800", rules["the database limits are the same numbers as the matcher's (question 3-160, answer 2-600, 5 other wordings, 50 answers, 200-character unanswered)"]);
 plant("storing visitor IPs is noticed", sql, "times_asked integer not null default 1", "ip_address text, times_asked integer not null default 1", rules["no IP address or visitor identity is stored with a question"]);
-plant("dropping the plan/billing gate is noticed", fn, "nxq_authorize_paid_capability", "nxq_nothing", fnRules["the function checks the form is active, the origin is allowed, hourly limits, the bot trap, and the plan/billing gate"]);
-plant("dropping the origin check is noticed", fn, "allowed_origins", "allowed_hosts", fnRules["the function checks the form is active, the origin is allowed, hourly limits, the bot trap, and the plan/billing gate"]);
+plant("spending the shared request allowance per question is noticed", fn, 'admin.rpc("client_feature_access"', 'admin.rpc("nxq_authorize_paid_capability"', fnRules["the plan and billing gate is READ-ONLY (client_feature_access) and never spends the shared monthly request allowance"]);
+plant("dropping the origin check is noticed", fn, "!(form.allowed_origins || []).includes(origin)", "false", fnRules["the origin is enforced with the same answer as every other refusal (no oracle for form keys)"]);
+plant("a distinct origin error (an oracle) is noticed", fn, "return respond(UNAVAILABLE, 404, origin);\n\n    const forwarded", 'return respond({ ok: false, error: "Origin is not allowed." }, 403, origin);\n\n    const forwarded', fnRules["the origin is enforced with the same answer as every other refusal (no oracle for form keys)"]);
+plant("moving the bot trap after the database is noticed", fn, 'if (clean(payload.company_website, 500)) return respond({ ok: true, matched: false, message: BOT_REPLY }, 200, origin);', "", fnRules["the bot trap is checked before any database work"]);
+plant("dropping the per-visitor limit is noticed", fn, '"assistant_visitor_hourly"', '"assistant_nothing"', fnRules["the per-visitor limit is checked before the per-form total, and the greeting call is limited too"]);
+plant("letting the greeting call run unlimited is noticed", fn, '"assistant_config_visitor_hourly"', '"assistant_nothing"', fnRules["the per-visitor limit is checked before the per-form total, and the greeting call is limited too"]);
+plant("reading the whole body first is noticed", fn, "readBodyLimited(req, MAX_REQUEST_BYTES)", "req.text()", fnRules["request size is capped while reading, not just by the header"]);
+plant("a gap in the personal-details filter is noticed", sql, "or cleaned ~ '//'", "", rules["unanswered questions are never kept if they look like personal details or links (any @, seven digits in total, link schemes, //, bare web addresses)"]);
+plant("evicting by age only is noticed", sql, "order by times_asked desc, last_asked_at desc, id offset 100", "order by last_asked_at desc, id offset 100", rules["when the unanswered list is full, the least-asked go first (junk cannot push out real questions)"]);
 plant("returning the whole answer list to visitors is noticed", fn, 'return respond({ ok: true, matched: true, answer: result.answer }, 200, origin);', 'return respond({ ok: true, matched: true, answer: result.answer, entries: site.entries }, 200, origin);', fnRules["visitors only ever get the matched answer text or the business's own not-sure message (never the list of answers)"]);
 plant("innerHTML in the widget is noticed", widget, "const message = el(", "const q = document.body.innerHTML; const message = el(", widgetRules["the widget shows text only (no innerHTML, no eval, no document.write)"]);
 plant("storing things in the browser is noticed", widget, 'credentials: "omit"', 'credentials: "omit", /* localStorage */', widgetRules["it sends no cookies and talks only to the configured HTTPS endpoint"]);

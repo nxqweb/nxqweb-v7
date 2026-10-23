@@ -10,11 +10,13 @@
 const DEFAULT_GREETING = "Hi! Ask me a question about our business.";
 const DEFAULT_TITLE = "Ask a question";
 const UNAVAILABLE = "Sorry, the assistant is not available right now.";
+const SWITCHED_OFF = "The assistant is not available at the moment. Please use the contact form and we will get back to you.";
+const LOOKING = "Looking for an answer";
 const TOO_MANY = "That is a lot of questions for now. Please try again later.";
 const TIMEOUT_MS = 12000;
 
 const STYLE = `
-.nxq-ask-launch{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line,rgba(255,255,255,.2));background:var(--accent,#8fd3ff);color:var(--on-accent,#07121c);font:inherit;font-weight:700;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.nxq-ask-launch{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line,rgba(255,255,255,.2));background:linear-gradient(135deg,var(--button-start,#94ebc7),var(--button-end,#9dc9ff));color:#06101a;font:inherit;font-weight:750;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .nxq-ask-launch:focus-visible,.nxq-ask-panel button:focus-visible,.nxq-ask-panel input:focus-visible,.nxq-ask-panel a:focus-visible{outline:3px solid var(--text,#fff);outline-offset:2px}
 .nxq-ask-panel{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:calc(max(16px,env(safe-area-inset-bottom)) + 60px);z-index:61;width:min(380px,calc(100vw - 32px));max-height:min(560px,calc(100vh - 110px));display:flex;flex-direction:column;border-radius:20px;border:1px solid var(--line,rgba(255,255,255,.2));background:var(--surface,#10151c);color:var(--text,#f3f6fa);box-shadow:0 20px 50px rgba(0,0,0,.45)}
 .nxq-ask-panel[hidden]{display:none}
@@ -24,11 +26,11 @@ const STYLE = `
 .nxq-ask-log{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .nxq-ask-msg{margin:0;padding:10px 12px;border-radius:14px;max-width:92%;line-height:1.45;overflow-wrap:anywhere}
 .nxq-ask-msg.bot{background:var(--tint,rgba(255,255,255,.07));align-self:flex-start}
-.nxq-ask-msg.you{background:var(--accent,#8fd3ff);color:var(--on-accent,#07121c);align-self:flex-end}
+.nxq-ask-msg.you{background:linear-gradient(135deg,var(--button-start,#94ebc7),var(--button-end,#9dc9ff));color:#06101a;align-self:flex-end}
 .nxq-ask-contact{display:inline-block;margin-top:8px;font-weight:700;color:inherit}
 .nxq-ask-form{display:flex;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--line,rgba(255,255,255,.2))}
 .nxq-ask-form input[type=text]{flex:1;min-width:0;min-height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line,rgba(255,255,255,.3));background:var(--bg,#0b0f14);color:var(--text,#f3f6fa);font:inherit}
-.nxq-ask-form button{min-height:44px;padding:0 16px;border-radius:12px;border:0;background:var(--accent,#8fd3ff);color:var(--on-accent,#07121c);font:inherit;font-weight:700;cursor:pointer}
+.nxq-ask-form button{min-height:44px;padding:0 16px;border-radius:12px;border:0;background:linear-gradient(135deg,var(--button-start,#94ebc7),var(--button-end,#9dc9ff));color:#06101a;font:inherit;font-weight:750;cursor:pointer}
 .nxq-ask-form button[disabled]{opacity:.6;cursor:progress}
 .nxq-ask-note{margin:0;padding:0 16px 12px;font-size:.8rem;opacity:.75}
 .nxq-ask-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
@@ -50,6 +52,7 @@ export function mountAssistant(options = {}) {
   if (!endpoint || !formKey || !/^https:\/\//i.test(endpoint) && !options.allowInsecureEndpoint) return null;
   const doc = options.root?.ownerDocument || document;
   const root = options.root || doc.body;
+  if (root.querySelector("[data-nxq-assistant]")) return null; // already on this page: a second copy would duplicate ids and the button
   const doFetch = options.fetchImpl || fetch.bind(globalThis);
   const title = String(options.title || DEFAULT_TITLE).slice(0, 60);
   const contactHref = typeof options.contactHref === "string" && /^#[A-Za-z0-9_-]+$/.test(options.contactHref) ? options.contactHref : "#contact";
@@ -76,14 +79,17 @@ export function mountAssistant(options = {}) {
   let opened = false;
   let greeted = false;
   let busy = false;
+  let unavailable = false;
+
+  function contactLink() {
+    const link = el("a", { class: "nxq-ask-contact", href: contactHref }, "Go to the contact form");
+    link.addEventListener("click", () => close(false));
+    return link;
+  }
 
   function add(kind, text, withContact = false) {
     const message = el("p", { class: `nxq-ask-msg ${kind}` }, text);
-    if (withContact) {
-      const link = el("a", { class: "nxq-ask-contact", href: contactHref }, "Go to the contact form");
-      link.addEventListener("click", () => close(false));
-      message.append(doc.createElement("br"), link);
-    }
+    if (withContact) message.append(doc.createElement("br"), contactLink());
     log.append(message);
     log.scrollTop = log.scrollHeight;
     return message;
@@ -100,14 +106,23 @@ export function mountAssistant(options = {}) {
     } finally { clearTimeout(timer); }
   }
 
+  // The default greeting shows at once; the business's own greeting replaces it when it arrives. If the site says the assistant is switched off (or the form is gone),
+  // the panel says so and the box is disabled, instead of inviting a question it cannot answer. A network problem is not "off": the default greeting stays.
   async function greetOnce() {
     if (greeted) return;
     greeted = true;
+    const first = add("bot", greeting);
     try {
       const result = await post({ action: "config" });
-      if (result.data?.ok === true && typeof result.data.greeting === "string" && result.data.greeting.trim()) greeting = result.data.greeting.trim().slice(0, 200);
+      if (result.data?.ok === true && typeof result.data.greeting === "string" && result.data.greeting.trim()) first.textContent = result.data.greeting.trim().slice(0, 200);
+      else if (result.status === 404 || result.data?.ok === false) {
+        first.textContent = SWITCHED_OFF;
+        first.append(doc.createElement("br"), contactLink());
+        input.disabled = true;
+        send.disabled = true;
+        unavailable = true;
+      }
     } catch { /* the default greeting is fine */ }
-    add("bot", greeting);
   }
 
   function open() {
@@ -134,18 +149,18 @@ export function mountAssistant(options = {}) {
     event.preventDefault();
     if (busy) return;
     const question = input.value.trim();
-    if (!question) return;
+    if (!question || unavailable) return;
     busy = true;
     send.disabled = true;
     input.value = "";
     add("you", question);
-    const waiting = add("bot", "...");
+    const waiting = add("bot", LOOKING);
     waiting.setAttribute("aria-busy", "true");
     try {
       const result = await post({ action: "ask", question, company_website: trap.value });
       waiting.remove();
       if (result.status === 429) add("bot", TOO_MANY, true);
-      else if (result.data?.ok === true && result.data.matched === true && typeof result.data.answer === "string") add("bot", result.data.answer);
+      else if (result.data?.ok === true && result.data.matched === true && typeof result.data.answer === "string") add("bot", result.data.answer.slice(0, 600));
       else if (result.data?.ok === true && typeof result.data.message === "string") add("bot", result.data.message, true);
       else add("bot", UNAVAILABLE, true);
     } catch {
@@ -153,8 +168,9 @@ export function mountAssistant(options = {}) {
       add("bot", UNAVAILABLE, true);
     } finally {
       busy = false;
-      send.disabled = false;
-      input.focus();
+      if (!unavailable) send.disabled = false;
+      const active = doc.activeElement;
+      if (opened && !unavailable && (active === doc.body || active === input || panel.contains(active))) input.focus();
     }
   });
 

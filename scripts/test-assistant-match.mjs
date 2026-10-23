@@ -1,6 +1,6 @@
 // The website Q&A matcher: plain word overlap, only ever the business's own answers, refuses to guess.
 import fs from "node:fs";
-import { ASSISTANT_LIMITS, MATCH_THRESHOLD, entryProblems, matchQuestion, normalizeText, overlapScore, tokens } from "../supabase/functions/_shared/assistant-match.mjs";
+import { ASSISTANT_LIMITS, MATCH_THRESHOLD, entryProblems, hasNegation, matchQuestion, normalizeText, overlapScore, tokens } from "../supabase/functions/_shared/assistant-match.mjs";
 
 let failures = 0;
 function check(name, ok) {
@@ -15,7 +15,7 @@ const entries = [
   { id: "e4", question: "How much does a tree removal cost?", answer: "Prices depend on the job. Send us a request for an estimate." },
 ];
 
-check("text is normalised to plain lowercase words", normalizeText("  What's YOUR Price?! ") === "what s your price");
+check("text is normalised to plain lowercase words (apostrophes dropped)", normalizeText("  What's YOUR Price?! ") === "whats your price" && normalizeText("don't") === "dont" && normalizeText("don\u2019t") === "dont");
 const same = (a, b) => JSON.stringify(tokens(a)) === JSON.stringify(tokens(b));
 check("filler words are dropped", tokens("What are the").length === 0 && tokens("what do you charge").length === 1);
 check("plurals, -ing and -ed forms line up (price/prices/pricing, tree/trees, stump/stumps, book/booked/booking, box/boxes)", same("price", "prices") && same("price", "pricing") && same("tree", "trees") && same("stump", "stumps") && same("book", "booked") && same("book", "booking") && same("box", "boxes") && same("bus", "bus"));
@@ -44,6 +44,21 @@ check("two entries with the SAME answer are not ambiguous", matchQuestion("tree 
 check("odd input never crashes", [null, undefined, 5, {}, []].every((v) => { try { return matchQuestion(v, entries).matched === false; } catch { return false; } }) && matchQuestion("hours", null).reason === "no_entries" && matchQuestion("hours", [null, 5, {}]).reason === "no_entries");
 check("the match threshold is not trivially low", MATCH_THRESHOLD >= 0.4 && MATCH_THRESHOLD <= 0.7);
 
+// ---- other languages and accents
+const spanish = [{ id: "s1", question: "\u00bfAceptan tarjetas de cr\u00e9dito?", answer: "S\u00ed, todas las principales.", alt_phrasings: [] }];
+check("accents are folded, so a question typed without them still matches", matchQuestion("aceptan tarjetas de credito", spanish).matched === true && matchQuestion("ACEPTAN TARJETAS DE CR\u00c9DITO", spanish).matched === true);
+const chinese = [{ id: "c1", question: "\u4f60\u4eec\u63a5\u53d7\u4fe1\u7528\u5361\u5417", answer: "\u63a5\u53d7\u3002", alt_phrasings: [] }];
+check("a question in a language without Latin letters is matched (and can be saved), instead of being reduced to nothing", matchQuestion("\u4f60\u4eec\u63a5\u53d7\u4fe1\u7528\u5361\u5417", chinese).matched === true && entryProblems({ question: "\u4f60\u4eec\u63a5\u53d7\u4fe1\u7528\u5361\u5417", answer: "ok" }).length === 0);
+check("full-width and mixed characters are normalised", normalizeText("\uff28\uff4f\uff55\uff52\uff53") === "hours");
+
+// ---- negation: the opposite question must never get the "yes" answer
+const weekends = [{ id: "w1", question: "Do you offer weekend appointments?", answer: "Yes, Saturdays 9-1.", alt_phrasings: [] }];
+check("a negated question is not answered with the un-negated answer", matchQuestion("Do you NOT offer weekend appointments", weekends).matched === false && matchQuestion("do you never offer weekend appointments", weekends).matched === false && matchQuestion("Don't you offer weekend appointments?", weekends).matched === false);
+check("the plain question still matches", matchQuestion("do you offer weekend appointments", weekends).matched === true);
+check("a negated saved question matches a negated visitor question only", (() => { const no = [{ id: "n1", question: "Can't you come on Sundays?", answer: "We do not work Sundays.", alt_phrasings: [] }]; return matchQuestion("cant you come on sundays", no).matched === true && matchQuestion("can you come on sundays", no).matched === false; })());
+check("negation words are detected, ordinary words are not", hasNegation("we cannot do that") && hasNegation("without a deposit") && !hasNegation("we can do that") && !hasNegation("a note about nothing special".replace("nothing", "items")));
+check("saving a question whose other wordings disagree about 'not' is refused", entryProblems({ question: "Do you offer weekends?", alt_phrasings: ["Do you not work weekends"], answer: "Yes" }).some((p) => /not/.test(p)));
+
 // ---- what a business may save
 check("a normal entry has no problems", entryProblems({ question: "Do you remove stumps?", answer: "Yes we do.", alt_phrasings: ["stump grinding"] }).length === 0);
 check("too short, too long, and word-less questions are refused with plain messages", entryProblems({ question: "hi", answer: "ok" }).length >= 1 && entryProblems({ question: "x".repeat(200), answer: "yes" }).some((p) => /under 160/.test(p)) && entryProblems({ question: "how do the", answer: "yes" }).some((p) => /real word/.test(p)));
@@ -67,6 +82,10 @@ const lowThreshold = await load(mutated("export const MATCH_THRESHOLD = 0.5;", "
 check("control: a threshold of almost zero would answer the roof-gutter question (and is noticed)", lowThreshold.matchQuestion("can you fix my roof gutters tree", entries).matched === true && none.matched === false);
 const noAmbiguity = await load(mutated("if (runnerUp && top.score - runnerUp.score < AMBIGUOUS_MARGIN && runnerUp.score >= MATCH_THRESHOLD) return", "if (false) return"));
 check("control: dropping the ambiguity guard would guess between two answers (and is noticed)", noAmbiguity.matchQuestion("tree removal price", [{ id: "a", question: "tree removal price", answer: "Answer one." }, { id: "b", question: "removal tree price", answer: "Answer two." }]).matched === true);
+const noNegation = await load(mutated("if (hasNegation(phrase) !== askedNegated) continue;", ""));
+check("control: ignoring negation would answer the opposite question (and is noticed)", noNegation.matchQuestion("Do you NOT offer weekend appointments", weekends).matched === true && matchQuestion("Do you NOT offer weekend appointments", weekends).matched === false);
+const asciiOnly = await load(mutated('.replace(/[^\\p{L}\\p{N}]+/gu, " ")', '.replace(/[^a-z0-9]+/g, " ")'));
+check("control: reducing text to ASCII letters would lose other languages (and is noticed)", asciiOnly.matchQuestion("\u4f60\u4eec\u63a5\u53d7\u4fe1\u7528\u5361\u5417", chinese).matched === false && matchQuestion("\u4f60\u4eec\u63a5\u53d7\u4fe1\u7528\u5361\u5417", chinese).matched === true);
 const linkOk = await load(mutated("if (/(https?:\\/\\/|www\\.)\\S+/i.test(answer))", "if (false)"));
 check("control: allowing links in answers is noticed", linkOk.entryProblems({ question: "hours?", answer: "see https://example.com" }).length === 0 && entryProblems({ question: "hours?", answer: "see https://example.com" }).length > 0);
 

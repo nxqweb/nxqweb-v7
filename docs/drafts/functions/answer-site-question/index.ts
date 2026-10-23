@@ -3,9 +3,13 @@
 // supabase/config.toml next to ingest-business-lead, and the import below changed to "../_shared/assistant-match.mjs").
 //
 // Same front door as the contact form (ingest-business-lead): the site sends its lead-form key; the form must be active; the request must come from one of
-// the form's allowed origins; hourly limits per form and per visitor fingerprint; a bot trap field; and the client must still be allowed to use lead capture
-// under its plan and billing state. Visitors only ever get text the business wrote. Questions nobody could answer are kept (counts only, never personal
-// details: see site_assistant_record_unanswered) so the business can add an answer.
+// the form's allowed origins; hourly limits per visitor fingerprint and per form; a bot trap field. Differences, on purpose:
+//  * The plan/billing check is READ-ONLY (client_feature_access for "lead_capture"). It must NOT use nxq_authorize_paid_capability: that spends the client's shared
+//    monthly api_requests allowance, so a visitor (or a script) asking questions would use up the allowance the contact form also needs.
+//  * Everything that can be refused without the database (size, JSON, empty or too-long question, bot trap) is refused first, and the per-visitor limit is
+//    checked before the per-form total, so a flood cannot use up the form's total for real visitors.
+//  * Every "no" for an outside caller is the same 404, so the function does not reveal whether a form key exists, is paused, has the assistant off, or what origin it expects.
+// Visitors only ever get text the business wrote. Questions nobody could answer are kept (counts only, never personal details: see site_assistant_record_unanswered).
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ASSISTANT_LIMITS, matchQuestion } from "../../../../supabase/functions/_shared/assistant-match.mjs";
 
@@ -15,8 +19,11 @@ type Quota = { allowed?: boolean };
 type LookupResult = { client_id: string; greeting: string; fallback_text: string; entries: Array<{ id: string; question: string; alt_phrasings: string[]; answer: string }> };
 
 const MAX_REQUEST_BYTES = 4096;
-const HOURLY_PER_FORM = 300;
-const HOURLY_PER_VISITOR = 20;
+const HOURLY_ASK_PER_VISITOR = 20;
+const HOURLY_ASK_PER_FORM = 300;
+const HOURLY_CONFIG_PER_VISITOR = 30;
+const UNAVAILABLE = { ok: false, error: "The assistant is unavailable." };
+const BOT_REPLY = "I am not sure about that. Please use the contact form and we will get back to you.";
 
 function requestOrigin(req: Request) {
   const origin = (req.headers.get("origin") || "").trim();
@@ -48,6 +55,25 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+// Reads the body but stops as soon as it is over the limit (a chunked request has no Content-Length to trust). Returns null when too large.
+async function readBodyLimited(req: Request, max: number): Promise<string | null> {
+  const reader = req.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) { await reader.cancel(); return null; }
+    chunks.push(value);
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder().decode(merged);
+}
+
 Deno.serve(async (req) => {
   const origin = requestOrigin(req);
   if (req.method === "OPTIONS") return new Response(null, { status: origin ? 204 : 403, headers: cors(origin) });
@@ -56,60 +82,58 @@ Deno.serve(async (req) => {
 
   const declared = Number(req.headers.get("content-length") || "0");
   if (Number.isFinite(declared) && declared > MAX_REQUEST_BYTES) return respond({ ok: false, error: "Request body is too large." }, 413, origin);
-  const raw = await req.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BYTES) return respond({ ok: false, error: "Request body is too large." }, 413, origin);
-  let payload: Payload;
-  try { payload = JSON.parse(raw) as Payload; } catch { return respond({ ok: false, error: "Request body must be valid JSON." }, 400, origin); }
+  const raw = await readBodyLimited(req, MAX_REQUEST_BYTES);
+  if (raw === null) return respond({ ok: false, error: "Request body is too large." }, 413, origin);
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { return respond({ ok: false, error: "Request body must be valid JSON." }, 400, origin); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return respond({ ok: false, error: "Request body must be a JSON object." }, 400, origin);
+  const payload = parsed as Payload;
+
+  // Everything below that needs no database is decided first.
+  const formKey = clean(payload.form_key, 90);
+  if (!formKey) return respond({ ok: false, error: "Form key is required." }, 400, origin);
+  const action = clean(payload.action, 20) || "ask";
+  if (action !== "ask" && action !== "config") return respond({ ok: false, error: "Unknown request." }, 400, origin);
+  const question = action === "ask" ? clean(payload.question, ASSISTANT_LIMITS.visitorQuestion + 1) : "";
+  if (action === "ask" && !question) return respond({ ok: false, error: "Please type a question." }, 400, origin);
+  if (question.length > ASSISTANT_LIMITS.visitorQuestion) return respond({ ok: false, error: `Please keep your question under ${ASSISTANT_LIMITS.visitorQuestion} characters.` }, 400, origin);
+  // Bot trap: look like success, do nothing (no database work at all).
+  if (clean(payload.company_website, 500)) return respond({ ok: true, matched: false, message: BOT_REPLY }, 200, origin);
 
   const admin = createClient(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
   try {
-    const formKey = clean(payload.form_key, 90);
-    if (!formKey) return respond({ ok: false, error: "Form key is required." }, 400, origin);
     const formResult = await admin.from("business_lead_forms").select("id,client_id,status,allowed_origins").eq("form_key", formKey).single();
     const form = formResult.data as FormRow | null;
-    // The same answer for "no such form", "paused" and "assistant off": a visitor learns nothing about which it is.
-    if (formResult.error || !form || form.status !== "active") return respond({ ok: false, error: "The assistant is unavailable." }, 404, origin);
-    if (!(form.allowed_origins || []).includes(origin)) return respond({ ok: false, error: "Origin is not allowed." }, 403, origin);
-
-    const lookedUp = await admin.rpc("site_assistant_lookup", { target_form_key: formKey });
-    const site = lookedUp.data as LookupResult | null;
-    if (lookedUp.error || !site) return respond({ ok: false, error: "The assistant is unavailable." }, 404, origin);
-
-    const action = clean(payload.action, 20) || "ask";
-    if (action === "config") return respond({ ok: true, greeting: site.greeting, fallback_text: site.fallback_text }, 200, origin);
-    if (action !== "ask") return respond({ ok: false, error: "Unknown request." }, 400, origin);
-
-    // Bot trap: look like success, do nothing.
-    if (clean(payload.company_website, 500)) return respond({ ok: true, matched: false, message: site.fallback_text }, 200, origin);
+    // One answer for every kind of "no": no such form, paused, wrong origin. Origin is client-supplied, so this is a courtesy to well-behaved sites, not a security boundary.
+    if (formResult.error || !form || form.status !== "active" || !(form.allowed_origins || []).includes(origin)) return respond(UNAVAILABLE, 404, origin);
 
     const forwarded = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
     const agent = req.headers.get("user-agent") || "unknown";
     const fingerprint = await sha256(`${secret("NXQ_LEAD_FINGERPRINT_SALT")}|${forwarded}|${agent}`);
     const scope = `assistant:${form.id}`;
-    const total = await admin.rpc("nxq_reserve_ingress_capacity", {
-      target_scope_key: scope, target_operation_key: "assistant_total_hourly", target_identity_hash: await sha256(scope),
-      target_units: 1, target_limit_units: HOURLY_PER_FORM, target_window_seconds: 3600,
+    const reserve = (operation: string, identity: string, limit: number) => admin.rpc("nxq_reserve_ingress_capacity", {
+      target_scope_key: scope, target_operation_key: operation, target_identity_hash: identity, target_units: 1, target_limit_units: limit, target_window_seconds: 3600,
     });
-    if (total.error) throw new Error(`Assistant quota failed: ${total.error.message}`);
-    const visitor = (total.data as Quota | null)?.allowed
-      ? await admin.rpc("nxq_reserve_ingress_capacity", {
-        target_scope_key: scope, target_operation_key: "assistant_visitor_hourly", target_identity_hash: fingerprint,
-        target_units: 1, target_limit_units: HOURLY_PER_VISITOR, target_window_seconds: 3600,
-      })
-      : total;
+
+    // The per-visitor limit first, so a flood from one visitor cannot use up the form's total for everyone else.
+    const visitor = await reserve(action === "ask" ? "assistant_visitor_hourly" : "assistant_config_visitor_hourly", fingerprint, action === "ask" ? HOURLY_ASK_PER_VISITOR : HOURLY_CONFIG_PER_VISITOR);
     if (visitor.error) throw new Error(`Assistant quota failed: ${visitor.error.message}`);
     if (!(visitor.data as Quota | null)?.allowed) return respond({ ok: false, error: "Too many questions for now. Please try again later." }, 429, origin);
+    if (action === "ask") {
+      const total = await reserve("assistant_total_hourly", await sha256(scope), HOURLY_ASK_PER_FORM);
+      if (total.error) throw new Error(`Assistant quota failed: ${total.error.message}`);
+      if (!(total.data as Quota | null)?.allowed) return respond({ ok: false, error: "Too many questions for now. Please try again later." }, 429, origin);
+    }
 
-    // The business must still be allowed to use its site features under its plan and billing state (same rule as the contact form).
-    const authorization = await admin.rpc("nxq_authorize_paid_capability", {
-      target_client_id: form.client_id, target_feature_key: "lead_capture", target_resources: { api_requests: 1 },
-      target_estimated_provider_cost_cents: 0, target_idempotency_key: `assistant:${form.id}:${crypto.randomUUID()}`,
-    });
-    if (authorization.error || authorization.data?.allowed !== true) return respond({ ok: false, error: "The assistant is unavailable." }, 409, origin);
+    // Read-only plan and billing check (same rule as the contact form's "lead_capture" feature). Does not spend any allowance.
+    const access = await admin.rpc("client_feature_access", { target_client_id: form.client_id, target_feature_key: "lead_capture" });
+    if (access.error || access.data?.allowed !== true) return respond(UNAVAILABLE, 404, origin);
 
-    const question = clean(payload.question, ASSISTANT_LIMITS.visitorQuestion + 1);
-    if (!question) return respond({ ok: false, error: "Please type a question." }, 400, origin);
-    if (question.length > ASSISTANT_LIMITS.visitorQuestion) return respond({ ok: false, error: `Please keep your question under ${ASSISTANT_LIMITS.visitorQuestion} characters.` }, 400, origin);
+    const lookedUp = await admin.rpc("site_assistant_lookup", { target_form_key: formKey });
+    const site = lookedUp.data as LookupResult | null;
+    if (lookedUp.error || !site) return respond(UNAVAILABLE, 404, origin);
+
+    if (action === "config") return respond({ ok: true, greeting: site.greeting, fallback_text: site.fallback_text }, 200, origin);
 
     const result = matchQuestion(question, site.entries);
     if (result.matched) return respond({ ok: true, matched: true, answer: result.answer }, 200, origin);

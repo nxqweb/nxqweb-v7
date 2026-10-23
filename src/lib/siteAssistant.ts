@@ -5,6 +5,9 @@ import { ASSISTANT_LIMITS, entryProblems, matchQuestion } from "../../supabase/f
 
 export { ASSISTANT_LIMITS };
 
+// How many unanswered questions are kept per business (the database keeps the same number).
+export const UNANSWERED_LIMIT = 100;
+
 export type AssistantSettings = { enabled: boolean; greeting: string; fallbackText: string };
 export type AssistantEntry = { id: string; question: string; altPhrasings: string[]; answer: string; enabled: boolean };
 export type UnansweredQuestion = { id: string; question: string; timesAsked: number; lastAskedAt: string };

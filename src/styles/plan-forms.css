@@ -259,3 +259,5 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .assistant-page .assistant-switch { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .assistant-page .assistant-switch input[type="checkbox"] { width: 24px; height: 24px; flex: none; }
 .assistant-page .auth-error ul { margin: 0; padding-left: 1.2rem; }
+.assistant-page .assistant-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: .6rem; }
+.assistant-page h2[tabindex="-1"]:focus { outline: none; }

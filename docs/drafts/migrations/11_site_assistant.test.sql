@@ -134,20 +134,31 @@ begin
   perform public.site_assistant_record_unanswered(key1, 'what about parking?');
   if (select times_asked from public.client_assistant_unanswered where client_id = c1 and question = 'what about parking?') <> 2 then raise exception 'the same wording must be counted, not duplicated'; end if;
   if public.site_assistant_record_unanswered(key1, 'email me at jane@example.com') is not false then raise exception 'an email address must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'write to jane@example') is not false then raise exception 'an email address without a dot must not be stored'; end if;
   if public.site_assistant_record_unanswered(key1, 'call 555-123-4567 please') is not false then raise exception 'a phone number must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'call 555 - 123 - 4567') is not false then raise exception 'a phone number with wide separators must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'call 555 / 123 / 4567') is not false then raise exception 'a phone number with slashes must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'my number is 5 5 5 1 2 3 4 5 6 7') is not false then raise exception 'a phone number with spaces must not be stored'; end if;
   if public.site_assistant_record_unanswered(key1, 'see http://evil.example for details') is not false then raise exception 'a web link must not be stored'; end if;
   if public.site_assistant_record_unanswered(key1, 'see www.evil.example') is not false then raise exception 'a www link must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'go to evil.com/pay now') is not false then raise exception 'a bare web address must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'use bit.ly/abc') is not false then raise exception 'a short link must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'hxxp://evil.example') is not false then raise exception 'an obfuscated link must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'mailto: jane') is not false then raise exception 'a mailto link must not be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'a //evil.example link') is not false then raise exception 'a double-slash link must not be stored'; end if;
   if public.site_assistant_record_unanswered(key1, '<script>x</script>') is not false then raise exception 'markup must not be stored'; end if;
   if public.site_assistant_record_unanswered(key1, 'hi') is not false or public.site_assistant_record_unanswered(key1, repeat('x', 201)) is not false or public.site_assistant_record_unanswered(key1, null) is not false then raise exception 'too short, too long and empty must not be stored'; end if;
   if public.site_assistant_record_unanswered(key_paused, 'what about parking') is not false or public.site_assistant_record_unanswered('FORM-nope', 'what about parking') is not false then raise exception 'unknown or paused forms record nothing'; end if;
-  if exists (select 1 from public.client_assistant_unanswered where question ~ '@|[0-9]{3}|http|www|<') then raise exception 'no personal details may be stored'; end if;
+  if public.site_assistant_record_unanswered(key1, 'do you work in 2026') is not true then raise exception 'ordinary numbers (years) must still be stored'; end if;
+  if exists (select 1 from public.client_assistant_unanswered where question ~ '@|[0-9]{7}|http|www|<|evil|bit\.ly|mailto') then raise exception 'no personal details or links may be stored'; end if;
 
-  -- the list is capped at 100 wordings per client (the most recent are kept)
+  -- the list is capped at 100 wordings per client; when full, the least-asked go first so one-off junk cannot push out questions visitors keep asking
   for i in 1..120 loop perform public.site_assistant_record_unanswered(key1, 'question number ' || lpad(i::text, 3, 'a')); end loop;
   select count(*) into kept from public.client_assistant_unanswered where client_id = c1;
   if kept <> 100 then raise exception 'at most 100 wordings per client must be kept, found %', kept; end if;
-  if not exists (select 1 from public.client_assistant_unanswered where client_id = c1 and question = 'question number 120') then raise exception 'the most recent question must be kept'; end if;
-  if exists (select 1 from public.client_assistant_unanswered where client_id = c1 and question in ('what about parking?', 'question number aa1')) then raise exception 'the oldest wordings must be the ones dropped'; end if;
+  if not exists (select 1 from public.client_assistant_unanswered where client_id = c1 and question = 'what about parking?') then raise exception 'a question asked twice must survive a flood of one-off questions'; end if;
+  if not exists (select 1 from public.client_assistant_unanswered where client_id = c1 and question = 'question number 120') then raise exception 'the most recent one-off question must be kept'; end if;
+  if exists (select 1 from public.client_assistant_unanswered where client_id = c1 and question = 'question number aa1') then raise exception 'the oldest one-off questions must be the ones dropped'; end if;
   if (select count(*) from public.client_assistant_unanswered where client_id = c2) <> 0 then raise exception 'another client must not receive these questions'; end if;
 
   -- the client sees them and can dismiss them; never another client's

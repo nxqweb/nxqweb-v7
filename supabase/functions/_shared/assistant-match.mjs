@@ -16,9 +16,18 @@ const STOPWORDS = new Set([
   "there", "any", "have", "has", "with", "about", "please", "just", "get", "got", "ok", "hi", "hello", "hey", "thanks", "thank", "need", "want", "like", "tell",
 ]);
 
+// Letters and numbers in any language are kept (accents are folded so "credito" and "crédito" match); apostrophes are dropped so "don't" becomes "dont".
 /** @param {unknown} text */
 export function normalizeText(text) {
-  return String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
+  return String(text ?? "").normalize("NFKD").replace(/\p{M}+/gu, "").toLowerCase().replace(/['\u2019`]+/g, "").replace(/[^\p{L}\p{N}]+/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+// "Do you NOT offer weekends" must never get the answer written for "Do you offer weekends". Negation words are not part of the word overlap; instead a question and
+// a saved phrase must agree on whether they are negated, or that phrase does not count.
+const NEGATIONS = new Set(["no", "not", "never", "cannot", "cant", "dont", "doesnt", "didnt", "wont", "wouldnt", "isnt", "arent", "wasnt", "werent", "without", "none", "nothing", "nobody", "neither", "nor"]);
+/** @param {unknown} text */
+export function hasNegation(text) {
+  return normalizeText(text).split(" ").some((word) => NEGATIONS.has(word));
 }
 
 // Very light stemming so "price"/"prices"/"pricing" and "booking"/"book" line up, without pulling in a library. Order matters: plural first, then -ing/-ed, then a
@@ -35,7 +44,7 @@ function stem(input) {
 
 /** @param {unknown} text @returns {string[]} */
 export function tokens(text) {
-  const out = normalizeText(text).split(" ").filter((word) => word.length >= 2 && !STOPWORDS.has(word)).map(stem);
+  const out = normalizeText(text).split(" ").filter((word) => word.length >= 2 && !STOPWORDS.has(word) && !NEGATIONS.has(word)).map(stem);
   return [...new Set(out)];
 }
 
@@ -65,11 +74,13 @@ export function matchQuestion(visitorQuestion, entries) {
   if (live.length === 0) return { matched: false, reason: "no_entries" };
   const asked = tokens(raw);
   if (asked.length === 0) return { matched: false, reason: "no_match" };
+  const askedNegated = hasNegation(raw);
 
   const scored = live.map((entry) => {
     const phrases = [entry.question, ...(Array.isArray(entry.alt_phrasings) ? entry.alt_phrasings : [])];
     let best = 0;
     for (const phrase of phrases) {
+      if (hasNegation(phrase) !== askedNegated) continue; // "not" on one side only: they are not asking the same thing
       const words = tokens(phrase);
       // A single-word question must be covered by the phrase, and a phrase of many unrelated words must not win on one shared word.
       const shared = asked.filter((word) => words.includes(word)).length;
@@ -103,6 +114,7 @@ export function entryProblems(entry) {
   if (tokens(question).length === 0) problems.push("The question needs at least one real word (not just words like \"the\" or \"how\").");
   const all = [question, answer, ...alts.map((alt) => String(alt))].join("\n");
   if (/<[^>]*>/.test(all)) problems.push("Please use plain text only (no HTML tags).");
+  if (alts.some((alt) => typeof alt === "string" && alt.trim() && hasNegation(alt) !== hasNegation(question))) problems.push("The question and its other ways of asking must either all say \"not\" or all not say it, because they would be a different question.");
   if (/(https?:\/\/|www\.)\S+/i.test(answer)) problems.push("Answers cannot contain web links. Tell visitors to use the contact form or give a phone number instead.");
   return problems;
 }

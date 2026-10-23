@@ -1,6 +1,6 @@
 // Manual-testing harness (never part of the production build): mounts the "My assistant" page with an in-memory stand-in for the database functions, no login,
 // no network. The stand-in follows the same rules as draft migration 11 (limits, plain text, no links, off-when-empty). The test drives it through window.assistantSim.
-// ?state=empty|full  starts empty or with sample answers.   ?fail=load|save  makes loading or saving fail.
+// ?state=empty|full  starts empty or with sample answers.   ?fail=load|save|reload  makes loading, saving, or every load after the first fail.   ?slow=save  makes saving take 500 ms.
 import { createRoot } from "react-dom/client";
 import "../../../src/styles/nxq.css";
 import "../../../src/styles/portal-premium.css";
@@ -28,8 +28,15 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const plain = (text: string) => !/[<>]/.test(text);
 const hasLink = (text: string) => /(https?:\/\/|www\.)\S+/i.test(text);
 
+const pause = () => (params.get("slow") === "save" ? new Promise((resolve) => setTimeout(resolve, 500)) : Promise.resolve());
+
 const gateway: SiteAssistantGateway = {
-  async load() { sim.calls.push("load"); if (params.get("fail") === "load") throw new Error("boom"); return clone(state); },
+  async load() {
+    sim.calls.push("load");
+    if (params.get("fail") === "load") throw new Error("boom");
+    if (params.get("fail") === "reload" && sim.calls.filter((call) => call === "load").length > 1) throw new Error("boom");
+    return clone(state);
+  },
   async saveSettings(input) {
     sim.calls.push(`settings:${input.enabled}`);
     if (params.get("fail") === "save") throw new Error("boom");
@@ -39,6 +46,7 @@ const gateway: SiteAssistantGateway = {
   },
   async saveEntry(input) {
     sim.calls.push(`entry:${input.id ?? "new"}`);
+    await pause();
     if (params.get("fail") === "save") throw new Error("boom");
     if (!plain(input.question + input.answer)) throw new Error("Please use plain text only (no HTML tags).");
     if (input.id === null && state.entries.length >= 50) throw new Error("You can have up to 50 answers.");

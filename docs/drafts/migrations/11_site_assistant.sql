@@ -7,7 +7,7 @@
 -- Adds (all deny-by-default: RLS on, no policies, no direct grants; every access goes through the functions):
 --  * client_assistant_settings   one row per client: on/off (default OFF), greeting, fallback text
 --  * client_assistant_entries    up to 50 per client: question, up to 5 other wordings, answer, on/off
---  * client_assistant_unanswered visitor questions nobody answered, counted per wording, max 100 rows per client. Questions that look like they hold personal
+--  * client_assistant_unanswered visitor questions nobody answered, counted per wording, max 100 rows per client (least-asked dropped first). Questions that look like they hold personal
 --                                details (an email address, a long number, a web link) are NOT stored at all. No IP address, no visitor identity.
 --  * client functions (signed-in client, own data only): get_my_assistant, save_my_assistant_settings, save_my_assistant_entry, delete_my_assistant_entry,
 --    dismiss_my_assistant_question
@@ -114,6 +114,7 @@ begin
   if clean_greeting is not null and (length(clean_greeting) > 200 or not public.nxq_assistant_text_ok(clean_greeting)) then raise exception 'The greeting must be plain text, 200 characters or fewer.'; end if;
   if clean_fallback is not null and (length(clean_fallback) > 300 or not public.nxq_assistant_text_ok(clean_fallback)) then raise exception 'The "not sure" message must be plain text, 300 characters or fewer.'; end if;
   if clean_greeting ~* '(https?://|www\.)\S+' or clean_fallback ~* '(https?://|www\.)\S+' then raise exception 'Messages cannot contain web links.'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('assistant-entries:' || client_uuid::text, 0));
   -- Turning it on needs at least one answer, so a visitor never meets an empty assistant.
   if enabled_value and not exists (select 1 from public.client_assistant_entries e where e.client_id = client_uuid and e.enabled) then
     raise exception 'Add at least one answer before turning the assistant on.';
@@ -183,6 +184,7 @@ set search_path = public
 as $$
 declare client_uuid uuid := public.nxq_assistant_client(); removed integer;
 begin
+  perform pg_advisory_xact_lock(hashtextextended('assistant-entries:' || client_uuid::text, 0));
   delete from public.client_assistant_entries where id = entry_id_value and client_id = client_uuid;
   get diagnostics removed = row_count;
   if removed = 0 then raise exception 'Answer not found.'; end if;
@@ -249,16 +251,25 @@ begin
   client_uuid := (looked ->> 'client_id')::uuid;
   if length(cleaned) < 3 or length(cleaned) > 200 then return false; end if;
   if cleaned ~ '[[:cntrl:]]' or cleaned ~ '<[^>]*>' then return false; end if;
-  -- Looks like personal details (email address, a run of digits such as a phone number, or a web link): do not keep it.
-  if cleaned ~ '[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]]+' or cleaned ~ '[0-9][^0-9]{0,2}[0-9][^0-9]{0,2}[0-9][^0-9]{0,2}[0-9][^0-9]{0,2}[0-9][^0-9]{0,2}[0-9][^0-9]{0,2}[0-9]' or cleaned ~ '(https?://|www\.)' then return false; end if;
+  -- Looks like personal details or a link: do not keep it. Deliberately broad (a false "do not keep" only means one question is not listed):
+  --  * any "@" (email-like text, even "jane@example")
+  --  * seven or more digits in total however they are separated (phone numbers written as "555 - 123 - 4567" or "555 / 123 / 4567")
+  --  * link schemes and www (also with odd spacing, "hxxp://"), a double slash, or a bare web address such as evil.com or bit.ly/x
+  -- Names and street addresses cannot be recognised this way; the portal and the Privacy page say "we try not to keep" accordingly.
+  if cleaned ~ '@'
+     or length(regexp_replace(cleaned, '[^[:digit:]]', '', 'g')) >= 7
+     or cleaned ~ '(^|[^a-z])(https?|ftp|mailto|hxxps?|www)[^a-z0-9]'
+     or cleaned ~ '//'
+     or cleaned ~ '[a-z0-9-]+\.(com|net|org|io|co|us|biz|info|me|app|dev|xyz|ly|ru|cn|uk|de|fr|ca|au)([^a-z]|$)' then return false; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('assistant-unanswered:' || client_uuid::text, 0));
   -- clock_timestamp() (not now()) so "most recent" is real even for several questions in one transaction.
   insert into public.client_assistant_unanswered (client_id, question, first_asked_at, last_asked_at) values (client_uuid, cleaned, clock_timestamp(), clock_timestamp())
   on conflict (client_id, question) do update set times_asked = public.client_assistant_unanswered.times_asked + 1, last_asked_at = clock_timestamp();
-  -- Keep only the 100 most recent wordings per client.
+  -- Keep only 100 wordings per client. When full, the ones asked least often go first (then the oldest), so a stream of one-off junk cannot push out the
+  -- questions real visitors keep asking.
   delete from public.client_assistant_unanswered
-   where id in (select id from public.client_assistant_unanswered where client_id = client_uuid order by last_asked_at desc, id offset 100);
+   where id in (select id from public.client_assistant_unanswered where client_id = client_uuid order by times_asked desc, last_asked_at desc, id offset 100);
   return true;
 end;
 $$;
