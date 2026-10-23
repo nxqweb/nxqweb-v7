@@ -28,7 +28,7 @@
 ## C. Things the owner can ask Claude to build (some need an approved migration)
 | # | Item | Needs a migration? |
 |---|---|---|
-| C1 | **Website visitor chatbot.** Not built. Plan: a no-AI Q&A bot first (the client types answers in their portal, visitors get the matching answer, otherwise the contact form), then real AI when A2 exists. Needs a widget in the site template, a client "My assistant" page, a public answering function with spam protection, and usage counting against the tier's AI budget (the database already has per-tier budgets of $5, $10 and $15 and tables for extra purchased usage; no page to buy extra usage exists yet). | yes (knowledge table) |
+| C1 | **Website visitor chatbot.** BUILT AS A DRAFT 2026-10-22 (no AI, `docs/SITE_ASSISTANT_PLAN.md`: matcher, draft migration 11, draft answer function, widget and the portal page, all tested, nothing applied or switched on); promotion needs your approval and one site rebuild per client. Original plan: Plan: a no-AI Q&A bot first (the client types answers in their portal, visitors get the matching answer, otherwise the contact form), then real AI when A2 exists. Needs a widget in the site template, a client "My assistant" page, a public answering function with spam protection, and usage counting against the tier's AI budget (the database already has per-tier budgets of $5, $10 and $15 and tables for extra purchased usage; no page to buy extra usage exists yet). | yes (knowledge table) |
 | C2 | First-month tracker and invoice-due reminder | yes |
 | C3 | Owner screens: all-sites up/down board, pause client, delete client, privacy requests | some |
 | C4 | Fuller data export (site content, leads, files, messages) and automated delete | maybe |

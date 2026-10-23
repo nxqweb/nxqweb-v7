@@ -68,7 +68,7 @@ plant("storing things in the browser is noticed", widget, 'credentials: "omit"',
 
 if (portal) {
   const portalRules = {
-    "the portal page goes through the gateway only (no direct table access) and says plainly what the assistant does": (p) => !/\.from\(/.test(p) && /no AI|without AI|plain answers/i.test(p),
+    "the portal page goes through the gateway only (no direct table access) and says plainly what the assistant does": (p) => !/\.from\(/.test(p) && /not AI/.test(p),
   };
   for (const [name, test] of Object.entries(portalRules)) check(name, test(portal));
 }

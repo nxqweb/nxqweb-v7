@@ -249,3 +249,13 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .scan-pill.ok { border-color: rgba(114, 225, 180, .6); }
 .scan-pill.bad { border-color: rgba(255, 140, 140, .7); }
 @media (max-width: 520px) { .site-photo-row { flex-direction: column; } .site-photo-thumb { width: 100%; height: 160px; } }
+
+/* "My assistant" page (client portal) */
+.assistant-page .assistant-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .8rem; }
+.assistant-page .assistant-list .settings-card { display: grid; gap: .5rem; min-width: 0; overflow-wrap: anywhere; }
+.assistant-page .assistant-list p { margin: 0; }
+.assistant-page .assistant-form, .assistant-page .assistant-try { display: grid; gap: .6rem; margin: 1rem 0; min-width: 0; }
+.assistant-page .assistant-starters { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.assistant-page .assistant-switch { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.assistant-page .assistant-switch input[type="checkbox"] { width: 24px; height: 24px; flex: none; }
+.assistant-page .auth-error ul { margin: 0; padding-left: 1.2rem; }
