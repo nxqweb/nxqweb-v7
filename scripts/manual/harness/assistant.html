@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Assistant widget harness (manual testing only)</title>
+    <style>
+      :root { --bg:#0b0f14; --surface:#10151c; --text:#f3f6fa; --line:rgba(255,255,255,.28); --tint:rgba(255,255,255,.09); --accent:#8fd3ff; --on-accent:#07121c; }
+      :root[data-mode="light"] { --bg:#f5f6fa; --surface:#ffffff; --text:#14181f; --line:rgba(0,0,0,.3); --tint:rgba(0,0,0,.06); --accent:#1d6fb5; --on-accent:#ffffff; }
+      body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
+      main { padding:24px 16px; min-height:120vh; } a { color:var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main><h1>Oak Ridge Tree Care</h1><p>Sample page.</p><section id="contact"><h2>Contact</h2><p>Use the form.</p></section></main>
+    <script>globalThis.__NXQ_ASSISTANT_NO_AUTOSTART = true;</script>
+    <script type="module" src="/scripts/manual/harness/assistant.mjs"></script>
+  </body>
+</html>
