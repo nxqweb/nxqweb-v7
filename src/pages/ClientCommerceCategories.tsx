@@ -29,14 +29,14 @@ export function ClientCommerceCategories() {
     setLoading(true);
     setError("");
     if (!isSupabaseConfigured || !supabase) {
-      setError("Commerce categories are unavailable because Supabase is not configured.");
+      setError("Commerce categories are temporarily unavailable. No category changes were made.");
       setLoading(false);
       return;
     }
     const session = await supabase.auth.getSession();
     if (!session.data.session) { window.location.replace("/portal/login"); return; }
     const result = await supabase.rpc("get_my_commerce_categories");
-    if (result.error) setError(`Categories failed to load: ${result.error.message}`);
+    if (result.error) setError("Categories could not be loaded right now. Please try again shortly.");
     else setCategories((result.data as Category[]) || []);
     setLoading(false);
   }
@@ -55,14 +55,15 @@ export function ClientCommerceCategories() {
       },
     });
     setSaving(false);
-    if (result.error) { setError(`Category could not be saved: ${result.error.message}`); return; }
+    if (result.error) { setError("Category could not be saved. Your previous category settings were left unchanged."); return; }
     setMessage("Category saved."); setDraft(emptyDraft); await loadCategories();
   }
 
   async function deleteCategory(category: Category) {
     if (!supabase || !window.confirm(`Delete ${category.name}?`)) return;
+    setError(""); setMessage("");
     const result = await supabase.rpc("delete_my_commerce_category", { category_uuid: category.id });
-    if (result.error) setError(`Category could not be deleted: ${result.error.message}`);
+    if (result.error) setError("Category could not be deleted. No category changes were made.");
     else { setMessage("Category deleted."); await loadCategories(); }
   }
 

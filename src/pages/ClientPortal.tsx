@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { familySlugFromMetadata, productFlowFor } from "../lib/productFlow";
 import {
+  Bell,
   CheckCircle2,
   ImagePlus,
   LogOut,
@@ -10,6 +12,20 @@ import {
 } from "lucide-react";
 import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { signupPrefillForSetup } from "../lib/signupPrefill";
+import {
+  briefOptionLines, briefOptionsFromReport, clearDraft, colourModeOptions, defaultBriefOptions, hasSignupAnswers, loadDraft, paymentConfirmed,
+  REPORT_SOFT_LIMIT, safeReportText, saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
+} from "../lib/websiteBrief";
+import { OptionalSection } from "../components/OptionalSection";
+import { ClientSitePhotos } from "../components/ClientSitePhotos";
+import { sitePhotosGateway } from "../lib/sitePhotosConfig";
+import { createPhotoUploader } from "../lib/sitePhotoUpload";
+import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
+import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
+import { AssistantChat } from "../components/AssistantChat";
+import { HelpTerm } from "../components/HelpTerm";
+import { clearPendingReferral } from "../lib/referralCode";
 
 type ClientRow = {
   id: string;
@@ -37,6 +53,13 @@ type ProjectRow = {
   website_status: string;
 };
 
+type ClientNotificationRow = {
+  id: string;
+  subject: string | null;
+  body: string;
+  priority: string;
+  created_at: string;
+};
 
 type UploadedFileRow = {
   id: string;
@@ -46,19 +69,15 @@ type UploadedFileRow = {
   file_size: number | null;
   status: string;
   uploaded_at: string;
-  expires_at: string;
+  expires_at: string | null;
 };
 
 type ClientDomainRow = {
   id: string;
-  client_id: string;
   domain_name: string;
-  domain_type: string;
   status: string;
   dns_provider: string | null;
   registrar_name: string | null;
-  ownership_confirmed: boolean;
-  client_notes: string | null;
   dns_instructions: string | null;
   requested_at: string;
 };
@@ -93,7 +112,7 @@ const packageOptions: Record<
     serviceRules: [
       "Best for simple local businesses and solo owners",
       "AI may help organize setup details and draft basic website copy",
-      "No click tracking, behavior reporting, advanced SEO campaign, or monthly optimization report included",
+      "No click tracking, behavior reporting, or advanced SEO campaign included",
       "Owner approval is required before launch",
     ],
   },
@@ -107,12 +126,12 @@ const packageOptions: Record<
       "Everything in Starter",
       "Up to 5 core pages",
       "Service-area SEO sections",
-      "Monthly website/content improvements",
+      "Automatic monthly report once your site is live: health, visits, inquiries and plain suggestions",
       "Review and testimonial sections",
       "AI-assisted SEO/content suggestions",
     ],
     serviceRules: [
-      "Best for contractors, tree services, cleaning companies, and local service teams",
+      "Best for contractors, home-service companies, clinics, restaurants, and other local service teams",
       "AI may suggest SEO sections, service-area copy, and monthly content improvements",
       "Behavior insights and click/scroll reporting are not included unless upgraded",
       "Owner approval is required before major changes and launch",
@@ -128,7 +147,7 @@ const packageOptions: Record<
       "Everything in Growth",
       "Click and scroll insights",
       "Page interaction review",
-      "Monthly AI website review",
+      "Automatic monthly report once your site is live, with suggestions",
       "Layout improvement suggestions",
       "Conversion-focused optimization notes",
     ],
@@ -166,7 +185,6 @@ function getLatestMoreInfoRequest(notes: string | null | undefined) {
   return requestedInfoLine?.replace("Requested info:", "").trim() || "";
 }
 
-
 type TargetedMoreInfoRequest = {
   fieldKey: string;
   fieldLabel: string;
@@ -197,12 +215,9 @@ function getLatestTargetedMoreInfoRequest(notes: string | null | undefined): Tar
 
   if (!requestedInfo) return null;
 
-  return {
-    fieldKey,
-    fieldLabel,
-    requestedInfo,
-  };
+  return { fieldKey, fieldLabel, requestedInfo };
 }
+
 function parseClientSetupReport(notes: string | null | undefined) {
   if (!notes?.includes("NXQ WEB WEBSITE SETUP REPORT")) {
     return new Map<string, string>();
@@ -216,19 +231,13 @@ function parseClientSetupReport(notes: string | null | undefined) {
 
   function saveActiveField() {
     if (!activeLabel) return;
-
-    fields.set(
-      activeLabel,
-      activeValue.join("\n").trim().replace(/^Not provided$/i, "")
-    );
+    fields.set(activeLabel, activeValue.join("\n").trim().replace(/^Not provided$/i, ""));
   }
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
 
-    if (!line || line === "NXQ WEB WEBSITE SETUP REPORT") {
-      continue;
-    }
+    if (!line || line === "NXQ WEB WEBSITE SETUP REPORT") continue;
 
     if (line.endsWith(":")) {
       saveActiveField();
@@ -238,7 +247,6 @@ function parseClientSetupReport(notes: string | null | undefined) {
     }
 
     const inlineMatch = line.match(/^([^:]+):\s*(.*)$/);
-
     if (inlineMatch) {
       saveActiveField();
       activeLabel = inlineMatch[1].trim();
@@ -246,13 +254,10 @@ function parseClientSetupReport(notes: string | null | undefined) {
       continue;
     }
 
-    if (activeLabel) {
-      activeValue.push(line);
-    }
+    if (activeLabel) activeValue.push(line);
   }
 
   saveActiveField();
-
   return fields;
 }
 
@@ -274,18 +279,25 @@ export function ClientPortal() {
     window.localStorage.setItem("nxq-theme", nextTheme);
     setNxqTheme(nextTheme);
   }
+
   const [client, setClient] = useState<ClientRow | null>(null);
   const [project, setProject] = useState<ProjectRow | null>(null);
+  const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
+  const [notifications, setNotifications] = useState<ClientNotificationRow[]>([]);
+  const [messageHasMore, setMessageHasMore] = useState(false);
+  const [messagesVerified, setMessagesVerified] = useState(false);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileRow[]>([]);
+  const [filesVerified, setFilesVerified] = useState(false);
   const [clientDomains, setClientDomains] = useState<ClientDomainRow[]>([]);
+  const [domainsVerified, setDomainsVerified] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [domainName, setDomainName] = useState("");
   const [domainRegistrar, setDomainRegistrar] = useState("");
   const [domainDnsProvider, setDomainDnsProvider] = useState("");
   const [domainNotes, setDomainNotes] = useState("");
   const [domainOwnershipConfirmed, setDomainOwnershipConfirmed] = useState(false);
-  const [messageText, setMessageText] = useState("");
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
   const [companyScale, setCompanyScale] = useState("Local business");
   const [locationType, setLocationType] = useState("Single location");
@@ -310,23 +322,51 @@ export function ClientPortal() {
   const [escalationRules, setEscalationRules] = useState("");
   const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [typedSignature, setTypedSignature] = useState("");
+  const [colourMode, setColourMode] = useState<ColourMode>(defaultBriefOptions.colourMode);
+  const [seoPreference, setSeoPreference] = useState(defaultBriefOptions.seo);
+  const [smoothScroll, setSmoothScroll] = useState(defaultBriefOptions.smoothScroll);
+  const [signupAnswers, setSignupAnswers] = useState<SignupAnswers>({ bestCustomers: "", mainAction: "", proof: "", goal: "", firstPriority: "" });
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [flowFamily, setFlowFamily] = useState("");
+  const draftReadyFor = useRef("");
+  // A draft is written only after the client typed or chose something (otherwise the signup prefill itself would become a "draft" and the Request card would never show again).
+  const draftDirty = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const [isSubmittingDomain, setIsSubmittingDomain] = useState(false);
   const [isSubmittingSetup, setIsSubmittingSetup] = useState(false);
   const [notice, setNotice] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const setupComplete = client ? completedSetupStatuses.includes(client.status) : false;
-  const projectStage = project?.website_status || client?.status || "loading";
+  const signedSetupSubmitted = client ? parseClientSetupReport(client.notes).size > 0 : false;
+  const setupComplete = client
+    ? completedSetupStatuses.includes(client.status) || signedSetupSubmitted
+    : false;
+  const rawProjectStage = project?.website_status || client?.status || "loading";
+  const projectStage = journey?.stage_key || rawProjectStage;
+  const projectStageLabel = journey?.stage_title || formatStatus(rawProjectStage);
 
   function formatStatus(status: string) {
     return status.replaceAll("_", " ");
   }
 
+  function resetDependentPortalData() {
+    setProject(null);
+    setJourney(null);
+    setMessages([]);
+    setMessageHasMore(false);
+    setMessagesVerified(false);
+    setNotifications([]);
+    setUploadedFiles([]);
+    setFilesVerified(false);
+    setClientDomains([]);
+    setDomainsVerified(false);
+  }
+
   async function handleLogout() {
     if (!supabase) return;
+    clearPendingReferral();
 
     await Promise.race([
       supabase.auth.signOut(),
@@ -336,14 +376,19 @@ export function ClientPortal() {
     window.location.replace("/portal/login");
   }
 
-  async function loadClientPortalData() {
+  // keepNotice: the caller just showed a success message ("submitted") that the reload must not erase. keepForms: a background refresh (for example the chat history)
+  // must not replace what the client is typing in the setup form or reset their package choice and agreement tick.
+  async function loadClientPortalData(options: { keepNotice?: boolean; keepForms?: boolean } = {}) {
     setIsLoading(true);
-    setNotice("");
+    if (!options.keepNotice) setNotice("");
     setErrorMessage("");
+    setMessagesVerified(false);
+    setFilesVerified(false);
+    setDomainsVerified(false);
 
     if (!isSupabaseConfigured || !supabase) {
       setIsLoading(false);
-      setErrorMessage("Supabase is not configured yet. Check .env.local.");
+      setErrorMessage("The client portal is temporarily unavailable. Please try again later.");
       return;
     }
 
@@ -352,12 +397,11 @@ export function ClientPortal() {
       const session = sessionResult.data.session;
 
       if (!session) {
-        window.location.href = "/portal/login";
+        window.location.replace("/portal/login");
         return;
       }
 
       const userId = session.user.id;
-
       const clientResult = await supabase
         .from("clients")
         .select("id, business_name, status, billing_status, billing_provider, monthly_price, notes")
@@ -365,12 +409,9 @@ export function ClientPortal() {
         .maybeSingle();
 
       if (clientResult.error) {
-        setErrorMessage(`Client load failed: ${clientResult.error.message}`);
+        setErrorMessage("Your client profile could not be loaded right now. No account or project changes were made.");
         setClient(null);
-        setProject(null);
-        setMessages([]);
-        setUploadedFiles([]);
-        setUploadedFiles([]);
+        resetDependentPortalData();
         return;
       }
 
@@ -379,10 +420,7 @@ export function ClientPortal() {
           "No client profile is linked to this login yet. Try signing out and creating a client account again."
         );
         setClient(null);
-        setProject(null);
-        setMessages([]);
-        setUploadedFiles([]);
-        setUploadedFiles([]);
+        resetDependentPortalData();
         return;
       }
 
@@ -390,23 +428,20 @@ export function ClientPortal() {
       setClient(loadedClient);
 
       const matchingPackage =
-        Object.entries(packageOptions).find(
-          ([, option]) => option.price === Number(loadedClient.monthly_price)
-        )?.[0] || "starter";
-
-      setSelectedPackage(matchingPackage as PackageTier);
+        Object.entries(packageOptions).find(([, option]) => option.price === Number(loadedClient.monthly_price))?.[0] ||
+        "starter";
+      if (!options.keepForms) setSelectedPackage(matchingPackage as PackageTier);
 
       const setupFields = parseClientSetupReport(loadedClient.notes);
-
-      if (setupFields.size > 0) {
+      if (setupFields.size > 0 && options.keepForms) {
+        // leave every form exactly as the client has it
+      } else if (setupFields.size > 0) {
         const savedPackage = getSetupReportValue(setupFields, "Selected package");
         const savedPackageTier = Object.entries(packageOptions).find(([, option]) =>
           savedPackage.toLowerCase().includes(option.label.toLowerCase())
         )?.[0];
 
-        if (savedPackageTier) {
-          setSelectedPackage(savedPackageTier as PackageTier);
-        }
+        if (savedPackageTier) setSelectedPackage(savedPackageTier as PackageTier);
 
         setCompanyScale(getSetupReportValue(setupFields, "Company scale") || "Local business");
         setLocationType(getSetupReportValue(setupFields, "Location setup") || "Single location");
@@ -430,8 +465,53 @@ export function ClientPortal() {
         setAiNeverPromise(getSetupReportValue(setupFields, "Assistant should never promise"));
         setEscalationRules(getSetupReportValue(setupFields, "Escalation rules"));
         setTypedSignature(getSetupReportValue(setupFields, "Typed signature"));
+        const savedOptions = briefOptionsFromReport((label) => getSetupReportValue(setupFields, label));
+        setColourMode(savedOptions.colourMode);
+        setSeoPreference(savedOptions.seo);
+        setSmoothScroll(savedOptions.smoothScroll);
         setAgreementAccepted(false);
+      } else {
+        // First visit: start from what the client already told us at signup instead of an empty sheet. Never overwrites typing.
+        const prefill = signupPrefillForSetup(session.user.user_metadata, session.user.email);
+        setServices((current) => current || prefill.services);
+        setLocations((current) => current || prefill.locations);
+        setBusinessEmail((current) => current || prefill.businessEmail);
+        setIndustry((current) => current || prefill.industry);
+        setBusinessPhone((current) => current || prefill.businessPhone);
       }
+      setSignupAnswers(signupAnswersFromMetadata(session.user.user_metadata));
+      setFlowFamily(familySlugFromMetadata(session.user.user_metadata));
+      if (setupFields.size === 0 && draftReadyFor.current !== loadedClient.id) {
+        // A brief that was started but not submitted comes back exactly as the client left it (typing always wins over signup answers).
+        const draft = loadDraft(loadedClient.id);
+        const text = (key: keyof BriefDraft) => (typeof draft[key] === "string" ? (draft[key] as string) : "");
+        if (text("companyScale")) setCompanyScale(text("companyScale"));
+        if (text("locationType")) setLocationType(text("locationType"));
+        if (text("locations")) setLocations(text("locations"));
+        if (text("businessPhone")) setBusinessPhone(text("businessPhone"));
+        if (text("businessEmail")) setBusinessEmail(text("businessEmail"));
+        if (text("businessAddress")) setBusinessAddress(text("businessAddress"));
+        if (text("businessHours")) setBusinessHours(text("businessHours"));
+        if (text("emergencyAvailability")) setEmergencyAvailability(text("emergencyAvailability"));
+        if (text("industry")) setIndustry(text("industry"));
+        if (text("services")) setServices(text("services"));
+        if (text("pagesNeeded")) setPagesNeeded(text("pagesNeeded"));
+        if (text("styleDirection")) setStyleDirection(text("styleDirection"));
+        if (text("brandNotes")) setBrandNotes(text("brandNotes"));
+        if (text("competitors")) setCompetitors(text("competitors"));
+        if (text("preferredContactMethod")) setPreferredContactMethod(text("preferredContactMethod"));
+        if (text("urgentLeadRules")) setUrgentLeadRules(text("urgentLeadRules"));
+        if (text("rejectedJobs")) setRejectedJobs(text("rejectedJobs"));
+        if (text("areasNotServed")) setAreasNotServed(text("areasNotServed"));
+        if (text("aiCanAnswer")) setAiCanAnswer(text("aiCanAnswer"));
+        if (text("aiNeverPromise")) setAiNeverPromise(text("aiNeverPromise"));
+        if (text("escalationRules")) setEscalationRules(text("escalationRules"));
+        if (draft.colourMode) setColourMode(draft.colourMode);
+        if (typeof draft.seo === "boolean") setSeoPreference(draft.seo);
+        if (typeof draft.smoothScroll === "boolean") setSmoothScroll(draft.smoothScroll);
+        if (Object.keys(draft).length > 0) { draftDirty.current = true; setRequestOpen(true); }
+      }
+      draftReadyFor.current = loadedClient.id;
 
       const projectResult = await supabase
         .from("projects")
@@ -442,139 +522,159 @@ export function ClientPortal() {
         .maybeSingle();
 
       if (projectResult.error) {
-        setErrorMessage(`Project stage load failed: ${projectResult.error.message}`);
+        setErrorMessage("Some project status information could not be verified. No project changes were made.");
         setProject(null);
       } else {
         setProject((projectResult.data as ProjectRow) || null);
       }
 
-      const messageResult = await supabase
-        .from("client_messages")
-        .select(
-          "id, client_id, sender_type, message, needs_owner_review, ai_handled, created_at"
-        )
-        .eq("client_id", loadedClient.id)
-        .order("created_at", { ascending: false });
-
-      if (messageResult.error) {
-        setErrorMessage(`Message load failed: ${messageResult.error.message}`);
-        setMessages([]);
+      const journeyResult = await supabase.rpc("current_client_launch_journey");
+      if (journeyResult.error) {
+        setErrorMessage("Some project journey information could not be verified. No project changes were made.");
+        setJourney(null);
       } else {
-        setMessages((messageResult.data || []) as ClientMessageRow[]);
+        setJourney(parseLaunchJourney(journeyResult.data));
       }
 
-      const fileListResult = await supabase
-        .from("client_files")
-        .select("id, storage_path, file_name, file_type, file_size, status, uploaded_at, expires_at")
+      const messageResult = await supabase.rpc("current_client_message_page", {
+        target_limit: 50,
+        target_cursor_created_at: null,
+        target_cursor_id: null,
+      });
+
+      const messageRows = messageResult.data || [];
+      if (messageResult.error || !Array.isArray(messageRows)) {
+        setErrorMessage("Message history could not be loaded right now. No messages were changed.");
+        setMessages([]);
+        setMessageHasMore(false);
+        setMessagesVerified(false);
+      } else {
+        const messagePage = messageRows as ClientMessageRow[];
+        setMessages(messagePage);
+        setMessageHasMore(messagePage.length === 50);
+        setMessagesVerified(true);
+      }
+
+      // recipient_kind is filtered explicitly here, not left to RLS alone:
+      // client_read_own_notifications only checks client_id ownership, so an
+      // owner-facing row about this same client (e.g. a billing freeze
+      // review, worded for NXQX, not the client) would otherwise also match.
+      const notificationResult = await supabase
+        .from("notification_deliveries")
+        .select("id,subject,body,priority,created_at")
         .eq("client_id", loadedClient.id)
-        .is("deleted_at", null)
-        .order("uploaded_at", { ascending: false })
-        .limit(50);
+        .eq("recipient_kind", "client")
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (!notificationResult.error) {
+        setNotifications((notificationResult.data || []) as ClientNotificationRow[]);
+      }
+
+      const fileListResult = await supabase.rpc("current_client_file_page", {
+        target_limit: 50,
+        target_cursor_uploaded_at: null,
+        target_cursor_id: null,
+      });
 
       if (fileListResult.error) {
-        setErrorMessage(`File list load failed: ${fileListResult.error.message}`);
+        setErrorMessage("Your file list could not be loaded right now. No files were changed.");
         setUploadedFiles([]);
+        setFilesVerified(false);
       } else {
         setUploadedFiles((fileListResult.data || []) as UploadedFileRow[]);
+        setFilesVerified(true);
       }
 
-      const domainResult = await supabase
-        .from("client_domains")
-        .select(
-          "id, client_id, domain_name, domain_type, status, dns_provider, registrar_name, ownership_confirmed, client_notes, dns_instructions, requested_at"
-        )
-        .eq("client_id", loadedClient.id)
-        .order("requested_at", { ascending: false });
+      const domainResult = await supabase.rpc("current_client_domain_page", {
+        target_limit: 50,
+        target_cursor_requested_at: null,
+        target_cursor_id: null,
+      });
 
       if (domainResult.error) {
-        setErrorMessage(`Domain list load failed: ${domainResult.error.message}`);
+        setErrorMessage("Domain status could not be loaded right now. No domain changes were made.");
         setClientDomains([]);
+        setDomainsVerified(false);
       } else {
         setClientDomains((domainResult.data || []) as ClientDomainRow[]);
+        setDomainsVerified(true);
       }
-
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown client portal error";
-      setErrorMessage(`Client portal failed: ${message}`);
+    } catch {
+      setErrorMessage("The client portal could not be loaded right now. No account or project changes were made.");
+      resetDependentPortalData();
     } finally {
       setIsLoading(false);
     }
   }
+
+  const planActive = paymentConfirmed(client?.billing_status);
+  const flow = productFlowFor(flowFamily);
+
+  useEffect(() => {
+    if (!client || setupComplete || draftReadyFor.current !== client.id || !draftDirty.current) return;
+    const timer = window.setTimeout(() => {
+      saveDraft(client.id, {
+        companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
+        pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer,
+        aiNeverPromise, escalationRules, colourMode, seo: seoPreference, smoothScroll,
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [client, setupComplete, companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
+    pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise,
+    escalationRules, colourMode, seoPreference, smoothScroll]);
+
+  const leadAndAssistantHaveContent = [preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise, escalationRules].some((value) => value.trim());
 
   async function submitWebsiteSetup() {
     setNotice("");
     setErrorMessage("");
 
     if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
+      setErrorMessage("Website setup is temporarily unavailable. Please try again later.");
       return;
     }
 
     if (!client) {
-      setErrorMessage("No client loaded yet.");
+      setErrorMessage("Your client profile must be loaded before website setup can be submitted.");
       return;
     }
 
     const selectedPlan = packageOptions[selectedPackage];
     const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
     const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
-    const cleanIndustry = industry.trim();
-    const cleanServices = services.trim();
-    const cleanPagesNeeded = pagesNeeded.trim();
-    const cleanStyleDirection = styleDirection.trim();
-    const cleanBrandNotes = brandNotes.trim();
-    const cleanLocations = locations.trim();
-    const cleanBusinessPhone = businessPhone.trim();
-    const cleanBusinessEmail = businessEmail.trim();
-    const cleanBusinessAddress = businessAddress.trim();
-    const cleanBusinessHours = businessHours.trim();
-    const cleanEmergencyAvailability = emergencyAvailability.trim();
-    const cleanCompetitors = competitors.trim();
-    const cleanPreferredContactMethod = preferredContactMethod.trim();
-    const cleanUrgentLeadRules = urgentLeadRules.trim();
-    const cleanRejectedJobs = rejectedJobs.trim();
-    const cleanAreasNotServed = areasNotServed.trim();
-    const cleanAiCanAnswer = aiCanAnswer.trim();
-    const cleanAiNeverPromise = aiNeverPromise.trim();
-    const cleanEscalationRules = escalationRules.trim();
-    const cleanSignature = typedSignature.trim();
+    const cleanIndustry = safeReportText(industry.trim());
+    const cleanServices = safeReportText(services.trim());
+    const cleanPagesNeeded = safeReportText(pagesNeeded.trim());
+    const cleanStyleDirection = safeReportText(styleDirection.trim());
+    const cleanBrandNotes = safeReportText(brandNotes.trim());
+    const cleanLocations = safeReportText(locations.trim());
+    const cleanBusinessPhone = safeReportText(businessPhone.trim());
+    const cleanBusinessEmail = safeReportText(businessEmail.trim());
+    const cleanBusinessAddress = safeReportText(businessAddress.trim());
+    const cleanBusinessHours = safeReportText(businessHours.trim());
+    const cleanEmergencyAvailability = safeReportText(emergencyAvailability.trim());
+    const cleanCompetitors = safeReportText(competitors.trim());
+    const cleanPreferredContactMethod = safeReportText(preferredContactMethod.trim());
+    const cleanUrgentLeadRules = safeReportText(urgentLeadRules.trim());
+    const cleanRejectedJobs = safeReportText(rejectedJobs.trim());
+    const cleanAreasNotServed = safeReportText(areasNotServed.trim());
+    const cleanAiCanAnswer = safeReportText(aiCanAnswer.trim());
+    const cleanAiNeverPromise = safeReportText(aiNeverPromise.trim());
+    const cleanEscalationRules = safeReportText(escalationRules.trim());
+    const cleanSignature = safeReportText(typedSignature.trim());
     const previousMoreInfoRequest = getLatestMoreInfoRequest(client.notes);
     const isMoreInfoResubmission = Boolean(previousMoreInfoRequest);
 
-    if (!cleanIndustry) {
-      setErrorMessage("Enter the client's industry before submitting.");
-      return;
-    }
-
-    if (!cleanServices) {
-      setErrorMessage("Enter the services/products this website needs to explain.");
-      return;
-    }
-
-    if (!cleanPagesNeeded) {
-      setErrorMessage("Enter the pages or sections the website needs.");
-      return;
-    }
-
-    if (!cleanStyleDirection) {
-      setErrorMessage("Enter the style direction for the website.");
-      return;
-    }
-
-    if (!cleanBrandNotes) {
-      setErrorMessage("Enter what makes this business different.");
-      return;
-    }
-
-    if (!agreementAccepted) {
-      setErrorMessage("You must accept the website agreement acknowledgment before submitting.");
-      return;
-    }
-
-    if (!cleanSignature) {
-      setErrorMessage("Type your full name as your signature before submitting.");
-      return;
-    }
+    if (!paymentConfirmed(client.billing_status)) return setErrorMessage("Your plan has to be active before you can request your website. NXQX confirms payment by hand for now: message support below and we will switch it on. Everything you typed here is kept.");
+    if (!cleanIndustry) return setErrorMessage("Enter the client's industry before submitting.");
+    if (cleanIndustry.length < 2 || cleanIndustry.length > 120) return setErrorMessage("Industry must be between 2 and 120 characters, for example plumbing or tree service.");
+    if (!cleanServices) return setErrorMessage("Enter the services/products this website needs to explain.");
+    if (!cleanPagesNeeded) return setErrorMessage("Enter the pages or sections the website needs.");
+    if (!cleanStyleDirection) return setErrorMessage("Enter the style direction for the website.");
+    if (!cleanBrandNotes) return setErrorMessage("Enter what makes this business different.");
+    if (!agreementAccepted) return setErrorMessage("You must accept the website agreement acknowledgment before submitting.");
+    if (!cleanSignature) return setErrorMessage("Type your full name as your signature before submitting.");
 
     setIsSubmittingSetup(true);
 
@@ -617,6 +717,9 @@ export function ClientPortal() {
         `Competitors / examples:`,
         cleanCompetitors || "Not provided",
         ``,
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...signupAnswerLines(signupAnswers),
+        ``,
         `Lead handling rules:`,
         `Preferred contact method: ${cleanPreferredContactMethod || "Not provided"}`,
         `Urgent lead rules: ${cleanUrgentLeadRules || "Not provided"}`,
@@ -635,75 +738,39 @@ export function ClientPortal() {
         `Payment note: Client understands payment/subscription activation will be required before final website access/live service in a later billing step.`,
       ].join("\n");
 
-      const updateResult = await supabase
-        .from("clients")
-        .update({
-          monthly_price: selectedPlan.price,
-          business_type: cleanIndustry,
-          service_area: cleanLocations || locationType,
-          status: "intake_received",
-          notes: setupReport,
-        })
-        .eq("id", client.id);
-
-      if (updateResult.error) {
-        setErrorMessage(`Website setup update failed: ${updateResult.error.message}`);
+      if (setupReport.length > REPORT_SOFT_LIMIT) {
+        setErrorMessage("Your answers are too long to send in one piece. Please shorten the longest boxes (for example Services, Pages and Style), then send again. Nothing you typed was lost.");
         return;
       }
 
-      const approvalResult = await supabase.from("owner_approval_requests").insert({
-        client_id: client.id,
-        project_id: null,
-        request_type: "website_setup_review",
-        title: isMoreInfoResubmission ? "Website setup resubmitted" : "Website setup submitted",
-        summary: isMoreInfoResubmission
-          ? `${client.business_name} resubmitted an updated website setup sheet after NXQ requested more information. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`
-          : `${client.business_name} submitted a website setup sheet. Package: ${selectedPlan.label} ($${selectedPlan.price}/mo). Scale: ${companyScale}. Location setup: ${locationType}. Industry: ${cleanIndustry}. Signature: ${cleanSignature}.`,
-        recommended_action: setupReport,
-        risk_level: "low",
-        status: "pending",
+      const setupResult = await supabase.rpc("submit_current_client_website_setup", {
+        target_setup_report: setupReport,
+        target_tier_key: selectedPackage,
+        target_business_type: cleanIndustry,
+        target_service_area: (cleanLocations || locationType).replace(/\s+/g, " ").slice(0, 500),
+        target_submission_kind: isMoreInfoResubmission ? "resubmission" : "initial",
+        target_requested_field_key: null,
+        target_requested_field_label: null,
+        target_requested_info: previousMoreInfoRequest || null,
+        target_client_answer: null,
       });
 
-      if (approvalResult.error) {
-        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
+      if (setupResult.error) {
+        setErrorMessage("Website setup could not be submitted. Nothing was approved, published, or activated.");
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "website_setup_submitted",
-        details: {
-          package: selectedPlan.label,
-          monthly_price: selectedPlan.price,
-          company_scale: companyScale,
-          location_type: locationType,
-          business_phone: cleanBusinessPhone || null,
-          business_email: cleanBusinessEmail || null,
-          business_address: cleanBusinessAddress || null,
-          business_hours: cleanBusinessHours || null,
-          emergency_availability: cleanEmergencyAvailability || null,
-          industry: cleanIndustry,
-          preferred_contact_method: cleanPreferredContactMethod || null,
-          urgent_lead_rules: cleanUrgentLeadRules || null,
-          rejected_jobs: cleanRejectedJobs || null,
-          areas_not_served: cleanAreasNotServed || null,
-          ai_can_answer: cleanAiCanAnswer || null,
-          ai_never_promise: cleanAiNeverPromise || null,
-          escalation_rules: cleanEscalationRules || null,
-          agreement_accepted: agreementAccepted,
-          typed_signature: cleanSignature,
-          answered_more_info_request: previousMoreInfoRequest || null,
-        },
-      });
-
-      setNotice(isMoreInfoResubmission ? "Updated website setup submitted. We will review your changes." : "Website setup submitted. We will review your project details.");
+      setNotice(
+        isMoreInfoResubmission
+          ? "Updated website setup submitted. We will review your changes."
+          : "Website setup submitted. We will review your project details."
+      );
       setAgreementAccepted(false);
       setTypedSignature("");
-      await loadClientPortalData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown setup error";
-      setErrorMessage(`Website setup failed: ${message}`);
+      clearDraft(client.id);
+      await loadClientPortalData({ keepNotice: true });
+    } catch {
+      setErrorMessage("Website setup could not be submitted. Nothing was approved, published, or activated.");
     } finally {
       setIsSubmittingSetup(false);
     }
@@ -711,98 +778,44 @@ export function ClientPortal() {
 
   function getTargetedFieldValue(fieldKey: string) {
     switch (fieldKey) {
-      case "preferred_contact_method":
-        return preferredContactMethod.trim();
-      case "emergency_availability":
-        return emergencyAvailability.trim();
-      case "business_hours":
-        return businessHours.trim();
-      case "locations":
-        return locations.trim();
-      case "services":
-        return services.trim();
-      case "pages_needed":
-        return pagesNeeded.trim();
-      case "style_direction":
-        return styleDirection.trim();
+      case "preferred_contact_method": return preferredContactMethod.trim();
+      case "emergency_availability": return emergencyAvailability.trim();
+      case "business_hours": return businessHours.trim();
+      case "locations": return locations.trim();
+      case "services": return services.trim();
+      case "pages_needed": return pagesNeeded.trim();
+      case "style_direction": return styleDirection.trim();
       case "assistant_rules":
         return [
           `Assistant can answer: ${aiCanAnswer.trim() || "Not provided"}`,
           `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
           `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
         ].join("\n");
-      default:
-        return brandNotes.trim();
+      default: return brandNotes.trim();
     }
   }
 
   function getTargetedFieldControl(request: TargetedMoreInfoRequest) {
     switch (request.fieldKey) {
       case "preferred_contact_method":
-        return {
-          label: "Preferred contact method",
-          value: preferredContactMethod,
-          onChange: setPreferredContactMethod,
-          placeholder: "Example: Phone calls for urgent jobs, text for quick questions, email for non-urgent follow-up.",
-        };
+        return { label: "Preferred contact method", value: preferredContactMethod, onChange: setPreferredContactMethod, placeholder: "Example: Phone calls for urgent jobs, text for quick questions, email for non-urgent follow-up." };
       case "emergency_availability":
-        return {
-          label: "Emergency / after-hours availability",
-          value: emergencyAvailability,
-          onChange: setEmergencyAvailability,
-          placeholder: "Example: 24/7 storm cleanup available. Sunday emergency calls accepted for dangerous trees.",
-        };
+        return { label: "Emergency / after-hours availability", value: emergencyAvailability, onChange: setEmergencyAvailability, placeholder: "Example: 24/7 emergency calls available, or no emergency service." };
       case "business_hours":
-        return {
-          label: "Business hours",
-          value: businessHours,
-          onChange: setBusinessHours,
-          placeholder: "Example: Monday-Friday 8am-5pm, Saturday by appointment, Sunday closed except emergencies.",
-        };
+        return { label: "Business hours", value: businessHours, onChange: setBusinessHours, placeholder: "Example: Monday-Friday 8am-5pm, Saturday by appointment, Sunday closed except emergencies." };
       case "locations":
-        return {
-          label: "Locations or service areas",
-          value: locations,
-          onChange: setLocations,
-          placeholder: "Example: Oroville, Chico, Paradise, Gridley, Butte County, and nearby areas.",
-        };
+        return { label: "Locations or service areas", value: locations, onChange: setLocations, placeholder: "Example: Sacramento CA, Roseville CA, Folsom CA, and nearby areas." };
       case "services":
-        return {
-          label: "Services / products",
-          value: services,
-          onChange: setServices,
-          placeholder: "Example: Tree removal, trimming, storm cleanup, land clearing, stump grinding.",
-        };
+        return { label: "Services / products", value: services, onChange: setServices, placeholder: "Example: List each service, product, or offer the website should explain." };
       case "pages_needed":
-        return {
-          label: "Pages or sections needed",
-          value: pagesNeeded,
-          onChange: setPagesNeeded,
-          placeholder: "Example: Home, About, Services, Gallery, Reviews, Service Areas, Contact, Request a Quote.",
-        };
+        return { label: "Pages or sections needed", value: pagesNeeded, onChange: setPagesNeeded, placeholder: "Example: Home, About, Services, Gallery, Reviews, Service Areas, Contact, Request a Quote." };
       case "style_direction":
-        return {
-          label: "Website style direction",
-          value: styleDirection,
-          onChange: setStyleDirection,
-          placeholder: "Example: Premium, dark, modern, trustworthy, local, bold, clean, professional.",
-        };
+        return { label: "Website style direction", value: styleDirection, onChange: setStyleDirection, placeholder: "Example: Premium, dark, modern, trustworthy, local, bold, clean, professional." };
       case "assistant_rules":
-        return {
-          label: "Website assistant rules",
-          value: [aiCanAnswer, aiNeverPromise, escalationRules].filter(Boolean).join("\n\n"),
-          onChange: (value: string) => {
-            setAiCanAnswer(value);
-          },
-          placeholder: "Tell us what the website assistant can answer, should never promise, and should escalate.",
-        };
+        // one box shows all three joined: typing replaces them as ONE text (otherwise every keystroke copied the other two back into the first)
+        return { label: "Website assistant rules", value: [aiCanAnswer, aiNeverPromise, escalationRules].filter(Boolean).join("\n\n"), onChange: (value: string) => { setAiCanAnswer(value); setAiNeverPromise(""); setEscalationRules(""); }, placeholder: "Tell us what the website assistant can answer, should never promise, and should escalate." };
       default:
-        return {
-          label: "Other requested information",
-          value: brandNotes,
-          onChange: setBrandNotes,
-          placeholder: "Add the requested missing information here.",
-        };
+        return { label: "Other requested information", value: brandNotes, onChange: setBrandNotes, placeholder: "Add the requested missing information here." };
     }
   }
 
@@ -811,22 +824,26 @@ export function ClientPortal() {
     setErrorMessage("");
 
     if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
+      setErrorMessage("Requested updates are temporarily unavailable. Please try again later.");
       return;
     }
-
     if (!client) {
-      setErrorMessage("No client loaded yet.");
+      setErrorMessage("Your client profile must be loaded before an update can be submitted.");
       return;
     }
 
     const selectedPlan = packageOptions[selectedPackage];
     const selectedPlanCapabilities = selectedPlan.capabilities.join("\n- ");
     const selectedPlanRules = selectedPlan.serviceRules.join("\n- ");
-    const targetedAnswer = getTargetedFieldValue(request.fieldKey);
+    const targetedAnswer = safeReportText(getTargetedFieldValue(request.fieldKey));
+    const t = (value: string) => safeReportText(value.trim());
 
     if (!targetedAnswer) {
       setErrorMessage(`Please answer: ${request.fieldLabel}`);
+      return;
+    }
+    if (targetedAnswer.length > 5000) {
+      setErrorMessage("Your answer is too long (the limit is 5000 characters). Please shorten it and send again.");
       return;
     }
 
@@ -848,39 +865,41 @@ export function ClientPortal() {
         ``,
         `Company scale: ${companyScale}`,
         `Location setup: ${locationType}`,
-        `Locations: ${locations.trim() || "Not provided / single location"}`,
-        `Business phone: ${businessPhone.trim() || "Not provided"}`,
-        `Business email: ${businessEmail.trim() || "Not provided"}`,
-        `Business address: ${businessAddress.trim() || "Not provided"}`,
-        `Business hours: ${businessHours.trim() || "Not provided"}`,
-        `Emergency / after-hours availability: ${emergencyAvailability.trim() || "Not provided"}`,
-        `Industry: ${industry.trim() || "Not provided"}`,
+        `Locations: ${t(locations) || "Not provided / single location"}`,
+        `Business phone: ${t(businessPhone) || "Not provided"}`,
+        `Business email: ${t(businessEmail) || "Not provided"}`,
+        `Business address: ${t(businessAddress) || "Not provided"}`,
+        `Business hours: ${t(businessHours) || "Not provided"}`,
+        `Emergency / after-hours availability: ${t(emergencyAvailability) || "Not provided"}`,
+        `Industry: ${t(industry) || "Not provided"}`,
         ``,
-        `Services / products:`,
-        services.trim() || "Not provided",
+        `Services / products:`, t(services) || "Not provided",
         ``,
-        `Pages / sections needed:`,
-        pagesNeeded.trim() || "Not provided",
+        `Pages / sections needed:`, t(pagesNeeded) || "Not provided",
         ``,
-        `Style direction:`,
-        styleDirection.trim() || "Not provided",
+        `Style direction:`, t(styleDirection) || "Not provided",
         ``,
-        `Brand difference / positioning:`,
-        brandNotes.trim() || "Not provided",
+        `Brand difference / positioning:`, t(brandNotes) || "Not provided",
         ``,
-        `Competitors / examples:`,
-        competitors.trim() || "Not provided",
+        `Competitors / examples:`, t(competitors) || "Not provided",
+        ``,
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...signupAnswerLines(signupAnswers),
         ``,
         `Lead handling rules:`,
-        `Preferred contact method: ${preferredContactMethod.trim() || "Not provided"}`,
-        `Urgent lead rules: ${urgentLeadRules.trim() || "Not provided"}`,
-        `Jobs / customers to reject: ${rejectedJobs.trim() || "Not provided"}`,
-        `Areas not served: ${areasNotServed.trim() || "Not provided"}`,
+        `Preferred contact method: ${t(preferredContactMethod) || "Not provided"}`,
+        `Urgent lead rules: ${t(urgentLeadRules) || "Not provided"}`,
+        `Jobs / customers to reject: ${t(rejectedJobs) || "Not provided"}`,
+        `Areas not served: ${t(areasNotServed) || "Not provided"}`,
         ``,
         `Website assistant rules:`,
-        `Assistant can answer: ${aiCanAnswer.trim() || "Not provided"}`,
-        `Assistant should never promise: ${aiNeverPromise.trim() || "Not provided"}`,
-        `Escalation rules: ${escalationRules.trim() || "Not provided"}`,
+        `Assistant can answer: ${t(aiCanAnswer) || "Not provided"}`,
+        `Assistant should never promise: ${t(aiNeverPromise) || "Not provided"}`,
+        `Escalation rules: ${t(escalationRules) || "Not provided"}`,
+        ``,
+        `Agreement accepted: Yes`,
+        `Typed signature: ${typedSignature.trim() || "Previously verified on the original setup submission"}`,
+        `Agreement evidence: Preserved from the original signed setup report.`,
         ``,
         `Targeted more info response:`,
         `Requested field: ${request.fieldLabel}`,
@@ -889,130 +908,115 @@ export function ClientPortal() {
         `Response date: ${new Date().toISOString()}`,
       ].join("\n");
 
-      const updateResult = await supabase
-        .from("clients")
-        .update({
-          monthly_price: selectedPlan.price,
-          business_type: industry.trim() || "Website Client",
-          service_area: locations.trim() || locationType,
-          status: "intake_received",
-          notes: setupReport,
-        })
-        .eq("id", client.id);
-
-      if (updateResult.error) {
-        setErrorMessage(`Client update failed: ${updateResult.error.message}`);
-        return;
-      }
-
-      const approvalResult = await supabase.from("owner_approval_requests").insert({
-        client_id: client.id,
-        project_id: null,
-        request_type: "website_setup_review",
-        title: "Website setup targeted update",
-        summary: `${client.business_name} answered a targeted setup request for ${request.fieldLabel}.`,
-        recommended_action: setupReport,
-        risk_level: "low",
-        status: "pending",
+      const setupResult = await supabase.rpc("submit_current_client_website_setup", {
+        target_setup_report: setupReport,
+        target_tier_key: selectedPackage,
+        target_business_type: (t(industry) || "Website Client").slice(0, 120),
+        target_service_area: (t(locations) || locationType).replace(/\s+/g, " ").slice(0, 500),
+        target_submission_kind: "targeted",
+        target_requested_field_key: request.fieldKey,
+        target_requested_field_label: request.fieldLabel,
+        target_requested_info: request.requestedInfo,
+        target_client_answer: targetedAnswer,
       });
 
-      if (approvalResult.error) {
-        setErrorMessage(`Owner report failed: ${approvalResult.error.message}`);
+      if (setupResult.error) {
+        setErrorMessage("The requested update could not be submitted. The previous setup remains unchanged.");
         return;
       }
-
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "targeted_more_info_submitted",
-        details: {
-          requested_field_key: request.fieldKey,
-          requested_field_label: request.fieldLabel,
-          requested_info: request.requestedInfo,
-          client_answer: targetedAnswer,
-        },
-      });
 
       setNotice("Requested update submitted. We will review your answer.");
-      await loadClientPortalData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown targeted update error";
-      setErrorMessage(`Requested update failed: ${message}`);
+      await loadClientPortalData({ keepNotice: true });
+    } catch {
+      setErrorMessage("The requested update could not be submitted. The previous setup remains unchanged.");
     } finally {
       setIsSubmittingSetup(false);
     }
   }
-  async function sendMessage() {
-    setNotice("");
+
+  async function loadOlderMessages() {
+    if (!supabase || messages.length === 0 || isLoadingOlderMessages) return;
+
+    const cursor = messages[messages.length - 1];
+    setIsLoadingOlderMessages(true);
     setErrorMessage("");
 
-    if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
-      return;
-    }
-
-    if (!client) {
-      setErrorMessage("No client loaded yet.");
-      return;
-    }
-
-    const cleanMessage = messageText.trim();
-
-    if (!cleanMessage) {
-      setErrorMessage("Type a message before sending.");
-      return;
-    }
-
-    setIsSending(true);
-
     try {
-      const messageResult = await supabase.rpc("send_client_portal_message", {
-        message_text: cleanMessage,
+      const result = await supabase.rpc("current_client_message_page", {
+        target_limit: 50,
+        target_cursor_created_at: cursor.created_at,
+        target_cursor_id: cursor.id,
       });
 
-      if (messageResult.error) {
-        setErrorMessage(`Message send failed: ${messageResult.error.message}`);
-        return;
-      }
+      if (result.error) throw result.error;
 
-      const resultData = messageResult.data as { message?: string } | null;
-
-      setMessageText("");
-      setNotice(resultData?.message || "Message sent to support.");
-      await loadClientPortalData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown send error";
-      setErrorMessage(`Message send failed: ${message}`);
+      const rows = result.data || [];
+      if (!Array.isArray(rows)) throw new Error("Unexpected message page.");
+      const page = rows as ClientMessageRow[];
+      setMessages((current) => [...current, ...page]);
+      setMessageHasMore(page.length === 50);
+      setMessagesVerified(true);
+    } catch {
+      setErrorMessage("Older messages could not be loaded. Your existing message history was left unchanged.");
     } finally {
-      setIsSending(false);
+      setIsLoadingOlderMessages(false);
+    }
+  }
+
+  // Used by the assistant chat: only runs when the client presses "Send this to the NXQX team". Returns whether the message was sent.
+  async function sendToTeam(text: string): Promise<boolean> {
+    if (!supabase || !client) return false;
+    try {
+      const messageResult = await supabase.rpc("send_client_portal_message", { message_text: text });
+      if (messageResult.error) return false;
+      void loadClientPortalData({ keepNotice: true, keepForms: true }); // refresh the history in the background; the chat confirms right away and nothing typed is replaced
+      return true;
+    } catch {
+      return false;
     }
   }
 
   async function uploadClientFile() {
-    setNotice("");
-    setErrorMessage("");
+    setUploadStatus(null);
 
     if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
+      setUploadStatus({ tone: "error", text: "File uploads are temporarily unavailable. Please try again later." });
       return;
     }
-
     if (!client) {
-      setErrorMessage("No client loaded yet.");
+      setUploadStatus({ tone: "error", text: "Your client profile must be loaded before a file can be uploaded." });
+      return;
+    }
+    if (!selectedFile) {
+      setUploadStatus({ tone: "error", text: "Choose a file before uploading." });
       return;
     }
 
-    if (!selectedFile) {
-      setErrorMessage("Choose a file before uploading.");
+    const allowedFileTypes = new Set([
+      "application/pdf", "image/jpeg", "image/png", "image/webp", "text/plain", "text/csv",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]);
+    if (!allowedFileTypes.has(selectedFile.type)) {
+      setUploadStatus({ tone: "error", text: "Supported files: PDF, JPG, PNG, WebP, TXT, CSV, DOCX, and XLSX." });
+      return;
+    }
+    if (selectedFile.size < 1 || selectedFile.size > 25 * 1024 * 1024) {
+      setUploadStatus({ tone: "error", text: "Files must be between 1 byte and 25 MB." });
       return;
     }
 
     setIsUploadingFile(true);
-
     try {
       const safeFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const filePath = `${client.id}/${Date.now()}-${safeFileName}`;
-
+      let uploadTicketId: string | null = null;
+      try {
+        uploadTicketId = await authorizeStorageUpload(supabase, "client-files", filePath, selectedFile);
+      } catch {
+        setUploadStatus({ tone: "error", text: "The file upload is not available under the current account limits or billing state." });
+        return;
+      }
       const uploadResult = await supabase.storage
         .from("client-files")
         .upload(filePath, selectedFile, {
@@ -1022,72 +1026,50 @@ export function ClientPortal() {
         });
 
       if (uploadResult.error) {
-        setErrorMessage(`File upload failed: ${uploadResult.error.message}`);
+        await cancelStorageUpload(supabase, uploadTicketId);
+        setUploadStatus({ tone: "error", text: "The file could not be uploaded. No file record was created." });
         return;
       }
 
-      const fileRecordResult = await supabase.from("client_files").insert({
-        client_id: client.id,
-        bucket_id: "client-files",
-        storage_path: filePath,
-        file_name: selectedFile.name,
-        file_type: selectedFile.type || null,
-        file_size: selectedFile.size,
-        status: "uploaded",
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      try {
+        await completeStorageUpload(supabase, uploadTicketId);
+      } catch {
+        await supabase.storage.from("client-files").remove([filePath]);
+        await cancelStorageUpload(supabase, uploadTicketId);
+        setUploadStatus({ tone: "error", text: "The file upload could not be finalized. The temporary upload was removed." });
+        return;
+      }
+
+      const fileRecordResult = await supabase.rpc("current_client_register_uploaded_file", {
+        target_storage_path: filePath,
+        target_file_name: selectedFile.name,
+        target_file_type: selectedFile.type,
+        target_file_size: selectedFile.size,
       });
 
       if (fileRecordResult.error) {
-        const cleanupResult = await supabase.storage
-          .from("client-files")
-          .remove([filePath]);
-
+        const cleanupResult = await supabase.storage.from("client-files").remove([filePath]);
+        await cancelStorageUpload(supabase, uploadTicketId);
         if (cleanupResult.error) {
-          setErrorMessage(
-            `File record failed: ${fileRecordResult.error.message}. ` +
-              `The uploaded file could not be cleaned up automatically: ${cleanupResult.error.message}`
-          );
+          setUploadStatus({ tone: "error", text: "The file could not be registered and automatic cleanup could not be verified. It remains inaccessible while support reviews it." });
           return;
         }
-
-        setErrorMessage(
-          `File record failed: ${fileRecordResult.error.message}. ` +
-            `The uploaded file was removed automatically, so no orphaned file was left behind.`
-        );
+        setUploadStatus({ tone: "error", text: "The file could not be registered. The uploaded copy was removed, so no client file was added." });
         return;
       }
 
-      await supabase.from("activity_logs").insert({
-        client_id: client.id,
-        actor_type: "client",
-        action: "client_file_uploaded",
-        details: {
-          file_name: selectedFile.name,
-          file_path: filePath,
-          file_size: selectedFile.size,
-          file_type: selectedFile.type,
-          expires_in_days: 30,
-        },
-      });
-
       setSelectedFile(null);
-      setNotice("File uploaded to your website team.");
+      setUploadStatus({ tone: "success", text: "File uploaded securely. NXQX file security is scanning it before anyone can open it." });
       await loadClientPortalData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown file upload error";
-      setErrorMessage(`File upload failed: ${message}`);
+    } catch {
+      setUploadStatus({ tone: "error", text: "The file upload could not be completed. No client-facing file access was granted." });
     } finally {
       setIsUploadingFile(false);
     }
   }
 
   function normalizeDomainInput(value: string) {
-    return value
-      .trim()
-      .toLowerCase()
-      .replace(/^https?:\/\//, "")
-      .replace(/^www\./, "")
-      .replace(/\/.*$/, "");
+    return value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
   }
 
   function isValidDomainName(value: string) {
@@ -1096,58 +1078,41 @@ export function ClientPortal() {
 
   function getDomainStatusLabel(status: string) {
     const normalizedStatus = status.toLowerCase();
-
     if (normalizedStatus === "owner_review") return "Domain request under review";
     if (normalizedStatus === "waiting_dns") return "Domain approved - DNS setup pending";
     if (normalizedStatus === "connected") return "Domain connected";
     if (normalizedStatus === "failed") return "Domain request needs attention";
-
     return formatStatus(status);
   }
 
   function getDomainSummaryTitle(status: string) {
     const normalizedStatus = status.toLowerCase();
-
     if (normalizedStatus === "owner_review") return "Domain request under review";
     if (normalizedStatus === "waiting_dns") return "Domain approved";
     if (normalizedStatus === "connected") return "Domain connected";
     if (normalizedStatus === "failed") return "Domain needs attention";
-
     return "Domain request received";
   }
 
   function getDomainSummaryMessage(status: string) {
     const normalizedStatus = status.toLowerCase();
-
-    if (normalizedStatus === "owner_review") {
-      return "We received your domain request and are reviewing it before DNS setup begins.";
-    }
-
-    if (normalizedStatus === "waiting_dns") {
-      return "Your domain was approved. DNS setup is the next step, and instructions will stay visible below.";
-    }
-
-    if (normalizedStatus === "connected") {
-      return "Your domain is connected to your website.";
-    }
-
-    if (normalizedStatus === "failed") {
-      return "This domain request needs attention. Message support or check the notes below.";
-    }
-
+    if (normalizedStatus === "owner_review") return "We received your domain request and are reviewing it before DNS setup begins.";
+    if (normalizedStatus === "waiting_dns") return "Your domain was approved. DNS setup is the next step, and instructions will stay visible below.";
+    if (normalizedStatus === "connected") return "Your domain is connected to your website.";
+    if (normalizedStatus === "failed") return "This domain request needs attention. Ask the assistant below or check the notes.";
     return "We received your domain request and will place updates below.";
   }
+
   async function submitDomainRequest() {
     setNotice("");
     setErrorMessage("");
 
     if (!supabase) {
-      setErrorMessage("Supabase is not configured yet.");
+      setErrorMessage("Domain requests are temporarily unavailable. Please try again later.");
       return;
     }
-
     if (!client) {
-      setErrorMessage("No client loaded yet.");
+      setErrorMessage("Your client profile must be loaded before a domain request can be submitted.");
       return;
     }
 
@@ -1156,23 +1121,11 @@ export function ClientPortal() {
     const cleanDnsProvider = domainDnsProvider.trim();
     const cleanNotes = domainNotes.trim();
 
-    if (!cleanDomain) {
-      setErrorMessage("Enter the domain name you want connected.");
-      return;
-    }
-
-    if (!isValidDomainName(cleanDomain)) {
-      setErrorMessage("Enter a valid domain like example.com.");
-      return;
-    }
-
-    if (!domainOwnershipConfirmed) {
-      setErrorMessage("Confirm that you own or control this domain before submitting.");
-      return;
-    }
+    if (!cleanDomain) return setErrorMessage("Enter the domain name you want connected.");
+    if (!isValidDomainName(cleanDomain)) return setErrorMessage("Enter a valid domain like example.com.");
+    if (!domainOwnershipConfirmed) return setErrorMessage("Confirm that you own or control this domain before submitting.");
 
     setIsSubmittingDomain(true);
-
     try {
       const domainResult = await supabase.rpc("submit_domain_connection_request", {
         requested_domain_name: cleanDomain,
@@ -1183,101 +1136,47 @@ export function ClientPortal() {
       });
 
       if (domainResult.error) {
-        setErrorMessage(`Domain request failed: ${domainResult.error.message}`);
+        setErrorMessage("The domain request could not be submitted. No DNS or ownership changes were made.");
         return;
       }
 
-      const resultData = domainResult.data as { message?: string } | null;
-
-      setNotice(resultData?.message || "Domain request submitted for review.");
+      setNotice("Domain request submitted for review.");
       setDomainName("");
       setDomainRegistrar("");
       setDomainDnsProvider("");
       setDomainNotes("");
       setDomainOwnershipConfirmed(false);
-      await loadClientPortalData();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown domain request error";
-      setErrorMessage(`Domain request failed: ${message}`);
+      await loadClientPortalData({ keepNotice: true });
+    } catch {
+      setErrorMessage("The domain request could not be submitted. No DNS or ownership changes were made.");
     } finally {
       setIsSubmittingDomain(false);
     }
   }
 
   useEffect(() => {
-    loadClientPortalData();
+    void loadClientPortalData();
   }, []);
 
-  const hasDomainRequests = clientDomains.length > 0;
+  const hasDomainRequests = domainsVerified && clientDomains.length > 0;
   const latestDomain = clientDomains[0] || null;
-  const supportEmail = "websitedesignercontact@protonmail.com";
+  const supportEmail = "NXQweb@protonmail.com";
   const clientDecisionStatus = (client?.status || "").toLowerCase();
-  const setupWasReopenedForMoreInfo =
-    clientDecisionStatus === "intake_sent" &&
-    Boolean(client?.notes?.includes("NXQ WEB WEBSITE SETUP REPORT"));
+  const setupWasReopenedForMoreInfo = clientDecisionStatus === "intake_sent" && Boolean(client?.notes?.includes("NXQ WEB WEBSITE SETUP REPORT"));
   const latestMoreInfoRequest = getLatestMoreInfoRequest(client?.notes);
   const targetedMoreInfoRequest = getLatestTargetedMoreInfoRequest(client?.notes);
-  const targetedMoreInfoField = targetedMoreInfoRequest
-    ? getTargetedFieldControl(targetedMoreInfoRequest)
-    : null;
-  const projectDecisionStatus = (projectStage || "").toLowerCase();
+  const targetedMoreInfoField = targetedMoreInfoRequest ? getTargetedFieldControl(targetedMoreInfoRequest) : null;
+  const projectDecisionStatus = (rawProjectStage || "").toLowerCase();
   const portalDecisionNotice = (() => {
-    if (clientDecisionStatus === "denied") {
-      return {
-        tone: "danger",
-        title: "Project not approved",
-        body: `Your website setup was reviewed, but we are not able to approve this project at this time. If you believe this was a mistake or want to ask a follow-up question, contact ${supportEmail}.`,
-      };
-    }
-
-    if (clientDecisionStatus === "needs_review" || clientDecisionStatus === "intake_received") {
-      return {
-        tone: "info",
-        title: "Website setup under review",
-        body: "We have received your website setup details. Your project is waiting for review before the build moves forward.",
-      };
-    }
-
+    if (clientDecisionStatus === "denied") return { tone: "danger", title: "Project not approved", body: `Your website setup was reviewed, but we are not able to approve this project at this time. If you believe this was a mistake or want to ask a follow-up question, contact ${supportEmail}.` };
+    if (clientDecisionStatus === "needs_review" || clientDecisionStatus === "intake_received") return { tone: "info", title: "Website setup under review", body: "We have received your website setup details. Your project is waiting for review before the build moves forward." };
     if (clientDecisionStatus === "intake_sent") {
-      if (setupWasReopenedForMoreInfo) {
-        return {
-          tone: "warning",
-          title: "More information needed",
-          body: latestMoreInfoRequest ? `We requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again.",
-        };
-      }
-
-      return {
-        tone: "warning",
-        title: "Website setup needed",
-        body: "Complete your website setup sheet so we can review your project and prepare the build plan.",
-      };
+      if (setupWasReopenedForMoreInfo) return { tone: "warning", title: "More information needed", body: latestMoreInfoRequest ? `We requested: ${latestMoreInfoRequest}` : "Your setup sheet was reopened so you can update missing details before the project continues. Review the setup sheet below, add the requested information, and submit it again." };
+      return { tone: "warning", title: "Website setup needed", body: "Complete your website setup sheet so we can review your project and prepare the build plan." };
     }
-
-    if (projectDecisionStatus === "frozen") {
-      return {
-        tone: "danger",
-        title: "Website service paused",
-        body: `This project is currently paused. Message support below or contact ${supportEmail} for help.`,
-      };
-    }
-
-    if (projectDecisionStatus === "cancelled") {
-      return {
-        tone: "danger",
-        title: "Project cancelled",
-        body: `This website project is marked cancelled. Contact ${supportEmail} if you believe this needs to be reviewed.`,
-      };
-    }
-
-    if (projectDecisionStatus === "in_review") {
-      return {
-        tone: "info",
-        title: "Website is in review",
-        body: "Your website is currently in review. We will message you if anything else is needed.",
-      };
-    }
-
+    if (projectDecisionStatus === "frozen") return { tone: "danger", title: "Website service paused", body: `This project is currently paused. Ask the assistant below or contact ${supportEmail} for help.` };
+    if (projectDecisionStatus === "cancelled") return { tone: "danger", title: "Project cancelled", body: `This website project is marked cancelled. Contact ${supportEmail} if you believe this needs to be reviewed.` };
+    if (projectDecisionStatus === "in_review") return { tone: "info", title: "Website is in review", body: "Your website is currently in review. We will message you if anything else is needed." };
     return null;
   })();
 
@@ -1288,651 +1187,210 @@ export function ClientPortal() {
           <div>
             <p className="eyebrow">Client Portal</p>
             <h1>Your website project hub</h1>
-            <p className="subtle">
-              Complete your website setup, message support, upload project content,
-              and track your website stage.
-            </p>
+            <p className="subtle">Complete your website setup, message support, upload project content, and track your website stage.</p>
           </div>
-
           <div className="stat-card">
             <span>Project stage</span>
-            <strong>{formatStatus(projectStage)}</strong>
-
-            <a className="icon-btn" href="/client/settings">
-              Settings
-            </a>
-
-            <button className="icon-btn" onClick={toggleNxqTheme} type="button">
-              {nxqTheme === "dark" ? "Light mode" : "Dark mode"}
-            </button>
-
-            <button className="icon-btn" onClick={handleLogout} type="button">
-              <LogOut size={16} />
-              Log out
-            </button>
+            <strong>{projectStageLabel}</strong>
+            <a className="icon-btn" href="/client/settings">Settings</a>
+            <a className="icon-btn" href="/client/rewards">Rewards</a>
+            <a className="icon-btn" href="/client/reviews">Get reviews</a>
+            <button className="icon-btn" onClick={toggleNxqTheme} type="button">{nxqTheme === "dark" ? "Light mode" : "Dark mode"}</button>
+            <button className="icon-btn" onClick={handleLogout} type="button"><LogOut size={16} /> Log out</button>
           </div>
         </div>
 
         {errorMessage ? <div className="notice-card error">{errorMessage}</div> : null}
         {notice ? <div className="notice-card success">{notice}</div> : null}
-
-        {portalDecisionNotice ? (
-          <div className={`notice-card portal-decision-notice ${portalDecisionNotice.tone}`}>
-            <strong>{portalDecisionNotice.title}</strong>
-            <p>{portalDecisionNotice.body}</p>
-          </div>
-        ) : null}
+        {portalDecisionNotice ? <div className={`notice-card portal-decision-notice ${portalDecisionNotice.tone}`}><strong>{portalDecisionNotice.title}</strong><p>{portalDecisionNotice.body}</p></div> : null}
         <ClientWebsiteSecurity />
+
+        {notifications.length > 0 ? (
+          <section className="panel panel-wide">
+            <div className="panel-title"><Bell size={20} /><h2>Recent notifications</h2></div>
+            <div className="owner-message-list">
+              {notifications.map((notification) => (
+                <article className="owner-message-card" key={notification.id}>
+                  <div className="owner-message-top">
+                    <strong>{notification.subject || "Notification"}</strong>
+                    <span>{notification.priority}</span>
+                  </div>
+                  <p>{notification.body}</p>
+                  <small>{new Date(notification.created_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="client-grid">
           {!setupComplete && targetedMoreInfoRequest && targetedMoreInfoField ? (
             <section className="panel panel-wide">
-              <div className="panel-title">
-                <Send size={20} />
-                <h2>{targetedMoreInfoField.label}</h2>
-              </div>
-
+              <div className="panel-title"><Send size={20} /><h2>{targetedMoreInfoField.label}</h2></div>
               <p className="subtle">{targetedMoreInfoRequest.requestedInfo}</p>
-
-              <label className="auth-label" htmlFor="targeted-more-info-answer">
-                {targetedMoreInfoField.label}
-              </label>
-              <textarea
-                id="targeted-more-info-answer"
-                onChange={(event) => targetedMoreInfoField.onChange(event.target.value)}
-                placeholder={targetedMoreInfoField.placeholder}
-                value={targetedMoreInfoField.value}
-              />
-
-              <button
-                className="wide-btn"
-                disabled={isSubmittingSetup || !client}
-                onClick={() => submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)}
-                type="button"
-              >
-                {isSubmittingSetup ? "Submitting update..." : "Submit requested update"}
-              </button>
+              <label className="auth-label" htmlFor="targeted-more-info-answer">{targetedMoreInfoField.label}</label>
+              <textarea id="targeted-more-info-answer" maxLength={5000} onChange={(event) => targetedMoreInfoField.onChange(event.target.value)} placeholder={targetedMoreInfoField.placeholder} value={targetedMoreInfoField.value} />
+              <button className="wide-btn" disabled={isSubmittingSetup || !client} onClick={() => void submitTargetedMoreInfoUpdate(targetedMoreInfoRequest)} type="button">{isSubmittingSetup ? "Submitting update..." : "Submit requested update"}</button>
+            </section>
+          ) : !setupComplete && (!requestOpen || flow.setupHref) ? (
+            <section className="panel panel-wide request-website-card" data-testid="request-website-card" id="website-setup-sheet">
+              <div className="panel-title"><Send size={20} /><h2>{flow.title}</h2></div>
+              <ol className="request-steps">
+                <li className="done"><strong>1. Account</strong><span>Done. We kept everything you told us at signup.</span></li>
+                <li className={planActive ? "done" : ""}><strong>2. Plan</strong><span>{planActive ? "Active." : "Not active yet. NXQX confirms payment by hand for now: message support below and we will switch it on."}</span></li>
+                <li><strong>3. {flow.title}</strong><span>{flow.requestStep}</span></li>
+              </ol>
+              {flow.setupHref
+                ? <a className="wide-btn" data-testid="request-website-button" href={flow.setupHref}>{flow.buttonLabel}</a>
+                : <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">{flow.buttonLabel}</button>}
             </section>
           ) : !setupComplete ? (
-            <section className="panel panel-wide">
-              <div className="panel-title">
-                <Send size={20} />
-                <h2>Website setup sheet</h2>
+            <section className="panel panel-wide" id="website-setup-sheet" onClick={() => { draftDirty.current = true; }} onInput={() => { draftDirty.current = true; }}>
+              <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
+              <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
+              <div className="notice-card success" data-testid="setup-sheet-quickstart">
+                <strong>Only the fields marked (required) are needed.</strong>
+                <p>Everything else is optional. Skip what you do not know and add it later. We filled in what you told us at signup, and you can change it. What you type is kept on this device until you send it.</p>
               </div>
-
-              <p className="subtle">
-                Your website team will use these details to prepare a brand-new upgraded website based on your business
-                details, locations, services, style direction, and project goals.
-              </p>
+              {!planActive ? <div className="notice-card warning" data-testid="plan-not-active-notice"><strong>Your plan is not active yet.</strong><p>You can fill this in now. The send button unlocks once NXQX confirms your payment (we do that by hand for now: message support below).</p></div> : null}
+              {hasSignupAnswers(signupAnswers) ? (
+                <details className="signup-answers-summary" data-testid="signup-answers-summary">
+                  <summary>What you told us at signup (we use this, you do not need to type it again)</summary>
+                  <ul>
+                    {signupAnswerLines(signupAnswers).map((line) => <li key={line}>{line}</li>)}
+                  </ul>
+                </details>
+              ) : null}
 
               <div className="package-grid">
                 {(Object.keys(packageOptions) as PackageTier[]).map((tier) => {
                   const option = packageOptions[tier];
                   const isActive = selectedPackage === tier;
-
-                  return (
-                    <button
-                      className={isActive ? "package-card active" : "package-card"}
-                      key={tier}
-                      onClick={() => setSelectedPackage(tier)}
-                      type="button"
-                    >
-                      <strong>{option.label}</strong>
-                      <span>${option.price}/mo</span>
-                      <small>{option.description}</small>
-                    </button>
-                  );
+                  return <button className={isActive ? "package-card active" : "package-card"} key={tier} onClick={() => setSelectedPackage(tier)} type="button"><strong>{option.label}</strong><span>${option.price}/mo</span><small>{option.description}</small></button>;
                 })}
               </div>
 
               <div className="setup-form-grid">
-                <label>
-                  <span>Company size</span>
-                  <select
-                    className="auth-input"
-                    onChange={(event) => setCompanyScale(event.target.value)}
-                    value={companyScale}
-                  >
-                    <option>Local business</option>
-                    <option>Regional company</option>
-                    <option>National company</option>
-                    <option>Enterprise / large organization</option>
-                  </select>
-                </label>
-
-                <label>
-                  <span>Location setup</span>
-                  <select
-                    className="auth-input"
-                    onChange={(event) => setLocationType(event.target.value)}
-                    value={locationType}
-                  >
-                    <option>Single location</option>
-                    <option>Multiple locations</option>
-                    <option>Service areas / no storefront</option>
-                    <option>National / online</option>
-                  </select>
-                </label>
+                <label><span>Company size</span><select className="auth-input" onChange={(event) => setCompanyScale(event.target.value)} value={companyScale}><option>Local business</option><option>Regional company</option><option>National company</option><option>Enterprise / large organization</option></select></label>
+                <label><span>Location setup</span><select className="auth-input" onChange={(event) => setLocationType(event.target.value)} value={locationType}><option>Single location</option><option>Multiple locations</option><option>Service areas / no storefront</option><option>National / online</option></select></label>
               </div>
 
-              <label className="auth-label" htmlFor="locations">
-                Locations or service areas
-              </label>
-              <textarea
-                id="locations"
-                onChange={(event) => setLocations(event.target.value)}
-                placeholder="Example: Sacramento CA, Roseville CA, Folsom CA, Elk Grove CA. For multi-location brands, list every location you want represented."
-                value={locations}
-              />
+              <label className="auth-label" htmlFor="locations">Locations or service areas</label><textarea id="locations" maxLength={2000} onChange={(event) => setLocations(event.target.value)} placeholder="Example: Sacramento CA, Roseville CA, Folsom CA, Elk Grove CA. For multi-location brands, list every location you want represented." value={locations} />
+              <label className="auth-label" htmlFor="business-phone">Business phone</label><input className="auth-input" id="business-phone" maxLength={40} onChange={(event) => setBusinessPhone(event.target.value)} placeholder="Example: (555) 123-4567" value={businessPhone} />
+              <label className="auth-label" htmlFor="business-email">Business email</label><input className="auth-input" id="business-email" maxLength={200} onChange={(event) => setBusinessEmail(event.target.value)} placeholder="Example: contact@business.com" value={businessEmail} />
+              <label className="auth-label" htmlFor="business-address">Business address</label><input className="auth-input" id="business-address" maxLength={300} onChange={(event) => setBusinessAddress(event.target.value)} placeholder="Example: 123 Main St, Sacramento CA" value={businessAddress} />
+              <label className="auth-label" htmlFor="business-hours">Business hours</label><textarea id="business-hours" maxLength={2000} onChange={(event) => setBusinessHours(event.target.value)} placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed." value={businessHours} />
+              <label className="auth-label" htmlFor="emergency-availability">Emergency / after-hours availability</label><textarea id="emergency-availability" maxLength={2000} onChange={(event) => setEmergencyAvailability(event.target.value)} placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc." value={emergencyAvailability} />
+              <label className="auth-label" htmlFor="industry">Industry <em className="required-mark">(required)</em></label><input className="auth-input" id="industry" maxLength={120} onChange={(event) => setIndustry(event.target.value)} placeholder="Example: Plumbing, dental office, restaurant group, retail, security company" value={industry} />
+              <label className="auth-label" htmlFor="services">Services/products the website needs to explain <em className="required-mark">(required)</em></label><textarea id="services" maxLength={2000} onChange={(event) => setServices(event.target.value)} placeholder="List services, products, departments, offers, or categories that need to appear on the website." value={services} />
+              <label className="auth-label" htmlFor="pages-needed">Pages or sections needed <em className="required-mark">(required)</em></label><textarea id="pages-needed" maxLength={2000} onChange={(event) => setPagesNeeded(event.target.value)} placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ." value={pagesNeeded} />
+              <label className="auth-label" htmlFor="style-direction">Website style direction <em className="required-mark">(required)</em></label><textarea id="style-direction" maxLength={2000} onChange={(event) => setStyleDirection(event.target.value)} placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end." value={styleDirection} />
+              <fieldset className="website-look" data-testid="website-look">
+                <legend>Your website's look</legend>
+                <p className="subtle">This is about your website, not this portal.</p>
+                <div className="website-look-modes" role="radiogroup" aria-label="Website colour mode">
+                  {colourModeOptions.map((option) => (
+                    <label className={colourMode === option.value ? "look-mode active" : "look-mode"} key={option.value}>
+                      <input checked={colourMode === option.value} name="website-colour-mode" onChange={() => setColourMode(option.value)} type="radio" value={option.value} />
+                      <span><strong>{option.label}</strong><small>{option.hint}</small></span>
+                    </label>
+                  ))}
+                </div>
+                <label className="look-check"><input checked={seoPreference} onChange={(event) => setSeoPreference(event.target.checked)} type="checkbox" /><span><strong>Let search engines list my website (SEO)</strong><small>Recommended. Adds page titles, descriptions and the details Google looks for. Turn it off only if you do not want your website to appear in search results.</small></span></label>
+                <label className="look-check"><input checked={smoothScroll} onChange={(event) => setSmoothScroll(event.target.checked)} type="checkbox" /><span><strong>Smooth scrolling</strong><small>Pages glide instead of jumping when someone taps a menu link.</small></span></label>
+              </fieldset>
+              <label className="auth-label" htmlFor="brand-notes">What makes this business different? <em className="required-mark">(required)</em></label><textarea id="brand-notes" maxLength={2000} onChange={(event) => setBrandNotes(event.target.value)} placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors." value={brandNotes} />
+              <label className="auth-label" htmlFor="competitors">Competitors, examples, or websites you like</label><textarea id="competitors" maxLength={2000} onChange={(event) => setCompetitors(event.target.value)} placeholder="Optional: list competitor websites, inspiration sites, or styles you like." value={competitors} />
+              {sitePhotosGateway && supabase && client ? <ClientSitePhotos gateway={sitePhotosGateway} upload={createPhotoUploader(supabase, client.id)} /> : null}
 
-              <label className="auth-label" htmlFor="business-phone">
-                Business phone
-              </label>
-              <input
-                className="auth-input"
-                id="business-phone"
-                onChange={(event) => setBusinessPhone(event.target.value)}
-                placeholder="Example: (555) 123-4567"
-                value={businessPhone}
-              />
+              <OptionalSection defaultOpen={leadAndAssistantHaveContent} title="Lead handling and website assistant rules" hint="How to treat urgent leads and what the website assistant may say. You can add these later.">
+              <div className="setup-section-divider"><span>Lead handling rules</span><p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p></div>
+              <label className="auth-label" htmlFor="preferred-contact-method">Preferred contact method</label><textarea id="preferred-contact-method" maxLength={2000} onChange={(event) => setPreferredContactMethod(event.target.value)} placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form." value={preferredContactMethod} />
+              <label className="auth-label" htmlFor="urgent-lead-rules">What counts as urgent?</label><textarea id="urgent-lead-rules" maxLength={2000} onChange={(event) => setUrgentLeadRules(event.target.value)} placeholder="Example: Emergencies, same-day bookings, large commercial jobs, safety issues, high-budget requests." value={urgentLeadRules} />
+              <label className="auth-label" htmlFor="rejected-jobs">Jobs or customers to reject</label><textarea id="rejected-jobs" maxLength={2000} onChange={(event) => setRejectedJobs(event.target.value)} placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area." value={rejectedJobs} />
+              <label className="auth-label" htmlFor="areas-not-served">Areas not served</label><textarea id="areas-not-served" maxLength={2000} onChange={(event) => setAreasNotServed(event.target.value)} placeholder="Example: We do not serve out-of-state jobs or locations more than 50 miles away." value={areasNotServed} />
 
-              <label className="auth-label" htmlFor="business-email">
-                Business email
-              </label>
-              <input
-                className="auth-input"
-                id="business-email"
-                onChange={(event) => setBusinessEmail(event.target.value)}
-                placeholder="Example: contact@business.com"
-                value={businessEmail}
-              />
+              <div className="setup-section-divider"><span>Website assistant rules</span><p>These rules help your website team prepare the future website assistant so it knows what it can say safely.</p></div>
+              <label className="auth-label" htmlFor="ai-can-answer">What can the website assistant answer?</label><textarea id="ai-can-answer" maxLength={2000} onChange={(event) => setAiCanAnswer(event.target.value)} placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs." value={aiCanAnswer} />
+              <label className="auth-label" htmlFor="ai-never-promise">What should it never promise?</label><textarea id="ai-never-promise" maxLength={2000} onChange={(event) => setAiNeverPromise(event.target.value)} placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review." value={aiNeverPromise} />
+              <label className="auth-label" htmlFor="escalation-rules">When should it escalate to support or the owner?</label><textarea id="escalation-rules" maxLength={2000} onChange={(event) => setEscalationRules(event.target.value)} placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services." value={escalationRules} />
 
-              <label className="auth-label" htmlFor="business-address">
-                Business address
-              </label>
-              <input
-                className="auth-input"
-                id="business-address"
-                onChange={(event) => setBusinessAddress(event.target.value)}
-                placeholder="Example: 123 Main St, Sacramento CA"
-                value={businessAddress}
-              />
-
-              <label className="auth-label" htmlFor="business-hours">
-                Business hours
-              </label>
-              <textarea
-                id="business-hours"
-                onChange={(event) => setBusinessHours(event.target.value)}
-                placeholder="Example: Mon-Fri 8am-5pm, Saturday by appointment, Sunday closed."
-                value={businessHours}
-              />
-
-              <label className="auth-label" htmlFor="emergency-availability">
-                Emergency / after-hours availability
-              </label>
-              <textarea
-                id="emergency-availability"
-                onChange={(event) => setEmergencyAvailability(event.target.value)}
-                placeholder="Example: 24/7 emergency jobs, after-hours calls only, no emergency service, weekend availability, etc."
-                value={emergencyAvailability}
-              />
-
-              <label className="auth-label" htmlFor="industry">
-                Industry
-              </label>
-              <input
-                className="auth-input"
-                id="industry"
-                onChange={(event) => setIndustry(event.target.value)}
-                placeholder="Example: Tree service, dental office, restaurant group, enterprise retail, security company"
-                value={industry}
-              />
-
-              <label className="auth-label" htmlFor="services">
-                Services/products the website needs to explain
-              </label>
-              <textarea
-                id="services"
-                onChange={(event) => setServices(event.target.value)}
-                placeholder="List services, products, departments, offers, or categories that need to appear on the website."
-                value={services}
-              />
-
-              <label className="auth-label" htmlFor="pages-needed">
-                Pages or sections needed
-              </label>
-              <textarea
-                id="pages-needed"
-                onChange={(event) => setPagesNeeded(event.target.value)}
-                placeholder="Example: Home, About, Services, Locations, Gallery, Reviews, Contact, Quote Request, Careers, FAQ."
-                value={pagesNeeded}
-              />
-
-              <label className="auth-label" htmlFor="style-direction">
-                Website style direction
-              </label>
-              <textarea
-                id="style-direction"
-                onChange={(event) => setStyleDirection(event.target.value)}
-                placeholder="Example: premium, modern, dark, luxury, clean, bold, trustworthy, local, corporate, high-end."
-                value={styleDirection}
-              />
-
-              <label className="auth-label" htmlFor="brand-notes">
-                What makes this business different?
-              </label>
-              <textarea
-                id="brand-notes"
-                onChange={(event) => setBrandNotes(event.target.value)}
-                placeholder="Tell us what makes the company better, more trusted, faster, safer, more premium, or different from competitors."
-                value={brandNotes}
-              />
-
-              <label className="auth-label" htmlFor="competitors">
-                Competitors, examples, or websites you like
-              </label>
-              <textarea
-                id="competitors"
-                onChange={(event) => setCompetitors(event.target.value)}
-                placeholder="Optional: list competitor websites, inspiration sites, or styles you like."
-                value={competitors}
-              />
-
-              <div className="setup-section-divider">
-                <span>Lead handling rules</span>
-                <p>Tell us how your website should handle real customers, quote requests, and urgent leads.</p>
-              </div>
-
-              <label className="auth-label" htmlFor="preferred-contact-method">
-                Preferred contact method
-              </label>
-              <textarea
-                id="preferred-contact-method"
-                onChange={(event) => setPreferredContactMethod(event.target.value)}
-                placeholder="Example: Call first, text for quick questions, email for estimates, send all quote requests through the website form."
-                value={preferredContactMethod}
-              />
-
-              <label className="auth-label" htmlFor="urgent-lead-rules">
-                What counts as urgent?
-              </label>
-              <textarea
-                id="urgent-lead-rules"
-                onChange={(event) => setUrgentLeadRules(event.target.value)}
-                placeholder="Example: Storm damage, emergency removals, same-day bookings, large commercial jobs, safety issues, high-budget requests."
-                value={urgentLeadRules}
-              />
-
-              <label className="auth-label" htmlFor="rejected-jobs">
-                Jobs or customers to reject
-              </label>
-              <textarea
-                id="rejected-jobs"
-                onChange={(event) => setRejectedJobs(event.target.value)}
-                placeholder="Example: We do not take tiny jobs under $300, no out-of-state work, no unsafe requests, no free estimates outside service area."
-                value={rejectedJobs}
-              />
-
-              <label className="auth-label" htmlFor="areas-not-served">
-                Areas not served
-              </label>
-              <textarea
-                id="areas-not-served"
-                onChange={(event) => setAreasNotServed(event.target.value)}
-                placeholder="Example: We do not serve Chico, Bay Area, out-of-county jobs, or locations more than 50 miles away."
-                value={areasNotServed}
-              />
-
-              <div className="setup-section-divider">
-                <span>Website assistant rules</span>
-                <p>These rules help your website team prepare the future website assistant so it knows what it can say safely.</p>
-              </div>
-
-              <label className="auth-label" htmlFor="ai-can-answer">
-                What can the website assistant answer?
-              </label>
-              <textarea
-                id="ai-can-answer"
-                onChange={(event) => setAiCanAnswer(event.target.value)}
-                placeholder="Example: Services, hours, service areas, booking steps, basic pricing ranges, warranty info, financing steps, common FAQs."
-                value={aiCanAnswer}
-              />
-
-              <label className="auth-label" htmlFor="ai-never-promise">
-                What should it never promise?
-              </label>
-              <textarea
-                id="ai-never-promise"
-                onChange={(event) => setAiNeverPromise(event.target.value)}
-                placeholder="Example: Never promise exact prices, same-day availability, legal/medical/financial advice, guaranteed approval, or final quotes without owner review."
-                value={aiNeverPromise}
-              />
-
-              <label className="auth-label" htmlFor="escalation-rules">
-                When should it escalate to support or the owner?
-              </label>
-              <textarea
-                id="escalation-rules"
-                onChange={(event) => setEscalationRules(event.target.value)}
-                placeholder="Example: Escalate angry customers, refund questions, large contracts, urgent safety issues, custom quotes, unclear requests, or anything outside normal services."
-                value={escalationRules}
-              />
+              </OptionalSection>
 
               <div className="agreement-box">
-                <label>
-                  <input
-                    checked={agreementAccepted}
-                    onChange={(event) => setAgreementAccepted(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>
-                    I acknowledge and agree that my website team will use the information I
-                    submit to prepare a brand-new website project. I understand that
-                    agreement acceptance and billing activation are required before
-                    final website access/live service.
-                  </span>
-                </label>
-
-                <label className="auth-label" htmlFor="typed-signature">
-                  Typed signature
-                </label>
-                <input
-                  className="auth-input"
-                  id="typed-signature"
-                  onChange={(event) => setTypedSignature(event.target.value)}
-                  placeholder="Type your full name"
-                  value={typedSignature}
-                />
+                <label><input checked={agreementAccepted} onChange={(event) => setAgreementAccepted(event.target.checked)} type="checkbox" /><span><em className="required-mark">(required)</em> I acknowledge and agree that my website team will use the information I submit to prepare a brand-new website project. I understand that agreement acceptance and billing activation are required before final website access/live service.</span></label>
+                <label className="auth-label" htmlFor="typed-signature">Typed signature <em className="required-mark">(required)</em></label><input className="auth-input" id="typed-signature" maxLength={120} onChange={(event) => setTypedSignature(event.target.value)} placeholder="Type your full name" value={typedSignature} />
               </div>
 
-              <button
-                className="wide-btn"
-                disabled={isSubmittingSetup || !client}
-                onClick={submitWebsiteSetup}
-                type="button"
-              >
-                {isSubmittingSetup ? "Submitting setup..." : "Submit website setup"}
-              </button>
+              {!planActive ? <p className="subtle" data-testid="submit-locked-note">Sending unlocks once your plan is active. Your answers are saved on this device in the meantime.</p> : null}
+              <button className="wide-btn" disabled={isSubmittingSetup || !client || !planActive} onClick={() => void submitWebsiteSetup()} type="button">{isSubmittingSetup ? "Submitting setup..." : planActive ? "Request my website" : "Request my website (unlocks when your plan is active)"}</button>
             </section>
           ) : (
-            <section className="panel panel-wide setup-complete-card">
-              <div className="panel-title">
-                <CheckCircle2 size={20} />
-                <h2>Website setup submitted</h2>
-              </div>
-
-              <p className="subtle">
-                Your website setup sheet has been submitted for review. The
-                setup form is now out of the way, and this portal will focus on
-                project messages, files, approvals, and progress updates.
-              </p>
-            </section>
+            <section className="panel panel-wide setup-complete-card"><div className="panel-title"><CheckCircle2 size={20} /><h2>Website setup submitted</h2></div><p className="subtle">Your website setup sheet has been submitted for review. The setup form is now out of the way, and this portal will focus on project messages, files, approvals, and progress updates.</p>{["approved", "active", "overdue"].includes(clientDecisionStatus) ? <p><a className="icon-btn" data-testid="redesign-link" href="/client/business/changes?mode=redesign">Redesign my website</a></p> : null}</section>
           )}
 
           <section className="panel panel-wide domain-panel">
-            <div className="panel-title">
-              <CheckCircle2 size={20} />
-              <h2>Domain setup</h2>
-            </div>
-
-            {!hasDomainRequests ? (
+            <div className="panel-title"><CheckCircle2 size={20} /><h2>Domain setup</h2></div>
+            {!domainsVerified ? (
+              <div className="empty-state">Domain status could not be verified right now. Domain controls stay unavailable until a successful refresh.</div>
+            ) : !hasDomainRequests ? (
               <div className="domain-connect-card">
-                <div className="domain-connect-copy">
-                  <strong>Connect a domain you own</strong>
-                  <p>
-                    Add the domain you want connected to your website. We can help with
-                    setup, but you keep ownership and can repoint it later.
-                  </p>
-                </div>
-
+                <div className="domain-connect-copy"><strong>Connect a domain you own</strong><p>Add the domain you want connected to your website. We can help with setup, but you keep ownership and can repoint it later.</p></div>
+                <p className="subtle">Not sure what these words mean? Domain<HelpTerm term="domain" /> Registrar<HelpTerm term="registrar" /> DNS provider<HelpTerm term="dns" /> You can leave the ones you do not know empty and we will help.</p>
                 <div className="domain-form-grid">
-                  <label className="domain-field">
-                    <span>Domain name</span>
-                    <input
-                      placeholder="example.com"
-                      value={domainName}
-                      onChange={(event) => setDomainName(event.target.value)}
-                    />
-                  </label>
-
-                  <label className="domain-field">
-                    <span>Registrar</span>
-                    <input
-                      placeholder="Namecheap, GoDaddy, Cloudflare..."
-                      value={domainRegistrar}
-                      onChange={(event) => setDomainRegistrar(event.target.value)}
-                    />
-                  </label>
-
-                  <label className="domain-field">
-                    <span>DNS provider</span>
-                    <input
-                      placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS..."
-                      value={domainDnsProvider}
-                      onChange={(event) => setDomainDnsProvider(event.target.value)}
-                    />
-                  </label>
-
-                  <label className="domain-field domain-field-wide">
-                    <span>Domain notes</span>
-                    <textarea
-                      placeholder="Tell us if this domain already has email, a live website, or special DNS setup."
-                      value={domainNotes}
-                      onChange={(event) => setDomainNotes(event.target.value)}
-                    />
-                  </label>
+                  <label className="domain-field"><span>Domain name</span><input placeholder="example.com" value={domainName} onChange={(event) => setDomainName(event.target.value)} /></label>
+                  <label className="domain-field"><span>Registrar</span><input placeholder="Namecheap, GoDaddy, Cloudflare..." value={domainRegistrar} onChange={(event) => setDomainRegistrar(event.target.value)} /></label>
+                  <label className="domain-field"><span>DNS provider</span><input placeholder="Cloudflare, GoDaddy DNS, Namecheap DNS..." value={domainDnsProvider} onChange={(event) => setDomainDnsProvider(event.target.value)} /></label>
+                  <label className="domain-field domain-field-wide"><span>Domain notes</span><textarea placeholder="Tell us if this domain already has email, a live website, or special DNS setup." value={domainNotes} onChange={(event) => setDomainNotes(event.target.value)} /></label>
                 </div>
-
-                <label className="domain-ownership-box">
-                  <input
-                    checked={domainOwnershipConfirmed}
-                    onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>
-                    I confirm I own or control this domain. I understand support can help connect
-                    the website, but I keep ownership and can repoint the domain later.
-                  </span>
-                </label>
-
-                <button
-                  className="wide-btn"
-                  disabled={isSubmittingDomain || !client}
-                  onClick={submitDomainRequest}
-                  type="button"
-                >
-                  {isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}
-                </button>
+                <label className="domain-ownership-box"><input checked={domainOwnershipConfirmed} onChange={(event) => setDomainOwnershipConfirmed(event.target.checked)} type="checkbox" /><span>I confirm I purchased and own or control this domain. I keep ownership, renewal responsibility, and registrar access. NXQX-Web only provides DNS instructions, verifies the connection, and monitors SSL; NXQX-Web will never ask for my registrar password or take ownership of the domain.</span></label>
+                <button className="wide-btn" disabled={isSubmittingDomain || !client} onClick={() => void submitDomainRequest()} type="button">{isSubmittingDomain ? "Submitting domain..." : "Submit domain request"}</button>
               </div>
             ) : (
-              <div className="domain-summary-card">
-                <strong>{getDomainSummaryTitle(latestDomain?.status || "")}</strong>
-                <p>{getDomainSummaryMessage(latestDomain?.status || "")}</p>
-              </div>
+              <div className="domain-summary-card"><strong>{getDomainSummaryTitle(latestDomain?.status || "")}</strong><p>{getDomainSummaryMessage(latestDomain?.status || "")}</p></div>
             )}
 
-            <div className="domain-status-list">
-              {clientDomains.length === 0 ? (
-                <div className="empty-state">No domain requests yet.</div>
-              ) : null}
-
-              {clientDomains.map((domain) => (
-                <article className="domain-status-card" key={domain.id}>
-                  <div className="domain-status-top">
-                    <strong>{domain.domain_name}</strong>
-                    <span>{getDomainStatusLabel(domain.status)}</span>
-                  </div>
-
-                  <p className="domain-meta">
-                    Registrar: {domain.registrar_name || "Not provided"} | DNS:{" "}
-                    {domain.dns_provider || "Not provided"}
-                  </p>
-
-                  {domain.dns_instructions ? (
-                    <p className="domain-instructions">{domain.dns_instructions}</p>
-                  ) : (
-                    <p className="domain-instructions">
-                      Waiting for review / DNS instructions.
-                    </p>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-          <section className="panel">
-            <div className="panel-title panel-title-row">
-              <div className="panel-title">
-                <MessageCircle size={20} />
-                <h2>Message support</h2>
-              </div>
-
-              <button className="icon-btn" onClick={loadClientPortalData} type="button">
-                <RefreshCcw size={16} />
-                Refresh
-              </button>
-            </div>
-
-            <p className="subtle">
-              {client
-                ? `Sending as ${client.business_name}.`
-                : isLoading
-                  ? "Loading client..."
-                  : "No client loaded."}
-            </p>
-
-            <textarea
-              placeholder="Type your message here..."
-              value={messageText}
-              onChange={(event) => setMessageText(event.target.value)}
-            />
-
-            <button
-              className="wide-btn"
-              disabled={isSending || !client}
-              onClick={sendMessage}
-              type="button"
-            >
-              {isSending ? "Sending..." : "Send message"}
-            </button>
+            {domainsVerified ? <div className="domain-status-list">
+              {clientDomains.length === 0 ? <div className="empty-state">No domain requests yet.</div> : null}
+              {clientDomains.map((domain) => <article className="domain-status-card" key={domain.id}><div className="domain-status-top"><strong>{domain.domain_name}</strong><span>{getDomainStatusLabel(domain.status)}</span></div><p className="domain-meta">Registrar: {domain.registrar_name || "Not provided"} | DNS: {domain.dns_provider || "Not provided"}</p>{domain.dns_instructions ? <p className="domain-instructions">{domain.dns_instructions}</p> : <p className="domain-instructions">Waiting for review / DNS instructions.</p>}</article>)}
+            </div> : null}
           </section>
 
+          <AssistantChat canSend={Boolean(client)} sendToTeam={sendToTeam} />
+
           <section className="panel">
-            <div className="panel-title">
-              <UploadCloud size={20} />
-              <h2>Upload files</h2>
-            </div>
-
-            <p className="subtle">
-              Upload logos, business photos, reviews, service images, and content for your website.
-            </p>
-
-            <div className="upload-box">
-              <ImagePlus size={30} />
-
-              <input
-                className="auth-input"
-                type="file"
-                onChange={(event) => setSelectedFile(event.target.files?.[0] || null)}
-              />
-
-              <span>
-                {selectedFile
-                  ? `Ready to upload: ${selectedFile.name}`
-                  : "Choose a logo, photo, review, screenshot, or content file."}
-              </span>
-
-              <button
-                className="wide-btn"
-                disabled={isUploadingFile || !selectedFile || !client}
-                onClick={uploadClientFile}
-                type="button"
-              >
-                {isUploadingFile ? "Uploading file..." : "Upload file"}
-              </button>
-            </div>
-
+            <div className="panel-title"><UploadCloud size={20} /><h2>Upload files</h2></div>
+            <p className="subtle">Upload logos, business photos, reviews, service images, and content for your website.</p>
+            <div className="upload-box"><ImagePlus size={30} /><input className="auth-input" type="file" aria-label="Choose a file to upload" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} /><span>{selectedFile ? `Ready to upload: ${selectedFile.name}` : "Choose a logo, photo, review, screenshot, or content file."}</span><button className="wide-btn" disabled={isUploadingFile || !selectedFile || !client} onClick={() => void uploadClientFile()} type="button">{isUploadingFile ? "Uploading file..." : "Upload file"}</button></div>
+            {uploadStatus ? <div className={`notice-card ${uploadStatus.tone}`} role={uploadStatus.tone === "error" ? "alert" : "status"}>{uploadStatus.text}</div> : null}
             <div className="message-list">
-              {uploadedFiles.length === 0 ? (
-                <div className="empty-state">No files uploaded yet.</div>
-              ) : null}
-
-              {uploadedFiles.map((file) => (
-                <article className="message-card" key={file.id}>
-                  <div className="message-card-top">
-                    <strong>{file.file_name}</strong>
-                    <span>
-                      {new Date(file.uploaded_at).toLocaleString([], {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </span>
-                  </div>
-
-                  <p>Status: {formatStatus(file.status)}</p>
-
-                  <small>
-                    Expires{" "}
-                    {new Date(file.expires_at).toLocaleDateString([], {
-                      dateStyle: "medium",
-                    })}
-                  </small>
-                </article>
-              ))}
+              {!filesVerified ? <div className="empty-state">File history could not be verified right now.</div> : uploadedFiles.length === 0 ? <div className="empty-state">No files uploaded yet.</div> : null}
+              {filesVerified ? uploadedFiles.map((file) => <article className="message-card" key={file.id}><div className="message-card-top"><strong>{file.file_name}</strong><span>{new Date(file.uploaded_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span></div><p>Status: {formatStatus(file.status)}</p><small>{file.expires_at ? `Expires ${new Date(file.expires_at).toLocaleDateString([], { dateStyle: "medium" })}` : "No automatic expiration"}</small></article>) : null}
             </div>
           </section>
 
           <section className="panel panel-wide">
-            <h2>Recent messages</h2>
-
+            <div className="panel-title panel-title-row"><div className="panel-title"><MessageCircle size={20} /><h2>Message history</h2></div><button className="icon-btn" disabled={isLoading || isUploadingFile || isSubmittingDomain || isSubmittingSetup} onClick={() => void loadClientPortalData()} type="button"><RefreshCcw size={16} /> Refresh</button></div>
             <div className="message-list">
-              {messages.length === 0 ? (
-                <div className="empty-state">
-                  No messages yet. Send one above to test the client portal.
-                </div>
-              ) : null}
-
-              {messages.map((message) => {
-                const senderLabel =
-                  message.sender_type === "client" ? "You" : "Support";
-
-                const statusLabel =
-                  message.sender_type === "client" ? "Sent" : "Received";
-
-                return (
-                  <article className="message-card" key={message.id}>
-                    <div className="message-card-top">
-                      <strong>{senderLabel}</strong>
-                      <span>
-                        {new Date(message.created_at).toLocaleString([], {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </span>
-                    </div>
-
-                    <p>{message.message}</p>
-
-                    <small>{statusLabel}</small>
-                  </article>
-                );
-              })}
+              {!messagesVerified ? <div className="empty-state">Message history could not be verified right now.</div> : messages.length === 0 ? <div className="empty-state">No messages yet. Questions you send to the NXQX team and their replies show up here.</div> : null}
+              {messagesVerified && messageHasMore && messages.length > 0 ? <button className="wide-btn" type="button" onClick={() => void loadOlderMessages()} disabled={isLoadingOlderMessages}>{isLoadingOlderMessages ? "Loading…" : "Load older messages"}</button> : null}
+              {messagesVerified ? messages.map((message) => {
+                const senderLabel = message.sender_type === "client" ? "You" : "Support";
+                const statusLabel = message.sender_type === "client" ? "Sent" : "Received";
+                return <article className="message-card" key={message.id}><div className="message-card-top"><strong>{senderLabel}</strong><span>{new Date(message.created_at).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span></div><p>{message.message}</p><small>{statusLabel}</small></article>;
+              }) : null}
             </div>
           </section>
 
           <section className="panel panel-wide">
             <h2>Project tracker</h2>
-            <div className="tracker">
-              <span className={client?.status === "lead" ? "active" : ""}>Lead</span>
-              <span className={client?.status === "intake_received" ? "active" : ""}>
-                Setup submitted
-              </span>
-              <span className={client?.status === "needs_review" ? "active" : ""}>
-                Owner Review
-              </span>
-              <span className={projectStage === "planning" ? "active" : ""}>Planning</span>
-              <span className={projectStage === "building" ? "active" : ""}>Building</span>
-              <span className={projectStage === "live" ? "active" : ""}>Live</span>
+            <div className="tracker" data-canonical-journey-stage={projectStage}>
+              <span className={projectStage === "setup" ? "active" : ""}>Setup</span>
+              <span className={projectStage === "review" ? "active" : ""}>Owner Review</span>
+              <span className={projectStage === "plan" ? "active" : ""}>Planning</span>
+              <span className={projectStage === "build" ? "active" : ""}>Building</span>
+              <span className={projectStage === "launch" || projectStage === "paused" ? "active" : ""}>Launch checks</span>
+              <span className={projectStage === "care" ? "active" : ""}>Live</span>
             </div>
           </section>
         </div>
@@ -1940,33 +1398,3 @@ export function ClientPortal() {
     </main>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
