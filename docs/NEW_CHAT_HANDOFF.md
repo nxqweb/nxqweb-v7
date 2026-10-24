@@ -34,6 +34,7 @@ Payment lock on "Request my website" is client-side only (server has no billing 
 
 ## Next 3 safe tasks
 1. **DONE 2026-10-23 (QA store).** Remaining: owner confirms which store the candle client will use (and adds photos), then tells her. Open owner decision: checkout payment methods, options A/B/C in the handoff.
+1b. **Tier test sheet written 2026-10-24** (`docs/TIER_TEST_SHEET.md`): the owner runs it live on staging with four disposable test clients (Starter, Growth, Intelligence, Enterprise) and sends screenshots; Claude records exact PASS/FAIL. Nothing in it has been seen live yet.
 2. **Look at the Exception center** (156 items) with the owner to see whether they are stale QA rows or something real.
 3. **Owner picks** from `docs/REAL_LAUNCH_GATE.md`: first 3 local prospects and the offer; whether to promote the Q&A assistant; the "cancel" behaviour decision. Do not build anything needing a migration until the owner approves.
 
