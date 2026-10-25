@@ -34,7 +34,8 @@ Run every row for every client. Mark each Result PASS, FAIL (with what you saw) 
 |---|---|---|---|---|---|
 | T1 | `/client/business` (workspace) | Loads, no error | Loads | Loads | Loads |
 | T2 | `/client/business/analytics` | Shows "Advanced analytics is not included in" the plan (page views, clicks, scroll are not shown as data) | Page views, clicks, scroll depth shown; heat points show **Plan locked** | Page views, clicks, scroll shown; heat point count shown (may be 0 on a new site) | Same as Intelligence |
-| T3 | `/client/business/seo` | Locked | Locked | Available | Available |
+| T3 | `/client/business/seo` | Page opens (core SEO status is for every tier; the page has no tier check) | Opens | Opens | Opens |
+| T3b | The SEO button on `/client/business` | Says "SEO · Core · Plan upgrade for advanced SEO" | Same as Starter | Says "SEO · Advanced" | Says "SEO · Advanced" |
 | T4 | `/client/business/locations` | One location; a note says location add-ons are available on Growth and Intelligence and Enterprise includes multi-location | One location; add-on option visible | One location; add-on option visible | Multiple locations allowed |
 | T5 | `/client/business/funnel` | Write down what you see | Write down | Write down (lead-source and funnel insight is promised here) | Write down |
 | T6 | `/client/business/reports` | Write down | Write down (monthly report promised, only once the site is live) | Write down | Write down |
@@ -58,6 +59,15 @@ Run every row for every client. Mark each Result PASS, FAIL (with what you saw) 
 | Growth | | | | |
 | Intelligence | | | | |
 | Enterprise | | | | |
+
+## 4b. Results recorded so far
+| Date | Client / tier | Row | Result | Note |
+|---|---|---|---|---|
+| 2026-10-25 | Starter (`nxqweb+starter@protonmail.com`) | Setup flow | PASS | Signup, email verify, owner `Activate billing (no charge)`, client Request your website, owner Approve card, all worked. Approval card showed the Starter package scope. |
+| 2026-10-25 | Starter | T2 analytics | PASS | "Advanced analytics is not included in starter plan"; text says Growth adds page, click and scroll summaries and Intelligence adds consent-gated coarse heatmap insights. |
+| 2026-10-25 | Starter | T3 SEO page | CORRECTED | The original sheet said locked. The page shows the core SEO center (0 issues, nothing published yet) because it has no tier check. Sheet fixed; T3b (dashboard label) still to check. |
+
+**Finding to decide on:** `advanced_seo` is defined for Intelligence and Enterprise but, in the code, only changes the dashboard button label. Nothing else is gated on it, and the public /plans text does not promise "advanced SEO" by name. Not a bug by itself, but do not tell a client that Intelligence has extra SEO tools until something real sits behind the label.
 
 ## 5. After the run
 - Claude records the results (exact PASS/FAIL, not "looks fine") in `docs/NXQ_RUNTIME_HANDOFF.md`.
