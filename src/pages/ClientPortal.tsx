@@ -133,7 +133,7 @@ const packageOptions: Record<
     serviceRules: [
       "Best for contractors, home-service companies, clinics, restaurants, and other local service teams",
       "AI may suggest SEO sections, service-area copy, and monthly content improvements",
-      "Behavior insights and click/scroll reporting are not included unless upgraded",
+      "Page, click and scroll summaries are included; heat-point (mouse) tracking and consent-based behavior insights are not included unless upgraded",
       "Owner approval is required before major changes and launch",
     ],
   },

@@ -65,6 +65,11 @@ Run every row for every client. Mark each Result PASS, FAIL (with what you saw) 
 |---|---|---|---|---|
 | 2026-10-25 | Starter (`nxqweb+starter@protonmail.com`) | Setup flow | PASS | Signup, email verify, owner `Activate billing (no charge)`, client Request your website, owner Approve card, all worked. Approval card showed the Starter package scope. |
 | 2026-10-25 | Starter | T2 analytics | PASS | "Advanced analytics is not included in starter plan"; text says Growth adds page, click and scroll summaries and Intelligence adds consent-gated coarse heatmap insights. |
+| 2026-10-25 | Starter | T3b dashboard labels | PASS | Analytics "Plan upgrade", SEO "Core · Plan upgrade for advanced SEO", Locations "Plan upgrade for Multi-location"; tier shows `starter`; no "Last 14 days" card. |
+| 2026-10-25 | Growth (`nxqweb+growth@protonmail.com`) | Setup flow | PASS | Same flow as Starter; approval card showed Growth, $100/mo, up to 5 pages, monthly report line. |
+| 2026-10-25 | Growth | T2 analytics | PASS | Page views, Clicks, Max scroll shown (all 0 on a new site); Heatpoints **Plan locked**; profile says mouse heatmaps not enabled, consent required. |
+| 2026-10-25 | Growth | T3b dashboard labels | PASS | Analytics "Active" (plus a "Last 14 days" card), SEO "Core · Plan upgrade for advanced SEO", Locations "Plan upgrade for Multi-location"; tier shows `growth`. |
+| 2026-10-25 | Growth | Wording conflict | FIXED IN CODE, NOT DEPLOYED | The owner approval card said Growth does not include click/scroll reporting, but /plans and the live Analytics page include it. Changed the one line in `src/pages/ClientPortal.tsx`. Takes effect on the next site deploy. |
 | 2026-10-25 | Starter | T3 SEO page | CORRECTED | The original sheet said locked. The page shows the core SEO center (0 issues, nothing published yet) because it has no tier check. Sheet fixed; T3b (dashboard label) still to check. |
 
 **Finding to decide on:** `advanced_seo` is defined for Intelligence and Enterprise but, in the code, only changes the dashboard button label. Nothing else is gated on it, and the public /plans text does not promise "advanced SEO" by name. Not a bug by itself, but do not tell a client that Intelligence has extra SEO tools until something real sits behind the label.
