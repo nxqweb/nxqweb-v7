@@ -299,6 +299,9 @@ export function ClientPortal() {
   const [domainNotes, setDomainNotes] = useState("");
   const [domainOwnershipConfirmed, setDomainOwnershipConfirmed] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageTier>("starter");
+  // False when the client's price is not Starter, Growth or Intelligence (for example Enterprise, which is arranged by hand). The setup RPC rewrites the client's tier and price from
+  // the tier this form sends, so for those clients the form must not submit.
+  const [standardPackage, setStandardPackage] = useState(true);
   const [companyScale, setCompanyScale] = useState("Local business");
   const [locationType, setLocationType] = useState("Single location");
   const [locations, setLocations] = useState("");
@@ -430,6 +433,7 @@ export function ClientPortal() {
       const matchingPackage =
         Object.entries(packageOptions).find(([, option]) => option.price === Number(loadedClient.monthly_price))?.[0] ||
         "starter";
+      setStandardPackage(Object.values(packageOptions).some((option) => option.price === Number(loadedClient.monthly_price)));
       if (!options.keepForms) setSelectedPackage(matchingPackage as PackageTier);
 
       const setupFields = parseClientSetupReport(loadedClient.notes);
@@ -667,6 +671,7 @@ export function ClientPortal() {
     const isMoreInfoResubmission = Boolean(previousMoreInfoRequest);
 
     if (!paymentConfirmed(client.billing_status)) return setErrorMessage("Your plan has to be active before you can request your website. NXQX confirms payment by hand for now: message support below and we will switch it on. Everything you typed here is kept.");
+    if (!standardPackage) return setErrorMessage("Your plan is arranged by hand, so this form cannot send it (it would change your plan by mistake). Ask the NXQX assistant below and send your question to the team, and we will set up your website with you.");
     if (!cleanIndustry) return setErrorMessage("Enter the client's industry before submitting.");
     if (cleanIndustry.length < 2 || cleanIndustry.length > 120) return setErrorMessage("Industry must be between 2 and 120 characters, for example plumbing or tree service.");
     if (!cleanServices) return setErrorMessage("Enter the services/products this website needs to explain.");
@@ -829,6 +834,10 @@ export function ClientPortal() {
     }
     if (!client) {
       setErrorMessage("Your client profile must be loaded before an update can be submitted.");
+      return;
+    }
+    if (!standardPackage) {
+      setErrorMessage("Your plan is arranged by hand, so this form cannot send it (it would change your plan by mistake). Ask the NXQX assistant below and send your question to the team, and we will set up your website with you.");
       return;
     }
 

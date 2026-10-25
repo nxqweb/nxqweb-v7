@@ -484,6 +484,10 @@ export const byRequestTiers: ByRequestTierDefinition[] = [
   },
 ];
 
+// Enterprise is custom and arranged by hand: it stays in `productTiers` (public pricing, plan-change requests the owner reviews), but it cannot be chosen at signup, and the
+// Request-your-website form and its server function only understand Starter, Growth and Intelligence (the server would rewrite an Enterprise client to Starter at $50).
+export const selfServeProductTiers = productTiers.filter((tier) => tier.key !== "enterprise");
+
 export function getProductTier(key: string | null) {
   return productTiers.find((tier) => tier.key === key) || productTiers[0];
 }

@@ -249,9 +249,9 @@ export function PublicHome() {
                   <a
                     className={`px-btn ${featured ? "px-gold" : "px-ghost"}`}
                     data-px-wipe
-                    href={`/portal/signup?family=business&tier=${encodeURIComponent(tier.key)}`}
+                    href={tier.key === "enterprise" ? "/contact" : `/portal/signup?family=business&tier=${encodeURIComponent(tier.key)}`}
                   >
-                    Choose {tier.name} <ArrowRight size={17} />
+                    {tier.key === "enterprise" ? "Talk to us about" : "Choose"} {tier.name} <ArrowRight size={17} />
                   </a>
                 </article>
               );

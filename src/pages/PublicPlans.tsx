@@ -58,9 +58,9 @@ export function PublicPlans() {
                   <a
                     className={`px-btn ${featured ? "px-gold" : "px-ghost"}`}
                     data-px-wipe
-                    href={`/portal/signup?family=business&tier=${tier.key}`}
+                    href={tier.key === "enterprise" ? "/contact" : `/portal/signup?family=business&tier=${tier.key}`}
                   >
-                    Choose {tier.name} <ArrowRight size={16} />
+                    {tier.key === "enterprise" ? "Talk to us about" : "Choose"} {tier.name} <ArrowRight size={16} />
                   </a>
                 </article>
               );

@@ -5,6 +5,7 @@ import {
   getRequestedProductFamily,
   isPubliclySelectableFamily,
   productTiers,
+  selfServeProductTiers,
   type ProductTierKey,
 } from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
@@ -28,7 +29,7 @@ export function PortalSignup() {
 
   const initialTier = searchParams.get("tier");
   const [selectedTier, setSelectedTier] = useState<ProductTierKey>(
-    productTiers.some((tier) => tier.key === initialTier)
+    selfServeProductTiers.some((tier) => tier.key === initialTier)
       ? (initialTier as ProductTierKey)
       : "starter"
   );
@@ -217,7 +218,7 @@ export function PortalSignup() {
             </div>
 
             <div className="premium-tier-grid">
-              {productTiers.map((item) => {
+              {selfServeProductTiers.map((item) => {
                 const isSelected = selectedTier === item.key;
                 return (
                   <button
@@ -234,6 +235,10 @@ export function PortalSignup() {
                 );
               })}
             </div>
+            <p className="subtle" data-testid="enterprise-by-request-note">
+              {initialTier === "enterprise" ? "Enterprise is arranged by hand, so it cannot be picked here. " : "Need Enterprise? It is custom and arranged by hand. "}
+              <a href="/contact">Talk to us about Enterprise</a>, or continue with one of the levels above.
+            </p>
           </section>
 
           <section className="premium-intake-box">
