@@ -261,3 +261,23 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .assistant-page .auth-error ul { margin: 0; padding-left: 1.2rem; }
 .assistant-page .assistant-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: .6rem; }
 .assistant-page h2[tabindex="-1"]:focus { outline: none; }
+
+/* Quick links: the card grid at the bottom of the portal home and the Commerce pages. Reuses .icon-btn so light and dark mode need no new colours. */
+.quick-links-footer { padding: 0 32px 88px; } /* room under the last card for the floating Report a problem button */
+/* The page paints its light background on .nxq-page, which this footer is not inside; without this it would sit on the dark backdrop with dark text. #f4f1e8 is the colour the page ends on. */
+body[data-nxq-theme="light"] .quick-links-footer { background: #f4f1e8; color: #171a1f; }
+.quick-links-footer .portal-shell { padding-bottom: 0; }
+.quick-links-footer .portal-shell::before { display: none; }
+.quick-links h2 { margin: 0 0 0.25rem; }
+.quick-links > .subtle { margin: 0 0 1rem; }
+.quick-links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.quick-link { display: flex; align-items: flex-start; gap: 0.75rem; min-height: 64px; border-radius: 18px; padding: 0.8rem 1rem; text-decoration: none; text-align: left; }
+.quick-link > span { display: grid; gap: 2px; min-width: 0; }
+.quick-link strong { font-size: 0.98rem; line-height: 1.2; }
+.quick-link small { font-size: 0.82rem; line-height: 1.3; opacity: 0.8; overflow-wrap: anywhere; }
+.quick-link[aria-current="page"] { outline: 2px solid currentColor; outline-offset: 2px; }
+.quick-link:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .quick-links-footer { padding: 0 16px 96px; }
+  .quick-links-grid { grid-template-columns: 1fr; }
+}

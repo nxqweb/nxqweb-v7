@@ -23,6 +23,7 @@
     "test:top-pages": "node scripts/test-top-pages.mjs",
     "test:commerce-launch-guide": "node scripts/test-commerce-launch-guide.mjs",
     "test:enterprise-by-request": "node scripts/test-enterprise-by-request.mjs",
+    "test:quick-links": "node scripts/test-quick-links.mjs",
     "test:commerce-rpc-reason": "node scripts/test-commerce-rpc-reason.mjs",
     "test:commerce-setup-form": "node scripts/test-commerce-setup-form.mjs",
     "test:client-setup-sheet": "node scripts/test-client-setup-sheet.mjs",

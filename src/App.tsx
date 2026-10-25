@@ -13,6 +13,7 @@ import "./styles/premium-v2.css";
 import "./styles/storefront-theme.css";
 import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { ReportProblem } from "./components/ReportProblem";
+import { QuickLinksFooter } from "./components/QuickLinks";
 import { ReferralClaimer } from "./components/ReferralClaimer";
 import { PremiumBackdrop } from "./components/PremiumBackdrop";
 import { ClientPortalTopCards } from "./components/ClientPortalTopCards";
@@ -190,7 +191,7 @@ function App() {
   return (
     <>
       {variant ? <PremiumBackdrop variant={variant} /> : null}
-      <div id="main-content" tabIndex={-1}><AppErrorBoundary><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQX…</div></main>}><AppRoutes /></Suspense></AppErrorBoundary></div>
+      <div id="main-content" tabIndex={-1}><AppErrorBoundary><Suspense fallback={<main className="nxq-page"><div className="empty-state" role="status">Loading NXQX…</div></main>}><AppRoutes /></Suspense></AppErrorBoundary><QuickLinksFooter /></div>
       {window.location.pathname.startsWith("/client") ? <><ReportProblem /><ReferralClaimer /></> : null}
     </>
   );

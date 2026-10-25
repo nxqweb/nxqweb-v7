@@ -4,7 +4,7 @@
 import { spawnSync } from "node:child_process";
 
 const tests = [
-  "test-shopper-account", "test-enterprise-by-request", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
+  "test-shopper-account", "test-enterprise-by-request", "test-quick-links", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
   "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-portal-help", "test-menu-mode", "test-referral-link", "test-reviews", "test-qr-code", "test-booking", "test-booking-time", "test-membership", "test-scan-fixes", "test-outreach-card", "test-example-sites", "test-by-request-tier", "test-ai-desk", "test-ai-desk-plan", "test-ai-desk-gateway", "test-website-brief", "test-site-options", "test-site-photos", "test-site-photos-ui", "test-referral-invoice-credit", "test-rewards-page", "test-info-pages", "test-owner-billing-safety", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
 ];
 
