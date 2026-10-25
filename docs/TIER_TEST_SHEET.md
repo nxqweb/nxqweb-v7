@@ -69,6 +69,7 @@ Run every row for every client. Mark each Result PASS, FAIL (with what you saw) 
 | 2026-10-25 | Growth (`nxqweb+growth@protonmail.com`) | Setup flow | PASS | Same flow as Starter; approval card showed Growth, $100/mo, up to 5 pages, monthly report line. |
 | 2026-10-25 | Growth | T2 analytics | PASS | Page views, Clicks, Max scroll shown (all 0 on a new site); Heatpoints **Plan locked**; profile says mouse heatmaps not enabled, consent required. |
 | 2026-10-25 | Growth | T3b dashboard labels | PASS | Analytics "Active" (plus a "Last 14 days" card), SEO "Core · Plan upgrade for advanced SEO", Locations "Plan upgrade for Multi-location"; tier shows `growth`. |
+| 2026-10-25 | Growth | Onboarding reminder | FINDING | After the request form was completed and approved, the portal says "Complete the missing onboarding information: contact_phone, desired_style" (migration 245 reads the structured intake row; the form writes style into the report text). Not fixed; needs a migration decision. |
 | 2026-10-25 | Growth | Wording conflict | FIXED IN CODE, NOT DEPLOYED | The owner approval card said Growth does not include click/scroll reporting, but /plans and the live Analytics page include it. Changed the one line in `src/pages/ClientPortal.tsx`. Takes effect on the next site deploy. |
 | 2026-10-25 | Starter | T3 SEO page | CORRECTED | The original sheet said locked. The page shows the core SEO center (0 issues, nothing published yet) because it has no tier check. Sheet fixed; T3b (dashboard label) still to check. |
 
