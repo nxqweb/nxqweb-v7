@@ -1,4 +1,4 @@
--- !!! UNTESTED DRAFT (2026-10-15). Not yet run against the local full-schema harness. Do NOT run on staging until a passing test exists. !!!
+-- TESTED 2026-10-26 on a real local Postgres (scripts/sql/local-full-schema/regression/commerce_seed.test.sql: store + payment link + pretty web name + products + live, a re-run updates instead of duplicating, and every refusal below leaves things unchanged). Owner-run only; still never run on staging until the owner says so.
 -- Owner script: sets up ONE client's Commerce store (store settings, payment link, products) through the SAME functions the client's own
 -- dashboard uses, so every normal rule applies. Paste into the Supabase SQL editor of the STAGING project. Re-running is safe: a product with the
 -- same name is updated, not duplicated.
@@ -14,7 +14,7 @@
 --     "stripe_payment_link": "https://buy.stripe.com/...", "paypal_url": "", "venmo_url": "", "payment_note": "How to pay / shipping note",
 --     "make_live": true,
 --     "products": [ { "name": "...", "short_description": "...", "description": "...", "base_price": 24.00, "featured": false,
---                     "image_url": "https://... (optional)", "attributes": [ {"label": "Scent", "value": "Lavender"} ],
+--                     "image_url": "(optional, and ONLY a photo she already uploaded on her Photos page; any other link is refused)", "attributes": [ {"label": "Scent", "value": "Lavender"} ],
 --                     "variants": [ {"title": "8 oz", "price": 24.00, "inventory_quantity": 20} ] } ] }
 --
 -- select set_config('nxq.commerce_seed', $nxq$ {...json...} $nxq$, false);   -- <- the generator writes this line for you
