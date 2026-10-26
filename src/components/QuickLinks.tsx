@@ -5,19 +5,20 @@ import {
 import type { ComponentType } from "react";
 import { quickLinksForPath, type QuickLinkIcon } from "../lib/quickLinks";
 import { siteAssistantGateway } from "../lib/siteAssistantConfig";
+import { screenAttentionGateway } from "../lib/screenAttentionMapConfig";
 
 const icons: Record<QuickLinkIcon, ComponentType<{ size?: number; "aria-hidden"?: boolean; style?: React.CSSProperties }>> = {
   business: Building2, leads: Target, changes: MessageSquareText, analytics: BarChart3, reports: FileClock, funnel: Filter, seo: Search, locations: MapPin, health: Activity, domain: Globe,
   files: Folder, billing: CreditCard, journey: Route, history: History, notifications: Bell, privacy: ShieldCheck, rewards: Gift, reviews: Star, settings: Settings,
   dashboard: LayoutDashboard, tutorial: CircleHelp, products: PackagePlus, photos: Images, store: Store, orders: ShoppingBag, setup: ClipboardList, inventory: Boxes, categories: Tags,
-  catalog: Images, preview: Eye, content: FileText, requests: MessageSquareText, usage: Gauge, readiness: ClipboardCheck, assistant: Bot,
+  catalog: Images, preview: Eye, content: FileText, requests: MessageSquareText, usage: Gauge, readiness: ClipboardCheck, assistant: Bot, attention: BarChart3,
 };
 
 // Rendered once by App for the portal home and every Commerce page, below the page itself. It has its own wrapper (not `.nxq-page`, which is a full-screen-tall box) so it adds
 // cards, not another empty screen.
 export function QuickLinksFooter() {
   const path = window.location.pathname;
-  const set = quickLinksForPath(path, { assistant: Boolean(siteAssistantGateway) });
+  const set = quickLinksForPath(path, { assistant: Boolean(siteAssistantGateway), attention: Boolean(screenAttentionGateway) });
   if (!set) return null;
   const here = path.length > 1 ? path.replace(/\/+$/, "") : path;
   return (
