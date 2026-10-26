@@ -1,5 +1,5 @@
 // How the Booking pages talk to the database. The pages only know these small interfaces, so they can be built and tested before the database functions exist.
-// The real connections (drafts: docs/drafts/ui/bookingSupabaseGateway.ts) are added when migration 06_booking_requests is approved and applied.
+// The real connections (src/lib/bookingSupabaseGateway.ts) are switched on in src/lib/bookingConfig.ts once migration 283 is applied.
 import type { HoursPeriod } from "./bookingTime";
 
 export type BookingService = { serviceKey: string; name: string; durationMinutes: number; active: boolean };

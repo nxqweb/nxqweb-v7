@@ -67,8 +67,8 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
   }
   function another() { keyRef.current = newIdempotencyKey(); setNowMs(Date.now()); setDone(null); setStartIso(""); setDayKey(""); setForm({ name: "", email: "", phone: "", notes: "", website: "" }); setErrors({}); setError(""); }
 
-  if (state === "loading") return <main className="nxq-page store-theme"><section className="portal-shell"><div className="empty-state" role="status">Loading...</div></section></main>;
-  if (state === "closed" || !page) return <main className="nxq-page store-theme"><section className="portal-shell"><div className="empty-state" role="status" data-testid="booking-closed">This booking page is not open right now. If someone sent you this link, please contact them another way.</div></section></main>;
+  if (state === "loading") return <main className="nxq-page store-theme"><section className="portal-shell"><h1>Appointment requests</h1><div className="empty-state" role="status">Loading...</div></section></main>;
+  if (state === "closed" || !page) return <main className="nxq-page store-theme"><section className="portal-shell"><h1>Appointment requests</h1><div className="empty-state" role="status" data-testid="booking-closed">This booking page is not open right now. If someone sent you this link, please contact them another way.</div></section></main>;
 
   const zoneName = page.timezone.replace(/_/g, " ");
   return (

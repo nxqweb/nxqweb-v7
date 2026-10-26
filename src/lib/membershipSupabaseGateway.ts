@@ -1,6 +1,5 @@
-// DRAFT (not compiled, not in src/). The real connection for the Members page. Copy to src/lib/membershipSupabaseGateway.ts ONLY after migration
-// 08_membership_tracking has been promoted to supabase/migrations and applied (the CI contract rejects calls to database functions that are not in a real migration).
-// scripts/test-membership.mjs checks these exact call names and argument names against the SQL.
+// Gateway for the Members page: calls the functions of migration 284 (supabase/migrations/284_membership_tracking.sql). It is only used when the switch in src/lib/membershipConfig.ts
+// is set; until 284 is applied (and the product decisions are made) it stays null and nothing calls these functions.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { membershipFromRow, type OwnerMembershipGateway } from "./membershipGateway";
 

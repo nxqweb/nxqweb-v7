@@ -1,6 +1,5 @@
-// DRAFT (not compiled, not in src/). The real connections for the two Booking pages. Copy to src/lib/bookingSupabaseGateway.ts ONLY after migration
-// 06_booking_requests has been promoted to supabase/migrations and applied (the CI contract rejects calls to database functions that are not in a real migration).
-// scripts/test-booking.mjs checks these exact call names and argument names against the SQL.
+// Gateway for the two Booking pages: calls the functions of migration 283 (supabase/migrations/283_booking_requests.sql). It is only used when the switches in src/lib/bookingConfig.ts
+// are set; until 283 is applied (and the product decisions are made) they stay null and nothing calls these functions. scripts/test-booking.mjs checks these exact call names and argument names against the SQL.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { pageFromRow, requestRowsFromRows, setupFromRow, type OwnerBookingGateway, type PublicBookingGateway } from "./bookingGateway";
 

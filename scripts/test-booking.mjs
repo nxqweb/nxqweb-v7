@@ -15,7 +15,7 @@ check("every offered time zone is a real zone, and the week lists Monday first w
 
 // ---- files
 const sql = read("supabase/migrations/283_booking_requests.sql");
-const gw = read("docs/drafts/ui/bookingSupabaseGateway.ts");
+const gw = read("src/lib/bookingSupabaseGateway.ts");
 const owner = read("src/pages/ClientBooking.tsx");
 const pub = read("src/pages/PublicBooking.tsx");
 const types = read("src/lib/bookingGateway.ts");
@@ -26,7 +26,7 @@ const sqlArgs = (s, name) => { const m = s.match(new RegExp(`function public\\.$
 const gatewayArgs = (g, name) => { const m = g.match(new RegExp(`rpc\\("${name}",\\s*\\{([\\s\\S]*?)\\}\\)`)); return m ? [...m[1].matchAll(/(\w+_value)\s*:/g)].map((x) => x[1]).sort().join(",") : ""; };
 const wired = ["get_public_booking_page", "submit_public_booking_request", "ensure_my_booking_workspace", "save_my_booking_settings", "save_my_booking_service", "set_my_booking_public", "list_my_booking_requests", "update_my_booking_request", "delete_my_booking_request"];
 const noArg = ["get_my_booking_setup"];
-const checks = (s, g, o, p, t, c, a) => ({
+const checks = (s, g, o, p, t, c, a, cfg = read("src/lib/bookingConfig.ts")) => ({
   argsMatch: wired.every((n) => sqlArgs(s, n) !== "" && sqlArgs(s, n) === gatewayArgs(g, n)) && noArg.every((n) => new RegExp(`function public\\.${n}\\(\\)`).test(s) && g.includes(`rpc("${n}")`)) && /save_my_booking_hours\(hours_value jsonb\)/.test(s) && /rpc\("save_my_booking_hours", \{ hours_value:/.test(g),
   requestOnly: !/'confirmed'\s*\)\s*then raise exception 'You can mark/.test(s) && /status_value not in \('requested', 'needs_review', 'declined', 'cancelled'\)/.test(s) && !/launch_enabled\s*=\s*true/.test(s) && !/confirmation_mode\s*=\s*'provider_confirmed'/.test(s) && !/update public\.booking_workspaces set[^;]*launch_enabled/i.test(s),
   honest: /does not confirm appointments, send reminders or take payments/.test(o) && /not a confirmed appointment/.test(p) && /Nothing is charged/.test(p) && !/confirmed!|you are booked|booking confirmed|appointment confirmed/i.test(o + p),
@@ -41,13 +41,13 @@ const checks = (s, g, o, p, t, c, a) => ({
   unavailableStates: /data-testid="booking-unavailable"/.test(o) && /data-testid="booking-closed"/.test(p),
   labelsOnEverything: ["book-service", "book-day", "book-name", "book-email", "book-phone", "book-notes"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /aria-invalid/.test(p) && /role="alert"/.test(p),
   themeFix: /\.store-theme \.portal-shell \.booking-slot \{ display: inline-flex; margin: 0; \}/.test(c) && /\.booking-hp \{ position: absolute; left: -10000px;/.test(c),
-  notRouted: !/ClientBooking|PublicBooking/.test(a),
+  routedButOff: /ClientBookingRoute/.test(a) && /PublicBookingRoute/.test(a) && /ownerBookingGateway: OwnerBookingGateway \| null = null;/.test(cfg) && /publicBookingGateway: PublicBookingGateway \| null = null;/.test(cfg),
 });
 const good = checks(sql, gw, owner, pub, types, css, app);
 check("the draft gateway calls exactly the functions and argument names the SQL defines", good.argsMatch);
 check("v1 stays request-only: the owner cannot confirm, launch_enabled and provider mode are never touched", good.requestOnly);
 check("the pages never claim a booking is confirmed, and say plainly that nothing is charged, confirmed or reminded automatically", good.honest);
-check("no database call lives in src yet (the real ones are drafts until migration 06 is approved)", good.noSrcRpc);
+check("no database call lives in the pages (only the gateway file calls the database)", good.noSrcRpc);
 check("the bot trap is hidden from people and screen readers on the page and checked by the database", good.honeypot);
 check("one idempotency key per form fill on the page, honored by the database", good.idempotency);
 check("no raw HTML is injected; external links are safe; mailto and tel links are cleaned; deleting asks first", good.noRawHtml && good.safeLinks && good.deleteConfirm);
@@ -55,7 +55,7 @@ check("only the two public functions are granted to anonymous visitors", good.pu
 check("the database enforces rate caps, notice time, advance limit and 5-minute marks", good.rateAndWindows);
 check("both pages have a calm 'not available' state, and every public field has a label and an error role", good.unavailableStates && good.labelsOnEverything);
 check("the theme overrides for time chips and the hidden field are in place", good.themeFix);
-check("the new pages are not reachable by any route yet (wiring is a documented, owner-approved step)", good.notRouted);
+check("the pages are routed (/client/booking, /book/<name>) but both switches in bookingConfig.ts are OFF (null) until migration 283 is applied and the product decisions are made", good.routedButOff);
 check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw.replace("slug_value: input.slug", "slug: input.slug"), owner, pub, types, css, app).argsMatch === false);
 check("PLANTED BUG caught: owner allowed to confirm", checks(sql.replace("status_value not in ('requested', 'needs_review', 'declined', 'cancelled')", "status_value not in ('requested', 'needs_review', 'declined', 'cancelled', 'confirmed')"), gw, owner, pub, types, css, app).requestOnly === false);
 check("PLANTED BUG caught: page claims a booking is confirmed", checks(sql, gw, owner, pub.replace("This is a <strong>request</strong>, not a confirmed appointment.", "Your booking confirmed!"), types, css, app).honest === false);
@@ -63,7 +63,7 @@ check("PLANTED BUG caught: a third public function is granted to anonymous visit
 check("PLANTED BUG caught: bot trap removed from the page", checks(sql, gw, owner, pub.replace('aria-hidden="true" inert><label>Leave this empty', '><label>Leave this empty'), types, css, app).honeypot === false);
 check("PLANTED BUG caught: idempotency key regenerated on every send", checks(sql, gw, owner, pub.replace("idempotencyKey: keyRef.current", "idempotencyKey: newIdempotencyKey()"), types, css, app).idempotency === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, owner + '\nsupabase.rpc("get_my_booking_setup");', pub, types, css, app).noSrcRpc === false);
-check("PLANTED BUG caught: a page gets routed before approval", checks(sql, gw, owner, pub, types, css, app + "\nconst x = ClientBooking;").notRouted === false);
+check("PLANTED BUG caught: a switch is turned on before approval", checks(sql, gw, owner, pub, types, css, app, read("src/lib/bookingConfig.ts").replace("ownerBookingGateway: OwnerBookingGateway | null = null;", "ownerBookingGateway: OwnerBookingGateway | null = {};")).routedButOff === false);
 check("PLANTED BUG caught: delete no longer asks first", checks(sql, gw, owner.replace("window.confirm(`Delete this request from", "(`Delete this request from"), pub, types, css, app).deleteConfirm === false);
 
 // ---- second-pass fixes (review findings): hours editor, service codes, page behaviors
@@ -121,7 +121,7 @@ check("PLANTED BUG caught: the visitor's clock is frozen again", pageChecks(owne
 check("PLANTED BUG caught: hours with off-grid minutes are accepted again", hoursProblem(week({ 1: day(true, "09:07", "17:00") })) !== "" && (() => { const loose = (d) => (d.open && !(d.start < d.end) ? "x" : ""); return loose(day(true, "09:07", "17:00")) === ""; })());
 
 // ---- reviewer round 2 (2026-10-17): fixes that must stay fixed
-const gwNow = read("docs/drafts/ui/bookingSupabaseGateway.ts");
+const gwNow = read("src/lib/bookingSupabaseGateway.ts");
 const formNow = read("src/lib/bookingForm.ts");
 const pubNow = read("src/pages/PublicBooking.tsx");
 const ownerNow = read("src/pages/ClientBooking.tsx");

@@ -1,7 +1,7 @@
 // Offline test: the Quick links cards at the bottom of the client portal home and the Commerce pages (owner request 2026-10-25: "make it super easy to find everything").
 // Every card must point at a page that really exists, no page may be missing from its grid, and the footer must not bring back the screen-tall empty gap.
 import fs from "node:fs";
-import { assistantQuickLink, attentionQuickLink, commerceQuickLinks, portalQuickLinks, quickLinksForPath } from "../src/lib/quickLinks.ts";
+import { assistantQuickLink, attentionQuickLink, bookingQuickLink, membersQuickLink, commerceQuickLinks, portalQuickLinks, quickLinksForPath } from "../src/lib/quickLinks.ts";
 
 let failures = 0;
 function check(name, ok) { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}`); } }
@@ -13,7 +13,7 @@ const lib = read("src/lib/quickLinks.ts");
 const css = read("src/styles/plan-forms.css");
 
 const routes = [...app.matchAll(/path === "(\/client[^"]*)"/g)].map((m) => m[1]);
-const portalRoutes = routes.filter((r) => r !== "/client" && r !== "/client/assistant" && r !== "/client/attention" && !r.startsWith("/client/commerce")); // /client/assistant is a conditional card, checked below
+const portalRoutes = routes.filter((r) => r !== "/client" && r !== "/client/assistant" && r !== "/client/attention" && r !== "/client/booking" && r !== "/client/members" && !r.startsWith("/client/commerce")); // /client/assistant is a conditional card, checked below
 const commerceRoutes = routes.filter((r) => r.startsWith("/client/commerce"));
 const hrefs = (set) => set.map((l) => l.href);
 
@@ -24,7 +24,7 @@ check("no Commerce page is missing from the Commerce grid", commerceRoutes.every
 const navHrefs = [...nav.matchAll(/href: "(\/client\/commerce[^"]*)"/g)].map((m) => m[1]);
 check("the Commerce grid covers every page in the top Commerce menu", navHrefs.length > 10 && navHrefs.every((h) => hrefs(commerceQuickLinks).includes(h)));
 check("the My assistant card exists only when its switch is on, sits among the other cards, and points at a real route", routes.includes("/client/assistant") && assistantQuickLink.href === "/client/assistant" && !hrefs(quickLinksForPath("/client").links).includes("/client/assistant") && hrefs(quickLinksForPath("/client", { assistant: true }).links).filter((h) => h === "/client/assistant").length === 1 && quickLinksForPath("/client", { assistant: true }).links.length === portalQuickLinks.length + 1 && quickLinksForPath("/client/commerce", { assistant: true }).links.length === commerceQuickLinks.length);
-check("the footer turns the assistant card on from the one switch in siteAssistantConfig, and the switch is on only through the real gateway when Supabase is configured (migration 278 is applied)", /quickLinksForPath\(path, \{ assistant: Boolean\(siteAssistantGateway\), attention: Boolean\(screenAttentionGateway\) \}\)/.test(component) && /export const siteAssistantGateway: SiteAssistantGateway \| null = supabase \? createSiteAssistantGateway\(supabase\) : null;/.test(read("src/lib/siteAssistantConfig.ts")));
+check("the footer turns the assistant card on from the one switch in siteAssistantConfig, and the switch is on only through the real gateway when Supabase is configured (migration 278 is applied)", /quickLinksForPath\(path, \{ assistant: Boolean\(siteAssistantGateway\), attention: Boolean\(screenAttentionGateway\), booking: Boolean\(ownerBookingGateway\), members: Boolean\(ownerMembershipGateway\) \}\)/.test(component) && /export const siteAssistantGateway: SiteAssistantGateway \| null = supabase \? createSiteAssistantGateway\(supabase\) : null;/.test(read("src/lib/siteAssistantConfig.ts")));
 check("addresses are unique within each grid", new Set(hrefs(portalQuickLinks)).size === portalQuickLinks.length && new Set(hrefs(commerceQuickLinks)).size === commerceQuickLinks.length);
 check("every card has a short name and a plain-words hint", [...portalQuickLinks, ...commerceQuickLinks].every((l) => l.label.trim().length >= 3 && l.label.length <= 24 && l.hint.trim().length >= 8 && l.hint.length <= 60));
 
@@ -45,6 +45,8 @@ check("cards are at least 44px tall, one column on a phone, and leave room for t
 check("in light mode the footer paints its own cream background (it sits outside .nxq-page, which is where the page paints its light background)", /body\[data-nxq-theme="light"\] \.quick-links-footer \{[^}]*background: #f4f1e8/.test(css));
 
 check("the Screen attention map card exists only when its switch is on, sits among the other cards, points at a real route, and the switch is on only through the real gateway when Supabase is configured (migration 279 is applied)", routes.includes("/client/attention") && attentionQuickLink.href === "/client/attention" && !hrefs(quickLinksForPath("/client").links).includes("/client/attention") && hrefs(quickLinksForPath("/client", { attention: true }).links).filter((h) => h === "/client/attention").length === 1 && quickLinksForPath("/client", { attention: true }).links.length === portalQuickLinks.length + 1 && quickLinksForPath("/client", { assistant: true, attention: true }).links.length === portalQuickLinks.length + 2 && /export const screenAttentionGateway: ScreenAttentionGateway \| null = supabase \? createScreenAttentionGateway\(supabase\) : null;/.test(read("src/lib/screenAttentionMapConfig.ts")));
+
+check("the Appointment requests and Members cards exist only when their switches are on, sit among the other cards, point at real routes, and both switches are OFF until migrations 283/284 are applied", routes.includes("/client/booking") && routes.includes("/client/members") && bookingQuickLink.href === "/client/booking" && membersQuickLink.href === "/client/members" && !hrefs(quickLinksForPath("/client").links).some((h) => h === "/client/booking" || h === "/client/members") && quickLinksForPath("/client", { booking: true, members: true }).links.length === portalQuickLinks.length + 2 && quickLinksForPath("/client", { assistant: true, attention: true, booking: true, members: true }).links.length === portalQuickLinks.length + 4 && /ownerBookingGateway: OwnerBookingGateway \| null = null;/.test(read("src/lib/bookingConfig.ts")) && /ownerMembershipGateway: OwnerMembershipGateway \| null = null;/.test(read("src/lib/membershipConfig.ts")));
 
 if (failures) { console.log(`\n${failures} check(s) FAILED`); process.exit(1); }
 console.log("\nAll checks passed.");

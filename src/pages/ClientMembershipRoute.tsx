@@ -1,0 +1,24 @@
+import { useEffect, useState } from "react";
+import { ClientMembership } from "./ClientMembership";
+import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { ownerMembershipGateway } from "../lib/membershipConfig";
+
+// Connects /client/members to the database. While the one switch (src/lib/membershipConfig.ts) is null the page says the feature is not open yet and nothing is read.
+// Once it is on, a visitor who is not signed in goes to the login page, like the other client pages.
+export function ClientMembershipRoute() {
+  const gateway = ownerMembershipGateway;
+  const [ready, setReady] = useState(!gateway);
+  useEffect(() => {
+    if (!gateway) return;
+    if (!isSupabaseConfigured || !supabase) { window.location.replace("/portal/login"); return; }
+    let alive = true;
+    void supabase.auth.getSession().then((result) => {
+      if (!alive) return;
+      if (!result.data.session) { window.location.replace("/portal/login"); return; }
+      setReady(true);
+    }).catch(() => { if (alive) window.location.replace("/portal/login"); });
+    return () => { alive = false; };
+  }, [gateway]);
+  if (!ready) return <main className="nxq-page"><section className="portal-shell"><div className="empty-state" role="status">Loading...</div></section></main>;
+  return <ClientMembership gateway={gateway} />;
+}

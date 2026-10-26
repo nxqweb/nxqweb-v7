@@ -11,22 +11,13 @@ Still needed, each an owner decision/approval:
 2. Deploy the site AFTER the apply. If the site is deployed first the page loads but shows a calm "could not be loaded" message until 273 exists.
 3. Decide which plans include it (open question in `docs/NEXT_PRODUCT_PLANS.md`).
 
-## Booking v1 ("Appointment requests", request-only)
-Database: promoted 2026-10-26 to `supabase/migrations/283_booking_requests.sql` (test in `scripts/sql/local-full-schema/regression/283_booking_requests.test.sql`; NOT applied yet; was draft 06, 8 planted bugs caught). Built on the migration-188 Booking tables; none of the 188 guards are weakened:
-the owner functions can only set `requested`, `needs_review`, `declined` or `cancelled` (the 188 trigger still forbids `confirmed`), and `launch_enabled` is never touched.
-Built and tested: `src/pages/ClientBooking.tsx` (manager), `src/pages/PublicBooking.tsx` (request page), `src/lib/{bookingTime,bookingForm,bookingGateway}.ts`,
-`scripts/test-booking-time.mjs`, `scripts/test-booking.mjs`, browser check `scripts/manual/booking-e2e.mjs` (harness `scripts/manual/harness/booking.html`, shared in-memory database, full customer-to-business flow).
-To go live (each step is an owner decision/approval):
-1. Approve promoting draft 06 to the next migration number, then the guarded `apply_migrations` run (validate_foundation first). Draft 06 builds on 188 (applied earlier) and needs a `projects` row for the client (it refuses with a plain message when there is none).
-2. Copy `docs/drafts/ui/bookingSupabaseGateway.ts` to `src/lib/bookingSupabaseGateway.ts`.
-3. In `src/App.tsx` add two lazy routes: `/book/:slug` (public, renders `<PublicBooking slug gateway={createPublicBookingGateway(supabase)} />`) and `/client/booking` (renders `<ClientBooking gateway={createOwnerBookingGateway(supabase)} />`, pass `null` when Supabase is not configured); add a portal link; add `/book/` to the public route list and the sitemap/route tests.
-4. Product decisions first: which plans include it; whether a business may mark a request "confirmed" by hand (that needs the 188 guard changed, a deliberate governance change); how long request data is kept (privacy text); whether an email alert to the business is wanted (needs the verified email domain).
-5. Re-run `npm run test:ci-parity`, `node scripts/manual/booking-e2e.mjs`, the axe scan, and a security review of `submit_public_booking_request` (the only public write surface).
-
-
-## Membership (migration 284, promoted 2026-10-26, NOT applied; was draft 08)
-
-Page `src/pages/ClientMembership.tsx` and `src/lib/membershipGateway.ts` are built and tested but NOT routed. The real connection is `membershipSupabaseGateway.ts` here (copy it to `src/lib/` only after migration 08 is promoted and applied). Wiring: route `/client/members` in `src/App.tsx` (`named(() => import("./pages/ClientMembershipRoute"), ...)`, mirror `ClientReviewsRoute`), a "Members" link in `ClientPortal.tsx`, then update `scripts/test-membership.mjs` (`notRouted` and `noSrcRpc` expectations).
+## Booking v1 ("Appointment requests", request-only) and Members (Membership v1): WIRED BUT OFF (2026-10-26)
+Migrations `283_booking_requests.sql` and `284_membership_tracking.sql` are real (promoted, tested on a real local Postgres, NOT applied). The real connections are `src/lib/bookingSupabaseGateway.ts` and `src/lib/membershipSupabaseGateway.ts`; the routes `/client/booking`, `/client/members` and the public `/book/<name>` exist; the switches `src/lib/bookingConfig.ts` (two) and `src/lib/membershipConfig.ts` (one) are `null` = OFF. While off, each page says the feature is not open yet, the portal shows no card, and nothing calls the database (browser-checked: 0 calls, axe clean, light and dark).
+To turn them on (each an owner decision/approval):
+1. Apply 283 (and 284) with the guarded `apply_migrations` run (validate_foundation first; the dry run must list exactly the pending migrations).
+2. Product decisions first: which plans include Booking and Members; whether a business may mark a request "confirmed" by hand (needs the 188 guard changed, a deliberate governance change); how long request data is kept (privacy text); whether an email goes to the business when a request arrives; for Members, members-only ENFORCEMENT is not in 284.
+3. Set the switches to the real gateways (`createOwnerBookingGateway(supabase)` / `createPublicBookingGateway(supabase)` / `createOwnerMembershipGateway(supabase)`), update the two tests that pin them OFF (`scripts/test-booking.mjs`, `scripts/test-membership.mjs`, `scripts/test-quick-links.mjs`), run `npm run test:ci-parity`, the browser checks `scripts/manual/booking-e2e.mjs` and `membership-e2e.mjs`, and a security review of `submit_public_booking_request` (the only public write surface).
+Built and tested: `src/pages/ClientBooking.tsx`, `PublicBooking.tsx`, `ClientMembership.tsx`, `src/lib/{bookingTime,bookingForm,bookingGateway,membershipGateway}.ts`, `scripts/test-booking-time.mjs`, `scripts/test-booking.mjs`, `scripts/test-membership.mjs`.
 
 ## AI Desk save-to-project: PROMOTED 2026-10-18 (migration 277; draft 09)
 The real gateway is now `src/lib/aiDeskSupabaseGateway.ts`; the panel stays in its no-server mode until the one switch in `src/lib/aiDeskConfig.ts` is set, which happens only after 277 is applied. Earlier notes below are kept for history.

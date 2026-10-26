@@ -2,7 +2,7 @@
 // portal is one tap away. Plain data (no React) so a test can check every address against the real routes in App.tsx.
 export type QuickLinkIcon =
   | "business" | "leads" | "changes" | "analytics" | "reports" | "funnel" | "seo" | "locations" | "health" | "domain" | "files" | "billing" | "journey" | "history"
-  | "notifications" | "privacy" | "rewards" | "reviews" | "settings" | "assistant" | "attention"
+  | "notifications" | "privacy" | "rewards" | "reviews" | "settings" | "assistant" | "attention" | "booking" | "members"
   | "dashboard" | "tutorial" | "products" | "photos" | "store" | "orders" | "setup" | "inventory" | "categories" | "catalog" | "preview" | "content" | "requests" | "usage" | "readiness";
 
 export type QuickLinkItem = { href: string; label: string; hint: string; icon: QuickLinkIcon };
@@ -32,6 +32,9 @@ export const portalQuickLinks: QuickLinkItem[] = [
 // Shown only when the "My assistant" switch (src/lib/siteAssistantConfig.ts) is on, so no client is sent to a page that says it is not switched on.
 export const assistantQuickLink: QuickLinkItem = { href: "/client/assistant", label: "My assistant", hint: "Questions and answers your website can reply with", icon: "assistant" };
 // Shown only when the screen attention map switch (src/lib/screenAttentionMapConfig.ts) is on.
+// Shown only when the Booking and Members switches (src/lib/bookingConfig.ts, src/lib/membershipConfig.ts) are on.
+export const bookingQuickLink: QuickLinkItem = { href: "/client/booking", label: "Appointment requests", hint: "Let customers ask for a time; you follow up", icon: "booking" };
+export const membersQuickLink: QuickLinkItem = { href: "/client/members", label: "Members", hint: "Track your store's members and renewals", icon: "members" };
 export const attentionQuickLink: QuickLinkItem = { href: "/client/attention", label: "Screen attention map", hint: "Where visitors look on the screen (Intelligence)", icon: "attention" };
 
 export const commerceQuickLinks: QuickLinkItem[] = [
@@ -55,9 +58,9 @@ export const commerceQuickLinks: QuickLinkItem[] = [
 export type QuickLinkSet = { id: string; title: string; intro: string; links: QuickLinkItem[] };
 
 // Which set (if any) belongs on a page. Only the portal home and the Commerce pages get one.
-export function quickLinksForPath(pathname: string, options: { assistant?: boolean; attention?: boolean } = {}): QuickLinkSet | null {
+export function quickLinksForPath(pathname: string, options: { assistant?: boolean; attention?: boolean; booking?: boolean; members?: boolean } = {}): QuickLinkSet | null {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  if (path === "/client") return { id: "portal", title: "Everything in your portal", intro: "Tap any card to go straight there.", links: options.assistant || options.attention ? [...portalQuickLinks.slice(0, 15), ...(options.assistant ? [assistantQuickLink] : []), ...(options.attention ? [attentionQuickLink] : []), ...portalQuickLinks.slice(15)] : portalQuickLinks };
+  if (path === "/client") return { id: "portal", title: "Everything in your portal", intro: "Tap any card to go straight there.", links: [...portalQuickLinks.slice(0, 15), ...(options.assistant ? [assistantQuickLink] : []), ...(options.attention ? [attentionQuickLink] : []), ...(options.booking ? [bookingQuickLink] : []), ...(options.members ? [membersQuickLink] : []), ...portalQuickLinks.slice(15)] };
   if (path === "/client/commerce" || path.startsWith("/client/commerce/")) return { id: "commerce", title: "Everything in your store", intro: "Tap any card to go straight there.", links: commerceQuickLinks };
   return null;
 }

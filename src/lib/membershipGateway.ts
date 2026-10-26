@@ -1,5 +1,5 @@
 // How the Members page talks to the database. The page only knows this small interface, so it can be built and tested before the database functions exist.
-// The real connection (draft: docs/drafts/ui/membershipSupabaseGateway.ts) is added when migration 08_membership_tracking is approved and applied.
+// The real connection (src/lib/membershipSupabaseGateway.ts) is switched on in src/lib/membershipConfig.ts once migration 284 is applied.
 // v1 only TRACKS members. Nothing here bills anyone, sends email or hides products from shoppers.
 
 export type MemberTier = { id: string; name: string; perks: string; active: boolean };

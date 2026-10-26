@@ -29,7 +29,7 @@ check("CSV for an empty list is just the header", membersToCsv([], []).split("\r
 
 // ---- files
 const sql = read("supabase/migrations/284_membership_tracking.sql");
-const gw = read("docs/drafts/ui/membershipSupabaseGateway.ts");
+const gw = read("src/lib/membershipSupabaseGateway.ts");
 const page = read("src/pages/ClientMembership.tsx");
 const lib = read("src/lib/membershipGateway.ts");
 const app = read("src/App.tsx");
@@ -37,7 +37,7 @@ const app = read("src/App.tsx");
 const sqlArgs = (s, name) => { const f = s.match(new RegExp(`function public\\.${name}\\(([^)]*)\\)`)); return f ? [...f[1].matchAll(/(?:^|,)\s*(\w+_value)\s/g)].map((x) => x[1]).sort().join(",") : ""; };
 const gatewayArgs = (g, name) => { const f = g.match(new RegExp(`rpc\\("${name}",\\s*\\{([\\s\\S]*?)\\}\\)`)); return f ? [...f[1].matchAll(/(\w+_value)\s*:/g)].map((x) => x[1]).sort().join(",") : ""; };
 const wired = ["save_my_member_tier", "save_my_member", "remove_my_member"];
-const checks = (s, g, p, l, a) => ({
+const checks = (s, g, p, l, a, cfg = read("src/lib/membershipConfig.ts")) => ({
   argsMatch: wired.every((n) => sqlArgs(s, n) !== "" && sqlArgs(s, n) === gatewayArgs(g, n)) && /function public\.list_my_membership\(\)/.test(s) && g.includes('rpc("list_my_membership")'),
   noSrcRpc: !/\.rpc\(/.test(p) && !/\.rpc\(/.test(l),
   honest: /Nothing here charges anyone or sends messages/.test(p) && /You bill them yourself/.test(p) && !/auto-?renew|subscribe now|payment received|charged/i.test(p.replace(/does not charge|charges anyone/gi, "")),
@@ -57,13 +57,13 @@ const checks = (s, g, p, l, a) => ({
   caps: /maxTiers = 10/.test(l) && /maxMembers = 2000/.test(l) && />= 10 then/.test(s) && />= 2000 then/.test(s),
   labels: ["tier-name", "tier-perks", "mem-email", "mem-name", "mem-phone", "mem-tier", "mem-status", "mem-renews", "mem-notes", "mem-filter", "mem-search"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /role="alert"/.test(p),
   unavailable: /data-testid="membership-unavailable"/.test(p),
-  notRouted: !/ClientMembership/.test(a),
+  routedButOff: /ClientMembershipRoute/.test(a) && /ownerMembershipGateway: OwnerMembershipGateway \| null = null;/.test(cfg),
   csvButton: /Download list \(CSV\)/.test(p) && /URL\.revokeObjectURL/.test(p) && /disabled=\{data\.members\.length === 0\}/.test(p),
   singleFlight: /if \(busy\) return;/.test(p),
 });
 const good = checks(sql, gw, page, lib, app);
 check("the draft gateway calls exactly the functions and argument names the SQL defines", good.argsMatch);
-check("no database call lives in src yet (the real one is a draft until migration 08 is approved)", good.noSrcRpc);
+check("no database call lives in the page (only the gateway file calls the database)", good.noSrcRpc);
 check("the page says plainly it only keeps a list (you bill them yourself, nothing is charged or sent) and never claims payments", good.honest);
 check("the page has no locked-products idea at all (owner decided against pay-to-see)", good.noLockedShelf);
 check("all three tables are closed to every API role, and no function is granted to anonymous visitors", good.tablesClosed && good.noAnonFunctions && good.helperInternal);
@@ -79,14 +79,14 @@ check("PLANTED BUG caught: paused-tier members still counted", checks(sql, gw, p
 check("PLANTED BUG caught: refresh failure reported as a failed save", checks(sql, gw, page.replace("saved = true; await reload();", "await reload();"), lib, app).honestRefreshError === false);
 check("PLANTED BUG caught: an odd email becomes a mailto link", checks(sql, gw, page.replace("[^@\\s?&#%]+@", "[^@\\s]+@"), lib, app).safeLinks === false);
 check("PLANTED BUG caught: old renewal dates become uneditable", checks(sql, gw, page, lib.replace("d < -3650", "d < -365"), app).oldDatesEditable === false);
-check("the page is not routed yet (wiring is a documented, owner-approved step)", good.notRouted);
+check("the page is routed (/client/members) but its switch in membershipConfig.ts is OFF (null) until migration 284 is applied and the product decisions are made", good.routedButOff);
 check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw.replace("tier_id_value: input.tierId", "tier: input.tierId"), page, lib, app).argsMatch === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, page + '\nsupabase.rpc("list_my_membership");', lib, app).noSrcRpc === false);
 check("PLANTED BUG caught: page claims it charges", checks(sql, gw, page.replace("You bill them yourself.", "Members are charged automatically."), lib, app).honest === false);
 check("PLANTED BUG caught: a locked-products idea sneaks into the page", checks(sql, gw, page + "\n// members-only shelf", lib, app).noLockedShelf === false);
 check("PLANTED BUG caught: a table opens to API roles", checks(sql.replace("revoke all on table public.commerce_members from public, anon, authenticated;", ""), gw, page, lib, app).tablesClosed === false);
 check("PLANTED BUG caught: a function is granted to anonymous visitors", checks(sql + "\ngrant execute on function public.list_my_membership() to anon, authenticated;", gw, page, lib, app).noAnonFunctions === false);
-check("PLANTED BUG caught: the page gets routed before approval", checks(sql, gw, page, lib, app + "\nconst x = ClientMembership;").notRouted === false);
+check("PLANTED BUG caught: the switch is turned on before approval", checks(sql, gw, page, lib, app, read("src/lib/membershipConfig.ts").replace("ownerMembershipGateway: OwnerMembershipGateway | null = null;", "ownerMembershipGateway: OwnerMembershipGateway | null = {};")).routedButOff === false);
 check("PLANTED BUG caught: removing no longer asks", checks(sql, gw, page.replace("window.confirm(`Remove ", "(`Remove "), lib, app).removeAsks === false);
 check("PLANTED BUG caught: tier cap drifts", checks(sql, gw, page, lib.replace("maxTiers = 10", "maxTiers = 20"), app).caps === false);
 check("PLANTED BUG caught: a label is lost", checks(sql, gw, page.replace('htmlFor="mem-renews"', 'htmlFor="mem-x"'), lib, app).labels === false);

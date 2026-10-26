@@ -61,6 +61,9 @@ const ClientRewards = named(() => import("./pages/ClientRewards"), "ClientReward
 const ClientReviewsRoute = named(() => import("./pages/ClientReviewsRoute"), "ClientReviewsRoute");
 const ClientAssistantRoute = named(() => import("./pages/ClientAssistantRoute"), "ClientAssistantRoute");
 const ClientAttentionRoute = named(() => import("./pages/ClientAttentionRoute"), "ClientAttentionRoute");
+const ClientBookingRoute = named(() => import("./pages/ClientBookingRoute"), "ClientBookingRoute");
+const ClientMembershipRoute = named(() => import("./pages/ClientMembershipRoute"), "ClientMembershipRoute");
+const PublicBookingRoute = named(() => import("./pages/PublicBookingRoute"), "PublicBookingRoute");
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
 const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
@@ -136,6 +139,8 @@ function AppRoutes() {
   if (path === "/client/reviews") return <ClientReviewsRoute />;
   if (path === "/client/assistant") return <ClientAssistantRoute />;
   if (path === "/client/attention") return <ClientAttentionRoute />;
+  if (path === "/client/booking") return <ClientBookingRoute />;
+  if (path === "/client/members") return <ClientMembershipRoute />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
   if (path === "/client/business/locations") return <ClientBusinessLocations />;
@@ -168,6 +173,7 @@ function AppRoutes() {
   if (path === "/store/request") return <PublicCommerceRequest />;
   if (/^\/store\/[^/]+\/?$/.test(path)) return <PublicCommerceStorefront />;
   if (/^\/store\/[^/]+\/account\/?$/.test(path)) return <PublicShopperAccount />;
+  if (/^\/book\/[^/]+\/?$/.test(path)) return <PublicBookingRoute />;
   if (path === "/plans") return <PublicPlans />;
   if (path === "/examples") return <PublicExamples />;
   if (path === "/about") return <PublicInfoPage slug="about" />;
