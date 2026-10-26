@@ -881,9 +881,7 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-271 applied to staging (`nxqweb-staging`); 272-277 PENDING (owner chose 272-275 together on 2026-10-17; 276 and 277 promoted 2026-10-18, all applied together on deploy day with the owner's phrase and Approve click): 248-254
-in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production
-(production is not launched):**
+**B. Migrations 248-284 applied to staging (`nxqweb-staging`): 272-277 together on 2026-10-22 (run #266), 278-279 on 2026-10-26 (run #269), 280-284 on 2026-10-26 (run #272); each with the owner's typed phrase and Approve click, logs read. Earlier history: 248-254 in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production (production is not launched):**
 
 - [x] 248 — client notification on website-setup denial
 - [x] 249 — client notification on Commerce customer request
@@ -922,6 +920,15 @@ in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #
 - [x] 275 — revoke direct client writes on the 10 Commerce tables and direct inserts on two privacy tables (a client could write into another client's storefront; reproduced locally). APPLIED to staging 2026-10-22, run #266; promoted 2026-10-18
 - [x] 276 — website photos at setup. APPLIED to staging 2026-10-22, run #266 (photo panel stays OFF).
 - [x] 277 — AI Desk Save to project tables. APPLIED to staging 2026-10-22, run #266 (switch still OFF).
+- [x] 278 — website Q&A assistant tables and functions. APPLIED to staging 2026-10-26, run #269 (the `answer-site-question` function deployed in run #270; the page is ON in the code but not on the live site until the next site deploy)
+- [x] 279 — Intelligence screen attention map function. APPLIED to staging 2026-10-26, run #269 (page ON in the code, not on the live site yet)
+- [x] 280 — test/complimentary clients excluded from owner MRR and pipeline, four staging test clients relabeled. APPLIED to staging 2026-10-26, run #272
+- [x] 281 — store-branded order numbers. APPLIED to staging 2026-10-26, run #272 (new orders only; not exercised live)
+- [x] 282 — journey wording says NXQX, support address changed. APPLIED to staging 2026-10-26, run #272
+- [x] 283 — Booking v1 request-only tables and functions. APPLIED to staging 2026-10-26, run #272 (pages routed but OFF; plan inclusion, retention and "confirmed" are open decisions)
+- [x] 284 — Membership v1 track-only tables and functions. APPLIED to staging 2026-10-26, run #272 (page routed but OFF; members-only enforcement not included)
+- [ ] `deploy_functions` after 2026-10-26: the changed `build-business-website` and `run-staging-evidence-suite` (chatbot builder) are only in the repo, not deployed
+- [ ] ONE site deploy (15 Netlify credits) to put the chatbot page, heat-map page and the other pending screens on the live site; not done
 
 **C. Live launch verification — requires staging/external access, not
 code work; confirmed blocked in this container as of this checklist:**
