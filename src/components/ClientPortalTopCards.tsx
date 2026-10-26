@@ -16,6 +16,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { ClientCommercePortalTab } from "./ClientCommercePortalTab";
 import { ClientJourneySummaryCard } from "./ClientJourneySummaryCard";
 import { ClientOverviewGraph } from "./ClientOverviewGraph";
+import { ClientVisitsGraph } from "./ClientVisitsGraph";
 import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourney";
 
 type BillingSummary = {
@@ -403,6 +404,7 @@ export function ClientPortalTopCards() {
 
   return createPortal(
     <div style={{ display: "grid", gap: "1rem", marginBottom: "1rem" }}>
+      {!denied ? <ClientVisitsGraph /> : null}
       {!denied ? (
         <ClientOverviewGraph
           attentionCount={[billingStateLoad, healthStateLoad, journeyStateLoad].includes("loading") ? null : clientActionCount}

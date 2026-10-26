@@ -13,6 +13,10 @@ const steps = [
     body: "Your Website Journey shows a truthful setup-to-launch timeline. It separates the exact actions we need from you from work NXQX is already handling.",
   },
   {
+    title: "Every page is one tap away",
+    body: "Scroll to the bottom of your portal home: each page is a card with a short description, so you never have to remember an address. If you have an online store, its pages have the same cards at the bottom.",
+  },
+  {
     title: "Messages and files stay with the client record",
     body: "Use the portal for website requests, questions, approvals that genuinely require you, and files related to your business website.",
   },
