@@ -42,6 +42,7 @@ The owner asked not to fill in GitHub's "Run workflow" form by hand. So:
 - After dispatching, give the owner the direct run URL (`https://github.com/<owner>/<repo>/actions/runs/<id>`, found by listing the newest run). The owner's
   "Review deployments -> nxq-staging -> Approve and deploy" click is theirs and is never done or worked around by Claude.
 - After the run, read the log and report what actually happened ("Applying migration ..." lines, pass/fail), not just the green check.
+- **Owner form card (owner request, 2026-10-26):** every time the owner has to fill in the "Run workflow" form themselves, give them ONE small table with all three fields: "Use workflow from" (always `safe/checkpoint-autonomy-wave35-sales`, never `main`), "Choose validation or explicit runtime mutation" (the exact action name), and the confirmation box (`APPLY-NXQ-SUPABASE-STAGING` for a mutation, blank for a read-only validation), plus the run link and the Approve click path when I start the run myself. Never leave it to memory.
 - Nothing here widens the hard stop-and-ask gates above: new approvals are still needed for new migrations, deploys, secrets, billing or production.
 
 ## Hard stop-and-ask gates
