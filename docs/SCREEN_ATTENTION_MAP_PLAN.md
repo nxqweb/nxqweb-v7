@@ -1,6 +1,6 @@
 # Screen attention map (Intelligence heat-map) — status and promotion steps
 
-Status (2026-10-26): **migration 279 APPLIED to staging 2026-10-26 (run #269); the page is still OFF (switch null) and not deployed.** The owner approved "Build it" on 2026-10-26 with the rule that nothing goes live until they approve the migration and a deploy.
+Status (2026-10-26): **migration 279 APPLIED to staging 2026-10-26 (run #269); the switch is now ON in code (2026-10-26) but NOT yet on the live site: it goes live with the next batched site deploy.** The owner approved "Build it" on 2026-10-26 with the rule that nothing goes live until they approve the migration and a deploy.
 
 ## What it is (and what it honestly is not)
 Intelligence and Enterprise clients get a page, `/client/attention`, with a 16 x 10 grid showing where their website visitors' pointers rested **on the visitor's visible screen**, per page, for the last 7 / 30 / 90 days.
@@ -33,7 +33,7 @@ Migration `supabase/migrations/279_screen_attention_map.sql`; test `scripts/sql/
 ## To go live (each needs the owner's explicit OK)
 1. DONE 2026-10-26: promoted to 279 and registered in preflight.
 2. DONE 2026-10-26 (run #269): `manual-supabase-stage.yml`: read-only `validate_foundation` first; the dry run must list exactly 278 and 279; then `apply_migrations` (owner approves with the phrase and clicks Approve and deploy).
-3. After apply: set `screenAttentionGateway = createScreenAttentionGateway(supabase)` in the config file (and the Q&A switch for 278), commit.
+3. DONE 2026-10-26: `screenAttentionGateway` and `siteAssistantGateway` are now on in code (real gateway, null only if Supabase is not configured).
 4. One batched site deploy (15 Netlify credits), same single-trigger-commit method as before.
 5. Real proof: an Intelligence test client with real consented visits on a live site; until then, say "built, proven on test data only".
 Note: it needs no new Edge function. Only clients whose published site has the tracker snippet and visitors who consent produce data.

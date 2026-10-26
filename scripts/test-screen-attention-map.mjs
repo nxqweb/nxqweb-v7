@@ -4,13 +4,13 @@ import fs from "node:fs";
 import {
   attentionCopy, attentionErrorMessage, attentionGrid, attentionHottest, attentionLevel, attentionOffMessage, attentionPlace, attentionSentence, parseAttentionMap,
 } from "../src/lib/screenAttentionMap.ts";
-import { screenAttentionGateway } from "../src/lib/screenAttentionMapConfig.ts";
 
 let failures = 0;
 function check(name, ok) { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}`); } }
 const read = (p) => fs.readFileSync(p, "utf8");
 
-check("the one switch is OFF (null) until migration 279 is applied", screenAttentionGateway === null);
+const config = read("src/lib/screenAttentionMapConfig.ts");
+check("the one switch is ON only through the real gateway and only when Supabase is configured (otherwise null), since migration 279 is applied", /export const screenAttentionGateway: ScreenAttentionGateway \| null = supabase \? createScreenAttentionGateway\(supabase\) : null;/.test(config));
 check("levels: zero stays 0, any real cell is at least 1, the busiest is 5, and bad input is 0",
   attentionLevel(0, 10) === 0 && attentionLevel(1, 1000) === 1 && attentionLevel(10, 10) === 5 && attentionLevel(5, 10) === 3 && attentionLevel(3, 0) === 0 && attentionLevel(Number.NaN, 5) === 0);
 const cells = [{ x: 8, y: 1, points: 51 }, { x: 8, y: 5, points: 12 }, { x: 99, y: 1, points: 7 }, { x: 2, y: -1, points: 7 }, { x: 3, y: 3, points: 0 }];
