@@ -15,7 +15,7 @@ const user = {
   },
 };
 const session = { access_token: "mock.jwt.token", refresh_token: "mock-refresh", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, user };
-const client = { id: "c-oak", business_name: "Oak Ridge Tree Service", status: "lead", billing_status: "not_configured", billing_provider: null, monthly_price: 79, notes: "", auth_user_id: user.id };
+const client = { id: "c-oak", business_name: "Oak Ridge Tree Service", status: "lead", billing_status: "not_configured", billing_provider: null, monthly_price: 100, notes: "", auth_user_id: user.id };
 const setupCalls = []; const changeCalls = []; const messages = []; const otherRpc = [];
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());

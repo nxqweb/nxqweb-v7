@@ -26,6 +26,7 @@ import { parseLaunchJourney, type ClientLaunchJourney } from "../lib/clientJourn
 import { AssistantChat } from "../components/AssistantChat";
 import { HelpTerm } from "../components/HelpTerm";
 import { clearPendingReferral } from "../lib/referralCode";
+import { inlineReportLines } from "../lib/setupReportLines";
 
 type ClientRow = {
   id: string;
@@ -713,8 +714,7 @@ export function ClientPortal() {
         `Pages / sections needed:`,
         cleanPagesNeeded,
         ``,
-        `Style direction:`,
-        cleanStyleDirection,
+        ...inlineReportLines("Style direction", cleanStyleDirection),
         ``,
         `Brand difference / positioning:`,
         cleanBrandNotes,
@@ -886,7 +886,7 @@ export function ClientPortal() {
         ``,
         `Pages / sections needed:`, t(pagesNeeded) || "Not provided",
         ``,
-        `Style direction:`, t(styleDirection) || "Not provided",
+        ...inlineReportLines("Style direction", t(styleDirection)),
         ``,
         `Brand difference / positioning:`, t(brandNotes) || "Not provided",
         ``,

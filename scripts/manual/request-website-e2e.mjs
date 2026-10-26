@@ -15,7 +15,7 @@ const user = {
   },
 };
 const session = { access_token: "mock.jwt.token", refresh_token: "mock-refresh", token_type: "bearer", expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 86400 * 30, user };
-const client = { id: "c-oak", business_name: "Oak Ridge Tree Service", status: "lead", billing_status: "not_configured", billing_provider: null, monthly_price: 79, notes: "", auth_user_id: user.id };
+const client = { id: "c-oak", business_name: "Oak Ridge Tree Service", status: "lead", billing_status: "not_configured", billing_provider: null, monthly_price: 100, notes: "", auth_user_id: user.id };
 const setupCalls = []; const changeCalls = [];
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*" };
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());
@@ -100,6 +100,7 @@ const sent = setupCalls[0];
 const report = sent?.target_setup_report || "";
 ok("exactly one setup was sent", setupCalls.length === 1);
 ok("the report starts the way the server requires and carries the signature and agreement", report.startsWith("NXQ WEB WEBSITE SETUP REPORT") && /\nTyped signature: Oak Owner\n/.test(report) && report.includes("Agreement accepted: Yes") && report.length >= 200 && report.length <= 30000);
+ok("the style answer is written on ONE line (the database reads a single line; the old two-line form made the portal keep asking for desired_style)", report.includes("\nStyle direction: Clean, strong, dark with green\n") && !report.includes("Style direction:\nClean"));
 ok("the report carries the chosen look options", report.includes("Website colour mode: Both (visitors can switch)") && report.includes("Search-engine setup (SEO): No") && report.includes("Smooth scrolling: Yes"));
 ok("the report carries the signup answers so nothing is asked or lost twice", report.includes("Best customers: Homeowners") && report.includes("Main visitor action: Request an estimate") && report.includes("Proof to build around: Before and after job photos"));
 ok("industry and area are passed to the server from the prefilled values", sent?.target_business_type === "Tree service" && sent?.target_service_area === "Chico, California");
@@ -128,6 +129,25 @@ const change = changeCalls[0];
 ok("a redesign is sent as one design change request with everything in the description", changeCalls.length === 1 && change.target_request_type === "design" && change.target_title === "Redesign my website" && /What to change: A gallery of my past jobs/.test(change.target_description) && /Website colour mode: Light/.test(change.target_description) && /Pages or sections wanted: Home, My work, Contact/.test(change.target_description));
 ok("it says plainly that new pictures go on the Files card and that nothing is published directly", /Files card/.test(panelText) && /nothing is published directly/.test(panelText));
 await ctx.close();
+
+// a client on a custom price (for example Enterprise, arranged by hand) must never be rewritten to Starter by this form
+client.status = "lead"; client.notes = ""; client.billing_status = "active"; client.monthly_price = 300;
+const callsBeforeCustom = setupCalls.length;
+({ page, ctx } = await newPage());
+await page.goto(`${base}/client`, { waitUntil: "networkidle" });
+await page.waitForSelector("[data-testid=request-website-card]", { timeout: 15000 });
+await page.getByTestId("request-website-button").click();
+await page.waitForSelector("#industry");
+await page.fill("#pages-needed", "Home, Services, Contact");
+await page.fill("#style-direction", "Clean, strong, dark with green");
+await page.fill("#brand-notes", "Family run, local crews");
+await page.locator(".agreement-box input[type=checkbox]").check();
+await page.fill("#typed-signature", "Oak Owner");
+await page.getByRole("button", { name: "Request my website" }).click();
+await page.waitForTimeout(500);
+ok("a custom-price client is stopped in plain words and nothing is sent (the server would rewrite them to Starter)", /arranged by hand/.test((await page.locator(".notice-card.error").first().textContent()) || "") && setupCalls.length === callsBeforeCustom);
+await ctx.close();
+client.monthly_price = 100; client.billing_status = "not_configured";
 
 // phone widths
 client.status = "lead"; client.notes = ""; client.billing_status = "not_configured";
