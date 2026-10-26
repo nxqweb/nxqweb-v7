@@ -1,5 +1,5 @@
 // Mounts the draft widget with a fake answer function so the browser test needs no network. Behaviour is chosen by the question text.
-import { mountAssistant } from "/docs/drafts/site/assistant.js";
+import { mountAssistant } from "/templates/business-v1/assistant.js";
 
 window.__mount = mountAssistant;
 

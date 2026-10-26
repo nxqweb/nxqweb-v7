@@ -1,7 +1,6 @@
-// DRAFT: website Q&A assistant widget (no AI) for client sites. NOT in templates/business-v1, so it is not part of any build yet.
-// Self-contained on purpose (one file, its own styles, no libraries) so promoting it is: copy to templates/business-v1/assistant.js, add it to the builder's
-// blueprint file list and the template's <script type="module" src="./assistant.js"> line, and let the builder write the `assistant` block into site.config.js
-// (see docs/SITE_ASSISTANT_PLAN.md, "Promotion checklist"). Until then every client site is byte-for-byte unchanged.
+// Website Q&A assistant widget (no AI) for client sites. Self-contained on purpose (one file, its own styles, no libraries). It only starts when the builder wrote
+// `assistant: { enabled: true, ... }` into the client's site.config.js, which it does only for a client who turned "My assistant" on (docs/SITE_ASSISTANT_PLAN.md).
+// Every other client site shows nothing and makes no request.
 //
 // What it does: a small "Ask a question" button; the panel sends the visitor's question to the answer function and shows the business's own answer, or says
 // it is not sure and points to the contact form. Answers are shown with textContent only, so nothing a server returns can inject markup. The site's strict

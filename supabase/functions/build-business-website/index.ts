@@ -21,7 +21,7 @@ type AdminClient = ReturnType<typeof createClient<DynamicDatabase>>;
 
 const workerName = "build-business-website";
 const headers = { "Content-Type": "application/json" };
-const blueprintFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];
+const blueprintFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js", "assistant.js"];
 const supportedThemeKeys = new Set(["midnight_blue", "charcoal_gold", "forest_emerald", "royal_violet"]);
 
 function requiredSecret(name: string) {
@@ -325,6 +325,9 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}, extras
   const leadEndpoint = clean(runtime.lead_endpoint);
   const leadFormKey = clean(runtime.lead_form_key);
   const challengeSiteKey = clean(runtime.challenge_site_key);
+  // The "Ask a question" button is written only for a client who turned My assistant on, and only when the lead form (its front door) exists too.
+  const assistantEndpoint = clean(runtime.assistant_endpoint);
+  const assistantOn = runtime.assistant_enabled === true && Boolean(assistantEndpoint && leadEndpoint && leadFormKey);
   const advancedAnalytics = ["growth", "intelligence", "enterprise"].includes(tierKey);
   const mouseTracking = ["intelligence", "enterprise"].includes(tierKey);
 
@@ -397,6 +400,7 @@ function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}, extras
       challengeProvider: challengeSiteKey ? "cloudflare_turnstile" : "",
       challengeSiteKey,
     },
+    ...(assistantOn ? { assistant: { enabled: true, endpoint: assistantEndpoint, formKey: leadFormKey, title: "Ask a question" } } : {}),
     analytics: {
       enabled: advancedAnalytics && analyticsProfileEnabled && Boolean(analyticsEndpoint && analyticsIngestKey),
       endpoint: analyticsEndpoint,
@@ -625,7 +629,12 @@ async function processBuild(admin: AdminClient, job: AutomationJob) {
     const challengeConfig = await admin.from("business_lead_forms").update({ require_challenge: true, challenge_provider: "cloudflare_turnstile", updated_at: new Date().toISOString() }).eq("form_key", String(leadForm.data));
     if (challengeConfig.error) throw new Error(`Lead challenge setup failed: ${challengeConfig.error.message}`);
   }
+  // Not applied yet or unreadable means "off": a build never fails because of the assistant. The answer function sits beside the lead function, so its address is derived from it.
+  const assistantSettings = await admin.from("client_assistant_settings").select("enabled").eq("client_id", job.client_id).maybeSingle();
+  const assistantEndpoint = leadEndpoint.replace(/\/ingest-business-lead\/?$/, "/answer-site-question");
   const runtimeConfig: JsonRecord = {
+    assistant_enabled: !assistantSettings.error && assistantSettings.data?.enabled === true,
+    assistant_endpoint: assistantEndpoint !== leadEndpoint ? assistantEndpoint : "",
     analytics_endpoint: analyticsEndpoint,
     analytics_ingest_key: String(analyticsProfile.data?.public_ingest_key || ""),
     analytics_profile_enabled: analyticsProfile.data?.status === "enabled",

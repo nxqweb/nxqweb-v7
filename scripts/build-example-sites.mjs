@@ -1,7 +1,7 @@
 // Builds the fictional example sites into public/examples/<slug>/ from the REAL client-site template (templates/business-v1) and the demo configs.
 //   node scripts/build-example-sites.mjs --write   writes the files (run after changing a demo config or the template)
 //   node scripts/build-example-sites.mjs --check   exits 1 if the committed files differ from what the template would produce (used by scripts/test-example-sites.mjs)
-// Each example gets: the template's index.html with a visible "example site" banner, a noindex tag, no lead-form or analytics scripts and footer links to the NXQX legal pages;
+// Each example gets: the template's index.html with a visible "example site" banner, a noindex tag, no lead-form, analytics or assistant scripts and footer links to the NXQX legal pages;
 // the template's styles, accessibility styles and renderer unchanged; and the demo config with the example's colour theme.
 import fs from "node:fs";
 import path from "node:path";
@@ -31,7 +31,7 @@ export function buildExampleFiles() {
     must('<a class="sr-only" href="#main-content">Skip to content</a>', "the skip link");
     html = html.replace('<a class="sr-only" href="#main-content">Skip to content</a>', '<a class="sr-only" href="#main-content">Skip to content</a>\n    <div class="demo-banner" role="note"><strong>Example site.</strong> A fictional business, built with the NXQX-Web template.<a href="/examples">More examples</a><a href="/plans">Plans</a></div>');
     must('<script type="module" src="./lead-form.js"></script>', "the lead form script");
-    html = html.replace('    <script type="module" src="./lead-form.js"></script>\n', "").replace('    <script type="module" src="./analytics.js"></script>\n', "");
+    html = html.replace('    <script type="module" src="./lead-form.js"></script>\n', "").replace('    <script type="module" src="./analytics.js"></script>\n', "").replace('    <script type="module" src="./assistant.js"></script>\n', "");
     must('<a href="/privacy.html">Privacy</a>', "the footer privacy link");
     html = html.replace(/<a href="\/privacy\.html">Privacy<\/a>\s*<a href="\/terms\.html">Terms<\/a>\s*<a href="\/accessibility\.html">Accessibility<\/a>/, '<a href="/privacy">NXQX Privacy</a>\n        <a href="/terms">NXQX Terms</a>');
     const config = `${read(`${templateDir}/${site.config}`).trimEnd()}\nsiteConfig.seo = { ...siteConfig.seo, enabled: false }; // fictional businesses: no structured data\nsiteConfig.design = { themeKey: ${JSON.stringify(site.theme)} };\n`;

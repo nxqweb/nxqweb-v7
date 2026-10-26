@@ -32,6 +32,7 @@
     "test:assistant-match": "node scripts/test-assistant-match.mjs",
     "test:site-assistant-draft": "node scripts/test-site-assistant-draft.mjs",
     "test:site-assistant-ui": "node scripts/test-site-assistant-ui.mjs",
+    "test:site-assistant-builder": "node scripts/test-site-assistant-builder.mjs",
     "test:screen-attention-map": "node scripts/test-screen-attention-map.mjs",
     "test:commerce-rpc-reason": "node scripts/test-commerce-rpc-reason.mjs",
     "test:commerce-setup-form": "node scripts/test-commerce-setup-form.mjs",

@@ -1,4 +1,4 @@
-// Real-browser check of the DRAFT website Q&A widget (docs/drafts/site/assistant.js) via harness/assistant.html. No network, no login, fake answer function.
+// Real-browser check of the website Q&A widget (templates/business-v1/assistant.js) via harness/assistant.html. No network, no login, fake answer function.
 // Needs the dev server (see scripts/manual/README.md). SHOT=dir saves screenshots. AXE=path/to/axe.min.js adds the accessibility scan.
 import fs from "node:fs";
 import { createRequire } from "node:module";

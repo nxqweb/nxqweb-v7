@@ -62,7 +62,7 @@ async function verifyBusinessTemplateAccess(token: string) {
   const owner = secret("NXQ_AUTOMATION_SOURCE_OWNER");
   const repo = secret("NXQ_AUTOMATION_SOURCE_REPO");
   const ref = Deno.env.get("NXQ_AUTOMATION_SOURCE_REF")?.trim() || "main";
-  const requiredFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];
+  const requiredFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js", "assistant.js"];
   const checks: Record<string, boolean> = {};
   for (const file of requiredFiles) {
     const res = await timedFetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/templates/business-v1/${encodeURIComponent(file)}?ref=${encodeURIComponent(ref)}`, { headers: githubHeaders(token) });

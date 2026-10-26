@@ -34,7 +34,7 @@ check("anything else gets a calm generic line that says nothing was changed, nev
 check("starter questions are plain, short and never come with answers", STARTER_QUESTIONS.length >= 4 && STARTER_QUESTIONS.every((q) => q.length < 60 && !/[<>]/.test(q)));
 
 const sql = fs.readFileSync("supabase/migrations/278_site_assistant.sql", "utf8");
-const widget = fs.readFileSync("docs/drafts/site/assistant.js", "utf8");
+const widget = fs.readFileSync("templates/business-v1/assistant.js", "utf8");
 check("the default greeting and not-sure message are the same in the portal, the database and the widget", sql.includes(`'${DEFAULT_GREETING}'`) && widget.includes(`"${DEFAULT_GREETING}"`) && sql.includes("I am not sure about that. Please use the contact form and we will get back to you.") && DEFAULT_FALLBACK === "I am not sure about that. Please use the contact form and we will get back to you.");
 
 const page = fs.readFileSync("src/pages/ClientAssistant.tsx", "utf8");

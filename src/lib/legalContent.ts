@@ -49,6 +49,7 @@ export const privacyPage: InfoPage = {
     ] },
     { heading: "Who helps us handle it", paragraphs: ["We use these service providers. They receive personal information only when the related feature is switched on, and only to do their job for us:"], bullets: serviceProviders },
     { heading: "Your customers' and visitors' data", paragraphs: ["If your website or online store collects information from your own customers or visitors (for example orders or contact forms), that information belongs to your business. We handle it for you so the site works. You are responsible for telling your own customers how you use it."] },
+    { heading: "The Ask a question button on client websites", paragraphs: ["Some client websites have an Ask a question button that shows answers the business wrote. When a visitor types a question, it is checked against those answers. If no answer fits, the question may be saved for the business so it can add one. We do not save a question that looks like it holds personal details, such as an email address, a long number or a web link, and we do not save the visitor's IP address or identity. Please do not type personal or private information into it."] },
     { heading: "Your choices", bullets: [
       "Ask for a copy of your account data, or withdraw a consent, from the Security and privacy page in your client portal.",
       "Ask us to correct or delete information by emailing us. We will say what we can delete and what we must keep for legal or security reasons.",
@@ -84,6 +85,7 @@ export const termsPage: InfoPage = {
       "You keep ownership of your domain name. We only give you instructions. We never need your registrar password.",
     ] },
     { heading: "What we do not promise", paragraphs: ["We work hard on every site, but we cannot promise search rankings, visitors, leads or sales. Reports and analytics are summaries to help you decide, not guarantees."] },
+    { heading: "Answers you write for your website", paragraphs: ["If you turn on the Ask a question button, you write the questions and answers it shows. You are responsible for those answers being true, current and lawful, and you should not put medical, legal, financial or safety advice in them unless you are qualified to give it. The button only shows what you wrote, and it is not a person or a promise from NXQX-Web."] },
     { heading: "AI tools", paragraphs: ["We may use AI tools to help draft website plans, text and replies. Important steps are reviewed by a person before they go live."] },
     { heading: "Online stores", paragraphs: ["If you use NXQX-Web to run a store, you are the seller. You are responsible for your products, prices, orders, shipping, refunds, taxes and local laws. Payment links go to your own payment provider, and we do not hold your customers' payments."] },
     { heading: "Acceptable use", paragraphs: ["Do not use the service for anything illegal, deceptive or harmful, to send spam, or to put other people's private information on your site without permission. We may remove content or pause a site that breaks these rules."] },

@@ -11,7 +11,7 @@ function check(name, ok) {
 }
 const sql = fs.readFileSync("supabase/migrations/278_site_assistant.sql", "utf8");
 const fn = fs.readFileSync("supabase/functions/answer-site-question/index.ts", "utf8");
-const widget = fs.readFileSync("docs/drafts/site/assistant.js", "utf8");
+const widget = fs.readFileSync("templates/business-v1/assistant.js", "utf8");
 const portal = fs.existsSync("src/pages/ClientAssistant.tsx") ? fs.readFileSync("src/pages/ClientAssistant.tsx", "utf8") : "";
 
 const rules = {
