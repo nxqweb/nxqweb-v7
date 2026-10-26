@@ -12,8 +12,14 @@ Written 2026-10-26 from read-only inspection. The owner chose "Plan only".
 - `runtime-worker-dispatch.yml` is a 5-minute cron and **already exists on `main`**, so the schedule is live today; merging only updates it.
 - Scheduled and one-shot workflows only run from the default branch. Any `harden-*` / `one-shot-*` file that has `contents: write` and a push trigger must be reviewed first: after a merge, a push to `main` could run it against `main`.
 
+## Workflow audit result (2026-10-26, read-only, all 53 workflow files on the branch)
+- **40 `harden-*` / `one-shot-*` workflows have `contents: write` and a push trigger. Every one of them is pinned to a `safe/...` branch** (32 to `safe/checkpoint-autonomy-wave35-sales`, 7 to `safe/commerce-live-storefront`, 1 to `safe/mega-autonomy-pass`; two of them use the inline `branches: [...]` form, checked by hand). **None names `main`, so a merge cannot trigger any of them.** Merging does not make them run.
+- Workflows that do run on a push to `main`: `ci.yml`, `ci-mega-extended.yml`, `security-audit.yml`, `client-file-domain-isolation-contract.yml`, `portal-scale-contract.yml` (all read-only checks; the branch is green on all of them as of `0219175`).
+- `manual-supabase-stage.yml`, `diagnose-business-ai-proof.yml`, `sync-staging-local-ai-adapter.yml`, `runtime-worker-dispatch.yml` use secrets and the protected `nxq-staging` environment; the first three are manual only, and the worker dispatcher is the 5-minute cron that already runs from `main` today.
+- Net: merging adds no new automatic writer or deployer on `main`. The remaining risks are Netlify (a build on `main`) and the size of the change.
+
 ## Safe sequence (each step needs the owner)
-1. Pre-merge audit (read-only, I can do it): list every workflow's `on:` block and permissions; list anything with `contents: write`, `schedule`, or deploy steps; confirm none touch production.
+1. DONE 2026-10-26: pre-merge workflow audit (result above).
 2. Open a **pull request** `safe/checkpoint-autonomy-wave35-sales` -> `main` (CI runs on the PR; fix anything red on the branch). Do not merge yet.
 3. Owner reviews the PR; decides whether to merge-commit or fast-forward (fast-forward keeps history linear).
 4. Before merging: set Netlify so production builds from `main` stay stopped; confirm Auto Publishing is locked.
