@@ -11,11 +11,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | Draft | Purpose | Plan |
 |---|---|---|
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
-| `03_journey_nxqx_wording.sql` | Client journey text says NXQX instead of NXQ, and the denied-client support link points at NXQweb@protonmail.com (the old address was lost); logic unchanged | owner request 2026-10-15 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
-| `06_booking_requests.sql` | Booking v1, request-only: public page columns on the 188 tables, owner functions (services, hours, requests) and the two public functions (page + submit request) with bot trap, rate caps, opening-hours checks; no confirmation, payment or reminder; 188 guards untouched; only runs for accounts in good standing; public form has spam brakes (not full protection, see its header); also a service-role-only `purge_old_booking_requests` (90-day retention, 30-day floor, NOT scheduled) | `docs/NEXT_PRODUCT_PLANS.md` plan 2; UI wiring steps in `docs/drafts/ui/README.md` |
-| `04_store_order_number_prefix.sql` | Customer-facing order numbers use the store's own prefix (initials of the store name, or an `order_prefix` setting) instead of `NXQ-`; changes only the Stripe-ready checkout wrapper from migration 227, the order primitive is untouched, existing orders keep their numbers | owner request 2026-10-15 |
-| `08_membership_tracking.sql` | Membership v1 (track only): per-store tiers (max 10), members (max 2000, one row per email), a members-only product flag, owner functions, and `get_my_membership_status` for a signed-in shopper. Deny-by-default tables, no card data. The members-only flag is a RECORD ONLY: hiding/refusing those products needs changes to the public store and order-creation functions (104/107/115/227) and is a separate owner decision | owner answers 2026-10-17 (members = client's customers, client bills outside, perk = members-only products) |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -56,6 +52,5 @@ The two security drafts from the 2026-10-17 scan (`09_fix_duplicate_variant_over
 Draft 10 (website photos at setup) was promoted on 2026-10-18 (owner said "lets do all of that") to real migration `276_site_photos`; its test lives in `scripts/sql/local-full-schema/regression/`. NOT applied yet: see `docs/PHOTO_BACKEND_RUNBOOK.md`.
 
 Draft 09 (AI Desk build plans) was promoted on 2026-10-18 (owner chose "A") to real migration `277_ai_desk_build_plans`; its test lives in `scripts/sql/local-full-schema/regression/`. NOT applied yet: see `docs/AI_DESK_KIT.md` and `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`.
-| `12_complimentary_clients_excluded_from_revenue.sql` | Test clients stop counting as revenue: `owner_portal_summary()` leaves clients whose billing provider is `complimentary` out of Active MRR and Pipeline value (accounts still counted), and the four staging test clients are labeled. Tested on a real local Postgres. Written 2026-10-26 at the owner's request; NOT applied | `docs/OWNER_STYLE_BACKFILL.md` (the separate, optional style back-fill) |
 
 Note: `11_site_assistant.sql` was promoted to real migration 278 (`supabase/migrations/278_site_assistant.sql`) on 2026-10-26 with the owner's approval; it is in the repo but NOT applied (`docs/SITE_ASSISTANT_PLAN.md`, "Promotion progress").

@@ -1,4 +1,4 @@
--- DRAFT. Client journey wording: use the NXQX brand everywhere the client can read it, and point the "contact support" link at NXQweb@protonmail.com.
+-- 282: client journey wording says NXQX and points support at NXQweb@protonmail.com. Promoted from draft 03 on 2026-10-26 (owner approved promoting it); NOT applied until the owner approves the guarded run.
 -- Replaces public.current_client_launch_journey() from migration 218. The logic is unchanged; ONLY visible text changes:
 --   * 'NXQ ...' -> 'NXQX ...' (stage titles, details, action text, the timeline step called 'NXQ review')
 --   * 'Contact NXQ Web with questions' -> 'Contact NXQX-Web with questions'

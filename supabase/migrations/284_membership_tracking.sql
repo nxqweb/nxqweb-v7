@@ -1,4 +1,4 @@
--- DRAFT 08: Membership v1 for NXQX-Commerce stores (owner decisions 2026-10-17). LOCAL ONLY, NOT promoted, NOT applied.
+-- 284: Membership v1 for NXQX-Commerce stores (track only; owner decisions 2026-10-17). Promoted from draft 08 on 2026-10-26 (owner approved promoting the migration); NOT applied until the owner approves the guarded run. The page is still not routed and members-only enforcement is NOT included.
 --
 -- Decisions this follows (owner answered in chat):
 --  * "members" are a CLIENT'S OWN CUSTOMERS (e.g. a monthly candle club), not the clients paying NXQX

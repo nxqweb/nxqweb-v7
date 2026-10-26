@@ -1,4 +1,4 @@
--- Sidecar test for draft 12 (test clients stop counting as revenue). Rolled back. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 280 (test clients stop counting as revenue). Rolled back. Must end by selecting DRAFT_TEST_OK.
 -- Proves: complimentary clients are left out of Active MRR and Pipeline value but still counted as accounts; real paying clients are untouched; the label step marks only the four
 -- named staging test clients (exact names, active billing, not qa_only), is safe to run twice, and the function stays owner-only with the same grants.
 begin;

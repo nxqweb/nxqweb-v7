@@ -1,4 +1,4 @@
--- DRAFT (not applied): store-branded order numbers (owner request 2026-10-15: customers of a client's store should not see 'NXQ-').
+-- 281: store-branded order numbers (owner request 2026-10-15). Promoted from draft 04 on 2026-10-26 (owner approved promoting it); NOT applied until the owner approves the guarded run.
 --
 -- Today every direct-payment order number starts with 'NXQ-' (set inside create_public_direct_payment_order, migration 115). This draft
 -- leaves that function untouched and changes only the wrapper the storefront actually calls (create_public_stripe_ready_direct_payment_order,

@@ -12,7 +12,7 @@ Still needed, each an owner decision/approval:
 3. Decide which plans include it (open question in `docs/NEXT_PRODUCT_PLANS.md`).
 
 ## Booking v1 ("Appointment requests", request-only)
-Database draft: `docs/drafts/migrations/06_booking_requests.sql` (+ `.test.sql`, passes the local full-schema harness; 8 planted bugs caught). Built on the migration-188 Booking tables; none of the 188 guards are weakened:
+Database: promoted 2026-10-26 to `supabase/migrations/283_booking_requests.sql` (test in `scripts/sql/local-full-schema/regression/283_booking_requests.test.sql`; NOT applied yet; was draft 06, 8 planted bugs caught). Built on the migration-188 Booking tables; none of the 188 guards are weakened:
 the owner functions can only set `requested`, `needs_review`, `declined` or `cancelled` (the 188 trigger still forbids `confirmed`), and `launch_enabled` is never touched.
 Built and tested: `src/pages/ClientBooking.tsx` (manager), `src/pages/PublicBooking.tsx` (request page), `src/lib/{bookingTime,bookingForm,bookingGateway}.ts`,
 `scripts/test-booking-time.mjs`, `scripts/test-booking.mjs`, browser check `scripts/manual/booking-e2e.mjs` (harness `scripts/manual/harness/booking.html`, shared in-memory database, full customer-to-business flow).
@@ -24,7 +24,7 @@ To go live (each step is an owner decision/approval):
 5. Re-run `npm run test:ci-parity`, `node scripts/manual/booking-e2e.mjs`, the axe scan, and a security review of `submit_public_booking_request` (the only public write surface).
 
 
-## Membership (draft 08)
+## Membership (migration 284, promoted 2026-10-26, NOT applied; was draft 08)
 
 Page `src/pages/ClientMembership.tsx` and `src/lib/membershipGateway.ts` are built and tested but NOT routed. The real connection is `membershipSupabaseGateway.ts` here (copy it to `src/lib/` only after migration 08 is promoted and applied). Wiring: route `/client/members` in `src/App.tsx` (`named(() => import("./pages/ClientMembershipRoute"), ...)`, mirror `ClientReviewsRoute`), a "Members" link in `ClientPortal.tsx`, then update `scripts/test-membership.mjs` (`notRouted` and `noSrcRpc` expectations).
 

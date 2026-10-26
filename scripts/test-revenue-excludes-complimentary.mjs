@@ -5,8 +5,8 @@ import fs from "node:fs";
 let failures = 0;
 function check(name, ok) { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}`); } }
 const norm = (text) => text.replace(/\s+/g, " ").trim();
-const mig = fs.readFileSync("docs/drafts/migrations/12_complimentary_clients_excluded_from_revenue.sql", "utf8");
-const side = fs.readFileSync("docs/drafts/migrations/12_complimentary_clients_excluded_from_revenue.test.sql", "utf8");
+const mig = fs.readFileSync("supabase/migrations/280_complimentary_clients_excluded_from_revenue.sql", "utf8");
+const side = fs.readFileSync("scripts/sql/local-full-schema/regression/280_complimentary_clients_excluded_from_revenue.test.sql", "utf8");
 const old = fs.readFileSync("supabase/migrations/217_scalable_owner_portal_read_models.sql", "utf8");
 const page = fs.readFileSync("src/pages/OwnerBillingLifecycle.tsx", "utf8");
 

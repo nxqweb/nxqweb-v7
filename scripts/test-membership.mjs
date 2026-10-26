@@ -28,7 +28,7 @@ check("the CSV can never run a customer's text as a formula, and quotes and comm
 check("CSV for an empty list is just the header", membersToCsv([], []).split("\r\n").length === 2 && membersToCsv([], []).includes("Renews on"));
 
 // ---- files
-const sql = read("docs/drafts/migrations/08_membership_tracking.sql");
+const sql = read("supabase/migrations/284_membership_tracking.sql");
 const gw = read("docs/drafts/ui/membershipSupabaseGateway.ts");
 const page = read("src/pages/ClientMembership.tsx");
 const lib = read("src/lib/membershipGateway.ts");

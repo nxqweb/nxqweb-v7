@@ -14,7 +14,7 @@ check("service codes are made from the name, tidy, and unique among the business
 check("every offered time zone is a real zone, and the week lists Monday first with all seven days once", timeZoneChoices.every((z) => isValidTimeZone(z.value)) && weekdayDisplayOrder.length === 7 && new Set(weekdayDisplayOrder).size === 7 && weekdayDisplayOrder[0] === 1 && weekdayNames[0] === "Sunday" && weekdayNames[6] === "Saturday");
 
 // ---- files
-const sql = read("docs/drafts/migrations/06_booking_requests.sql");
+const sql = read("supabase/migrations/283_booking_requests.sql");
 const gw = read("docs/drafts/ui/bookingSupabaseGateway.ts");
 const owner = read("src/pages/ClientBooking.tsx");
 const pub = read("src/pages/PublicBooking.tsx");

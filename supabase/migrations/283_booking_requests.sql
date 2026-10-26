@@ -1,4 +1,4 @@
--- DRAFT 06: Booking v1, "request an appointment" (request-only). NOT a real migration; promotion and apply are stop-and-ask gates.
+-- 283: Booking v1, "request an appointment" (request-only). Promoted from draft 06 on 2026-10-26 (owner approved promoting the migration); NOT applied until the owner approves the guarded run. The pages are still not routed: plan inclusion, retention text and the "confirmed" question are open product decisions.
 --
 -- What it does: builds the first usable layer on the Booking tables from migration 188 without weakening any of its guards.
 --   * The business sets a public page name, a short intro, services (name + length) and weekly opening hours, then switches the page on.

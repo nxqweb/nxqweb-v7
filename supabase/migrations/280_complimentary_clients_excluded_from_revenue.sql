@@ -1,4 +1,4 @@
--- DRAFT 12: test clients stop counting as revenue. LOCAL ONLY, NOT promoted, NOT applied. Written 2026-10-26 (owner chose "Draft it").
+-- 280: test clients stop counting as revenue. Promoted from draft 12 on 2026-10-26 (owner approved promoting it); NOT applied until the owner approves the guarded run.
 --
 -- Why: the owner dashboard's Active MRR and Pipeline value come from owner_portal_summary() (migration 217), which adds up monthly_price for every client with
 -- billing_status 'active' (MRR) and every client that is not archived, denied or dormant (pipeline). The owner screen's "Activate billing (no charge)" button calls the SAME
