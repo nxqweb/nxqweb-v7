@@ -27,6 +27,8 @@
     "test:setup-report-style-line": "node scripts/test-setup-report-style-line.mjs",
     "test:visits-graph": "node scripts/test-visits-graph.mjs",
     "test:plan-card-matches-catalog": "node scripts/test-plan-card-matches-catalog.mjs",
+    "test:owner-style-backfill": "node scripts/test-owner-style-backfill.mjs",
+    "test:revenue-excludes-complimentary": "node scripts/test-revenue-excludes-complimentary.mjs",
     "test:assistant-match": "node scripts/test-assistant-match.mjs",
     "test:site-assistant-draft": "node scripts/test-site-assistant-draft.mjs",
     "test:site-assistant-ui": "node scripts/test-site-assistant-ui.mjs",

@@ -85,3 +85,12 @@ interrupted (Ctrl-C) it attempts the same teardown.
   `*.test.sql` sidecar must end with `DRAFT_TEST_OK`. Sidecars simulate the Supabase layout by moving
   pgcrypto to `extensions`. Drafts are not migrations and are never applied anywhere else.
 
+## Running it in the Claude cloud sandbox (confirmed 2026-10-26)
+PostgreSQL 16 is installed in the sandbox but its default cluster is stopped. Start it, then run the harness as the `postgres` OS user:
+
+```
+pg_ctlcluster 16 main start
+NXQ_LOCAL_PG_OS_USER=postgres node scripts/test-local-full-schema.mjs
+```
+Do not try to put a database under the session's scratchpad folder: the `postgres` user cannot enter it. Result on 2026-10-26: 46/46 checks (all 245 migration files apply, the 278 regression test, draft 12's sidecar test, the owner style back-fill test, and 331 RPC call sites checked against the real function signatures and EXECUTE grants). It proves source and migration consistency on a stand-in platform, not staging or production behaviour.
+

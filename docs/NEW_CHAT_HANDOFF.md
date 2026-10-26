@@ -5,7 +5,7 @@
 ## Do this first (every session)
 1. `git fetch`, then compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`. Branch: `safe/checkpoint-autonomy-wave35-sales`. At the time of writing both were **`f2b18de`** and the working tree was clean. Never work on `main`.
 2. Read `CLAUDE.md` (standing rules) and the top of `docs/NXQ_RUNTIME_HANDOFF.md` ("START HERE", "Known limits", "Canonical launch checklist"). Do not trust a SHA written in a document; check live state.
-3. Before every push run `npm run test:ci-parity` (66 commands). `npm run preflight` and `npm run ready` give the deploy-day verdict.
+3. Before every push run `npm run test:ci-parity` (66 commands). **A real Postgres is available in the cloud sandbox** (`pg_ctlcluster 16 main start`, then `NXQ_LOCAL_PG_OS_USER=postgres node scripts/test-local-full-schema.mjs`, see `docs/LOCAL_FULL_SCHEMA_TEST.md`); run it whenever a migration or SQL draft changes. `npm run preflight` and `npm run ready` give the deploy-day verdict.
 
 ## Where things stand
 - **SITE UPDATED 2026-10-25 9:52 PM: the published site is now `76e62d2`** (rollback target is the Oct 22 deploy `aa72bd0`; credits about 210 after the usage page catches up; builds stopped, Auto Publishing locked). Verified live: /plans Enterprise card, the Your visits card, the Commerce quick-links grid; the rest is listed in `docs/NXQ_RUNTIME_HANDOFF.md` under "SITE DEPLOYED 2026-10-25". The text below describes the earlier Oct 22 deploy.

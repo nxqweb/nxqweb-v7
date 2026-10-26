@@ -56,4 +56,6 @@ The two security drafts from the 2026-10-17 scan (`09_fix_duplicate_variant_over
 Draft 10 (website photos at setup) was promoted on 2026-10-18 (owner said "lets do all of that") to real migration `276_site_photos`; its test lives in `scripts/sql/local-full-schema/regression/`. NOT applied yet: see `docs/PHOTO_BACKEND_RUNBOOK.md`.
 
 Draft 09 (AI Desk build plans) was promoted on 2026-10-18 (owner chose "A") to real migration `277_ai_desk_build_plans`; its test lives in `scripts/sql/local-full-schema/regression/`. NOT applied yet: see `docs/AI_DESK_KIT.md` and `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`.
+| `12_complimentary_clients_excluded_from_revenue.sql` | Test clients stop counting as revenue: `owner_portal_summary()` leaves clients whose billing provider is `complimentary` out of Active MRR and Pipeline value (accounts still counted), and the four staging test clients are labeled. Tested on a real local Postgres. Written 2026-10-26 at the owner's request; NOT applied | `docs/OWNER_STYLE_BACKFILL.md` (the separate, optional style back-fill) |
+
 Note: `11_site_assistant.sql` was promoted to real migration 278 (`supabase/migrations/278_site_assistant.sql`) on 2026-10-26 with the owner's approval; it is in the repo but NOT applied (`docs/SITE_ASSISTANT_PLAN.md`, "Promotion progress").

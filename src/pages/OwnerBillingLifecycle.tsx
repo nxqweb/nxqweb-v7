@@ -166,9 +166,11 @@ export function OwnerBillingLifecycle() {
     return map;
   }, [clients]);
 
+  // `provider` is only passed by the TEMPORARY test helper ("complimentary": a free test client that must not count as revenue); every other action keeps the client's own provider.
   async function changeBillingState(
     client: ClientRow,
-    nextStatus: "past_due" | "freeze_review" | "frozen" | "active"
+    nextStatus: "past_due" | "freeze_review" | "frozen" | "active",
+    provider?: "complimentary"
   ) {
     if (!supabase) return;
 
@@ -181,6 +183,7 @@ export function OwnerBillingLifecycle() {
         `Next: ${formatStatus(nextStatus)}`,
         "",
         "This changes billing only. It does not charge money and does not change the project stage.",
+        ...(provider === "complimentary" ? ["", "It is labeled complimentary: a free test client, not a paying customer."] : []),
       ].join("\n")
     );
 
@@ -203,7 +206,7 @@ export function OwnerBillingLifecycle() {
     const result = await supabase.rpc("owner_set_client_billing_state", {
       target_client_id: client.id,
       next_billing_status: nextStatus,
-      next_billing_provider: client.billing_provider || "manual",
+      next_billing_provider: provider || client.billing_provider || "manual",
       billing_note: note.trim() || null,
     });
 
@@ -328,7 +331,7 @@ export function OwnerBillingLifecycle() {
                     ) : (
                       <>
                         {!approved ? <p className="subtle">Uploads also need this client to be approved first (approve it in the owner portal). Activating billing alone is not enough.</p> : null}
-                        <button className="wide-btn" disabled={workingClientId === client.id} onClick={() => void changeBillingState(client, "active")} type="button">
+                        <button className="wide-btn" disabled={workingClientId === client.id} onClick={() => void changeBillingState(client, "active", "complimentary")} type="button">
                           {workingClientId === client.id ? "Updating…" : "Activate billing (no charge)"}
                         </button>
                       </>
