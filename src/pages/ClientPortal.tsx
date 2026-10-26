@@ -1238,7 +1238,7 @@ export function ClientPortal() {
                 : <button className="wide-btn" data-testid="request-website-button" onClick={() => setRequestOpen(true)} type="button">{flow.buttonLabel}</button>}
             </section>
           ) : !setupComplete ? (
-            <section className="panel panel-wide" id="website-setup-sheet" onClick={() => { draftDirty.current = true; }} onInput={() => { draftDirty.current = true; }}>
+            <section className="panel panel-wide" id="website-setup-sheet" onPointerDown={() => { draftDirty.current = true; }} onKeyDown={() => { draftDirty.current = true; }} onInput={() => { draftDirty.current = true; }}>
               <div className="panel-title"><Send size={20} /><h2>Request your website</h2></div>
               <p className="subtle">Your website team will use these details to prepare a brand-new upgraded website based on your business details, locations, services, style direction, and project goals.</p>
               <div className="notice-card success" data-testid="setup-sheet-quickstart">

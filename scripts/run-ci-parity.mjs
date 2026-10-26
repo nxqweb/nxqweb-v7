@@ -12,7 +12,7 @@ for (const name of workflows) {
   const file = `.github/workflows/${name}.yml`;
   if (!fs.existsSync(file)) continue;
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
-    const match = line.match(/^\s*(?:- )?run:\s*(node scripts\/[^|&;]+|npm run lint[^|&;]*)$/);
+    const match = line.match(/^\s*(?:- )?run:\s*(node scripts\/[^|&;]+|npm run lint[^|&;]*|npm run test:[A-Za-z0-9:_-]+)$/);
     if (match) commands.add(match[1].trim());
   }
 }
