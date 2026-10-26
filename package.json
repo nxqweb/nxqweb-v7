@@ -26,6 +26,7 @@
     "test:quick-links": "node scripts/test-quick-links.mjs",
     "test:setup-report-style-line": "node scripts/test-setup-report-style-line.mjs",
     "test:visits-graph": "node scripts/test-visits-graph.mjs",
+    "test:plan-card-matches-catalog": "node scripts/test-plan-card-matches-catalog.mjs",
     "test:commerce-rpc-reason": "node scripts/test-commerce-rpc-reason.mjs",
     "test:commerce-setup-form": "node scripts/test-commerce-setup-form.mjs",
     "test:client-setup-sheet": "node scripts/test-client-setup-sheet.mjs",

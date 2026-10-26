@@ -32,7 +32,7 @@
 | C2 | First-month tracker and invoice-due reminder | yes |
 | C3 | Owner screens: all-sites up/down board, pause client, delete client, privacy requests | some |
 | C4 | Fuller data export (site content, leads, files, messages) and automated delete | maybe |
-| C5 | Heat-map picture (today the portal shows only a number) and a writer for the Improvement queue | no / yes |
+| C5 | Heat-map picture (today the portal shows only a number) and a writer for the Improvement queue | **yes / yes** (corrected 2026-10-26: heat points are stored as raw events with coarse 0 to 1 positions in `website_analytics_events`, but that table is server-only (`revoke all ... from authenticated`) and the daily rollup summary holds only top pages, so a client-readable aggregated heat-grid function is needed first, which is a migration) |
 | C6 | Commerce and Booking on the same one-flow as Business (look options, photos, plan lock) | yes |
 | C7 | Booking pages routed and its migration promoted | yes |
 | C8 | Turn the AI Desk "Save to project" on (owner says "277 is applied, switch the AI Desk on"; needs one site deploy) | no |

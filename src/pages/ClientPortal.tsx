@@ -27,6 +27,7 @@ import { AssistantChat } from "../components/AssistantChat";
 import { HelpTerm } from "../components/HelpTerm";
 import { clearPendingReferral } from "../lib/referralCode";
 import { inlineReportLines } from "../lib/setupReportLines";
+import { productTiers } from "../lib/productCatalog";
 
 type ClientRow = {
   id: string;
@@ -85,6 +86,11 @@ type ClientDomainRow = {
 
 type PackageTier = "starter" | "growth" | "intelligence";
 
+// The plan cards in the request form and the "Selected package" lines in the setup report read their wording from the PUBLIC catalog (src/lib/productCatalog.ts) so the two can never
+// disagree again. They used to be typed out twice and drifted: the form promised AI-driven optimization and automatic layout suggestions that do not exist, and said
+// Growth had no click or scroll reporting while the public page and the live Analytics page said it did. Only the price (a number the form matches against) and the badge stay here.
+const catalogTier = (key: PackageTier) => productTiers.find((tier) => tier.key === key)!;
+
 const packageOptions: Record<
   PackageTier,
   {
@@ -100,16 +106,8 @@ const packageOptions: Record<
     label: "Starter",
     price: 50,
     badge: "Best Entry",
-    description:
-      "Premium website essentials for small businesses that need a trusted online presence.",
-    capabilities: [
-      "Premium 1-3 page website",
-      "Mobile-responsive design",
-      "Basic SEO setup",
-      "Contact form",
-      "Simple client portal access",
-      "Manual update requests",
-    ],
+    description: catalogTier("starter").description,
+    capabilities: [...catalogTier("starter").features],
     serviceRules: [
       "Best for simple local businesses and solo owners",
       "AI may help organize setup details and draft basic website copy",
@@ -121,16 +119,8 @@ const packageOptions: Record<
     label: "Growth",
     price: 100,
     badge: "Most Popular",
-    description:
-      "SEO-focused website system for businesses that want stronger structure, better visibility, and more leads.",
-    capabilities: [
-      "Everything in Starter",
-      "Up to 5 core pages",
-      "Service-area SEO sections",
-      "Automatic monthly report once your site is live: health, visits, inquiries and plain suggestions",
-      "Review and testimonial sections",
-      "AI-assisted SEO/content suggestions",
-    ],
+    description: catalogTier("growth").description,
+    capabilities: [...catalogTier("growth").features],
     serviceRules: [
       "Best for contractors, home-service companies, clinics, restaurants, and other local service teams",
       "AI may suggest SEO sections, service-area copy, and monthly content improvements",
@@ -142,16 +132,8 @@ const packageOptions: Record<
     label: "Intelligence",
     price: 150,
     badge: "Most Advanced",
-    description:
-      "AI-powered website optimization with behavior insights, monthly review, and conversion-focused planning.",
-    capabilities: [
-      "Everything in Growth",
-      "Click and scroll insights",
-      "Page interaction review",
-      "Automatic monthly report once your site is live, with suggestions",
-      "Layout improvement suggestions",
-      "Conversion-focused optimization notes",
-    ],
+    description: catalogTier("intelligence").description,
+    capabilities: [...catalogTier("intelligence").features],
     serviceRules: [
       "Best for businesses serious about leads, growth, and long-term performance",
       "AI may review behavior signals and recommend layout/content improvements",
