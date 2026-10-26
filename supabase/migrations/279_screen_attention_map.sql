@@ -1,4 +1,4 @@
--- DRAFT 13: Intelligence "screen attention map" (the heat-map the plan says is coming). LOCAL ONLY, NOT promoted, NOT applied. Written 2026-10-26 (owner chose "Build it").
+-- 279: Intelligence "screen attention map" (the heat-map). Promoted from draft 13 on 2026-10-26 with the owner's approval (Option A); NOT applied until the owner approves the apply.
 --
 -- What the data really is (read from templates/business-v1/analytics.js): each heat point is the visitor's pointer position as a FRACTION OF THEIR VISIBLE SCREEN
 -- (clientX / window width, clientY / window height), sampled at most every 0.75 s, only after the visitor allowed analytics and only when the plan collects mouse tracking.

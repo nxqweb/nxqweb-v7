@@ -1,6 +1,6 @@
 # Screen attention map (Intelligence heat-map) — status and promotion steps
 
-Status (2026-10-26): **built and tested locally, OFF, not applied, not deployed.** The owner approved "Build it" on 2026-10-26 with the rule that nothing goes live until they approve the migration and a deploy.
+Status (2026-10-26): **promoted to migration 279 (owner chose Option A), OFF, NOT applied, not deployed.** The owner approved "Build it" on 2026-10-26 with the rule that nothing goes live until they approve the migration and a deploy.
 
 ## What it is (and what it honestly is not)
 Intelligence and Enterprise clients get a page, `/client/attention`, with a 16 x 10 grid showing where their website visitors' pointers rested **on the visitor's visible screen**, per page, for the last 7 / 30 / 90 days.
@@ -27,10 +27,13 @@ Plan feature `behavior_heatmaps` (Intelligence/Enterprise), client approved/acti
 ## Checks run (2026-10-26)
 Real-Postgres harness 48/48; offline test passes; `tsc` and eslint clean; browser check with a mock gateway (all four states, light and dark, 390 px wide, axe: 0 violations, no horizontal scroll); `npm run test:ci-parity`.
 
+## Files (after promotion)
+Migration `supabase/migrations/279_screen_attention_map.sql`; test `scripts/sql/local-full-schema/regression/279_screen_attention_map.test.sql`; gateway `src/lib/screenAttentionMapSupabaseGateway.ts`; the switch `src/lib/screenAttentionMapConfig.ts` is still `null`; `scripts/preflight-deploy-day.mjs` now expects 278 + 279 pending.
+
 ## To go live (each needs the owner's explicit OK)
-1. Promote draft 13 to `supabase/migrations/279_screen_attention_map.sql` (move the `.test.sql` to `scripts/sql/local-full-schema/regression/`); add it to `expectedPendingMigrations` in `scripts/preflight-deploy-day.mjs`.
-2. `manual-supabase-stage.yml`: read-only `validate_foundation` first, confirm the dry run lists exactly the approved migration(s), then `apply_migrations` (owner clicks Approve and deploy).
-3. Move the draft gateway into `src/lib/`, set `screenAttentionGateway` in the config file, commit.
+1. DONE 2026-10-26: promoted to 279 and registered in preflight.
+2. `manual-supabase-stage.yml`: read-only `validate_foundation` first; the dry run must list exactly 278 and 279; then `apply_migrations` (owner approves with the phrase and clicks Approve and deploy).
+3. After apply: set `screenAttentionGateway = createScreenAttentionGateway(supabase)` in the config file (and the Q&A switch for 278), commit.
 4. One batched site deploy (15 Netlify credits), same single-trigger-commit method as before.
 5. Real proof: an Intelligence test client with real consented visits on a live site; until then, say "built, proven on test data only".
 Note: it needs no new Edge function. Only clients whose published site has the tracker snippet and visitors who consent produce data.

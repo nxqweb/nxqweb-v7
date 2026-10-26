@@ -1,4 +1,4 @@
--- Sidecar test for draft 13 (screen attention map). Rolled back. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 279 (screen attention map). Rolled back. Must end by selecting DRAFT_TEST_OK.
 -- Proves, on a real database: the exact grid; pages and cells below the privacy thresholds are never returned; query strings are cut; only mouse heat points count; the time window
 -- works; one client never sees another's data; the plan, status and profile gates; and the privileges.
 begin;

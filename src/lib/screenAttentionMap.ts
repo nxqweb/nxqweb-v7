@@ -1,6 +1,6 @@
 // "Screen attention map" (Intelligence and Enterprise): where visitors' pointers rested on their VISIBLE SCREEN, per page. Positions are stored as fractions of the visitor's screen,
 // not of the page (no scroll position is kept), so this is an honest "where on the screen" picture and never called a page heat-map. The numbers come from
-// current_client_screen_attention_map (draft migration 13); the database already hides pages under 10 sessions and cells under 3 sessions. Pure functions so tests can pin each case.
+// current_client_screen_attention_map (migration 279); the database already hides pages under 10 sessions and cells under 3 sessions. Pure functions so tests can pin each case.
 export type AttentionCell = { x: number; y: number; points: number };
 export type AttentionPage = { path: string; points: number; sessions: number };
 export type AttentionMap =
