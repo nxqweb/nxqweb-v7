@@ -12,8 +12,8 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = ["278_site_assistant.sql", "279_screen_attention_map.sql"]; // 2026-10-22: 272-277 were applied together (run #266). 2026-10-26: 278 (website Q&A assistant) was added to the repo with the owner's approval and is NOT applied; remove it from this list when the owner has applied it
-const lastAppliedMigration = 277; // applied to staging 2026-10-22 (run #266: 272-277, log read, no error)
+const expectedPendingMigrations = []; // 2026-10-26: 278 (website Q&A assistant) and 279 (screen attention map) were APPLIED to staging together (run #269, commit 0219175, owner-approved); staging is up to date through 279. Add a file name here only when a new migration is added and not yet applied.
+const lastAppliedMigration = 279; // applied to staging 2026-10-26 (run #269: 278 + 279, log read, no error); before that 272-277 on 2026-10-22 (run #266)
 const lastFunctionsDeploy = "2026-10-23T01:30:00Z"; // run #267 (2026-10-22 6:34 PM PDT, all 44 functions, coverage check passed); before that run #263; later commits that touch supabase/functions need deploy_functions again
 
 let failures = 0;
@@ -31,7 +31,7 @@ ok("the working tree is clean", run("git", ["status", "--porcelain"]).stdout.tri
 // 2. migrations
 const files = fs.readdirSync("supabase/migrations").filter((f) => /^\d{3}_.+\.sql$/.test(f)).sort();
 const pending = files.filter((f) => Number(f.slice(0, 3)) > lastAppliedMigration);
-ok(`pending migrations are exactly what the owner expects (${expectedPendingMigrations.length ? expectedPendingMigrations.map((f) => f.slice(0, 3)).join(" + ") : "none: staging is up to date through 277"})`, JSON.stringify(pending) === JSON.stringify(expectedPendingMigrations), `found: ${pending.join(", ") || "none"}`);
+ok(`pending migrations are exactly what the owner expects (${expectedPendingMigrations.length ? expectedPendingMigrations.map((f) => f.slice(0, 3)).join(" + ") : "none: staging is up to date through 279"})`, JSON.stringify(pending) === JSON.stringify(expectedPendingMigrations), `found: ${pending.join(", ") || "none"}`);
 
 // 3. functions
 const changed = run("git", ["log", `--since=${lastFunctionsDeploy}`, "--format=%h %s", "--", "supabase/functions"]).stdout.trim().split("\n").filter(Boolean);
