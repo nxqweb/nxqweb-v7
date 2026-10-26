@@ -1,5 +1,5 @@
-// Static checks that tie the DRAFT website Q&A assistant together (migration draft 11, the answer function, the widget): the limits agree, the permissions are closed,
-// and the safety rules in the function and the widget stay in place. The database behaviour itself is tested by docs/drafts/migrations/11_site_assistant.test.sql
+// Static checks that tie the website Q&A assistant together (migration 278, the answer function, and the still-draft widget): the limits agree, the permissions are closed,
+// and the safety rules in the function and the widget stay in place. The database behaviour itself is tested by scripts/sql/local-full-schema/regression/278_site_assistant.test.sql
 // (run by the local full-schema harness); the widget by scripts/manual/assistant-widget-e2e.mjs.
 import fs from "node:fs";
 import { ASSISTANT_LIMITS } from "../supabase/functions/_shared/assistant-match.mjs";
@@ -9,8 +9,8 @@ function check(name, ok) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}`);
   if (!ok) failures += 1;
 }
-const sql = fs.readFileSync("docs/drafts/migrations/11_site_assistant.sql", "utf8");
-const fn = fs.readFileSync("docs/drafts/functions/answer-site-question/index.ts", "utf8");
+const sql = fs.readFileSync("supabase/migrations/278_site_assistant.sql", "utf8");
+const fn = fs.readFileSync("supabase/functions/answer-site-question/index.ts", "utf8");
 const widget = fs.readFileSync("docs/drafts/site/assistant.js", "utf8");
 const portal = fs.existsSync("src/pages/ClientAssistant.tsx") ? fs.readFileSync("src/pages/ClientAssistant.tsx", "utf8") : "";
 

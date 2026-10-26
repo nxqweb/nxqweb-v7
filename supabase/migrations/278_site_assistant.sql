@@ -1,4 +1,4 @@
--- DRAFT 11: Website Q&A assistant v1 (NO AI). LOCAL ONLY, NOT promoted, NOT applied.
+-- 278: Website Q&A assistant v1 (NO AI). Promoted from draft 11 on 2026-10-26 (owner approved adding the files). NOT applied to any database until the owner approves the guarded workflow run; nothing in the portal or on any client site uses it until the switches are set (docs/SITE_ASSISTANT_PLAN.md).
 --
 -- What it is: a business types the questions its customers ask (and the answers) in its portal; a small widget on its website shows the matching answer to
 -- visitors, or offers the contact form when nothing matches clearly. The matching runs in an Edge function (supabase/functions/_shared/assistant-match.mjs), so
@@ -13,7 +13,7 @@
 --    dismiss_my_assistant_question
 --  * service-role-only functions used by the public Edge function: site_assistant_lookup, site_assistant_record_unanswered
 --
--- Not in this draft (owner decisions, see docs/SITE_ASSISTANT_PLAN.md): which plan tiers get the assistant (today: any client whose lead form is active),
+-- Not in this migration (owner decisions, see docs/SITE_ASSISTANT_PLAN.md): which plan tiers get the assistant (today: any client whose lead form is active),
 -- usage counting and paid extras for AI answers (needs the AI key first), and the builder step that writes the widget settings into a client's site config.
 
 create table if not exists public.client_assistant_settings (

@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = []; // 2026-10-22: 272-277 were applied together (run #266); a new migration file appears here until the owner applies it
+const expectedPendingMigrations = ["278_site_assistant.sql"]; // 2026-10-22: 272-277 were applied together (run #266). 2026-10-26: 278 (website Q&A assistant) was added to the repo with the owner's approval and is NOT applied; remove it from this list when the owner has applied it
 const lastAppliedMigration = 277; // applied to staging 2026-10-22 (run #266: 272-277, log read, no error)
 const lastFunctionsDeploy = "2026-10-23T01:30:00Z"; // run #267 (2026-10-22 6:34 PM PDT, all 44 functions, coverage check passed); before that run #263; later commits that touch supabase/functions need deploy_functions again
 

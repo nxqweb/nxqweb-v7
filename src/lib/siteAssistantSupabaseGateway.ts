@@ -1,9 +1,7 @@
-// DRAFT gateway for the "My assistant" portal page. Not in src because the functions it calls exist only in draft migration 11
-// (docs/drafts/migrations/11_site_assistant.sql); the repository check rejects supabase .rpc() calls to functions that are not in a real migration.
-// When migration 11 is promoted and applied: move this file to src/lib/siteAssistantSupabaseGateway.ts, fix the import path below, set the gateway in
-// src/lib/siteAssistantConfig.ts and add the route (steps in docs/SITE_ASSISTANT_PLAN.md, "Promotion checklist").
+// Gateway for the "My assistant" portal page: calls the client functions of migration 278 (supabase/migrations/278_site_assistant.sql). It is only used when the ONE switch in
+// src/lib/siteAssistantConfig.ts is set; until migration 278 is applied that switch stays null and nothing calls these functions (docs/SITE_ASSISTANT_PLAN.md).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AssistantState, EntryInput, SiteAssistantGateway } from "../../../src/lib/siteAssistant";
+import type { AssistantState, EntryInput, SiteAssistantGateway } from "./siteAssistant";
 
 type Raw = Record<string, unknown>;
 const text = (value: unknown) => (typeof value === "string" ? value : "");

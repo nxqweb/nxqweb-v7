@@ -28,6 +28,7 @@ import { HelpTerm } from "../components/HelpTerm";
 import { clearPendingReferral } from "../lib/referralCode";
 import { inlineReportLines } from "../lib/setupReportLines";
 import { productTiers } from "../lib/productCatalog";
+import { siteAssistantGateway } from "../lib/siteAssistantConfig";
 
 type ClientRow = {
   id: string;
@@ -1186,6 +1187,7 @@ export function ClientPortal() {
             <a className="icon-btn" href="/client/settings">Settings</a>
             <a className="icon-btn" href="/client/rewards">Rewards</a>
             <a className="icon-btn" href="/client/reviews">Get reviews</a>
+            {siteAssistantGateway ? <a className="icon-btn" href="/client/assistant">My assistant</a> : null}
             <button className="icon-btn" onClick={toggleNxqTheme} type="button">{nxqTheme === "dark" ? "Light mode" : "Dark mode"}</button>
             <button className="icon-btn" onClick={handleLogout} type="button"><LogOut size={16} /> Log out</button>
           </div>

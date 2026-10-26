@@ -38,6 +38,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.ingest-business-lead]
 verify_jwt = false
+[functions.answer-site-question]
+verify_jwt = false
 [functions.malware-scan-provider-adapter]
 verify_jwt = false
 [functions.notification-provider-adapter]

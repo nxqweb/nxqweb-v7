@@ -1,6 +1,6 @@
-// DRAFT: public "answer a visitor's question" function for the website Q&A assistant (no AI). NOT in supabase/functions, NOT deployed.
-// When promoted it moves to supabase/functions/answer-site-question/index.ts (needs: migration 11 applied, an entry in the function manifest and
-// supabase/config.toml next to ingest-business-lead, and the import below changed to "../_shared/assistant-match.mjs").
+// Public "answer a visitor's question" function for the website Q&A assistant (no AI). Promoted from docs/drafts on 2026-10-26 (owner approved adding the files).
+// NOT deployed until migration 278 is applied and the owner approves deploy_functions; it is registered in the function manifest and supabase/config.toml next to
+// ingest-business-lead (no gateway JWT; authentication is the site's lead-form key). Nothing on any client site calls it until the widget and builder steps are done.
 //
 // Same front door as the contact form (ingest-business-lead): the site sends its lead-form key; the form must be active; the request must come from one of
 // the form's allowed origins; hourly limits per visitor fingerprint and per form; a bot trap field. Differences, on purpose:
@@ -11,7 +11,7 @@
 //  * Every "no" for an outside caller is the same 404, so the function does not reveal whether a form key exists, is paused, has the assistant off, or what origin it expects.
 // Visitors only ever get text the business wrote. Questions nobody could answer are kept (counts only, never personal details: see site_assistant_record_unanswered).
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { ASSISTANT_LIMITS, matchQuestion } from "../../../../supabase/functions/_shared/assistant-match.mjs";
+import { ASSISTANT_LIMITS, matchQuestion } from "../_shared/assistant-match.mjs";
 
 type Payload = { form_key?: string; action?: string; question?: string; company_website?: string };
 type FormRow = { id: string; client_id: string; status: string; allowed_origins: string[] | null };

@@ -4,7 +4,7 @@
 shows visitors the matching answer, or says it is not sure and points to the contact form. It is **not AI**: it can only say what the business wrote, it costs $0 to
 run, and it behaves the same every time. When an AI key exists later, only the matching step changes; the tables, the portal page and the widget stay.
 
-**Status: BUILT AS A DRAFT, independently reviewed once and the verified findings fixed (2026-10-22). Nothing is applied, deployed, routed or switched on.** Every client site and the live portal are byte-for-byte unchanged.
+**Status (2026-10-26): migration 278, the `answer-site-question` function and the portal gateway are now IN THE REPO (owner approved adding the files), tested on a real local Postgres, and still NOT applied, NOT deployed, NOT switched on.** The widget and the builder wiring are still drafts. Originally: built as a draft, independently reviewed once and the verified findings fixed (2026-10-22). The live portal and every client site are unchanged until the steps below are approved and run.
 
 ## What exists (all local)
 | Piece | Where | Tested by |
@@ -57,3 +57,7 @@ Known and accepted: the spoofable `Origin` header means the origin check is a co
 
 ## What the first real AI version would change (later, needs the AI key)
 Only `matchQuestion` in the function: it would first try the exact word match, and when that is not clear it could ask the AI to pick the best of the business's own answers (never to write new ones), counting the cost against the plan's AI budget. The portal page, tables and widget stay as they are.
+
+## Promotion progress (2026-10-26)
+Done in the repo (nothing applied or live): **1 Migration** is `supabase/migrations/278_site_assistant.sql`; its regression test is `scripts/sql/local-full-schema/regression/278_site_assistant.test.sql` (passes on a real local Postgres in `scripts/test-local-full-schema.mjs`); the preflight now expects 278 as pending. **2 Function** is `supabase/functions/answer-site-question/index.ts`, registered in `supabase/config.toml` (no gateway JWT) and `scripts/edge-function-manifest.mjs` (`public-form-key`); no workflow file needed editing, because the list inside `manual-supabase-stage.yml` is only for the special paid-capability deploy. **5 Portal**: the gateway is `src/lib/siteAssistantSupabaseGateway.ts`, the ONE switch is `src/lib/siteAssistantConfig.ts` (null = OFF), the route `/client/assistant` goes through `ClientAssistantRoute`, and the "My assistant" hero link and quick-link card appear only when the switch is on.
+Still to do, each its own approval: **apply** (run `validate_foundation`, read the dry run: it must list exactly `278_site_assistant.sql`; then `apply_migrations` with the owner's Approve click and confirmation phrase), **`deploy_functions`**, **set the switch** (`siteAssistantGateway = createSiteAssistantGateway(supabase)`, one site deploy), then steps **3 Widget** (copy `docs/drafts/site/assistant.js` into the site template and every example site), **4 Builder** (write `assistant` into a client's `site.config.js` only when that client turned it on), **6 Words** (Privacy and Terms sentences) and **7 Proof** (a disposable client through the whole flow on staging, then a second independent review of the live function). Until step 3 and 4 are done, no client website shows the assistant even after the database part is live.

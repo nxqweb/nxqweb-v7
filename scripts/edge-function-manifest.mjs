@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 const entry = (name, verifyJwt, authBoundary) => Object.freeze({ name, verifyJwt, authBoundary });
 
 export const edgeFunctionManifest = Object.freeze([
+  entry("answer-site-question", false, "public-form-key"),
   entry("apply-business-change-request", false, "worker-token"),
   entry("audit-prospect-website", true, "owner-jwt"),
   entry("bootstrap-runtime-vault", true, "owner-jwt"),

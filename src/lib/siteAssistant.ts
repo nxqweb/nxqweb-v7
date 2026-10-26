@@ -1,6 +1,6 @@
 // "My assistant" in the client portal: the pure rules (what can be saved, how a test question is answered, friendly error words) and the types the page needs.
 // The answer matching is the SAME file the server uses (supabase/functions/_shared/assistant-match.mjs), so "Try it" shows exactly what a visitor would get.
-// The database calls are a draft gateway (docs/drafts/ui/siteAssistantSupabaseGateway.ts) until the assistant migration is promoted.
+// The database calls live in src/lib/siteAssistantSupabaseGateway.ts and are used only when the one switch in src/lib/siteAssistantConfig.ts is set (after migration 278 is applied).
 import { ASSISTANT_LIMITS, entryProblems, matchQuestion } from "../../supabase/functions/_shared/assistant-match.mjs";
 
 export { ASSISTANT_LIMITS };

@@ -1,7 +1,7 @@
 // Offline test: the Quick links cards at the bottom of the client portal home and the Commerce pages (owner request 2026-10-25: "make it super easy to find everything").
 // Every card must point at a page that really exists, no page may be missing from its grid, and the footer must not bring back the screen-tall empty gap.
 import fs from "node:fs";
-import { commerceQuickLinks, portalQuickLinks, quickLinksForPath } from "../src/lib/quickLinks.ts";
+import { assistantQuickLink, commerceQuickLinks, portalQuickLinks, quickLinksForPath } from "../src/lib/quickLinks.ts";
 
 let failures = 0;
 function check(name, ok) { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}`); } }
@@ -13,7 +13,7 @@ const lib = read("src/lib/quickLinks.ts");
 const css = read("src/styles/plan-forms.css");
 
 const routes = [...app.matchAll(/path === "(\/client[^"]*)"/g)].map((m) => m[1]);
-const portalRoutes = routes.filter((r) => r !== "/client" && !r.startsWith("/client/commerce"));
+const portalRoutes = routes.filter((r) => r !== "/client" && r !== "/client/assistant" && !r.startsWith("/client/commerce")); // /client/assistant is a conditional card, checked below
 const commerceRoutes = routes.filter((r) => r.startsWith("/client/commerce"));
 const hrefs = (set) => set.map((l) => l.href);
 
@@ -23,6 +23,8 @@ check("no client page is missing from the portal grid (a new page must be added 
 check("no Commerce page is missing from the Commerce grid", commerceRoutes.every((r) => hrefs(commerceQuickLinks).includes(r)) && commerceRoutes.length === commerceQuickLinks.length);
 const navHrefs = [...nav.matchAll(/href: "(\/client\/commerce[^"]*)"/g)].map((m) => m[1]);
 check("the Commerce grid covers every page in the top Commerce menu", navHrefs.length > 10 && navHrefs.every((h) => hrefs(commerceQuickLinks).includes(h)));
+check("the My assistant card exists only when its switch is on, sits among the other cards, and points at a real route", routes.includes("/client/assistant") && assistantQuickLink.href === "/client/assistant" && !hrefs(quickLinksForPath("/client").links).includes("/client/assistant") && hrefs(quickLinksForPath("/client", { assistant: true }).links).filter((h) => h === "/client/assistant").length === 1 && quickLinksForPath("/client", { assistant: true }).links.length === portalQuickLinks.length + 1 && quickLinksForPath("/client/commerce", { assistant: true }).links.length === commerceQuickLinks.length);
+check("the footer turns the assistant card on from the one switch in siteAssistantConfig, and the switch is OFF until migration 278 is applied", /quickLinksForPath\(path, \{ assistant: Boolean\(siteAssistantGateway\) \}\)/.test(component) && /export const siteAssistantGateway: SiteAssistantGateway \| null = null;/.test(read("src/lib/siteAssistantConfig.ts")));
 check("addresses are unique within each grid", new Set(hrefs(portalQuickLinks)).size === portalQuickLinks.length && new Set(hrefs(commerceQuickLinks)).size === commerceQuickLinks.length);
 check("every card has a short name and a plain-words hint", [...portalQuickLinks, ...commerceQuickLinks].every((l) => l.label.trim().length >= 3 && l.label.length <= 24 && l.hint.trim().length >= 8 && l.hint.length <= 60));
 

@@ -2,7 +2,7 @@
 // portal is one tap away. Plain data (no React) so a test can check every address against the real routes in App.tsx.
 export type QuickLinkIcon =
   | "business" | "leads" | "changes" | "analytics" | "reports" | "funnel" | "seo" | "locations" | "health" | "domain" | "files" | "billing" | "journey" | "history"
-  | "notifications" | "privacy" | "rewards" | "reviews" | "settings"
+  | "notifications" | "privacy" | "rewards" | "reviews" | "settings" | "assistant"
   | "dashboard" | "tutorial" | "products" | "photos" | "store" | "orders" | "setup" | "inventory" | "categories" | "catalog" | "preview" | "content" | "requests" | "usage" | "readiness";
 
 export type QuickLinkItem = { href: string; label: string; hint: string; icon: QuickLinkIcon };
@@ -29,6 +29,9 @@ export const portalQuickLinks: QuickLinkItem[] = [
   { href: "/client/settings", label: "Settings", hint: "Your account and plan", icon: "settings" },
 ];
 
+// Shown only when the "My assistant" switch (src/lib/siteAssistantConfig.ts) is on, so no client is sent to a page that says it is not switched on.
+export const assistantQuickLink: QuickLinkItem = { href: "/client/assistant", label: "My assistant", hint: "Questions and answers your website can reply with", icon: "assistant" };
+
 export const commerceQuickLinks: QuickLinkItem[] = [
   { href: "/client/commerce", label: "Dashboard", hint: "Your store at a glance", icon: "dashboard" },
   { href: "/client/commerce/tutorial", label: "Tutorial", hint: "Launch your store step by step", icon: "tutorial" },
@@ -50,9 +53,9 @@ export const commerceQuickLinks: QuickLinkItem[] = [
 export type QuickLinkSet = { id: string; title: string; intro: string; links: QuickLinkItem[] };
 
 // Which set (if any) belongs on a page. Only the portal home and the Commerce pages get one.
-export function quickLinksForPath(pathname: string): QuickLinkSet | null {
+export function quickLinksForPath(pathname: string, options: { assistant?: boolean } = {}): QuickLinkSet | null {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  if (path === "/client") return { id: "portal", title: "Everything in your portal", intro: "Tap any card to go straight there.", links: portalQuickLinks };
+  if (path === "/client") return { id: "portal", title: "Everything in your portal", intro: "Tap any card to go straight there.", links: options.assistant ? [...portalQuickLinks.slice(0, 15), assistantQuickLink, ...portalQuickLinks.slice(15)] : portalQuickLinks };
   if (path === "/client/commerce" || path.startsWith("/client/commerce/")) return { id: "commerce", title: "Everything in your store", intro: "Tap any card to go straight there.", links: commerceQuickLinks };
   return null;
 }

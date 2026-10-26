@@ -59,6 +59,7 @@ const ClientPortal = named(() => import("./pages/ClientPortal"), "ClientPortal")
 const PublicInfoPage = lazy(async () => ({ default: (await import("./pages/PublicInfoPage")).PublicInfoPage }));
 const ClientRewards = named(() => import("./pages/ClientRewards"), "ClientRewards");
 const ClientReviewsRoute = named(() => import("./pages/ClientReviewsRoute"), "ClientReviewsRoute");
+const ClientAssistantRoute = named(() => import("./pages/ClientAssistantRoute"), "ClientAssistantRoute");
 const ClientSecurityPrivacy = named(() => import("./pages/ClientSecurityPrivacy"), "ClientSecurityPrivacy");
 const ClientSettings = named(() => import("./pages/ClientSettings"), "ClientSettings");
 const ClientWebsiteHealth = named(() => import("./pages/ClientWebsiteHealth"), "ClientWebsiteHealth");
@@ -132,6 +133,7 @@ function AppRoutes() {
   if (path === "/client/security-privacy") return <ClientSecurityPrivacy />;
   if (path === "/client/rewards") return <ClientRewards />;
   if (path === "/client/reviews") return <ClientReviewsRoute />;
+  if (path === "/client/assistant") return <ClientAssistantRoute />;
   if (path === "/client/business/leads") return <ClientBusinessLeads />;
   if (path === "/client/business/changes") return <ClientBusinessChanges />;
   if (path === "/client/business/locations") return <ClientBusinessLocations />;
