@@ -425,7 +425,7 @@ export function ClientPortalTopCards() {
               <span className="journey-kicker">NXQX-Web action center</span>
               <strong>
                 {clientActionCount > 0
-                  ? `${clientActionCount} item${clientActionCount === 1 ? "" : "s"} need your attention`
+                  ? `${clientActionCount} item${clientActionCount === 1 ? " needs" : "s need"} your attention`
                   : hasUnknownState
                     ? "Some website status is unavailable"
                     : "Your website workflow is on track"}
