@@ -14,10 +14,10 @@ export function PublicPlans() {
   return (
     <main className="px">
       <header className="px-nav" aria-label="Primary">
-        <a className="px-brand" href="/" aria-label="NXQX NXQX-Web home">
-          <span className="px-mark">N</span>
+        <a className="px-brand" href="/">
+          <span className="px-mark" aria-hidden="true">N</span>
           <span className="px-brandtext">
-            <strong>NXQX</strong>
+            <strong>NXQX</strong>{" "}
             <span>Web systems</span>
           </span>
         </a>

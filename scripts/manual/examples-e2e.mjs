@@ -36,7 +36,7 @@ for (const site of exampleSites) {
   ({ page, ctx } = await open(`/examples/${site.slug}/`));
   const text = await page.textContent("body");
   ok(`${site.slug}: shows the banner, the business name, six services and a contact area, in its own colour theme`, /Example site\./.test(text) && text.includes(site.name) && (await page.locator(".service-card").count()) === 6 && (await page.locator("#contact").count()) === 1 && (await page.evaluate(() => document.documentElement.dataset.theme)) === site.theme);
-  ok(`${site.slug}: the page title is the business and it is hidden from search engines`, (await page.title()).includes(site.name.split(" ")[0]) && (await page.locator('meta[name="robots"]').getAttribute("content")) === "noindex, nofollow");
+  ok(`${site.slug}: the page title is the business and it is hidden from search engines`, (await page.title()).includes(site.name.split(" ")[0]) && (await page.locator('meta[name="robots"]').first().getAttribute("content")) === "noindex, nofollow");
   ok(`${site.slug}: no sideways scroll at 1100px`, await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   bad = await axeScan(page); ok(`${site.slug}: axe has no serious or critical issues${bad.length ? ` (${bad.join(", ")})` : ""}`, bad.length === 0);
   await ctx.close();

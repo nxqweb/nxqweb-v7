@@ -50,7 +50,9 @@ ok("the card shows the business name and a labelled QR code", /Light of the Worl
 // (the scanner is loaded with evaluate, not an inline script tag, so a production Content-Security-Policy cannot block it)
 if (process.env.AXE) { await page.waitForTimeout(1500); await page.evaluate((await import("node:fs")).readFileSync(process.env.AXE, "utf8")); const v = await page.evaluate(async () => (await window.axe.run(document, { resultTypes: ["violations"] })).violations.map((x) => `${x.impact} ${x.id}`)); ok(`accessibility scan finds no violations${v.length ? `: ${v.join("; ")}` : ""}`, v.length === 0); }
 ({ page } = await open("/client", true));
-ok("the client portal has a Get reviews link to the page", (await page.getByRole("link", { name: "Get reviews" }).count()) === 1 && (await page.getByRole("link", { name: "Get reviews" }).getAttribute("href")) === "/client/reviews");
+// the hero link and the Quick links card are both named "Get reviews": every one of them must go to the page
+const reviewLinks = page.getByRole("link", { name: "Get reviews" });
+ok("the client portal has Get reviews links (hero and Quick links card), all going to the page", (await reviewLinks.count()) >= 1 && (await reviewLinks.evaluateAll((els) => els.every((e) => e.getAttribute("href") === "/client/reviews"))));
 ok("no page errors happened", errors.length === 0 || (console.log(errors.join("\n")), false));
 await browser.close();
 console.log(failures ? `\n${failures} browser check(s) failed` : "\nAll browser checks passed");

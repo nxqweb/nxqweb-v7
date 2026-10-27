@@ -47,7 +47,6 @@ export function ProductFamilySignupSelector() {
               data-px-spot
               href={`/portal/signup?family=${encodeURIComponent(family.slug)}`}
               key={family.slug}
-              aria-label={`Choose ${family.name}`}
             >
               <div className="px-fam-meta">
                 <span className="px-st">
