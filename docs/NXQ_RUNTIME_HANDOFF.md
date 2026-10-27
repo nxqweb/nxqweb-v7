@@ -927,7 +927,7 @@ checks exercise it, not that it's guessed to work):
 - [x] 282 — journey wording says NXQX, support address changed. APPLIED to staging 2026-10-26, run #272
 - [x] 283 — Booking v1 request-only tables and functions. APPLIED to staging 2026-10-26, run #272 (pages routed but OFF; plan inclusion, retention and "confirmed" are open decisions)
 - [x] 284 — Membership v1 track-only tables and functions. APPLIED to staging 2026-10-26, run #272 (page routed but OFF; members-only enforcement not included)
-- [ ] `deploy_functions` after 2026-10-26: the changed `build-business-website` and `run-staging-evidence-suite` (chatbot builder) are only in the repo, not deployed
+- [x] `deploy_functions` after 2026-10-26: DONE 2026-10-26 5:17 PM PDT, run #274 (owner filled in the form and clicked Approve; an earlier try, run #273, failed on an Amazon registry rate limit `toomanyrequests` before deploying anything). Log read: exactly two functions had changes and deployed (`build-business-website`, `run-staging-evidence-suite`), all others `No change found`, and the coverage check says all 45 required functions exist
 - [ ] ONE site deploy (15 Netlify credits) to put the chatbot page, heat-map page and the other pending screens on the live site; not done
 
 **C. Live launch verification — requires staging/external access, not
