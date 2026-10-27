@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { ArrowLeft, CheckCircle2, ImagePlus, MessageSquareText, Send } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { descriptionWithLink, normalizeInspirationLink } from "../lib/commerceRequestExtras";
 
 type PublicRequestSettings = {
   allow_guest_requests: boolean;
@@ -43,6 +44,7 @@ export function PublicCommerceRequest() {
   const [preferredContact, setPreferredContact] = useState("email");
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
+  const [inspirationLink, setInspirationLink] = useState("");
   const [quantity, setQuantity] = useState("");
   const [budget, setBudget] = useState("");
   const [neededBy, setNeededBy] = useState("");
@@ -97,6 +99,12 @@ export function PublicCommerceRequest() {
       return;
     }
 
+    // Optional inspiration link: kept as the last line of the details (no database change). A bad link is explained before anything is sent.
+    const link = normalizeInspirationLink(inspirationLink);
+    if (!link.ok) { setSubmitting(false); setError(link.error); return; }
+    const details = descriptionWithLink(description, link.url);
+    if (!details.ok) { setSubmitting(false); setError(details.error); return; }
+
     const result = await supabase.rpc("submit_public_commerce_customer_request", {
       store_slug_input: storeSlug,
       request_payload: {
@@ -105,7 +113,7 @@ export function PublicCommerceRequest() {
         customer_email: customerEmail,
         preferred_contact_method: preferredContact,
         product_name: productName,
-        description,
+        description: details.text,
         desired_quantity: quantity,
         budget_range: budget,
         needed_by_date: neededBy,
@@ -153,6 +161,7 @@ export function PublicCommerceRequest() {
     setSuccess(`${response.confirmation_message || "Your request was sent successfully."} ${response.response_time_text || ""}${uploadNotice}`.trim());
     setProductName("");
     setDescription("");
+    setInspirationLink("");
     setQuantity("");
     setBudget("");
     setNeededBy("");
@@ -195,7 +204,7 @@ export function PublicCommerceRequest() {
         </div>
 
         {loading ? <div className="empty-state">Loading request form...</div> : null}
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
         {success ? <div className="auth-success"><CheckCircle2 size={18} /> {success}</div> : null}
 
         {!loading && formData ? (
@@ -214,6 +223,7 @@ export function PublicCommerceRequest() {
             </div>
 
             <label className="auth-label"><span>Request details</span><textarea className="auth-input" rows={7} value={description} onChange={(event) => setDescription(event.target.value)} minLength={10} maxLength={5000} placeholder="Describe the product, size, color, style, customization, or restock you need." required /></label>
+            <label className="auth-label"><span>Link to a photo of what you want (optional)</span><input className="auth-input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" maxLength={300} value={inspirationLink} onChange={(event) => setInspirationLink(event.target.value)} placeholder="Paste an Instagram, Pinterest or Google Photos link" aria-describedby="inspiration-hint" /><small id="inspiration-hint" className="subtle">You can also upload pictures below. A link works right away.</small></label>
 
             {formData.settings.allow_image_uploads && formData.settings.max_images_per_request > 0 ? (
               <label className="auth-label">

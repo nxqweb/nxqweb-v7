@@ -50,7 +50,7 @@ export const commerceQuickLinks: QuickLinkItem[] = [
   { href: "/client/commerce/catalog", label: "Catalog", hint: "Your whole catalog", icon: "catalog" },
   { href: "/client/commerce/preview", label: "Preview", hint: "See your store like a customer", icon: "preview" },
   { href: "/client/commerce/content", label: "Website content", hint: "Words and pictures on your store site", icon: "content" },
-  { href: "/client/commerce/requests", label: "Requests", hint: "Ask us for help", icon: "requests" },
+  { href: "/client/commerce/requests", label: "Customer requests", hint: "Custom orders and questions from your customers", icon: "requests" },
   { href: "/client/commerce/usage", label: "Usage", hint: "What your plan includes", icon: "usage" },
   { href: "/client/commerce/readiness", label: "Readiness", hint: "What is left before you open", icon: "readiness" },
 ];

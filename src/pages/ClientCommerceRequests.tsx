@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, MessageSquareText, RefreshCw, Save, Settings2, TestTube2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Mail, MessageSquareText, RefreshCw, Save, Settings2, TestTube2 } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { mailtoHref, requestReplyDraft, splitInspirationLink } from "../lib/commerceRequestExtras";
 
 type RequestSettings = {
   enabled: boolean;
@@ -78,6 +79,7 @@ const initialSettings: RequestSettings = {
 export function ClientCommerceRequests() {
   const [settings, setSettings] = useState<RequestSettings>(initialSettings);
   const [requests, setRequests] = useState<CustomerRequest[]>([]);
+  const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,6 +88,8 @@ export function ClientCommerceRequests() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    // The shop name for reply drafts comes from the signup business name (no extra data is read); a missing one falls back to "our shop" inside the draft.
+    if (supabase) void supabase.auth.getUser().then((result) => { const name = result.data?.user?.user_metadata?.business_name; if (typeof name === "string") setStoreName(name.trim().slice(0, 80)); }).catch(() => undefined);
     void loadPage();
   }, []);
 
@@ -258,7 +262,7 @@ export function ClientCommerceRequests() {
             <section className="panel panel-wide">
               <div className="panel-title"><MessageSquareText size={20} /><div><h2>Submitted requests</h2><p className="subtle">These are managed by the store owner, not approved by NXQX. A request is not an order and does not authorize payment.</p></div></div>
               {requests.length === 0 ? <div className="empty-state">No verified customer requests yet.</div> : null}
-              {requests.map((request) => <RequestCard key={request.id} request={request} disabled={saving} onSave={updateRequest} />)}
+              {requests.map((request) => <RequestCard key={request.id} request={request} disabled={saving} onSave={updateRequest} storeName={storeName} />)}
             </section>
 
             <details className="panel panel-wide">
@@ -273,10 +277,25 @@ export function ClientCommerceRequests() {
   );
 }
 
-function RequestCard({ request, onSave, disabled }: { request: CustomerRequest; onSave: (request: CustomerRequest, status: string, note: string) => Promise<void>; disabled: boolean }) {
+function RequestCard({ request, onSave, disabled, storeName }: { request: CustomerRequest; onSave: (request: CustomerRequest, status: string, note: string) => Promise<void>; disabled: boolean; storeName: string }) {
   const [status, setStatus] = useState(request.status);
   const [note, setNote] = useState(request.client_note || "");
   const requestType = requestTypeOptions.find(([value]) => value === request.request_type)?.[1] || request.request_type.replaceAll("_", " ");
+  const details = splitInspirationLink(request.description);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [pictureError, setPictureError] = useState("");
+  // A held picture is never opened (same rule as the Files page); a cleared one opens through the protected link in a new tab.
+  async function viewPicture(clientFileId: string) {
+    if (!supabase || viewing) return;
+    setViewing(clientFileId); setPictureError("");
+    const result = await supabase.functions.invoke("secure-client-file-access", { body: { client_file_id: clientFileId, download: false } });
+    const data = result.data as { ok?: boolean; signed_url?: string } | null;
+    setViewing(null);
+    if (result.error || !data?.ok || !data.signed_url) { setPictureError("A secure picture link could not be prepared right now. The picture stays private and unchanged."); return; }
+    window.open(data.signed_url, "_blank", "noopener,noreferrer");
+  }
+  const reply = requestReplyDraft({ status, customerName: request.customer_name, productName: request.product_name, storeName, note });
+  const replyHref = mailtoHref(request.customer_email, reply.subject, reply.body);
 
   return (
     <article className="settings-card" style={{ marginTop: "1rem" }}>
@@ -284,7 +303,8 @@ function RequestCard({ request, onSave, disabled }: { request: CustomerRequest; 
         <div><h3>{request.product_name}</h3><p className="subtle">{requestType} · {request.customer_name} · {request.customer_email}</p></div>
         <strong>{request.status.replaceAll("_", " ")}</strong>
       </div>
-      <p>{request.description}</p>
+      <p style={{ whiteSpace: "pre-wrap" }}>{details.text}</p>
+      {details.url ? <p><strong>Photo link from the customer:</strong>{" "}<a href={details.url} target="_blank" rel="noopener noreferrer nofollow">{details.url}</a><br /><small className="subtle">This opens another website. Only open links you trust.</small></p> : null}
       <div className="setup-form-grid">
         <div><strong>Quantity</strong><p>{request.desired_quantity ?? "Not provided"}</p></div>
         <div><strong>Budget</strong><p>{request.budget_range || "Not provided"}</p></div>
@@ -297,6 +317,7 @@ function RequestCard({ request, onSave, disabled }: { request: CustomerRequest; 
           {request.reference_images.map((file) => (
             <p className="subtle" key={file.client_file_id}>
               {file.file_name} · {file.scan_status === "clean" && file.quarantine_status === "released" ? "security scan passed" : "restricted pending security approval"}
+              {file.scan_status === "clean" && file.quarantine_status === "released" ? <>{" "}<button className="icon-btn" type="button" disabled={viewing === file.client_file_id} onClick={() => void viewPicture(file.client_file_id)}>{viewing === file.client_file_id ? "Opening..." : "View picture"}</button></> : null}
             </p>
           ))}
         </div>
@@ -306,6 +327,8 @@ function RequestCard({ request, onSave, disabled }: { request: CustomerRequest; 
         <label><span>Store note</span><input className="auth-input" disabled={disabled} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Internal note or response summary" /></label>
       </div>
       <button className="wide-btn" disabled={disabled} type="button" onClick={() => void onSave(request, status, note)}><Save size={16} /> Save request update</button>
+      {pictureError ? <div className="auth-error" role="alert">{pictureError}</div> : null}
+      {replyHref ? <p><a className="icon-btn" href={replyHref} data-testid="email-customer"><Mail size={16} /> Email {request.customer_name.split(" ")[0] || "customer"} (opens your email app with a draft to edit)</a></p> : <p className="subtle">No usable email address on this request, so use the preferred contact: {request.preferred_contact_method || "not provided"}.</p>}
     </article>
   );
 }

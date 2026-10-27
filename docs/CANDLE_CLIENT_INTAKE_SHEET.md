@@ -30,6 +30,14 @@ Not sure yet? Start with 3 products. You can add more any time yourself.
 3. You press **Make visible** on the products you want, and copy your store link.
 4. When an order comes in, it shows under **Orders**. Nothing in the app can charge a customer or move your money.
 
+## 5. Custom candles (customers ask for something made just for them)
+Customers can send you a request from your store page ("Request a custom order"). They describe what they want, can paste a link to a photo (Instagram, Pinterest, Google Photos) and can upload a picture. You see every request in your portal under **Commerce, then Customer requests**.
+- Set it up once: switch on **Enable customer requests**, tick **Custom product** and **Personalized product**, keep **Allow reference images** on, and fill in the instructions ("Tell us the scent, color and jar size, and add a photo of what you want") and your reply time ("I reply within 2 days").
+- For each request pick a status: **Accepted**, **Declined** ("I'm sorry, I can't make that one"), **Need more information** or **Quoted**, add a short note, and press **Save request update**.
+- Press **Email** on the request: your email app opens with a friendly reply already written. Read it, change anything, and send. Nothing is sent for you.
+- Pictures customers upload are held for a security check first, so you may not be able to open them yet (the request says "restricted pending security approval"). The photo **link** works right away. Once the check is switched on, a **View picture** button appears.
+- A request is not an order and nothing is charged. When you accept a custom job, tell the customer the price and send your Venmo or payment link yourself.
+
 ---
 
 ## For the owner (not for her)

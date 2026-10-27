@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Share2, ShoppingCart, Store, Trash2 } from "lucide-react";
+import { Minus, Plus, Share2, ShoppingCart, Store, Trash2, MessageSquareText } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
@@ -38,6 +38,7 @@ export function PublicCommerceStorefront() {
   // The order button sits far below the top banner on a phone: bring a failure into view so a shopper who tapped it can see why nothing happened.
   useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [error]);
   const [profile, setProfile] = useState<StoreProfile | null>(null);
+  const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
   const [orderCopied, setOrderCopied] = useState(false);
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
@@ -64,6 +65,7 @@ export function PublicCommerceStorefront() {
     // The About block and the sign-in option do not depend on the store response, so they load alongside it (no late layout jump).
     void loadAccountHelp();
     void loadProfile();
+    void loadCustomRequests();
     // The ordering style (online, email or menu) is waited for too, so an email or menu shop never flashes the online checkout first.
     const modeLoad = loadOrderMode();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
@@ -127,6 +129,15 @@ export function PublicCommerceStorefront() {
       if (result.error || !result.data) return;
       const next = profileFromRow(result.data);
       if (profileHasContent(next)) setProfile(next);
+    } catch { /* the store works without it */ }
+  }
+
+  // The "Request a custom order" card shows only when this shop has switched customer requests on. The form function refuses a shop that has not, so any failure just hides the card.
+  async function loadCustomRequests() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_commerce_request_form", { store_slug_input: slug });
+      if (!result.error && result.data) setCustomRequestsOpen(true);
     } catch { /* the store works without it */ }
   }
 
@@ -270,6 +281,7 @@ export function PublicCommerceStorefront() {
     <main className="nxq-page store-theme"><section className="portal-shell">
       <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
+      {customRequestsOpen && !order ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
 
       {order ? <section className="panel panel-wide">
         <h2>Order {order.order_number} created</h2>
