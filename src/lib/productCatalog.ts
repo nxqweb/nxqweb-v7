@@ -83,10 +83,10 @@ export const productFamilyCatalog: ProductFamilyDefinition[] = [
   {
     slug: "booking",
     name: "NXQX-Booking",
-    description: "Appointments, availability, reminders, cancellations, and scheduling workflows.",
+    description: "Let customers request an appointment time online. You get each request in your portal and reply yourself. Reminders and confirmations are planned.",
     status: "planned",
-    eyebrow: "Launching next",
-    outcome: "Turn your website into a clean scheduling system that reduces back-and-forth.",
+    eyebrow: "Early access, request-only",
+    outcome: "Cut the back-and-forth: customers pick a service and a time inside your hours, and you decide.",
     intakeLabel: "Booking workflow",
     intakePlaceholder: "Services, appointment lengths, team availability, cancellation rules, and reminder needs.",
     intakeQuestions: [

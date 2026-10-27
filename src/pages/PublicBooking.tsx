@@ -135,6 +135,7 @@ export function PublicBooking({ slug, gateway }: { slug: string; gateway: Public
 
           {page.cancellationPolicy ? <p className="subtle" data-testid="booking-policy"><strong>Cancellation:</strong> {page.cancellationPolicy}</p> : null}
           <p className="subtle">Your name and contact details go to {page.displayName} so they can reply. Nothing is charged.</p>
+          <p className="subtle" data-testid="booking-privacy">This is a request, not a confirmed appointment. Your name and contact details go to {page.displayName} so they can reply. They are kept until the business deletes the request. See our <a href="/privacy">Privacy page</a>.</p>
           <button className="wide-btn" type="submit" disabled={busy}>{busy ? "Sending..." : "Send request"}</button>
         </form>
       )}

@@ -39,7 +39,7 @@ await page.addInitScript(() => { try { localStorage.setItem("nxq-client-portal-t
 const SHOT = process.env.SHOT_DIR || "";
 const routes = ["/client", "/client/business", "/client/business/leads", "/client/business/changes", "/client/business/analytics", "/client/business/reports", "/client/business/funnel", "/client/business/seo", "/client/business/locations", "/client/health", "/client/domain", "/client/files", "/client/billing", "/client/journey", "/client/history", "/client/reviews", "/client/rewards", "/client/notifications", "/client/security-privacy", "/client/settings", "/client/commerce", "/client/commerce/tutorial", "/client/commerce/products", "/client/commerce/images", "/client/commerce/live", "/client/commerce/orders", "/client/commerce/setup", "/client/commerce/inventory", "/client/commerce/categories", "/client/commerce/catalog", "/client/commerce/preview", "/client/commerce/content", "/client/commerce/requests", "/client/commerce/usage", "/client/commerce/readiness"];
 
-for (const [label, path, testid, expected] of [["portal home", "/client", "quick-links-portal", 21], ["Commerce dashboard", "/client/commerce", "quick-links-commerce", 15], ["Commerce orders", "/client/commerce/orders", "quick-links-commerce", 15]]) {
+for (const [label, path, testid, expected] of [["portal home", "/client", "quick-links-portal", 23], ["Commerce dashboard", "/client/commerce", "quick-links-commerce", 15], ["Commerce orders", "/client/commerce/orders", "quick-links-commerce", 15]]) {
   for (const width of [1100, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(base + path, { waitUntil: "networkidle" });

@@ -41,7 +41,7 @@ const checks = (s, g, o, p, t, c, a, cfg = read("src/lib/bookingConfig.ts")) => 
   unavailableStates: /data-testid="booking-unavailable"/.test(o) && /data-testid="booking-closed"/.test(p),
   labelsOnEverything: ["book-service", "book-day", "book-name", "book-email", "book-phone", "book-notes"].every((id) => new RegExp(`htmlFor="${id}"`).test(p) && new RegExp(`id="${id}"`).test(p)) && /aria-invalid/.test(p) && /role="alert"/.test(p),
   themeFix: /\.store-theme \.portal-shell \.booking-slot \{ display: inline-flex; margin: 0; \}/.test(c) && /\.booking-hp \{ position: absolute; left: -10000px;/.test(c),
-  routedButOff: /ClientBookingRoute/.test(a) && /PublicBookingRoute/.test(a) && /ownerBookingGateway: OwnerBookingGateway \| null = null;/.test(cfg) && /publicBookingGateway: PublicBookingGateway \| null = null;/.test(cfg),
+  routedAndOn: /ClientBookingRoute/.test(a) && /PublicBookingRoute/.test(a) && /ownerBookingGateway: OwnerBookingGateway \| null = supabase \? createOwnerBookingGateway\(supabase\) : null;/.test(cfg) && /publicBookingGateway: PublicBookingGateway \| null = supabase \? createPublicBookingGateway\(supabase\) : null;/.test(cfg),
 });
 const good = checks(sql, gw, owner, pub, types, css, app);
 check("the draft gateway calls exactly the functions and argument names the SQL defines", good.argsMatch);
@@ -55,7 +55,7 @@ check("only the two public functions are granted to anonymous visitors", good.pu
 check("the database enforces rate caps, notice time, advance limit and 5-minute marks", good.rateAndWindows);
 check("both pages have a calm 'not available' state, and every public field has a label and an error role", good.unavailableStates && good.labelsOnEverything);
 check("the theme overrides for time chips and the hidden field are in place", good.themeFix);
-check("the pages are routed (/client/booking, /book/<name>) but both switches in bookingConfig.ts are OFF (null) until migration 283 is applied and the product decisions are made", good.routedButOff);
+check("the pages are routed (/client/booking, /book/<name>) and both switches in bookingConfig.ts are ON through the real gateways, staying null when Supabase is not configured (migration 283 is applied)", good.routedAndOn);
 check("PLANTED BUG caught: gateway argument drifts from the SQL", checks(sql, gw.replace("slug_value: input.slug", "slug: input.slug"), owner, pub, types, css, app).argsMatch === false);
 check("PLANTED BUG caught: owner allowed to confirm", checks(sql.replace("status_value not in ('requested', 'needs_review', 'declined', 'cancelled')", "status_value not in ('requested', 'needs_review', 'declined', 'cancelled', 'confirmed')"), gw, owner, pub, types, css, app).requestOnly === false);
 check("PLANTED BUG caught: page claims a booking is confirmed", checks(sql, gw, owner, pub.replace("This is a <strong>request</strong>, not a confirmed appointment.", "Your booking confirmed!"), types, css, app).honest === false);
@@ -63,7 +63,7 @@ check("PLANTED BUG caught: a third public function is granted to anonymous visit
 check("PLANTED BUG caught: bot trap removed from the page", checks(sql, gw, owner, pub.replace('aria-hidden="true" inert><label>Leave this empty', '><label>Leave this empty'), types, css, app).honeypot === false);
 check("PLANTED BUG caught: idempotency key regenerated on every send", checks(sql, gw, owner, pub.replace("idempotencyKey: keyRef.current", "idempotencyKey: newIdempotencyKey()"), types, css, app).idempotency === false);
 check("PLANTED BUG caught: a database call sneaks into src", checks(sql, gw, owner + '\nsupabase.rpc("get_my_booking_setup");', pub, types, css, app).noSrcRpc === false);
-check("PLANTED BUG caught: a switch is turned on before approval", checks(sql, gw, owner, pub, types, css, app, read("src/lib/bookingConfig.ts").replace("ownerBookingGateway: OwnerBookingGateway | null = null;", "ownerBookingGateway: OwnerBookingGateway | null = {};")).routedButOff === false);
+check("PLANTED BUG caught: a switch that would crash when Supabase is missing", checks(sql, gw, owner, pub, types, css, app, read("src/lib/bookingConfig.ts").replace("supabase ? createOwnerBookingGateway(supabase) : null", "createOwnerBookingGateway(supabase)")).routedAndOn === false);
 check("PLANTED BUG caught: delete no longer asks first", checks(sql, gw, owner.replace("window.confirm(`Delete this request from", "(`Delete this request from"), pub, types, css, app).deleteConfirm === false);
 
 // ---- second-pass fixes (review findings): hours editor, service codes, page behaviors
@@ -152,4 +152,10 @@ check("PLANTED BUG caught: the page lets an emptied name through", minor(ownerMi
 check("PLANTED BUG caught: the null-field check is removed", minor(ownerMinor, sql.replace("if day_value is null or start_value is null or end_value is null then raise exception 'Each opening period must have a day, a start and an end.'; end if;", "")).nullHoursRefused === false);
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll booking checks passed (offline).");
-process.exit(failures ? 1 : 0);
+process.exit(failures ? 1 : 0);const publicPage = read("src/pages/PublicBooking.tsx");
+const legal = read("src/lib/legalContent.ts");
+check("the public booking form tells visitors it is a request, who gets their details, that it is kept until the business deletes it, and links to Privacy", /data-testid="booking-privacy"/.test(publicPage) && /not a confirmed appointment\. Your name and contact details go to \{page\.displayName\} so they can reply\. They are kept until the business deletes the request\. See our <a href="\/privacy">Privacy page<\/a>/.test(publicPage));
+check("the privacy policy and terms explain appointment requests and member lists, and NEVER promise automatic deletion (nothing schedules the purge function)", (legal.match(/heading: "Appointment requests and member lists"/g) || []).length === 2 && /the request stays until the business deletes it/.test(legal) && /NXQX-Web does not confirm the appointment/.test(legal) && /NXQX-Web does not bill your members/.test(legal) && !/(automatically|auto-)\s*delet|deleted after \d+ days|90 days/i.test(publicPage + legal.slice(legal.indexOf("Appointment requests and member lists"))));
+check("the 90-day purge function exists but nothing schedules it (so the wording above must stay 'until the business deletes it' until it is scheduled)", /purge_old_booking_requests/.test(sql) && !/cron\.schedule\([^)]*purge_old_booking_requests/.test(read("supabase/migrations/283_booking_requests.sql")));
+
+
