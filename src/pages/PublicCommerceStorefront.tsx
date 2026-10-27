@@ -10,6 +10,8 @@ import { StoreProductCard } from "../components/store/StoreProductCard";
 import { StoreProductDialog } from "../components/store/StoreProductDialog";
 import { StoreSkeleton } from "../components/store/StoreSkeleton";
 import { mailtoHref, metaDescription, profileFromRow, profileHasContent, socialHref, telHref, type StoreProfile } from "../lib/storeProfile";
+import { dedupeProfile, emptyWebsite, websiteFromRow, websiteHasInfo, websiteHasTop, type StoreWebsite } from "../lib/storeWebsiteContent";
+import { StoreAnnouncement, StoreInfo, StoreMessageAndVerse } from "../components/StoreWebsiteSections";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 import {
   addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, productHash, restoreCart, serializeCart, slugFromHash,
@@ -39,6 +41,7 @@ export function PublicCommerceStorefront() {
   useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [error]);
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
+  const [website, setWebsite] = useState<StoreWebsite | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
@@ -66,6 +69,7 @@ export function PublicCommerceStorefront() {
     void loadAccountHelp();
     void loadProfile();
     void loadCustomRequests();
+    void loadWebsiteContent();
     // The ordering style (online, email or menu) is waited for too, so an email or menu shop never flashes the online checkout first.
     const modeLoad = loadOrderMode();
     const result = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
@@ -129,6 +133,17 @@ export function PublicCommerceStorefront() {
       if (result.error || !result.data) return;
       const next = profileFromRow(result.data);
       if (profileHasContent(next)) setProfile(next);
+    } catch { /* the store works without it */ }
+  }
+
+  // The owner's optional "Website content" (announcement, message, verse, story, hours, policies, social links). Any failure just hides it: the store works without it.
+  async function loadWebsiteContent() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_commerce_website_content", { store_slug_value: slug });
+      if (result.error || !result.data) return;
+      const next = websiteFromRow(result.data);
+      if (next.announcement || websiteHasTop(next) || websiteHasInfo(next)) setWebsite(next);
     } catch { /* the store works without it */ }
   }
 
@@ -279,9 +294,11 @@ export function PublicCommerceStorefront() {
 
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
+      <StoreAnnouncement website={website} />
       <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
       {customRequestsOpen && !order ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
+      {!order ? <StoreMessageAndVerse website={website} /> : null}
 
       {order ? <section className="panel panel-wide">
         <h2>Order {order.order_number} created</h2>
@@ -377,14 +394,15 @@ export function PublicCommerceStorefront() {
         </>}
       </>}
       {!order && orderMode.mode !== "menu" && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}
-      {profile ? <section className="store-about" data-testid="store-about" aria-label={`About ${data.store.name}`}>
-        {profile.about ? <><h2>About us</h2><p className="store-about-text">{profile.about}</p></> : null}
-        {mailtoHref(profile.contactEmail) || telHref(profile.contactPhone) || socialHref(profile.socialUrl) ? <ul className="store-contact-list">
-          {mailtoHref(profile.contactEmail) ? <li>Email <a href={mailtoHref(profile.contactEmail)}>{profile.contactEmail}</a></li> : null}
-          {telHref(profile.contactPhone) ? <li>Phone <a href={telHref(profile.contactPhone)}>{profile.contactPhone}</a></li> : null}
-          {socialHref(profile.socialUrl) ? <li><a href={socialHref(profile.socialUrl)} target="_blank" rel="noopener noreferrer">Find us online</a></li> : null}
+      {!order ? <StoreInfo website={website} storeName={data.store.name} /> : null}
+      {(() => { const shownProfile = profile ? dedupeProfile(profile, website ?? emptyWebsite) : null; return shownProfile && profileHasContent(shownProfile) ? <section className="store-about" data-testid="store-about" aria-label={`About ${data.store.name}`}>
+        {shownProfile.about ? <><h2>About us</h2><p className="store-about-text">{shownProfile.about}</p></> : null}
+        {mailtoHref(shownProfile.contactEmail) || telHref(shownProfile.contactPhone) || socialHref(shownProfile.socialUrl) ? <ul className="store-contact-list">
+          {mailtoHref(shownProfile.contactEmail) ? <li>Email <a href={mailtoHref(shownProfile.contactEmail)}>{shownProfile.contactEmail}</a></li> : null}
+          {telHref(shownProfile.contactPhone) ? <li>Phone <a href={telHref(shownProfile.contactPhone)}>{shownProfile.contactPhone}</a></li> : null}
+          {socialHref(shownProfile.socialUrl) ? <li><a href={socialHref(shownProfile.socialUrl)} target="_blank" rel="noopener noreferrer">Find us online</a></li> : null}
         </ul> : null}
-      </section> : null}
+      </section> : null; })()}
       {openProduct && !order ? <StoreProductDialog key={openProduct.id} product={openProduct} currency={currency} onClose={closeProductView} onAdd={add} viewOnly={orderMode.mode === "menu"} /> : null}
       <div className="store-toast" role="status" aria-live="polite" data-testid="store-toast">{toast}</div>
       <StoreCredit />

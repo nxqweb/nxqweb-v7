@@ -265,3 +265,26 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme .menu-options li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--store-line); }
 .store-theme .store-how-to-order { background: var(--store-tint); text-align: center; margin-bottom: 16px; }
 .store-theme .store-how-to-order .settings-grid { justify-content: center; }
+
+/* Website content on the public store page (announcement, message, verse, story, facts, policies, social links). Same surface and text variables as the About block. */
+.store-theme .store-announcement { margin: 0 0 16px; padding: 12px 16px; border-radius: 14px; text-align: center; font-weight: 600; line-height: 1.45; background: var(--store-surface); border: 1px solid var(--store-line, rgba(0, 0, 0, .12)); white-space: pre-line; }
+.store-theme .store-message, .store-theme .store-verse, .store-theme .store-info { margin-top: 20px; padding: 22px; background: var(--store-surface); border: 1px solid var(--store-line, rgba(0, 0, 0, .12)); border-radius: 16px; }
+.store-theme .store-message h2, .store-theme .store-info h2 { margin: 0 0 8px; font-size: 1.2rem; }
+.store-theme .store-message p, .store-theme .store-info p { margin: 0 0 10px; line-height: 1.55; white-space: pre-line; }
+.store-theme .store-verse { margin-left: 0; margin-right: 0; text-align: center; }
+.store-theme .store-verse blockquote { margin: 0 0 8px; font-size: 1.1rem; line-height: 1.55; font-style: italic; }
+.store-theme .store-verse blockquote p { margin: 0; white-space: pre-line; }
+.store-theme .store-verse figcaption { font-weight: 600; }
+.store-theme .store-facts { margin: 0 0 12px; }
+.store-theme .store-facts dt { font-weight: 700; margin-top: 8px; }
+.store-theme .store-facts dd { margin: 2px 0 0; line-height: 1.5; white-space: pre-line; }
+.store-theme .store-info details { margin-top: 8px; padding: 10px 0; border-top: 1px solid var(--store-line, rgba(0, 0, 0, .12)); }
+.store-theme .store-info summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.store-theme .store-info details p { margin: 4px 0 0; }
+.store-theme .store-social { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0 0; padding: 0; list-style: none; }
+.store-theme .store-social a { display: inline-flex; align-items: center; min-height: 44px; }
+.store-theme .store-info summary { justify-content: space-between; gap: 12px; list-style: none; }
+.store-theme .store-info summary::-webkit-details-marker { display: none; }
+.store-theme .store-info summary::after { content: "+"; font-size: 1.3rem; line-height: 1; font-weight: 600; }
+.store-theme .store-info details[open] summary::after { content: "\2212"; }
+.store-theme .store-social a { color: var(--store-accent-dark) !important; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }

@@ -30,6 +30,18 @@ Not sure yet? Start with 3 products. You can add more any time yourself.
 3. You press **Make visible** on the products you want, and copy your store link.
 4. When an order comes in, it shows under **Orders**. Nothing in the app can charge a customer or move your money.
 
+## 4b. Make your store page feel like your shop (Commerce, then Website content)
+Everything here is optional. Fill in what you like and leave the rest empty. It shows on your public store page:
+- **Announcement bar:** a short line at the very top, for example "Free local pickup this week!"
+- **Homepage message:** a heading and a few sentences, for example "Welcome to the glow: small-batch candles and soap, poured with care."
+- **Bible verse:** a verse, its reference and an optional short message (switch it on to show it).
+- **Our story:** your heading and a few sentences about you.
+- **Hours and pickup:** when you are available and how pickup works.
+- **Phone and email:** shown as tap-to-call and tap-to-email links.
+- **Shipping, returns and custom-order policies:** each shows as a tap-to-open row, so the page stays tidy.
+- **Instagram, Facebook, TikTok, YouTube:** paste your page link. Only the real site for that label is shown.
+Press **Save** and refresh your store page to see it. Not yet available on the page: the extra paid "custom page".
+
 ## 5. Custom candles (customers ask for something made just for them)
 Customers can send you a request from your store page ("Request a custom order"). They describe what they want, can paste a link to a photo (Instagram, Pinterest, Google Photos) and can upload a picture. You see every request in your portal under **Commerce, then Customer requests**.
 - Set it up once: switch on **Enable customer requests**, tick **Custom product** and **Personalized product**, keep **Allow reference images** on, and fill in the instructions ("Tell us the scent, color and jar size, and add a photo of what you want") and your reply time ("I reply within 2 days").
