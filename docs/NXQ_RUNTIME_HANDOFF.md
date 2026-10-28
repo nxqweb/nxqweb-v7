@@ -226,7 +226,7 @@ state. Update this file, not a new one, at every handoff.
 - New: `supabase/migrations/285_client_lifecycle.sql`, `/owner/client-lifecycle` (pause, resume, cancel, "I took it down", set/close the free month), paused notice on `/store/<slug>` (products stay visible, no cart or request card), paused/cancelled notice in the client portal, `src/lib/clientLifecycle.ts`, tests `scripts/test-client-lifecycle.mjs`, regression `285_client_lifecycle.test.sql`, browser `scripts/manual/client-lifecycle-e2e.mjs`.
 - AI Desk "Save to project" switched ON (`src/lib/aiDeskConfig.ts`; migration 277 has been applied since 2026-10-22).
 - Friction fixes: signup now names the exact unanswered question and marks the optional fields; shopper checkout reviewed (two required fields, autofill hints, inline errors; nothing to change).
-- Still owner-only: Resend email account (no automatic emails to clients or shoppers today; the biggest hands-on reducer), live Stripe, AI key, production Supabase, malware scanner, lawyer review, ten clean end-to-end runs, a larger Netlify plan. Open product decisions: data-deletion handling and a real SSL check; booking retention (90-day purge vs "until deleted").
+- Still owner-only: Resend email account (no automatic emails to clients or shoppers today; the biggest hands-on reducer), live Stripe, AI key, production Supabase, a production malware-scanner key (Scanii is set up and proven on STAGING since 2026-10-05/06), lawyer review, ten clean end-to-end runs, a larger Netlify plan. Open product decisions: data-deletion handling and a real SSL check; booking retention (90-day purge vs "until deleted").
 
 ## 2026-10-28 (later) — 285 applied, deploy runbook, booking retention settled
 - Migration 285 APPLIED to staging (dry run #275 listed exactly 285; apply #276, log read, no error). Next hands-on step is the ONE site deploy: `docs/ONE_SITE_DEPLOY_RUNBOOK.md` (four steps, smoke test, what stays owner-only).
@@ -234,6 +234,10 @@ state. Update this file, not a new one, at every handoff.
 
 ## 2026-10-28 (evening) — Light of the World store look (local, ships in the ONE deploy)
 - Owner sent her logo and candle photos as the look reference; chose Option A: her colors (navy ink, rose accent, warm cream, serif headings) plus her logo in the store header. `src/lib/storeBranding.ts` matches a store address starting `light-of-the-world`; every other shop keeps the default. The logo is a file in `public/brand/` (picture uploads stay closed until the scanner exists). Tests: `scripts/test-store-branding.mjs`, browser `scripts/manual/store-branding-e2e.mjs`. To confirm with the owner: her real store address starts with `light-of-the-world`; and the logo file is only 240x240 (fine at 64px; a larger original would be sharper on retina).
+
+## 2026-10-28 (correction) — scanner and product timing
+- Correction: Scanii malware scanning IS set up and proven on staging (runs 2026-10-05/06); earlier notes today that called picture uploads "closed until the scanner exists" were wrong. Product photos on a store use their own upload path that I have not tested myself.
+- Products, photos and prices live in Supabase and the store page reads them live: adding or editing them never needs a Netlify build (0 credits). Only code/look/layout changes cost a build (15 credits). So the site can deploy first and products can be added afterward; until then the store shows "Our shop is opening soon".
 
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 

@@ -3,7 +3,7 @@
 One production build costs 15 of your 300 Netlify credits, so everything waits and ships together. Staging database is already up to date (migrations through 285, 45 functions deployed). This deploy only puts the new SCREENS on the site.
 
 ## Before you start (nothing here costs credits)
-- [ ] The candle helper has added her products, photos, payment link and Website content in her portal (check `/store/<her-slug>` shows them).
+- [ ] OPTIONAL: the candle helper has added products, photos, payment link and Website content. Not required first: products load live with no build, so the site can deploy before them (the store says "opening soon" until they are switched live).
 - [ ] Netlify credits: you have at least 15 left (Netlify -> Team -> Billing).
 - [ ] You tell Claude "ready to deploy". Claude then: fetches `origin`, confirms the branch tip, runs `npm run test:ci-parity` (must be 73/73) and `node scripts/preflight-deploy-day.mjs` (the only allowed failure is a dirty tree before the trigger commit).
 
@@ -28,4 +28,4 @@ Client side: "My assistant", "Where visitors look", Booking, Members, "Customer 
 Do not rebuild (credits). Tell Claude exactly what you see (screenshot); most fixes are one batched commit, built only when you decide.
 
 ## Still owner-only after this deploy (not blocked by it)
-Resend email account (no automatic emails to clients or shoppers yet), live Stripe, AI key, production Supabase, malware scanner (picture uploads stay closed until it exists), lawyer review, ten clean end-to-end runs, a bigger Netlify plan.
+Resend email account (no automatic emails to clients or shoppers yet), live Stripe, AI key, production Supabase, production malware-scanner key (not needed for staging: Scanii already works there), lawyer review, ten clean end-to-end runs, a bigger Netlify plan.
