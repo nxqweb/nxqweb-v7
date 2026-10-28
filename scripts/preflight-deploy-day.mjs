@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = []; // 2026-10-26: 278 + 279 (run #269) and 280-284 (run #272, commit d366594, owner-approved, log read) were APPLIED to staging; staging is up to date through 284. Add a file name here only when a new migration is added and not yet applied.
+const expectedPendingMigrations = ["285_client_lifecycle.sql"]; // 2026-10-28: 285 (pause / cancel / free first month) is written and tested on real Postgres but NOT applied; apply needs the owner phrase + Approve click. Staging is up to date through 284.
 const lastAppliedMigration = 284; // applied to staging 2026-10-26 (run #272: 280-284, log read, no error); earlier 278 + 279 (run #269) and 272-277 on 2026-10-22 (run #266)
 const lastFunctionsDeploy = "2026-10-27T00:17:46Z"; // run #274 (2026-10-26 5:17 PM PDT, owner-run, all 45 functions, coverage check passed; build-business-website and run-staging-evidence-suite were the two with changes); earlier run #270 failed on a registry rate limit before deploying, run #267 on 2026-10-22; later commits that touch supabase/functions need deploy_functions
 
