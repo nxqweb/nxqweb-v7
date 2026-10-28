@@ -228,6 +228,10 @@ state. Update this file, not a new one, at every handoff.
 - Friction fixes: signup now names the exact unanswered question and marks the optional fields; shopper checkout reviewed (two required fields, autofill hints, inline errors; nothing to change).
 - Still owner-only: Resend email account (no automatic emails to clients or shoppers today; the biggest hands-on reducer), live Stripe, AI key, production Supabase, malware scanner, lawyer review, ten clean end-to-end runs, a larger Netlify plan. Open product decisions: data-deletion handling and a real SSL check; booking retention (90-day purge vs "until deleted").
 
+## 2026-10-28 (later) — 285 applied, deploy runbook, booking retention settled
+- Migration 285 APPLIED to staging (dry run #275 listed exactly 285; apply #276, log read, no error). Next hands-on step is the ONE site deploy: `docs/ONE_SITE_DEPLOY_RUNBOOK.md` (four steps, smoke test, what stays owner-only).
+- Booking retention question closed: nothing schedules `purge_old_booking_requests`, so requests already stay until the business deletes them, the privacy wording says so, and `scripts/test-booking.mjs` guards it. The 283 file's comment about a 90-day owner decision is historical (applied migration, left unedited). No migration 286 needed.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
