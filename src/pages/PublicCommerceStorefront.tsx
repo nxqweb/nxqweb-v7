@@ -41,6 +41,7 @@ export function PublicCommerceStorefront() {
   useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [error]);
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
+  const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
   const [website, setWebsite] = useState<StoreWebsite | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
@@ -89,10 +90,21 @@ export function PublicCommerceStorefront() {
   // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
   async function loadOrderMode() {
     if (!supabase) return;
+    const statusLoad = loadStoreStatus(); // paused or cancelled shops: asked alongside, so a paused store never flashes the cart first
     try {
       const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
       if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
     } catch { /* online ordering */ }
+    await statusLoad;
+  }
+
+  // A paused or cancelled business keeps its page visible but cannot take orders or requests. Any failure (or an older database) means open.
+  async function loadStoreStatus() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_store_status", { store_slug_value: slug });
+      if (!result.error && result.data && (result.data as { accepting?: unknown }).accepting === false) setPaused(true);
+    } catch { /* open */ }
   }
 
   function sendEmailOrder() {
@@ -295,9 +307,9 @@ export function PublicCommerceStorefront() {
   return (
     <main className="nxq-page store-theme"><section className="portal-shell">
       <StoreAnnouncement website={website} />
-      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title"><Store size={24} /><div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
-      {customRequestsOpen && !order ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
+      {customRequestsOpen && !order && !paused ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
       {!order ? <StoreMessageAndVerse website={website} /> : null}
 
       {order ? <section className="panel panel-wide">
@@ -341,9 +353,10 @@ export function PublicCommerceStorefront() {
           </div>
           <p className="subtle">Nothing is charged and no stock is held until the shop confirms your order by email.</p>
         </section> : null}
+        {paused ? <section className="notice-card" role="status" data-testid="store-paused"><strong>This shop is not taking new orders right now.</strong><p>You can still look around. Please check back soon.</p></section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
           <p className="store-hero-text">{tagline}</p>
-          <a className="wide-btn store-hero-cta" href="#products">{orderMode.mode === "menu" ? "See the menu" : "Shop now"}</a>
+          <a className="wide-btn store-hero-cta" href="#products">{orderMode.mode === "menu" ? "See the menu" : paused ? "Look around" : "Shop now"}</a>
         </section> : null}
 
         {orderMode.mode === "menu" ? <section className="panel panel-wide store-how-to-order" data-testid="menu-how-to-order" aria-label="How to order">
@@ -357,10 +370,10 @@ export function PublicCommerceStorefront() {
 
         <section className="settings-grid store-product-grid" id="products" aria-label="Products">
           {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div>
-            : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu"} />)}
+            : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu" || paused} />)}
         </section>
 
-        {orderMode.mode === "menu" ? null : <>
+        {orderMode.mode === "menu" || paused ? null : <>
         <section className="panel panel-wide" id="store-cart" style={{ marginTop: "1rem" }}>
           <div className="panel-title"><ShoppingCart size={20} /><div><h2>Your cart</h2><p className="subtle">{orderMode.mode === "email" ? "The shop confirms prices and availability when it replies." : "Prices are verified by the store before the order is created."}</p></div></div>
           {cart.length === 0 ? <div className="empty-state">Your cart is empty.</div> : cart.map((item) => {
@@ -393,7 +406,7 @@ export function PublicCommerceStorefront() {
         </form> : null}
         </>}
       </>}
-      {!order && orderMode.mode !== "menu" && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}
+      {!order && orderMode.mode !== "menu" && !paused && itemCount > 0 ? <a className="store-cart-bar" href="#store-cart" data-testid="store-cart-bar">View cart · {itemCount} {itemCount === 1 ? "item" : "items"} · {formatMoney(total, currency)}</a> : null}
       {!order ? <StoreInfo website={website} storeName={data.store.name} /> : null}
       {(() => { const shownProfile = profile ? dedupeProfile(profile, website ?? emptyWebsite) : null; return shownProfile && profileHasContent(shownProfile) ? <section className="store-about" data-testid="store-about" aria-label={`About ${data.store.name}`}>
         {shownProfile.about ? <><h2>About us</h2><p className="store-about-text">{shownProfile.about}</p></> : null}
@@ -403,7 +416,7 @@ export function PublicCommerceStorefront() {
           {socialHref(shownProfile.socialUrl) ? <li><a href={socialHref(shownProfile.socialUrl)} target="_blank" rel="noopener noreferrer">Find us online</a></li> : null}
         </ul> : null}
       </section> : null; })()}
-      {openProduct && !order ? <StoreProductDialog key={openProduct.id} product={openProduct} currency={currency} onClose={closeProductView} onAdd={add} viewOnly={orderMode.mode === "menu"} /> : null}
+      {openProduct && !order ? <StoreProductDialog key={openProduct.id} product={openProduct} currency={currency} onClose={closeProductView} onAdd={add} viewOnly={orderMode.mode === "menu" || paused} /> : null}
       <div className="store-toast" role="status" aria-live="polite" data-testid="store-toast">{toast}</div>
       <StoreCredit />
     </section></main>

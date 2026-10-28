@@ -80,6 +80,7 @@ const OwnerFiles = named(() => import("./pages/OwnerFiles"), "OwnerFiles");
 const OwnerGrowthCenter = named(() => import("./pages/OwnerGrowthCenter"), "OwnerGrowthCenter");
 const OwnerLaunchReadiness = named(() => import("./pages/OwnerLaunchReadiness"), "OwnerLaunchReadiness");
 const OwnerPlanChanges = named(() => import("./pages/OwnerPlanChanges"), "OwnerPlanChanges");
+const OwnerClientLifecycle = named(() => import("./pages/OwnerClientLifecycle"), "OwnerClientLifecycle");
 const OwnerPortal = named(() => import("./pages/OwnerPortal"), "OwnerPortal");
 const OwnerPreviewRequests = named(() => import("./pages/OwnerPreviewRequests"), "OwnerPreviewRequests");
 const OwnerProductFamilies = named(() => import("./pages/OwnerProductFamilies"), "OwnerProductFamilies");
@@ -124,6 +125,7 @@ function AppRoutes() {
   if (path === "/owner/outreach-card") return <OwnerProtectedRoute><OwnerOutreachCard /></OwnerProtectedRoute>;
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
+  if (path === "/owner/client-lifecycle") return <OwnerProtectedRoute><OwnerClientLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner") return <OwnerProtectedRoute><><OwnerCommandCenter /><OwnerPortal /></></OwnerProtectedRoute>;
   if (path.startsWith("/owner/")) { window.location.replace("/owner"); return null; }
 

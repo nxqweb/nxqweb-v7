@@ -1283,6 +1283,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                 <a className="icon-btn" href="/owner/launch-readiness">Launch readiness</a>
                 <a className="icon-btn" href="/owner/product-families">Product families</a>
                 <a className="icon-btn" href="/owner/plan-changes">Plan changes</a>
+                <a className="icon-btn" href="/owner/client-lifecycle">Pause / cancel / first month</a>
                 <a className="icon-btn" href="/owner/sales">Sales pipeline</a>
                 <a className="icon-btn" href="/owner/growth">Growth controls</a>
               </div>

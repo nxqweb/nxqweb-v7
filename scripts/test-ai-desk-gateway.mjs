@@ -33,9 +33,9 @@ check("control: the comparison notices a wrong argument name", JSON.stringify(sq
 const srcFiles = [];
 (function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const full = `${dir}/${entry.name}`; if (entry.isDirectory()) walk(full); else if (/\.(ts|tsx)$/.test(entry.name)) srcFiles.push(full); } })("src");
 check("only the gateway file calls the two AI Desk functions from src/", srcFiles.filter((f) => /rpc\(\s*"(?:get_ai_desk_status|save_ai_desk_build_plan)"/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/aiDeskSupabaseGateway.ts");
-check("the gateway is imported nowhere yet (the switch is what turns Save to project on)", !srcFiles.some((f) => f !== "src/lib/aiDeskSupabaseGateway.ts" && /from\s+["'][^"']*aiDeskSupabaseGateway/.test(fs.readFileSync(f, "utf8"))));
+check("the gateway is imported only by the one switch", srcFiles.filter((f) => f !== "src/lib/aiDeskSupabaseGateway.ts" && /from\s+["'][^"']*aiDeskSupabaseGateway/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/aiDeskConfig.ts");
 const config = fs.readFileSync("src/lib/aiDeskConfig.ts", "utf8");
-check("the one switch is still null (it is turned on only AFTER migration 277 is applied)", /export const aiDeskGateway: AiDeskGateway \| null = null;/.test(config) && !/= createAiDeskGateway/.test(config));
+check("the one switch is on (migration 277 is applied to staging) and stays null without Supabase", /export const aiDeskGateway: AiDeskGateway \| null = supabase \? createAiDeskGateway\(supabase\) : null;/.test(config));
 const ownerScreen = fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8");
 check("the owner screen hands the panel the switch, nothing else", ownerScreen.includes("gateway={aiDeskGateway}") && ownerScreen.includes('from "../lib/aiDeskConfig"'));
 check("the real SQL the gateway points at is a real migration (not a draft)", fs.existsSync("supabase/migrations/277_ai_desk_build_plans.sql") && !fs.existsSync("docs/drafts/migrations/09_ai_desk_build_plans.sql"));

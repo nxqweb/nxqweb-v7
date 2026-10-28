@@ -265,6 +265,20 @@ export function ClientPortal() {
   }
 
   const [client, setClient] = useState<ClientRow | null>(null);
+  const [lifecycle, setLifecycle] = useState<"" | "paused" | "cancelled">(""); // migration 285; any failure (or an older database) shows nothing
+  useEffect(() => {
+    const clientId = client?.id;
+    if (!clientId || !supabase) { setLifecycle(""); return; }
+    let live = true;
+    void (async () => {
+      try {
+        const result = await supabase.from("clients").select("paused_at, cancelled_at").eq("id", clientId).maybeSingle();
+        const row = result.data as { paused_at: string | null; cancelled_at: string | null } | null;
+        if (live) setLifecycle(result.error || !row ? "" : row.cancelled_at ? "cancelled" : row.paused_at ? "paused" : "");
+      } catch { if (live) setLifecycle(""); }
+    })();
+    return () => { live = false; };
+  }, [client?.id]);
   const [project, setProject] = useState<ProjectRow | null>(null);
   const [journey, setJourney] = useState<ClientLaunchJourney | null>(null);
   const [messages, setMessages] = useState<ClientMessageRow[]>([]);
@@ -1175,6 +1189,7 @@ export function ClientPortal() {
   return (
     <main className="nxq-page">
       <section className="portal-shell">
+        {lifecycle ? <div className="notice-card warning" role="status" data-testid="lifecycle-notice"><strong>{lifecycle === "cancelled" ? "Your plan is cancelled." : "Your site is paused."}</strong><p>{lifecycle === "cancelled" ? "Your site no longer takes new orders, requests or inquiries. Use the assistant below to send a question to the team if this is a mistake." : "Your site stays visible, but it is not taking new orders, requests, inquiries or booking requests right now. Use the assistant below to send a question to the team when you want it switched back on."}</p></div> : null}
         <div className="portal-header">
           <div>
             <p className="eyebrow">Client Portal</p>

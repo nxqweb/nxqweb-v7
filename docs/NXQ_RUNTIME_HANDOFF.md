@@ -220,6 +220,14 @@ state. Update this file, not a new one, at every handoff.
 
 > The detailed session logs for 2026-10-15 to 2026-10-18 (candle client onboarding, Reviews, Booking, Membership, Stripe sandbox, scans and fixes, Web Pro, outreach kit) are in `docs/archive/NXQ_HANDOFF_HISTORY_2026-10-15_to_18.md`. The summary of what is still open is in START HERE at the top.
 
+## 2026-10-28 — workflow friction pass + client lifecycle (owner-approved, local, pushed with the batch)
+- Owner asked for the site to be "as easy as finding something on Amazon" and ready to launch in ONE push except live Stripe. Decisions recorded: Cancel = mark cancelled + stop new submissions + take-down to-do; First month = 30 days from the day the owner approves the website; Pause = stop new submissions, site stays visible.
+- Found while designing: the Commerce public order and request functions never looked at the client's billing state, so a frozen or cancelled client's store kept taking orders. Migration 285 closes it with a before-insert gate on `commerce_orders`, `commerce_customer_requests`, `client_leads` and `booking_appointment_requests`.
+- New: `supabase/migrations/285_client_lifecycle.sql`, `/owner/client-lifecycle` (pause, resume, cancel, "I took it down", set/close the free month), paused notice on `/store/<slug>` (products stay visible, no cart or request card), paused/cancelled notice in the client portal, `src/lib/clientLifecycle.ts`, tests `scripts/test-client-lifecycle.mjs`, regression `285_client_lifecycle.test.sql`, browser `scripts/manual/client-lifecycle-e2e.mjs`.
+- AI Desk "Save to project" switched ON (`src/lib/aiDeskConfig.ts`; migration 277 has been applied since 2026-10-22).
+- Friction fixes: signup now names the exact unanswered question and marks the optional fields; shopper checkout reviewed (two required fields, autofill hints, inline errors; nothing to change).
+- Still owner-only: Resend email account (no automatic emails to clients or shoppers today; the biggest hands-on reducer), live Stripe, AI key, production Supabase, malware scanner, lawyer review, ten clean end-to-end runs, a larger Netlify plan. Open product decisions: data-deletion handling and a real SSL check; booking retention (90-day purge vs "until deleted").
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
@@ -928,6 +936,7 @@ checks exercise it, not that it's guessed to work):
 - [x] 283 — Booking v1 request-only tables and functions. APPLIED to staging 2026-10-26, run #272 (pages routed but OFF; plan inclusion, retention and "confirmed" are open decisions)
 - [x] 284 — Membership v1 track-only tables and functions. APPLIED to staging 2026-10-26, run #272 (page routed but OFF; members-only enforcement not included)
 - [x] `deploy_functions` after 2026-10-26: DONE 2026-10-26 5:17 PM PDT, run #274 (owner filled in the form and clicked Approve; an earlier try, run #273, failed on an Amazon registry rate limit `toomanyrequests` before deploying anything). Log read: exactly two functions had changes and deployed (`build-business-website`, `run-staging-evidence-suite`), all others `No change found`, and the coverage check says all 45 required functions exist
+- [ ] 285 — client lifecycle: Pause, Cancel (take-down to-do) and the free first month (30 days from approval). WRITTEN 2026-10-28 and tested on real Postgres (regression 285 plus a planted-bug control); NOT applied. Needs the dry run to list exactly 285, then the owner's phrase and Approve click. No Edge function changed. Until it is applied the new owner page `/owner/client-lifecycle` shows an error on load, the store banner and portal banner stay hidden (their calls fail quietly), and nothing else changes.
 - [ ] ONE site deploy (15 Netlify credits) to put the chatbot page, heat-map page and the other pending screens on the live site; not done
 
 **C. Live launch verification — requires staging/external access, not

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, MailCheck, Sparkles } from "lucide-react";
 import {
   getProductFamily,
@@ -46,6 +46,8 @@ export function PortalSignup() {
   const [tierGoal, setTierGoal] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (errorMessage) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [errorMessage]); // the message sits by the submit button; make sure a phone shows it
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const tier = productTiers.find((item) => item.key === selectedTier) || productTiers[0];
@@ -115,8 +117,13 @@ export function PortalSignup() {
       return;
     }
 
-    if (!trimmedFamilyDetails || !trimmedPrimaryGoal) {
-      setErrorMessage("Complete the project-fit questions so NXQX can prepare the right setup after verification.");
+    if (!trimmedFamilyDetails) {
+      setErrorMessage(`Please answer: ${selectedFamily.intakeLabel}`);
+      return;
+    }
+
+    if (!trimmedPrimaryGoal) {
+      setErrorMessage("Please answer: Primary website goal");
       return;
     }
 
@@ -295,7 +302,7 @@ export function PortalSignup() {
               ))}
 
               <label>
-                <span>Primary service area or market</span>
+                <span>Primary service area or market (optional)</span>
                 <input className="auth-input" onChange={(event) => setServiceArea(event.target.value)} placeholder="Sacramento, CA and nearby communities" type="text" value={serviceArea} />
               </label>
 
@@ -305,7 +312,7 @@ export function PortalSignup() {
               </label>
 
               <label className="full">
-                <span>{tierQuestion.label}</span>
+                <span>{tierQuestion.label} (optional)</span>
                 <textarea className="auth-input" onChange={(event) => setTierGoal(event.target.value)} placeholder={tierQuestion.placeholder} rows={3} value={tierGoal} />
               </label>
             </div>
@@ -328,7 +335,7 @@ export function PortalSignup() {
             </div>
           </section>
 
-          {errorMessage ? <div className="auth-error" role="alert">{errorMessage}</div> : null}
+          {errorMessage ? <div className="auth-error" role="alert" ref={errorRef}>{errorMessage}</div> : null}
           {statusMessage ? <div className="auth-success" role="status">{statusMessage}</div> : null}
 
           <div className="notice-card">

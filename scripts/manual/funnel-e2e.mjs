@@ -67,7 +67,7 @@ ok("then asks for the person's name", /your name/i.test(await submit()));
 await labelInput("Your name").fill("Fran Funnel").catch(async () => page.locator("input[autocomplete=name]").fill("Fran Funnel"));
 ok("then asks what kind of business it is", /kind of business/i.test(await submit()));
 await page.locator("#signup-industry").fill("Plumbing");
-ok("then asks to complete the project-fit questions", /project-fit|Complete/i.test(await submit()));
+ok("then names the question still to answer", /Please answer|Complete/i.test(await submit()));
 ok("the optional business phone is clearly optional and does not block the form", (await page.locator("label", { hasText: "Business phone (optional)" }).count()) === 1);
 // fill every remaining field generically
 const fields = await page.$$("form.premium-signup-card input.auth-input, form.premium-signup-card textarea.auth-input");
