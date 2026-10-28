@@ -232,6 +232,9 @@ state. Update this file, not a new one, at every handoff.
 - Migration 285 APPLIED to staging (dry run #275 listed exactly 285; apply #276, log read, no error). Next hands-on step is the ONE site deploy: `docs/ONE_SITE_DEPLOY_RUNBOOK.md` (four steps, smoke test, what stays owner-only).
 - Booking retention question closed: nothing schedules `purge_old_booking_requests`, so requests already stay until the business deletes them, the privacy wording says so, and `scripts/test-booking.mjs` guards it. The 283 file's comment about a 90-day owner decision is historical (applied migration, left unedited). No migration 286 needed.
 
+## 2026-10-28 (evening) — Light of the World store look (local, ships in the ONE deploy)
+- Owner sent her logo and candle photos as the look reference; chose Option A: her colors (navy ink, rose accent, warm cream, serif headings) plus her logo in the store header. `src/lib/storeBranding.ts` matches a store address starting `light-of-the-world`; every other shop keeps the default. The logo is a file in `public/brand/` (picture uploads stay closed until the scanner exists). Tests: `scripts/test-store-branding.mjs`, browser `scripts/manual/store-branding-e2e.mjs`. To confirm with the owner: her real store address starts with `light-of-the-world`; and the logo file is only 240x240 (fine at 64px; a larger original would be sharper on retina).
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was
