@@ -30,7 +30,7 @@ check("the client portal shows a paused/cancelled notice from a separate toleran
 check("the gate covers all four public tables with a before-insert trigger", ["commerce_orders", "commerce_customer_requests", "client_leads", "booking_appointment_requests"].every((t) => new RegExp(`before insert on public\\.${t}`).test(sql)));
 check("owner functions check the owner and are closed to anon; the public status function is open", (sql.match(/from public\.owner_users where auth_user_id = auth\.uid\(\)/g) || []).length >= 7 && !/grant execute on function public\.owner_[a-z_]+\([^)]*\) to anon/.test(sql) && /grant execute on function public\.get_public_store_status\(text\) to anon, authenticated;/.test(sql));
 check("the route and the owner menu link exist", /"\/owner\/client-lifecycle"/.test(read("src/App.tsx")) && /href="\/owner\/client-lifecycle"/.test(read("src/pages/OwnerPortal.tsx")));
-check("the preflight lists 285 as the one pending migration", /expectedPendingMigrations = \["285_client_lifecycle\.sql"\]/.test(read("scripts/preflight-deploy-day.mjs")));
+check("the preflight records 285 as applied (nothing pending)", /expectedPendingMigrations = \[\];/.test(read("scripts/preflight-deploy-day.mjs")) && /lastAppliedMigration = 285;/.test(read("scripts/preflight-deploy-day.mjs")));
 
 if (failures) { console.log(`\n${failures} check(s) FAILED`); process.exit(1); }
 console.log("\nAll checks passed.");

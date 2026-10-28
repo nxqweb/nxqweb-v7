@@ -889,7 +889,7 @@ checks exercise it, not that it's guessed to work):
 - [ ] Fuller notification center (mark-as-seen, unread badge) — needs a
   new column + RPC; deferred pending your decision, not started
 
-**B. Migrations 248-284 applied to staging (`nxqweb-staging`): 272-277 together on 2026-10-22 (run #266), 278-279 on 2026-10-26 (run #269), 280-284 on 2026-10-26 (run #272); each with the owner's typed phrase and Approve click, logs read. Earlier history: 248-254 in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production (production is not launched):**
+**B. Migrations 248-285 applied to staging (`nxqweb-staging`): 272-277 together on 2026-10-22 (run #266), 278-279 on 2026-10-26 (run #269), 280-284 on 2026-10-26 (run #272), 285 on 2026-10-28 (run #276); each with the owner's typed phrase and Approve click, logs read. Earlier history: 248-254 in run #220, 255 in run #223, 256 in run #228, 257 in run #232, 258-260 in run #235, 261 in run #238, 262 in run #240, 263 in run #242, 264 in run #244, 265 in run #249. Not applied to production (production is not launched):**
 
 - [x] 248 — client notification on website-setup denial
 - [x] 249 — client notification on Commerce customer request
@@ -936,7 +936,7 @@ checks exercise it, not that it's guessed to work):
 - [x] 283 — Booking v1 request-only tables and functions. APPLIED to staging 2026-10-26, run #272 (pages routed but OFF; plan inclusion, retention and "confirmed" are open decisions)
 - [x] 284 — Membership v1 track-only tables and functions. APPLIED to staging 2026-10-26, run #272 (page routed but OFF; members-only enforcement not included)
 - [x] `deploy_functions` after 2026-10-26: DONE 2026-10-26 5:17 PM PDT, run #274 (owner filled in the form and clicked Approve; an earlier try, run #273, failed on an Amazon registry rate limit `toomanyrequests` before deploying anything). Log read: exactly two functions had changes and deployed (`build-business-website`, `run-staging-evidence-suite`), all others `No change found`, and the coverage check says all 45 required functions exist
-- [ ] 285 — client lifecycle: Pause, Cancel (take-down to-do) and the free first month (30 days from approval). WRITTEN 2026-10-28 and tested on real Postgres (regression 285 plus a planted-bug control); NOT applied. Needs the dry run to list exactly 285, then the owner's phrase and Approve click. No Edge function changed. Until it is applied the new owner page `/owner/client-lifecycle` shows an error on load, the store banner and portal banner stay hidden (their calls fail quietly), and nothing else changes.
+- [x] 285 — client lifecycle: Pause, Cancel (take-down to-do) and the free first month. APPLIED to staging 2026-10-28, run #276 (owner typed the phrase and approved; dry run #275 listed exactly 285; log shows "Applying migration 285_client_lifecycle.sql", no error). No Edge function changed. The owner page `/owner/client-lifecycle` and the store/portal notices need the ONE site deploy to appear.
 - [ ] ONE site deploy (15 Netlify credits) to put the chatbot page, heat-map page and the other pending screens on the live site; not done
 
 **C. Live launch verification — requires staging/external access, not
