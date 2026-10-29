@@ -29,3 +29,6 @@ Do not rebuild (credits). Tell Claude exactly what you see (screenshot); most fi
 
 ## Still owner-only after this deploy (not blocked by it)
 Resend email account (no automatic emails to clients or shoppers yet), live Stripe, AI key, production Supabase, production malware-scanner key (not needed for staging: Scanii already works there), lawyer review, ten clean end-to-end runs, a bigger Netlify plan.
+
+## Deploy log
+- 2026-10-29: the ONE build was triggered by the commit that added this line (after migrations 285 and 286 were applied to staging; Netlify showed 225 credits before the build, so expect about 210 after). Owner publishes by hand (Auto Publishing is locked), then turns builds OFF.
