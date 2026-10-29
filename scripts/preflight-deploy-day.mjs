@@ -12,8 +12,8 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = ["286_store_look.sql"]; // 2026-10-29: 286 (each store's look in the database) is written and tested on real Postgres but NOT applied; apply needs the owner phrase + Approve click. Staging is up to date through 285.
-const lastAppliedMigration = 285; // applied to staging 2026-10-28 (run #276: 285, log read, no error); earlier 280-284 on 2026-10-26 (run #272)
+const expectedPendingMigrations = []; // 2026-10-29: 286 (each store's look in the database) was APPLIED to staging (run #278, owner-approved, log read). Staging is up to date through 286. Add a file name here only when a new migration is added and not yet applied.
+const lastAppliedMigration = 286; // applied to staging 2026-10-29 (run #278: 286, log read, no error); 285 on 2026-10-28 (run #276); 280-284 on 2026-10-26 (run #272)
 const lastFunctionsDeploy = "2026-10-27T00:17:46Z"; // run #274 (2026-10-26 5:17 PM PDT, owner-run, all 45 functions, coverage check passed; build-business-website and run-staging-evidence-suite were the two with changes); earlier run #270 failed on a registry rate limit before deploying, run #267 on 2026-10-22; later commits that touch supabase/functions need deploy_functions
 
 let failures = 0;
@@ -31,7 +31,7 @@ ok("the working tree is clean", run("git", ["status", "--porcelain"]).stdout.tri
 // 2. migrations
 const files = fs.readdirSync("supabase/migrations").filter((f) => /^\d{3}_.+\.sql$/.test(f)).sort();
 const pending = files.filter((f) => Number(f.slice(0, 3)) > lastAppliedMigration);
-ok(`pending migrations are exactly what the owner expects (${expectedPendingMigrations.length ? expectedPendingMigrations.map((f) => f.slice(0, 3)).join(" + ") : "none: staging is up to date through 285"})`, JSON.stringify(pending) === JSON.stringify(expectedPendingMigrations), `found: ${pending.join(", ") || "none"}`);
+ok(`pending migrations are exactly what the owner expects (${expectedPendingMigrations.length ? expectedPendingMigrations.map((f) => f.slice(0, 3)).join(" + ") : "none: staging is up to date through 286"})`, JSON.stringify(pending) === JSON.stringify(expectedPendingMigrations), `found: ${pending.join(", ") || "none"}`);
 
 // 3. functions
 const changed = run("git", ["log", `--since=${lastFunctionsDeploy}`, "--format=%h %s", "--", "supabase/functions"]).stdout.trim().split("\n").filter(Boolean);
