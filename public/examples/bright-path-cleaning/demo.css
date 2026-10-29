@@ -1,0 +1,4 @@
+/* Example-site banner (added by scripts/build-example-sites.mjs). Dark bar, light text: readable on every theme. */
+.demo-banner { background: #111; color: #fff; padding: 0.6rem 1rem; text-align: center; font: 600 0.9rem/1.4 system-ui, sans-serif; }
+.demo-banner a { color: #ffe08a; text-decoration: underline; margin: 0 0.4rem; }
+.demo-banner a:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }

@@ -1,0 +1,3 @@
+# Functions known to pin `search_path` to public yet call pgcrypto functions without the `extensions.`
+# prefix. Empty since migration 257 repaired the seven that were reported on 2026-10-05.
+# The check fails on any function listed here that is no longer flagged, and on any NEW offender.

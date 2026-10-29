@@ -1,0 +1,53 @@
+{
+  "schema_version": "nxq-business-niche-pack-v1",
+  "niche_key": "auto-detailing",
+  "label": "Auto Detailing",
+  "business_type": "Auto detailing business",
+  "primary_cta": "Request a Detail",
+  "secondary_cta": "View Detailing Packages",
+  "recommended_pages": [
+    "Home",
+    "About",
+    "Services",
+    "Interior Detailing",
+    "Exterior Detailing",
+    "Paint Correction",
+    "Ceramic Coating",
+    "Gallery",
+    "Reviews",
+    "Contact"
+  ],
+  "service_prompts": [
+    "Interior detailing",
+    "Exterior detailing",
+    "Paint correction only when offered",
+    "Ceramic coating only when offered",
+    "Mobile detailing only when the business actually provides it"
+  ],
+  "conversion_paths": [
+    "Phone or text inquiry",
+    "Quote or appointment request form",
+    "Package selection request"
+  ],
+  "seo_structure": {
+    "service_area_pages": true,
+    "local_business_schema": true,
+    "service_schema": true,
+    "faq_schema_when_supported_by_verified_content": true
+  },
+  "trust_modules": [
+    "Verified reviews",
+    "Approved before-and-after photos",
+    "Verified products or coating certifications",
+    "Approved package descriptions",
+    "Verified service-area and mobile-service statements"
+  ],
+  "content_rules": [
+    "Never invent coating certifications, product brands, durability claims, warranties, package prices, or turnaround times.",
+    "Before-and-after images must come from approved client assets.",
+    "Only claim mobile service, pickup, delivery, or same-day availability when verified.",
+    "Do not publish vehicle-safety or paint-restoration guarantees that were not supplied and approved by the client."
+  ],
+  "demo_only": true,
+  "launch_enabled": false
+}

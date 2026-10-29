@@ -102,7 +102,7 @@ export function OwnerCommerceUsage() {
           <a className="icon-btn" href="/owner/commerce"><ArrowLeft size={16} /> Commerce overview</a>
         </div>
 
-        <button className="icon-btn" onClick={() => void loadUsage()} disabled={loading}>
+        <button className="icon-btn" type="button" onClick={() => void loadUsage()} disabled={loading}>
           <RefreshCcw size={16} /> {loading ? "Loading..." : "Refresh"}
         </button>
 

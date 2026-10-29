@@ -1,0 +1,42 @@
+name: One-shot Client Setup Status Fix
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-client-setup-status.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Apply guarded portal patch
+        run: node scripts/patch-client-setup-status.mjs
+      - name: Verify signed setup marker
+        run: grep -q 'completedSetupStatuses.includes(client.status) || signedSetupSubmitted' src/pages/ClientPortal.tsx
+      - name: Typecheck and build frontend
+        run: npm run build
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit portal fix
+        run: |
+          git config user.name nxqweb
+          git config user.email NXQweb@protonmail.com
+          git add src/pages/ClientPortal.tsx
+          git diff --cached --quiet && { echo "No portal changes to commit."; exit 1; }
+          git commit -m "fix: keep submitted client setup complete"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

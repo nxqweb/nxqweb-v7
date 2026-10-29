@@ -1,0 +1,53 @@
+{
+  "schema_version": "nxq-business-niche-pack-v1",
+  "niche_key": "roofing",
+  "label": "Roofing",
+  "business_type": "Roofing contractor",
+  "primary_cta": "Request a Roofing Estimate",
+  "secondary_cta": "View Roofing Services",
+  "recommended_pages": [
+    "Home",
+    "About",
+    "Services",
+    "Roof Repair",
+    "Roof Replacement",
+    "Storm Damage",
+    "Commercial Roofing",
+    "Gallery",
+    "Reviews",
+    "Contact"
+  ],
+  "service_prompts": [
+    "Roof repair",
+    "Roof replacement",
+    "Storm damage service",
+    "Commercial roofing only when offered",
+    "Inspection or maintenance services only when the business actually provides them"
+  ],
+  "conversion_paths": [
+    "Phone call",
+    "Estimate request form",
+    "Storm damage inquiry"
+  ],
+  "seo_structure": {
+    "service_area_pages": true,
+    "local_business_schema": true,
+    "service_schema": true,
+    "faq_schema_when_supported_by_verified_content": true
+  },
+  "trust_modules": [
+    "Verified reviews",
+    "Approved project photos",
+    "Verified licenses and certifications",
+    "Verified insurance statements",
+    "Approved manufacturer or warranty claims"
+  ],
+  "content_rules": [
+    "Never invent contractor licenses, insurance, certifications, financing, warranties, inspection results, or response times.",
+    "Do not promise insurance claim outcomes or imply insurer affiliation without verified evidence.",
+    "Only publish service areas explicitly approved by the client.",
+    "Use supplied project photos and testimonials only after ownership or permission is confirmed."
+  ],
+  "demo_only": true,
+  "launch_enabled": false
+}

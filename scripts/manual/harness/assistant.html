@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Assistant widget harness (manual testing only)</title>
+    <!-- The REAL client-site stylesheet, so the widget is tested against the colours and variables a real site has (4 themes, dark and light). -->
+    <link rel="stylesheet" href="/templates/business-v1/styles.css" />
+  </head>
+  <body>
+    <main><h1>Oak Ridge Tree Care</h1><p>Sample page. <a id="host-link" href="#contact">A link on the host page</a></p><section id="contact"><h2>Contact</h2><p>Use the form.</p></section></main>
+    <script>globalThis.__NXQ_ASSISTANT_NO_AUTOSTART = true;</script>
+    <script type="module" src="/scripts/manual/harness/assistant.mjs"></script>
+  </body>
+</html>
