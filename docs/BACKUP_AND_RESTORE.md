@@ -9,10 +9,11 @@ Plain rule: nothing here needs a new build, and nothing here is a secret. Never 
 | Every published website version (NXQX app and each client site) | Netlify keeps every past deploy | Netlify -> the site -> **Deploys** -> pick an older green deploy -> **Publish deploy**. Instant, free, no build. |
 | A client's generated website | It is rebuilt from the client's saved answers and photos, so it is never the only copy | Ask Claude to rebuild it (costs one build). |
 
-## What you must check yourself (Claude cannot see your Supabase plan)
-- [ ] Supabase dashboard -> your project -> **Database -> Backups**. Write down: are there **daily backups**, and how many days back? (Paid plans keep daily backups; the free plan may not. Point-in-time restore is a paid add-on.)
-- [ ] Supabase -> **Storage**: client photos and files are NOT inside a database backup. Note that they are only as safe as Supabase keeps them.
-- [ ] If there are no daily backups: that is the one real gap. Options, in order of cost: (1) upgrade the plan so daily backups exist; (2) do a manual copy before big changes (below).
+## Confirmed 2026-10-29 (owner checked the dashboard)
+- Supabase project `nxqweb-staging` is on the **Free plan: it has NO scheduled or point-in-time backups.** The Backups page says "Free Plan does not include project backups. Upgrade to the Pro Plan for up to 7 days of scheduled backups."
+- So today the database has no automatic safety net. That is acceptable for staging with test data, and it must change before real clients or live payments: **upgrading to Pro (or taking a manual copy first) is a launch step.** Owner plan: upgrade when paid.
+- Storage (client photos and files) is not inside a database backup either.
+- [ ] Until then: take a manual copy (below) before any migration you are unsure about, and before the real launch.
 
 ## A manual copy of the database (only needed if there are no daily backups)
 On your own computer, with the Supabase CLI logged in and the project linked, you type the database password yourself when asked:
