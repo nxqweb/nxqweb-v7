@@ -135,7 +135,7 @@ export function ClientSitePhotos({ gateway, upload }: Props) {
     <fieldset className="site-photos" data-testid="site-photos">
       <legend>Photos for your website</legend>
       <p className="subtle">
-        Photos of your work appear in an "Our work" section on your website. Other photos (your logo, your team, your shop front) go to your NXQX team. Every photo is checked for
+        Photos of your work appear in an "Our work" section on your website. Other photos (your logo, your team, your shop front, or pictures of websites and looks you like) go to your NXQX team. Every photo is checked for
         safety before anyone can see it, and we shrink big photos for you. Use JPG, PNG or WebP.
       </p>
       {loadError ? <p className="auth-error" role="alert">{loadError}</p> : null}

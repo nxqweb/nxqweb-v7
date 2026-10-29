@@ -5,6 +5,7 @@ import {
   colourModeOptions, normalizeColourMode, colourModeLabel, colourModeFromLabel, briefOptionLines, briefOptionsFromReport, defaultBriefOptions,
   signupAnswersFromMetadata, signupAnswerLines, hasSignupAnswers, paymentConfirmed, parseDraft, serializeDraft, draftStorageKey, loadDraft, saveDraft,
   clearDraft, safeReportText, REPORT_SOFT_LIMIT, redesignDescription, redesignProblem, DRAFT_TEXT_KEYS,
+  colourThemeOptions, backgroundOptions, normalizeColourTheme, normalizeBackground, cleanColourNotes, COLOUR_NOTES_MAX,
 } from "../src/lib/websiteBrief.ts";
 import { signupPrefillForSetup } from "../src/lib/signupPrefill.ts";
 
@@ -80,7 +81,7 @@ const wiring = {
   "signup asks what kind of business it is and saves it": (src) => src.signup.includes("intake_industry") && src.signup.includes('id="signup-industry"') && /trimmedIndustry\.length < 2/.test(src.signup),
   "signup saves the optional phone": (src) => src.signup.includes("intake_phone"),
   "the brief hides behind a Request your website button and shows the steps": (src) => src.portal.includes('data-testid="request-website-button"') && src.portal.includes("setRequestOpen(true)") && src.portal.includes("!setupComplete && (!requestOpen || flow.setupHref)"),
-  "both report builders write the look options and the signup answers": (src) => (src.portal.match(/\.\.\.briefOptionLines\(\{ colourMode, seo: seoPreference, smoothScroll \}\)/g) || []).length === 2 && (src.portal.match(/\.\.\.signupAnswerLines\(signupAnswers\)/g) || []).length === 2,
+  "both report builders write the look options and the signup answers": (src) => (src.portal.match(/\.\.\.briefOptionLines\(\{ colourMode, seo: seoPreference, smoothScroll, colourTheme, background, colourNotes \}\)/g) || []).length === 2 && (src.portal.match(/\.\.\.signupAnswerLines\(signupAnswers\)/g) || []).length === 2,
   "sending is locked until the plan is active, with a plain explanation (checked before the other form checks)": (src) => src.portal.indexOf("if (!paymentConfirmed(client.billing_status))") > 0 && src.portal.indexOf("if (!paymentConfirmed(client.billing_status))") < src.portal.indexOf('if (!cleanIndustry) return setErrorMessage') && src.portal.includes("disabled={isSubmittingSetup || !client || !planActive}") && src.portal.includes('data-testid="submit-locked-note"'),
   "the targeted more-info update is not locked by payment": (src) => !/submitTargetedMoreInfoUpdate[\s\S]{0,1500}paymentConfirmed/.test(src.portal),
   "the draft is saved while typing and cleared after a successful send": (src) => src.portal.includes("saveDraft(client.id,") && src.portal.includes("clearDraft(client.id)"),
@@ -115,10 +116,26 @@ const plant = (name, key, from, to, wiringName) => {
   check(`control: ${name}`, real[key].includes(from) && !wiring[wiringName](mutated));
 };
 plant("removing the payment lock is noticed", "portal", "disabled={isSubmittingSetup || !client || !planActive}", "disabled={isSubmittingSetup || !client}", "sending is locked until the plan is active, with a plain explanation (checked before the other form checks)");
-plant("dropping the options from one report builder is noticed", "portal", "        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),\n        ...signupAnswerLines(signupAnswers),\n        ``,\n        `Lead handling rules:`,\n        `Preferred contact method: ${cleanPreferredContactMethod", "        ``,\n        `Lead handling rules:`,\n        `Preferred contact method: ${cleanPreferredContactMethod", "both report builders write the look options and the signup answers");
+plant("dropping the options from one report builder is noticed", "portal", "        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll, colourTheme, background, colourNotes }),\n        ...signupAnswerLines(signupAnswers),\n        ``,\n        `Lead handling rules:`,\n        `Preferred contact method: ${cleanPreferredContactMethod", "        ``,\n        `Lead handling rules:`,\n        `Preferred contact method: ${cleanPreferredContactMethod", "both report builders write the look options and the signup answers");
 plant("storing the signature in the draft is noticed", "portal", "saveDraft(client.id, {\n        companyScale,", "saveDraft(client.id, {\n        typedSignature, companyScale,", "the draft never includes the signature or agreement");
 plant("using billing to gate the owner is noticed", "owner", 'data-testid="approval-billing-chip"', 'data-testid="approval-billing-chip" hidden={paymentConfirmed(client.billing_status)}', "the owner screen only DISPLAYS billing (the owner is never blocked by it)");
 check("control: the draft whitelist would catch a signature key", (() => { const p2 = parseDraft(JSON.stringify({ typedSignature: "x", typedsignature: "x" })); return Object.keys(p2).length === 0; })());
+
+// ---- color theme, own colors and background (2026-10-29)
+const picked = { ...defaultBriefOptions, colourTheme: "warm_earth", background: "soft_cream", colourNotes: "navy and rose pink" };
+const pickedLines = briefOptionLines(picked);
+check("a chosen theme, own colors and background are written as plain report lines", pickedLines.includes("Website colour theme: Warm earth") && pickedLines.includes("Own colours: navy and rose pink") && pickedLines.includes("Website background: Soft cream"));
+check("the defaults write none of the new lines (nothing is asked of the owner when the client chose nothing)", !briefOptionLines(defaultBriefOptions).some((l) => /theme|Own colours|background/i.test(l)));
+const readBack = briefOptionsFromReport((label) => (pickedLines.find((l) => l.startsWith(label + ":")) || "").slice(label.length + 1).trim());
+check("the three choices read back from a saved report", readBack.colourTheme === "warm_earth" && readBack.background === "soft_cream" && readBack.colourNotes === "navy and rose pink");
+check("unknown values fall back to 'NXQX picks'", normalizeColourTheme("neon") === "recommend" && normalizeBackground("<script>") === "recommend" && normalizeColourTheme(5) === "recommend");
+check("own colors: one line, trimmed, capped, and cannot pretend to be one of our report lines", !cleanColourNotes("a\nIndustry: Casino").includes("\n") && cleanColourNotes("x".repeat(500)).length === COLOUR_NOTES_MAX && !/(^|\n)Industry:/.test(briefOptionLines({ ...defaultBriefOptions, colourNotes: "x\nIndustry: Casino" }).join("\n")));
+check("the new labels are reserved, so free text cannot fake a choice", safeReportText("Website colour theme: Ocean blue").startsWith("- ") && safeReportText("Own colours: red").startsWith("- ") && safeReportText("Website background: Dark").startsWith("- "));
+check("drafts keep the three choices and drop anything unknown", (() => { const d = parseDraft(JSON.stringify({ colourTheme: "ocean_blue", background: "dark", colourNotes: "teal", evil: "x" })); const e = parseDraft(JSON.stringify({ colourTheme: "neon", background: 5 })); return d.colourTheme === "ocean_blue" && d.background === "dark" && d.colourNotes === "teal" && !("evil" in d) && e.colourTheme === "recommend" && !("background" in e); })());
+check("the redesign page lists the new choices only when they were changed", /Website colour theme/.test(redesignDescription({ whatToChange: "New look please", styleDirection: "", pagesNeeded: "", extra: "", options: { ...defaultBriefOptions, colourTheme: "ocean_blue" } })) && !/theme|background/i.test(redesignDescription({ whatToChange: "New look please", styleDirection: "", pagesNeeded: "", extra: "", options: defaultBriefOptions })));
+check("every theme has readable swatches (three colors) except 'NXQX picks'", colourThemeOptions.every((o) => (o.value === "recommend" ? o.swatches.length === 0 : o.swatches.length === 3 && o.swatches.every((h) => /^#[0-9a-f]{6}$/.test(h)))) && backgroundOptions.length === 6);
+const portalSrc = fs.readFileSync("src/pages/ClientPortal.tsx", "utf8");
+check("the setup form shows both pickers inside 'Your website's look' and saves them in the draft", /data-testid="colour-theme"/.test(portalSrc) && /data-testid="background-style"/.test(portalSrc) && /smoothScroll, colourTheme, background, colourNotes,\n      \}\);/.test(portalSrc));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll website brief checks passed.");
 process.exit(failures ? 1 : 0);

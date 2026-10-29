@@ -7,6 +7,9 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: "17 13 1 * *" # monthly, on the 1st: a full re-scan even when no code changed
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +22,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -40,3 +45,21 @@ jobs:
         run: node scripts/validate-file-security-contract.mjs
       - name: Denial hard-stop contract
         run: node scripts/validate-denial-hard-stop-contract.mjs
+      - name: Watch what this change touched (secret-looking values fail; sensitive files get a notice)
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        env:
+          BEFORE: ${{ github.event.before }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          base="${BASE_SHA:-$BEFORE}"
+          if [ -n "$base" ] && git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            node scripts/check-sensitive-changes.mjs --range "${base}..${GITHUB_SHA}"
+          else
+            node scripts/check-sensitive-changes.mjs --tree
+          fi
+      - name: Monthly full scan of everything checked in
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: node scripts/check-sensitive-changes.mjs --tree
+      - name: Monthly full dependency audit (including build tools)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: npm audit --audit-level=high

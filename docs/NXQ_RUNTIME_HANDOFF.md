@@ -239,6 +239,13 @@ state. Update this file, not a new one, at every handoff.
 - Correction: Scanii malware scanning IS set up and proven on staging (runs 2026-10-05/06); earlier notes today that called picture uploads "closed until the scanner exists" were wrong. Product photos on a store use their own upload path that I have not tested myself.
 - Products, photos and prices live in Supabase and the store page reads them live: adding or editing them never needs a Netlify build (0 credits). Only code/look/layout changes cost a build (15 credits). So the site can deploy first and products can be added afterward; until then the store shows "Our shop is opening soon".
 
+## 2026-10-29 — pre-deploy batch (local, NOT pushed; builds are ACTIVE, so any push to the safe branch costs 15 credits)
+- Owner turned Netlify builds ON (225 credits left, Auto Publishing Locked = publish by hand) but asked for more first. Owner chose: store look in the database, setup pictures + color + background picks, scan on every change, backup plan.
+- Migration 286 (WRITTEN + tested on real Postgres, NOT applied): each store's look in `commerce_storefronts.settings -> look`; owner-only setters; public read returns the look only; contrast >= 4.5 and a `/brand/` logo only; seeds Light of the World. `src/lib/storeBranding.ts` now reads the row (no per-client code); owner page `/owner/store-look`.
+- Setup form: color theme cards (7), own-colors box, background choice (6) written into the setup report; the photo panel is switched ON (`sitePhotosConfig.ts`; migration 276 was applied 2026-10-22). Honest limit: only the light/dark mode is applied to the generated site automatically; theme/background/own colors are recorded in the report the AI build plan and the owner read. Applying them automatically needs `supabase/functions` changes + a function deploy. Scanii free trial = 50 scans total, each photo uses one.
+- Security: `npm audit fix` cleared 3 dev-tool highs (production deps had 0); `.github/workflows/security-audit.yml` now also runs monthly, on demand, and runs `scripts/check-sensitive-changes.mjs` (secret-shaped values fail the run; sensitive-file notices). `docs/BACKUP_AND_RESTORE.md` written.
+- Before the deploy: apply 286 (dry run must list exactly 286), then the ONE build per `docs/ONE_SITE_DEPLOY_RUNBOOK.md`.
+
 ## LATEST UPDATE — NXQ→NXQX rename + Commerce launch prep (2026-10-05, read this first)
 
 **Branch discipline note:** this session's container checkout was a stale, unrelated history (no merge-base with origin). It was

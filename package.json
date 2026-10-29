@@ -38,6 +38,7 @@
     "test:store-website-content": "node scripts/test-store-website-content.mjs",
     "test:client-lifecycle": "node scripts/test-client-lifecycle.mjs",
     "test:store-branding": "node scripts/test-store-branding.mjs",
+    "test:sensitive-changes": "node scripts/test-sensitive-changes.mjs",
     "test:screen-attention-map": "node scripts/test-screen-attention-map.mjs",
     "test:commerce-rpc-reason": "node scripts/test-commerce-rpc-reason.mjs",
     "test:commerce-setup-form": "node scripts/test-commerce-setup-form.mjs",

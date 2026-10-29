@@ -290,6 +290,6 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme .store-social a { color: var(--store-accent-dark) !important; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 
 /* A shop with its own look (src/lib/storeBranding.ts): serif headings and a small round logo. Colors come from inline variables on the page. */
-.store-theme[data-branded] h1, .store-theme[data-branded] h2, .store-theme[data-branded] h3 { font-family: Georgia, "Times New Roman", serif; }
+.store-theme[data-look-font="serif"] h1, .store-theme[data-look-font="serif"] h2, .store-theme[data-look-font="serif"] h3 { font-family: Georgia, "Times New Roman", serif; }
 .store-theme .store-logo { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #fff; border: 1px solid var(--store-line); flex: none; }
 .store-theme[data-branded] .store-hero { background: linear-gradient(135deg, #ffffff 0%, var(--store-tint) 100%); }

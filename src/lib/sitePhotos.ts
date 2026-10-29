@@ -30,7 +30,7 @@ export const MAX_ALL_PHOTOS = 24;
 export const MAX_EDGE = 2000;
 const KEEP_AS_IS_BYTES = 1_500_000;
 
-export const roleLabels: Record<PhotoRole, string> = { work: "Photos of my work (shown on my website)", site: "Other photos for my website team" };
+export const roleLabels: Record<PhotoRole, string> = { work: "Photos of my work (shown on my website)", site: "Other photos for my website team (logo, team, or looks I like)" };
 
 // Why a picked file cannot be used, in plain words (empty string = fine).
 export function photoProblem(file: { name: string; type: string; size: number }) {

@@ -4,7 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
 import { fetchShopperProfile, saveShopperProfile } from "../lib/shopperApi";
-import { storeBrandingFor } from "../lib/storeBranding";
+import { storeLookFromRow, type StoreBranding } from "../lib/storeBranding";
 import { buildEmailOrder, emailOrderLink, onlineMode, orderModeFromRow, type OrderMode } from "../lib/emailOrder";
 import { StoreCredit } from "../components/StoreCredit";
 import { StoreProductCard } from "../components/store/StoreProductCard";
@@ -42,6 +42,7 @@ export function PublicCommerceStorefront() {
   useEffect(() => { if (error) errorRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" }); }, [error]);
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
+  const [branding, setBranding] = useState<StoreBranding | null>(null); // this shop's own colors and logo (owner-set, migration 286)
   const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
   const [website, setWebsite] = useState<StoreWebsite | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
@@ -91,12 +92,21 @@ export function PublicCommerceStorefront() {
   // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
   async function loadOrderMode() {
     if (!supabase) return;
-    const statusLoad = loadStoreStatus(); // paused or cancelled shops: asked alongside, so a paused store never flashes the cart first
+    const statusLoad = Promise.all([loadStoreStatus(), loadStoreLook()]); // paused or cancelled shops: asked alongside, so a paused store never flashes the cart first
     try {
       const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
       if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
     } catch { /* online ordering */ }
     await statusLoad;
+  }
+
+  // The shop's own look. Any failure (or an older database) means the normal default theme.
+  async function loadStoreLook() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_store_look", { store_slug_value: slug });
+      if (!result.error) setBranding(storeLookFromRow(result.data));
+    } catch { /* default look */ }
   }
 
   // A paused or cancelled business keeps its page visible but cannot take orders or requests. Any failure (or an older database) means open.
@@ -303,13 +313,12 @@ export function PublicCommerceStorefront() {
   if (!data) return <main className="nxq-page store-theme"><section className="portal-shell"><div className="auth-error" role="alert">{error || "Store unavailable."}</div><p className="subtle">If a shop gave you this link, please check back soon.</p></section></main>;
 
   const currency = data.store.currency;
-  const branding = storeBrandingFor(slug);
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
-    <main className="nxq-page store-theme" data-branded={branding ? "true" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}><section className="portal-shell">
+    <main className="nxq-page store-theme" data-branded={branding ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}><section className="portal-shell">
       <StoreAnnouncement website={website} />
-      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
       {customRequestsOpen && !order && !paused ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
       {!order ? <StoreMessageAndVerse website={website} /> : null}

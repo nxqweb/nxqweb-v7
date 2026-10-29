@@ -28,14 +28,49 @@ export function colourModeFromLabel(label: unknown): ColourMode {
   return colourModeOptions.find((option) => option.label.toLowerCase() === text)?.value ?? "recommend";
 }
 
-export type BriefOptions = { colourMode: ColourMode; seo: boolean; smoothScroll: boolean };
+// Color theme and background: two easy taps instead of a blank box. They sit beside the light/dark choice and are written into the same report.
+export type ColourTheme = "recommend" | "classic_navy" | "warm_earth" | "fresh_green" | "bold_red" | "soft_pastel" | "ocean_blue";
+export const colourThemeOptions: { value: ColourTheme; label: string; swatches: string[] }[] = [
+  { value: "recommend", label: "NXQX picks for me", swatches: [] },
+  { value: "classic_navy", label: "Classic navy and gold", swatches: ["#1d2f4f", "#c9a24a", "#fdf9f6"] },
+  { value: "warm_earth", label: "Warm earth", swatches: ["#8a5a3c", "#d9b99b", "#faf6ef"] },
+  { value: "fresh_green", label: "Fresh green", swatches: ["#2f6f4f", "#9bd3a8", "#f4faf5"] },
+  { value: "bold_red", label: "Bold black and red", swatches: ["#111111", "#c4122f", "#ffffff"] },
+  { value: "soft_pastel", label: "Soft pastel", swatches: ["#f4b6c2", "#b8d8e8", "#fffaf5"] },
+  { value: "ocean_blue", label: "Ocean blue", swatches: ["#0b4f8a", "#6bb7e0", "#f3f9fd"] },
+];
+export type BackgroundStyle = "recommend" | "clean_white" | "soft_cream" | "dark" | "gradient" | "photo";
+export const backgroundOptions: { value: BackgroundStyle; label: string; hint: string }[] = [
+  { value: "recommend", label: "NXQX picks for me", hint: "We choose what suits your business." },
+  { value: "clean_white", label: "Clean white", hint: "Bright and simple." },
+  { value: "soft_cream", label: "Soft cream", hint: "Warm and gentle." },
+  { value: "dark", label: "Dark", hint: "Rich and bold." },
+  { value: "gradient", label: "Soft gradient", hint: "A smooth blend of your colors." },
+  { value: "photo", label: "A photo background", hint: "Add the photo in the photos box below." },
+];
+const themeValues = colourThemeOptions.map((o) => o.value as string);
+const backgroundValues = backgroundOptions.map((o) => o.value as string);
+export function normalizeColourTheme(value: unknown): ColourTheme { return typeof value === "string" && themeValues.includes(value) ? (value as ColourTheme) : "recommend"; }
+export function normalizeBackground(value: unknown): BackgroundStyle { return typeof value === "string" && backgroundValues.includes(value) ? (value as BackgroundStyle) : "recommend"; }
+const themeLabel = (v: unknown) => colourThemeOptions.find((o) => o.value === normalizeColourTheme(v))?.label ?? "NXQX picks for me";
+const backgroundLabel = (v: unknown) => backgroundOptions.find((o) => o.value === normalizeBackground(v))?.label ?? "NXQX picks for me";
+const themeFromLabel = (label: unknown): ColourTheme => colourThemeOptions.find((o) => o.label.toLowerCase() === String(label ?? "").trim().toLowerCase())?.value ?? "recommend";
+const backgroundFromLabel = (label: unknown): BackgroundStyle => backgroundOptions.find((o) => o.label.toLowerCase() === String(label ?? "").trim().toLowerCase())?.value ?? "recommend";
+export const COLOUR_NOTES_MAX = 160;
+export function cleanColourNotes(value: unknown) { return String(value ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, COLOUR_NOTES_MAX); }
 
-export const defaultBriefOptions: BriefOptions = { colourMode: "recommend", seo: true, smoothScroll: true };
+export type BriefOptions = { colourMode: ColourMode; seo: boolean; smoothScroll: boolean; colourTheme: ColourTheme; background: BackgroundStyle; colourNotes: string };
+
+export const defaultBriefOptions: BriefOptions = { colourMode: "recommend", seo: true, smoothScroll: true, colourTheme: "recommend", background: "recommend", colourNotes: "" };
 
 // One line each, "Label: value", so the owner screen and the build-plan worker already know how to read them.
 export function briefOptionLines(options: BriefOptions) {
+  const notes = cleanColourNotes(options.colourNotes);
   return [
     `Website colour mode: ${colourModeLabel(options.colourMode)}`,
+    ...(options.colourTheme && options.colourTheme !== "recommend" ? [`Website colour theme: ${themeLabel(options.colourTheme)}`] : []),
+    ...(notes ? [`Own colours: ${safeReportText(notes)}`] : []),
+    ...(options.background && options.background !== "recommend" ? [`Website background: ${backgroundLabel(options.background)}`] : []),
     `Search-engine setup (SEO): ${options.seo ? "Yes" : "No"}`,
     `Smooth scrolling: ${options.smoothScroll ? "Yes" : "No"}`,
   ];
@@ -48,6 +83,9 @@ export function briefOptionsFromReport(read: (label: string) => string): BriefOp
     colourMode: colourModeFromLabel(read("Website colour mode")),
     seo: seo ? seo !== "no" : defaultBriefOptions.seo,
     smoothScroll: smooth ? smooth !== "no" : defaultBriefOptions.smoothScroll,
+    colourTheme: themeFromLabel(read("Website colour theme")),
+    background: backgroundFromLabel(read("Website background")),
+    colourNotes: cleanColourNotes(read("Own colours")),
   };
 }
 
@@ -100,7 +138,7 @@ export const DRAFT_TEXT_KEYS = [
   "rejectedJobs", "areasNotServed", "aiCanAnswer", "aiNeverPromise", "escalationRules",
 ] as const;
 export type DraftTextKey = (typeof DRAFT_TEXT_KEYS)[number];
-export type BriefDraft = Partial<Record<DraftTextKey, string>> & { colourMode?: ColourMode; seo?: boolean; smoothScroll?: boolean };
+export type BriefDraft = Partial<Record<DraftTextKey, string>> & { colourMode?: ColourMode; seo?: boolean; smoothScroll?: boolean; colourTheme?: ColourTheme; background?: BackgroundStyle; colourNotes?: string };
 
 const DRAFT_TEXT_MAX = 5000;
 
@@ -124,6 +162,9 @@ export function parseDraft(raw: unknown): BriefDraft {
     if (typeof item === "string" && item.length > 0) draft[key] = item.slice(0, DRAFT_TEXT_MAX);
   }
   if (typeof source.colourMode === "string") draft.colourMode = normalizeColourMode(source.colourMode);
+  if (typeof source.colourTheme === "string") draft.colourTheme = normalizeColourTheme(source.colourTheme);
+  if (typeof source.background === "string") draft.background = normalizeBackground(source.background);
+  if (typeof source.colourNotes === "string" && source.colourNotes) draft.colourNotes = cleanColourNotes(source.colourNotes);
   if (typeof source.seo === "boolean") draft.seo = source.seo;
   if (typeof source.smoothScroll === "boolean") draft.smoothScroll = source.smoothScroll;
   return draft;
@@ -150,7 +191,7 @@ export type RedesignInput = { whatToChange: string; styleDirection: string; page
 
 export function redesignDescription(input: RedesignInput) {
   const part = (label: string, value: string, max: number) => (value.trim() ? `${label}: ${safeReportText(value.trim()).slice(0, max)}` : "");
-  const changed = input.options.colourMode !== defaultBriefOptions.colourMode || input.options.seo !== defaultBriefOptions.seo || input.options.smoothScroll !== defaultBriefOptions.smoothScroll;
+  const changed = input.options.colourMode !== defaultBriefOptions.colourMode || input.options.seo !== defaultBriefOptions.seo || input.options.smoothScroll !== defaultBriefOptions.smoothScroll || (input.options.colourTheme ?? "recommend") !== defaultBriefOptions.colourTheme || (input.options.background ?? "recommend") !== defaultBriefOptions.background || cleanColourNotes(input.options.colourNotes) !== "";
   // Look options are only listed when the client actually changed them: "NXQX recommends / SEO yes / smooth yes" is just the default, not a request.
   return [
     part("What to change", input.whatToChange, 1500),
@@ -177,7 +218,7 @@ export const RESERVED_REPORT_LABELS = [
   "Pages / sections needed", "Style direction", "Brand difference / positioning", "Competitors / examples", "Lead handling rules", "Preferred contact method",
   "Urgent lead rules", "Jobs / customers to reject", "Areas not served", "Website assistant rules", "Assistant can answer", "Assistant should never promise",
   "Escalation rules", "Agreement accepted", "Typed signature", "Signature date", "Payment note", "Agreement evidence", "Targeted more info response", "Requested field",
-  "Requested info", "Client answer", "Response date", "Website colour mode", "Search-engine setup (SEO)", "Smooth scrolling", "Best customers", "Main visitor action",
+  "Requested info", "Client answer", "Response date", "Website colour mode", "Website colour theme", "Own colours", "Website background", "Search-engine setup (SEO)", "Smooth scrolling", "Best customers", "Main visitor action",
   "Proof to build around", "Primary website goal", "First-version priority",
 ];
 

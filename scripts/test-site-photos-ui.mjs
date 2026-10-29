@@ -56,9 +56,9 @@ check("control: the comparison would notice a wrong argument name", JSON.stringi
 const srcFiles = [];
 (function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const full = `${dir}/${entry.name}`; if (entry.isDirectory()) walk(full); else if (/\.(ts|tsx)$/.test(entry.name)) srcFiles.push(full); } })("src");
 check("only the gateway file calls the three photo functions from src/", srcFiles.filter((f) => /rpc\(\s*"(?:list_my_site_photos|save_my_site_photo|remove_my_site_photo)"/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/sitePhotosSupabaseGateway.ts");
-check("the gateway is not imported anywhere yet (the switch below is what turns the panel on)", !srcFiles.some((f) => f !== "src/lib/sitePhotosSupabaseGateway.ts" && /from\s+["'][^"']*sitePhotosSupabaseGateway/.test(fs.readFileSync(f, "utf8"))));
+check("the gateway is imported only by the one switch", srcFiles.filter((f) => f !== "src/lib/sitePhotosSupabaseGateway.ts" && /from\s+["'][^"']*sitePhotosSupabaseGateway/.test(fs.readFileSync(f, "utf8"))).join() === "src/lib/sitePhotosConfig.ts");
 const config = fs.readFileSync("src/lib/sitePhotosConfig.ts", "utf8");
-check("the one switch is still null (it is turned on only AFTER migration 276 is applied), so the panel is not shown anywhere in the live portal", /export const sitePhotosGateway: SitePhotosGateway \| null = null;/.test(config));
+check("the one switch is on (migration 276 is applied to staging) and stays null when Supabase is not configured", /export const sitePhotosGateway: SitePhotosGateway \| null = supabase \? createSitePhotosGateway\(supabase\) : null;/.test(config));
 const portal = fs.readFileSync("src/pages/ClientPortal.tsx", "utf8");
 const changes = fs.readFileSync("src/pages/ClientBusinessChanges.tsx", "utf8");
 check("the brief and the redesign form show the panel only when the switch is on", /sitePhotosGateway && supabase && client \? <ClientSitePhotos/.test(portal) && /sitePhotosGateway && supabase && clientId \? <ClientSitePhotos/.test(changes));

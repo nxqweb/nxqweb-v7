@@ -14,8 +14,8 @@ import { ClientWebsiteSecurity } from "../components/ClientWebsiteSecurity";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { signupPrefillForSetup } from "../lib/signupPrefill";
 import {
-  briefOptionLines, briefOptionsFromReport, clearDraft, colourModeOptions, defaultBriefOptions, hasSignupAnswers, loadDraft, paymentConfirmed,
-  REPORT_SOFT_LIMIT, safeReportText, saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type ColourMode, type SignupAnswers,
+  backgroundOptions, briefOptionLines, briefOptionsFromReport, clearDraft, colourModeOptions, colourThemeOptions, COLOUR_NOTES_MAX, defaultBriefOptions, hasSignupAnswers, loadDraft, paymentConfirmed,
+  REPORT_SOFT_LIMIT, safeReportText, saveDraft, signupAnswerLines, signupAnswersFromMetadata, type BriefDraft, type BackgroundStyle, type ColourMode, type ColourTheme, type SignupAnswers,
 } from "../lib/websiteBrief";
 import { OptionalSection } from "../components/OptionalSection";
 import { ClientSitePhotos } from "../components/ClientSitePhotos";
@@ -326,6 +326,9 @@ export function ClientPortal() {
   const [colourMode, setColourMode] = useState<ColourMode>(defaultBriefOptions.colourMode);
   const [seoPreference, setSeoPreference] = useState(defaultBriefOptions.seo);
   const [smoothScroll, setSmoothScroll] = useState(defaultBriefOptions.smoothScroll);
+  const [colourTheme, setColourTheme] = useState<ColourTheme>(defaultBriefOptions.colourTheme);
+  const [background, setBackground] = useState<BackgroundStyle>(defaultBriefOptions.background);
+  const [colourNotes, setColourNotes] = useState(defaultBriefOptions.colourNotes);
   const [signupAnswers, setSignupAnswers] = useState<SignupAnswers>({ bestCustomers: "", mainAction: "", proof: "", goal: "", firstPriority: "" });
   const [requestOpen, setRequestOpen] = useState(false);
   const [flowFamily, setFlowFamily] = useState("");
@@ -471,6 +474,9 @@ export function ClientPortal() {
         setColourMode(savedOptions.colourMode);
         setSeoPreference(savedOptions.seo);
         setSmoothScroll(savedOptions.smoothScroll);
+        setColourTheme(savedOptions.colourTheme);
+        setBackground(savedOptions.background);
+        setColourNotes(savedOptions.colourNotes);
         setAgreementAccepted(false);
       } else {
         // First visit: start from what the client already told us at signup instead of an empty sheet. Never overwrites typing.
@@ -511,6 +517,9 @@ export function ClientPortal() {
         if (draft.colourMode) setColourMode(draft.colourMode);
         if (typeof draft.seo === "boolean") setSeoPreference(draft.seo);
         if (typeof draft.smoothScroll === "boolean") setSmoothScroll(draft.smoothScroll);
+        if (draft.colourTheme) setColourTheme(draft.colourTheme);
+        if (draft.background) setBackground(draft.background);
+        if (draft.colourNotes) setColourNotes(draft.colourNotes);
         if (Object.keys(draft).length > 0) { draftDirty.current = true; setRequestOpen(true); }
       }
       draftReadyFor.current = loadedClient.id;
@@ -618,13 +627,13 @@ export function ClientPortal() {
       saveDraft(client.id, {
         companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
         pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer,
-        aiNeverPromise, escalationRules, colourMode, seo: seoPreference, smoothScroll,
+        aiNeverPromise, escalationRules, colourMode, seo: seoPreference, smoothScroll, colourTheme, background, colourNotes,
       });
     }, 500);
     return () => window.clearTimeout(timer);
   }, [client, setupComplete, companyScale, locationType, locations, businessPhone, businessEmail, businessAddress, businessHours, emergencyAvailability, industry, services,
     pagesNeeded, styleDirection, brandNotes, competitors, preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise,
-    escalationRules, colourMode, seoPreference, smoothScroll]);
+    escalationRules, colourMode, seoPreference, smoothScroll, colourTheme, background, colourNotes]);
 
   const leadAndAssistantHaveContent = [preferredContactMethod, urgentLeadRules, rejectedJobs, areasNotServed, aiCanAnswer, aiNeverPromise, escalationRules].some((value) => value.trim());
 
@@ -719,7 +728,7 @@ export function ClientPortal() {
         `Competitors / examples:`,
         cleanCompetitors || "Not provided",
         ``,
-        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll, colourTheme, background, colourNotes }),
         ...signupAnswerLines(signupAnswers),
         ``,
         `Lead handling rules:`,
@@ -889,7 +898,7 @@ export function ClientPortal() {
         ``,
         `Competitors / examples:`, t(competitors) || "Not provided",
         ``,
-        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll }),
+        ...briefOptionLines({ colourMode, seo: seoPreference, smoothScroll, colourTheme, background, colourNotes }),
         ...signupAnswerLines(signupAnswers),
         ``,
         `Lead handling rules:`,
@@ -1300,6 +1309,25 @@ export function ClientPortal() {
                   {colourModeOptions.map((option) => (
                     <label className={colourMode === option.value ? "look-mode active" : "look-mode"} key={option.value}>
                       <input checked={colourMode === option.value} name="website-colour-mode" onChange={() => setColourMode(option.value)} type="radio" value={option.value} />
+                      <span><strong>{option.label}</strong><small>{option.hint}</small></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="website-look-modes" role="radiogroup" aria-label="Website colour theme" data-testid="colour-theme">
+                  <p className="subtle">Pick a color theme, or let us choose. You can describe your own colors below.</p>
+                  {colourThemeOptions.map((option) => (
+                    <label className={colourTheme === option.value ? "look-mode active" : "look-mode"} key={option.value}>
+                      <input checked={colourTheme === option.value} name="website-colour-theme" onChange={() => setColourTheme(option.value)} type="radio" value={option.value} />
+                      <span><strong>{option.label}</strong><small>{option.swatches.length ? <span aria-hidden="true">{option.swatches.map((hex) => <i key={hex} style={{ display: "inline-block", width: 18, height: 18, borderRadius: 4, marginRight: 4, background: hex, border: "1px solid rgba(128,128,128,.5)", verticalAlign: "middle" }} />)}</span> : "We choose what suits your business."}</small></span>
+                    </label>
+                  ))}
+                </div>
+                <label className="auth-label" htmlFor="own-colours">Your own colors (optional)</label><input className="auth-input" id="own-colours" maxLength={COLOUR_NOTES_MAX} onChange={(event) => setColourNotes(event.target.value)} placeholder="Example: navy and rose pink, like my logo" value={colourNotes} />
+                <div className="website-look-modes" role="radiogroup" aria-label="Website background" data-testid="background-style">
+                  <p className="subtle">What should the website background feel like?</p>
+                  {backgroundOptions.map((option) => (
+                    <label className={background === option.value ? "look-mode active" : "look-mode"} key={option.value}>
+                      <input checked={background === option.value} name="website-background" onChange={() => setBackground(option.value)} type="radio" value={option.value} />
                       <span><strong>{option.label}</strong><small>{option.hint}</small></span>
                     </label>
                   ))}

@@ -147,7 +147,7 @@ export function ClientBusinessChanges() {
   }
 
   async function submitRedesign() {
-    const input = { whatToChange: rdChange, styleDirection: rdStyle, pagesNeeded: rdPages, options: { colourMode: rdColour, seo: rdSeo, smoothScroll: rdSmooth }, extra: rdExtra };
+    const input = { whatToChange: rdChange, styleDirection: rdStyle, pagesNeeded: rdPages, options: { colourMode: rdColour, seo: rdSeo, smoothScroll: rdSmooth, colourTheme: defaultBriefOptions.colourTheme, background: defaultBriefOptions.background, colourNotes: defaultBriefOptions.colourNotes }, extra: rdExtra };
     const problem = redesignProblem(input);
     if (problem) { setError(problem); return; }
     if (!supabase || !projectId) { setError("Website changes are temporarily unavailable. No request was changed."); return; }
