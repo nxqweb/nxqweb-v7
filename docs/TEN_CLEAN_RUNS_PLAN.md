@@ -32,8 +32,10 @@ The page lists eight runs. It does not show the counter, so the count below is f
 Creators' real sites cost the same credits, and a clean run uses a real GitHub repo and Netlify site each time. A bigger Netlify plan (decision A7 in `docs/REAL_LAUNCH_GATE.md`; Personal was about $9 for 1,000 credits, unverified) would let all nine run within about two weeks, but it is a paid step against the spending hold. The free-plan schedule above still fits the "launch-ready by about Jan 4" target.
 
 ## Before the FIRST run
-- [ ] Read the build guard and raise it for the test window (trap 2). Read the cost cap and this month's use (trap 4).
-- [ ] Fresh Netlify credits reading, five minutes later a second one (trap 3).
+- [x] **Build guard raised (2026-11-04, owner, Supabase Table Editor):** it was the default 4 builds and 2 QA builds; both are now **12**. To go back, set 4 and 2.
+- [x] **Cost cap read (2026-11-04):** `enabled` true, `emergency_stop` false, `monthly_limit_cents` 500. Enough for about a dozen runs at an estimated 30-40 cents each.
+- [x] **Credits "before" (2026-11-04):** 209.5 of 300 at 10:50 AM and again at 11:41 AM, so the reading is stable (Netlify still warns reporting may be delayed). Read it again right before the run.
+- [ ] The optional free pre-flight, `validate_foundation` (read-only), recommended once before the first run.
 - [ ] The runbook's own preconditions (`validate_prelaunch` passing, the current frontend live on staging, owner login works, no run already running: true today).
 - [ ] Claude: `git fetch`, parity 74/74 on the branch tip (it includes `npm run test:netlify-builds-stopped`, the guard for the `stop_builds` fix).
 
@@ -47,7 +49,7 @@ Creators' real sites cost the same credits, and a clean run uses a real GitHub r
 | 9 |  |  |  |  |  |  |
 
 ## What Claude can do meanwhile, without any approval
-- Build a small owner screen (`/owner/netlify-budget`) that shows `owner_netlify_budget_status()` and changes the limits through `owner_update_netlify_budget_settings` with the owner's own login and a confirm step. No migration is needed (both functions exist and are granted). It reaches the site only with one build, so it is optional; the one-line table update above costs nothing.
+- **BUILT 2026-11-04, on the branch but NOT on the site yet:** the owner screen `/owner/netlify-budget` (`src/pages/OwnerNetlifyBudget.tsx`, helpers in `src/lib/netlifyBudget.ts`). It shows this cycle's counted builds against the limits (total and QA, with how many approve runs fit) and changes the limits through the existing owner function with a confirm box that lists exactly what changes; the emergency stop warns that real clients are affected. No migration. Tests: `scripts/test-netlify-budget-screen.mjs` (inside `npm run test:store`, with planted-bug controls) and the browser check `scripts/manual/netlify-budget-e2e.mjs` (13 checks and an axe scan, mocked database). It appears on the live site only with the next site build; until then the Supabase table edit above does the same job.
 - Keep the ledger and read each result from the owner's screenshots (the owner pages need a login, so Claude cannot open them).
 
 ## After the tenth pass
