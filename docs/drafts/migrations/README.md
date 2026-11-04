@@ -13,6 +13,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
+| `05_qa_maintenance_off_the_cost_pool.sql` | Disposable QA clients' maintenance counts 0 cents and a full shared cost pool no longer stops it; real clients unchanged. Fixes the 2026-11-01 drain that stalled the first measured QA run (added 2026-11-04; test 51/51 on the local harness, with 3 planted bugs caught) | `docs/TEN_CLEAN_RUNS_PLAN.md` trap 5 |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
