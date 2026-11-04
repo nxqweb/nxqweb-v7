@@ -7,10 +7,10 @@ Sites are built one at a time, and the accounts, not the software, are the limit
 
 ## How big is the next wave? (do this arithmetic every time)
 1. **Credits left** (Netlify -> Team -> Billing). Keep a reserve of at least **4 builds (60 credits)** for fixes and the main site's own deploys.
-2. **Builds each new client needs:** assume 2 (the first build, plus one change after they see the preview) (unverified; measure it on the first creators and update this line).
-3. **Wave size = (credits left - 60) / 15 / 2**, rounded down, and never above the build guard's cycle limit. Example: 210 credits left gives (210 - 60) / 15 / 2 = 5 clients.
+2. **Credits each new client site costs:** use **45** until a run proves otherwise. That is the measured figure from the 2026-10-07 QA runs (Netlify ignored `stop_builds` at site creation, so a new site made two production deploys by itself, plus the promotion deploy; see `docs/TEN_CLEAN_RUNS_PLAN.md`). The fix expects about 15-30, but it is unproven until a run measures it; update this line the first time it is measured. A later change request that triggers a build costs 15 more.
+3. **Wave size = (credits left - 60) / 45**, rounded down, and never above the build guard's cycle limit (`max_builds_per_cycle`, default 4, and `max_qa_builds_per_cycle`, default 2, migration 234). Example: 210 credits left gives (210 - 60) / 45 = 3 clients. On the free plan (300 a month) that is about 6 new sites in a whole month at best, which is why a bigger Netlify plan (decision A7) comes before any real wave.
 4. **Owner time:** budget about 20 minutes of owner attention per client across the whole flow (approval, AI Desk, preview check, billing step) (unverified). A wave of 5 is about 100 minutes spread over the week.
-5. If the answer is under 3, wait for the credits to reset or buy a bigger Netlify plan first (decision A7, `docs/REAL_LAUNCH_GATE.md`). Do not invite a wave you cannot build.
+5. If the answer is under 2, wait for the credits to reset or buy a bigger Netlify plan first (decision A7, `docs/REAL_LAUNCH_GATE.md`). Do not invite a wave you cannot build. The ten clean QA runs draw on the same credits, so finish them (or buy credits) before inviting a wave.
 
 ## Before each wave
 - [ ] Credits and the wave size worked out above.

@@ -27,7 +27,7 @@ Needs the owner (a specific yes each time, per `CLAUDE.md`):
 - Applying any migration (waitlist, add-on packs): the owner types `APPLY-NXQ-SUPABASE-STAGING` and clicks Approve; Claude reads the log.
 - One site build, only when the owner turns builds ON, then publishes by hand (Auto Publishing stays locked).
 
-The ten clean end-to-end runs (A8) are the real "launch-ready" test: disposable clients through signup, approval, build, preview, publish, change request, pause and cancel, with evidence and the owner's sign-off. Target: finished by about Jan 4.
+The ten clean end-to-end runs (A8) are the real "launch-ready" test, and **credits and the build guard, not code, decide their calendar**: see `docs/TEN_CLEAN_RUNS_PLAN.md` (1 of 10 done; a new QA site cost about 45 Netlify credits when last measured; the default build guard allows about one approve run per cycle). They are fictional clients started from Launch readiness: the APPROVE path goes through approval, a private GitHub repo, a Netlify preview and production, and maintenance; the DENY path passes only if nothing at all is created. Each needs real Supabase, GitHub and Netlify evidence, and the owner signs off after ten. Target: finished by about Jan 4.
 
 ## Phase 2: waitlist and creators (about Jan 4 to Jun 16)
 
