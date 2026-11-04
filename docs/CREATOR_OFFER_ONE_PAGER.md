@@ -2,6 +2,8 @@
 
 **Status: DRAFT for the owner to edit. Nothing here is a contract and none of it is sent anywhere.** Blanks marked **[OWNER]** are decisions only the owner can make. Terms and Privacy are still drafts, the lawyer review is parked, and this page is not legal advice; do not send it as a binding promise until the owner has decided every blank.
 
+**Related:** `docs/FOUNDING_CLIENT_PROGRAM_PLAN.md` (the 10 free founding spots and 5 half-price testing spots you already decided; creators should be counted against these unless you decide otherwise), `docs/CREATOR_ONBOARDING_SHEET.md` (the per-creator steps) and `docs/WAVE_RELEASE_RUNBOOK.md` (how many people to invite at once).
+
 ## What a creator gets
 - A website built for them by NXQX Web, **free**. [OWNER: for how long, for example the first N months, then what price?]
 - Hosting, and changes handled for them (they send a request, we do it).

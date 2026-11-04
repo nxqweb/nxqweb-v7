@@ -31,6 +31,7 @@ The ten clean end-to-end runs (A8) are the real "launch-ready" test: disposable 
 
 ## Phase 2: waitlist and creators (about Jan 4 to Jun 16)
 
+- **Runbooks (written 2026-11-04):** `docs/WAVE_RELEASE_RUNBOOK.md` (wave size arithmetic, go/no-go, stop rules), `docs/CREATOR_ONBOARDING_SHEET.md` (per-creator steps) and the draft in-app waitlist package `docs/drafts/waitlist/` (switched OFF, promotion rehearsed in a scratch copy).
 - **Release in waves, not all at once.** Today's caps are roughly 4-12 new sites a month (Netlify credits plus the build guard `max_builds_per_cycle`); see `docs/REAL_LAUNCH_GATE.md` section F. A list of 1,000 people cannot all get a site on day one, so the "your site is ready" email goes out in waves (for example 20-50 people), and the owner decides each wave size. The draft waitlist has `owner_waitlist_invite_wave` for exactly this.
 - **Creators get a free site** and give something back (see `docs/CREATOR_OFFER_ONE_PAGER.md`). Each creator is a real client: real data, so backups and the legal wording matter before the first one.
 - **Backups:** Supabase is on the Free plan with no backups. Until Pro, run the manual copy in `docs/BACKUP_AND_RESTORE.md` on a schedule.
