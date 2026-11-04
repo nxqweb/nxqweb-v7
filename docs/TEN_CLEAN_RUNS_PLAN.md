@@ -46,7 +46,7 @@ Creators' real sites cost the same credits, and a clean run uses a real GitHub r
 ## Ledger (new runs; the history above is the older record)
 | Run # | Date | Run code | Result | Credits before | Credits after (5 min later) | Notes |
 |---|---|---|---|---|---|---|
-| 9 |  |  |  |  |  |  |
+| 9 | 2026-11-04 12:53 PM | QA-842A688FA6D1 (`business-launch-20261104 #1`) | running: awaiting owner decision (started 12:53:46 PM) | 209.5 of 300 (page headline "210"), 0/1 concurrent builds, read just before starting; Netlify banner said reporting may be delayed | (pending) | First measured approve run since the `stop_builds` fix. Claude holds all pushes to the repo while it runs, because `build-business-website` reads the template from this repo at `NXQ_AUTOMATION_SOURCE_REF`. |
 
 ## What Claude can do meanwhile, without any approval
 - **BUILT 2026-11-04, on the branch but NOT on the site yet:** the owner screen `/owner/netlify-budget` (`src/pages/OwnerNetlifyBudget.tsx`, helpers in `src/lib/netlifyBudget.ts`). It shows this cycle's counted builds against the limits (total and QA, with how many approve runs fit) and changes the limits through the existing owner function with a confirm box that lists exactly what changes; the emergency stop warns that real clients are affected. No migration. Tests: `scripts/test-netlify-budget-screen.mjs` (inside `npm run test:store`, with planted-bug controls) and the browser check `scripts/manual/netlify-budget-e2e.mjs` (13 checks and an axe scan, mocked database). It appears on the live site only with the next site build; until then the Supabase table edit above does the same job.
