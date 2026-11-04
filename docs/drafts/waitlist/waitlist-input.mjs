@@ -15,6 +15,7 @@ export const WAITLIST_LIMITS = Object.freeze({
   sourceMax: 60,
   hourlyPerVisitor: 5,
   hourlyTotal: 1000,
+  removePerVisitor: 10,
   windowSeconds: 3600,
 });
 
@@ -23,6 +24,8 @@ export const WAITLIST_LIMITS = Object.freeze({
 export const WAITLIST_CONSENT_VERSION = "draft-1";
 export const WAITLIST_CONSENT_TEXT = "I agree that NXQX Web may email me when it is time to set up my site. I can ask to be removed at any time.";
 export const WAITLIST_OK_MESSAGE = "Thanks! You are on the waiting list. We will email you when it is time to set up your site.";
+// True whether or not the link matched anyone, so the answer never reveals who was on the list.
+export const WAITLIST_REMOVED_MESSAGE = "Done. You are no longer on the waiting list, and we will not email you about it.";
 
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
@@ -42,11 +45,21 @@ export function normalizeSource(raw) {
   return value.length >= 1 && value.length <= WAITLIST_LIMITS.sourceMax && /^[a-z0-9_-]+$/.test(value) ? value : "direct";
 }
 
+// The removal token in an email link is a plain UUID. Anything else is refused before any database work.
+export function normalizeToken(raw) {
+  const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value) ? value : null;
+}
+
 export function parseWaitlistBody(raw) {
   let data;
   try { data = JSON.parse(raw); } catch { return { kind: "bad_json" }; }
   if (!data || typeof data !== "object" || Array.isArray(data)) return { kind: "bad_json" };
   if (typeof data.company_website === "string" && data.company_website.trim()) return { kind: "bot" };
+  if (data.action === "remove") {
+    const token = normalizeToken(data.token);
+    return token ? { kind: "remove", token } : { kind: "bad_token" };
+  }
   const email = normalizeEmail(data.email);
   if (!email) return { kind: "bad_email" };
   return { kind: "ok", email, source: normalizeSource(data.source) };
@@ -55,7 +68,7 @@ export function parseWaitlistBody(raw) {
 const UNAVAILABLE = { ok: false, error: "Unavailable." };
 
 // input: { method, origin, ip, agent, readBody() }  (readBody returns the text, or null when it is over WAITLIST_LIMITS.maxRequestBytes)
-// deps:  { env(name), sha256(text), reserve({ scope, operation, identity, limit }) -> { allowed }, join({ email, source, consentVersion }) }
+// deps:  { env(name), sha256(text), reserve({ scope, operation, identity, limit }) -> { allowed }, join({ email, source, consentVersion }), remove({ token }) }
 // Returns { status, body }; body is null for a bare 204. Never throws: any failure after the cheap checks becomes one generic 500.
 export async function handleWaitlist(input, deps) {
   if (deps.env("NXQ_WAITLIST_ENABLED") !== "true") return { status: 404, body: UNAVAILABLE };
@@ -71,12 +84,20 @@ export async function handleWaitlist(input, deps) {
   if (parsed.kind === "bad_json") return { status: 400, body: { ok: false, error: "Request body must be a JSON object." } };
   if (parsed.kind === "bot") return { status: 200, body: { ok: true, message: WAITLIST_OK_MESSAGE } };
   if (parsed.kind === "bad_email") return { status: 400, body: { ok: false, error: "Please enter a valid email address." } };
+  if (parsed.kind === "bad_token") return { status: 400, body: { ok: false, error: "That removal link is not valid." } };
 
   try {
     const salt = deps.env("NXQ_LEAD_FINGERPRINT_SALT");
     if (!salt) throw new Error("fingerprint salt missing");
     const visitor = await deps.sha256(`${salt}|${input.ip || ""}|${input.agent || ""}`);
     const limited = { status: 429, body: { ok: false, error: "Too many sign-ups right now. Please try again later." } };
+    // Removal: its own per-visitor limit, one write, and one answer whether or not the token matched anyone (the SQL function does the same).
+    if (parsed.kind === "remove") {
+      const removals = await deps.reserve({ scope: "waitlist", operation: "waitlist_remove_visitor_hourly", identity: visitor, limit: WAITLIST_LIMITS.removePerVisitor });
+      if (!removals.allowed) return limited;
+      await deps.remove({ token: parsed.token });
+      return { status: 200, body: { ok: true, message: WAITLIST_REMOVED_MESSAGE } };
+    }
     // The per-visitor limit first, so one visitor cannot use up the whole list's hourly total for everyone else.
     const perVisitor = await deps.reserve({ scope: "waitlist", operation: "waitlist_visitor_hourly", identity: visitor, limit: WAITLIST_LIMITS.hourlyPerVisitor });
     if (!perVisitor.allowed) return limited;

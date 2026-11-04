@@ -33,6 +33,7 @@ const moves = [
   ["docs/drafts/waitlist/waitlistSupabaseGateway.ts", "src/lib/waitlistSupabaseGateway.ts"],
   ["docs/drafts/waitlist/waitlistConfig.ts", "src/lib/waitlistConfig.ts"],
   ["docs/drafts/waitlist/PublicWaitlist.tsx", "src/pages/PublicWaitlist.tsx"],
+  ["docs/drafts/waitlist/PublicWaitlistRemove.tsx", "src/pages/PublicWaitlistRemove.tsx"],
   ["docs/drafts/waitlist/OwnerWaitlist.tsx", "src/pages/OwnerWaitlist.tsx"],
   ["docs/drafts/waitlist/test-waitlist.mjs", "scripts/test-waitlist.mjs"],
   ["docs/drafts/migrations/03_prelaunch_waitlist.sql", `supabase/migrations/${migrationName}.sql`],
@@ -45,15 +46,15 @@ for (const [from, to] of moves) {
 
 // ---- the edits: each is "after this exact line, add that text" ---------------------------------------------------------------------
 const edits = [
-  ["src/App.tsx", 'const PublicExamples = named(() => import("./pages/PublicExamples"), "PublicExamples");', '\nconst PublicWaitlist = named(() => import("./pages/PublicWaitlist"), "PublicWaitlist");'],
+  ["src/App.tsx", 'const PublicExamples = named(() => import("./pages/PublicExamples"), "PublicExamples");', '\nconst PublicWaitlist = named(() => import("./pages/PublicWaitlist"), "PublicWaitlist");\nconst PublicWaitlistRemove = named(() => import("./pages/PublicWaitlistRemove"), "PublicWaitlistRemove");'],
   ["src/App.tsx", 'const OwnerStoreLook = named(() => import("./pages/OwnerStoreLook"), "OwnerStoreLook");', '\nconst OwnerWaitlist = named(() => import("./pages/OwnerWaitlist"), "OwnerWaitlist");'],
   ["src/App.tsx", '  if (path === "/owner/store-look") return <OwnerProtectedRoute><OwnerStoreLook /></OwnerProtectedRoute>;', '\n  if (path === "/owner/waitlist") return <OwnerProtectedRoute><OwnerWaitlist /></OwnerProtectedRoute>;'],
-  ["src/App.tsx", '  if (path === "/examples") return <PublicExamples />;', '\n  if (path === "/waitlist") return <PublicWaitlist />;'],
+  ["src/App.tsx", '  if (path === "/examples") return <PublicExamples />;', '\n  if (path === "/waitlist") return <PublicWaitlist />;\n  if (path === "/waitlist/remove") return <PublicWaitlistRemove />;'],
   ["src/pages/OwnerPortal.tsx", '                <a className="icon-btn" href="/owner/store-look">Store look</a>', '\n                <a className="icon-btn" href="/owner/waitlist">Waiting list</a>'],
   ["scripts/edge-function-manifest.mjs", '  entry("ingest-stripe-webhook", false, "stripe-signature"),', '\n  entry("join-waitlist", false, "public-waitlist-origin"),'],
   ["supabase/config.toml", "[functions.answer-site-question]\nverify_jwt = false", "\n[functions.join-waitlist]\nverify_jwt = false"],
   ["scripts/check-runtime-stage-readiness.mjs", '  "public-form-key": ["business_lead_forms", \'.eq("form_key"\'],', '\n  "public-waitlist-origin": ["handleWaitlist", "nxq_waitlist_join", "nxq_reserve_ingress_capacity"],'],
-  ["scripts/smoke-built-routes.mjs", '  "/", "/plans",', ' "/waitlist",'],
+  ["scripts/smoke-built-routes.mjs", '  "/", "/plans",', ' "/waitlist", "/waitlist/remove",'],
   ["scripts/run-store-tests.mjs", '  "test-shopper-account",', ' "test-waitlist",'],
 ];
 const plannedText = new Map();

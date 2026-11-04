@@ -84,6 +84,10 @@ Deno.serve(async (req) => {
         const joined = await admin().rpc("nxq_waitlist_join", { target_email: email, target_source: source, target_consent_version: consentVersion });
         if (joined.error) throw new Error(`Waitlist join failed: ${joined.error.message}`);
       },
+      remove: async ({ token }: { token: string }) => {
+        const removed = await admin().rpc("nxq_waitlist_remove", { target_token: token });
+        if (removed.error) throw new Error(`Waitlist removal failed: ${removed.error.message}`);
+      },
     },
   );
   return new Response(result.body === null ? null : JSON.stringify(result.body), { status: result.status, headers: cors(origin) });

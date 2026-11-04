@@ -9,8 +9,9 @@
 | `join-waitlist.index.ts` | `supabase/functions/join-waitlist/index.ts` | Thin web adapter, holds no rules |
 | `waitlist.ts`, `waitlistSupabaseGateway.ts`, `waitlistConfig.ts` | `src/lib/` | Form rules, the real gateway, and the ONE switch (OFF) |
 | `PublicWaitlist.tsx` | `src/pages/` -> route `/waitlist` | The sign-up page |
+| `PublicWaitlistRemove.tsx` | `src/pages/` -> route `/waitlist/remove` | "Remove me" page for the link in a waiting-list email (removes only on a click, never on opening the link) |
 | `OwnerWaitlist.tsx` | `src/pages/` -> route `/owner/waitlist` | Owner counts and "mark a wave as invited" |
-| `test-waitlist.mjs` | `scripts/test-waitlist.mjs` | 77 offline checks (84 once promoted, when the wiring checks switch on), with planted-bug controls |
+| `test-waitlist.mjs` | `scripts/test-waitlist.mjs` | 104 offline checks (112 once promoted, when the wiring checks switch on), with planted-bug controls |
 | `../migrations/03_prelaunch_waitlist.sql` (+ `.test.sql`) | `supabase/migrations/<next number>_prelaunch_waitlist.sql` | The table and its service-only functions |
 | `promote.mjs` | (stays here) | Does all of the moves and registrations in one command |
 
@@ -24,11 +25,11 @@
 - The answer is identical for a new address and one already listed (no probing for who signed up). A hidden bot-trap field looks like success and does nothing.
 - Limits: 5 sign-ups per visitor per hour, 1,000 per hour for the whole list (`WAITLIST_LIMITS`); the shared ingress rate limiter from migration 204 does the counting, and `NXQ_LEAD_FINGERPRINT_SALT` (already used by the contact form) hashes the visitor.
 - Invites go **oldest confirmed first**, at most 100 per call, and never invite the same person twice. Today "invite a wave" only MARKS people as invited; it sends no email.
-- Removal **erases** the row (the SQL function exists; see "Not built yet").
+- Removal **erases** the row. The removal link is `/waitlist/remove?token=<the row's removal token>`; the page asks for a CLICK before it removes anyone (email scanners and link previews open links on their own and must not remove people), the token must be a plain UUID, removals have their own limit (10 an hour per visitor), and every well-formed token gets the same "Done" answer whether or not it matched anyone.
 
 ## Not built yet (be honest before switching on)
 1. **Confirmation email** (double opt-in, as `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md` asks). Needs an email sender, which needs the owner's Resend account and a verified domain (the spending hold). Until it exists nobody can reach `confirmed`, so the invite step has nobody to invite. **Decision D1 for the owner:** keep double opt-in, or allow single opt-in (the owner invites straight from `pending`; a one-line change in the invite function). Do not decide this silently.
-2. **A removal page and function** (`/waitlist/remove?token=...`). The SQL `nxq_waitlist_remove` is ready and tested, but nothing public calls it yet. **Do not switch the list on without a working removal link.**
+2. **The removal link inside the emails.** The removal page and the function's `remove` action are now built and tested (see above), but nobody can receive the link until an email sender puts `/waitlist/remove?token=<removal_token>` in each message (the token is readable by the service role only, never by the owner screen). **Do not switch the list on until every email carries a working removal link.**
 3. **The wave-invite email** ("your site is ready, please set it up").
 4. **A retention purge** (the plan says delete after the family opens or after 24 months).
 Items 1-3 all need the email sender; the existing notification pipeline is built around clients, so waitlist mail needs its own small sender.
@@ -46,3 +47,5 @@ Then run the local Postgres harness (`pg_ctlcluster 16 main start`, then `NXQ_LO
 
 ## Rehearsal result (2026-11-04, scratch git worktree, never pushed)
 `promote.mjs` was run for real in a throwaway copy of the repo at the then-current branch tip. Results there: `npx tsc -p tsconfig.app.json --noEmit` clean; `npm run test:edge` passed Deno type checking for all **46** functions (45 existing plus `join-waitlist`); `npm run test:ci-parity` **74/74** (it runs `test-waitlist` inside `test:store`); local Postgres harness **48/48** with the new migration applying as number 287 on a fresh database and its regression test passing. The rehearsal found and fixed one real mistake before it could reach the real tree (the function's cached database client was typed in a way Deno's strict check rejects). The migration number is picked at promotion time as one past the highest existing one, so it may not be 287 by then.
+
+**Re-rehearsed 2026-11-04 after adding the removal page and the function's `remove` action** (scratch worktree at `56fb3cc`, never pushed): the promoted `scripts/test-waitlist.mjs` passes all **112** checks, `npx tsc -p tsconfig.app.json --noEmit` is clean, `npm run test:edge` passes Deno type checking for all 46 functions, `npm run test:ci-parity` is **74/74**, and the Postgres harness is **48/48** with the migration applying as 287 and its regression test passing.

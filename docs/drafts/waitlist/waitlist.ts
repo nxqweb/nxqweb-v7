@@ -4,6 +4,7 @@ export const WAITLIST_CONSENT_VERSION = "draft-1";
 // DRAFT wording: needs a lawyer's read before the list goes public.
 export const WAITLIST_CONSENT_TEXT = "I agree that NXQX Web may email me when it is time to set up my site. I can ask to be removed at any time.";
 export const WAITLIST_OK_MESSAGE = "Thanks! You are on the waiting list. We will email you when it is time to set up your site.";
+export const WAITLIST_REMOVED_MESSAGE = "Done. You are no longer on the waiting list, and we will not email you about it.";
 export const WAITLIST_EMAIL_MAX = 254;
 export const WAITLIST_SOURCE_MAX = 60;
 export const MAX_INVITES_PER_WAVE = 100;
@@ -24,10 +25,17 @@ export function sourceFromSearch(search: string): string {
   return ref.length >= 1 && ref.length <= WAITLIST_SOURCE_MAX && /^[a-z0-9_-]+$/.test(ref) ? ref : "direct";
 }
 
+// /waitlist/remove?token=... is the link in a waiting-list email. Only a plain UUID counts; anything else is "no link". (The token is never sent anywhere except the removal request.)
+export function tokenFromSearch(search: string): string | null {
+  const value = new URLSearchParams(search).get("token")?.trim().toLowerCase() ?? "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value) ? value : null;
+}
+
 export type WaitlistJoinResult = { ok: true; message: string } | { ok: false; message: string };
 export type WaitlistSummary = { byStatus: Record<string, number>; bySource: Record<string, number> };
 export type WaitlistGateway = {
   join(input: { email: string; source: string; honeypot: string }): Promise<WaitlistJoinResult>;
+  remove(token: string): Promise<WaitlistJoinResult>;
   summary(): Promise<WaitlistSummary>;
   inviteWave(wave: number, count: number): Promise<number>;
 };

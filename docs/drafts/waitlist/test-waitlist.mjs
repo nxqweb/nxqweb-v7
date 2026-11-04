@@ -17,8 +17,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const isDraft = /docs[\\/]drafts[\\/]waitlist$/.test(here);
 const root = isDraft ? path.resolve(here, "../../..") : path.resolve(here, "..");
 const P = isDraft
-  ? { input: `${here}/waitlist-input.mjs`, lib: `${here}/waitlist.ts`, gateway: `${here}/waitlistSupabaseGateway.ts`, config: `${here}/waitlistConfig.ts`, fn: `${here}/join-waitlist.index.ts`, publicPage: `${here}/PublicWaitlist.tsx`, ownerPage: `${here}/OwnerWaitlist.tsx`, sqlDir: `${root}/docs/drafts/migrations` }
-  : { input: `${root}/supabase/functions/_shared/waitlist-input.mjs`, lib: `${root}/src/lib/waitlist.ts`, gateway: `${root}/src/lib/waitlistSupabaseGateway.ts`, config: `${root}/src/lib/waitlistConfig.ts`, fn: `${root}/supabase/functions/join-waitlist/index.ts`, publicPage: `${root}/src/pages/PublicWaitlist.tsx`, ownerPage: `${root}/src/pages/OwnerWaitlist.tsx`, sqlDir: `${root}/supabase/migrations` };
+  ? { input: `${here}/waitlist-input.mjs`, lib: `${here}/waitlist.ts`, gateway: `${here}/waitlistSupabaseGateway.ts`, config: `${here}/waitlistConfig.ts`, fn: `${here}/join-waitlist.index.ts`, publicPage: `${here}/PublicWaitlist.tsx`, removePage: `${here}/PublicWaitlistRemove.tsx`, ownerPage: `${here}/OwnerWaitlist.tsx`, sqlDir: `${root}/docs/drafts/migrations` }
+  : { input: `${root}/supabase/functions/_shared/waitlist-input.mjs`, lib: `${root}/src/lib/waitlist.ts`, gateway: `${root}/src/lib/waitlistSupabaseGateway.ts`, config: `${root}/src/lib/waitlistConfig.ts`, fn: `${root}/supabase/functions/join-waitlist/index.ts`, publicPage: `${root}/src/pages/PublicWaitlist.tsx`, removePage: `${root}/src/pages/PublicWaitlistRemove.tsx`, ownerPage: `${root}/src/pages/OwnerWaitlist.tsx`, sqlDir: `${root}/supabase/migrations` };
 const read = (file) => fs.readFileSync(file, "utf8");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "nxq-waitlist-test-"));
 process.on("exit", () => fs.rmSync(tmp, { recursive: true, force: true }));
@@ -29,7 +29,7 @@ const lib = await importFile(P.lib);
 
 // ---- a fake world for the handler ------------------------------------------------------------------------------------------------
 function world(over = {}) {
-  const calls = { reserve: [], join: [], bodyReads: 0 };
+  const calls = { reserve: [], join: [], remove: [], bodyReads: 0 };
   const counters = new Map();
   const env = { NXQ_WAITLIST_ENABLED: "true", NXQ_WAITLIST_ALLOWED_ORIGINS: "https://site.test, https://www.site.test", NXQ_LEAD_FINGERPRINT_SALT: "salt", ...(over.env || {}) };
   const deps = {
@@ -37,6 +37,7 @@ function world(over = {}) {
     sha256: async (text) => createHash("sha256").update(text).digest("hex"),
     reserve: over.reserve ?? (async (r) => { calls.reserve.push(r); const key = `${r.operation}|${r.identity}`; const used = (counters.get(key) || 0) + 1; counters.set(key, used); return { allowed: used <= r.limit }; }),
     join: over.join ?? (async (j) => { calls.join.push(j); }),
+    remove: over.remove ?? (async (r) => { calls.remove.push(r); }),
   };
   const request = (extra = {}) => ({
     method: "POST", origin: "https://site.test", ip: "1.2.3.4", agent: "ua",
@@ -47,7 +48,7 @@ function world(over = {}) {
 }
 
 async function handlerChecks(mod, ok) {
-  const { handleWaitlist, normalizeEmail, normalizeSource, WAITLIST_LIMITS, WAITLIST_CONSENT_VERSION, WAITLIST_OK_MESSAGE } = mod;
+  const { handleWaitlist, normalizeEmail, normalizeSource, normalizeToken, WAITLIST_LIMITS, WAITLIST_CONSENT_VERSION, WAITLIST_OK_MESSAGE, WAITLIST_REMOVED_MESSAGE } = mod;
   let w = world();
   const good = await handleWaitlist(w.request(), w.deps);
   ok("a valid sign-up answers 200 with the thank-you message and writes one row with the address lower-cased", good.status === 200 && good.body.ok === true && good.body.message === WAITLIST_OK_MESSAGE
@@ -116,6 +117,45 @@ async function handlerChecks(mod, ok) {
     ok(`${label} gives one generic 500 that leaks no detail and writes nothing`, res.status === 500 && !JSON.stringify(res.body).includes("secret-detail-123") && w.calls.join.length === 0);
   }
 
+  // ---- removal (the link in a waiting-list email)
+  const TOKEN = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
+  const removeBody = (extra = {}) => JSON.stringify({ action: "remove", token: TOKEN, ...extra });
+  w = world();
+  const removed = await handleWaitlist(w.request({ body: removeBody() }), w.deps);
+  ok("a removal answers 200 with the removed message, removes by the token, and writes no sign-up", removed.status === 200 && removed.body.ok === true && removed.body.message === WAITLIST_REMOVED_MESSAGE && w.calls.remove.length === 1 && w.calls.remove[0].token === TOKEN && w.calls.join.length === 0);
+  w = world();
+  const upper = await handleWaitlist(w.request({ body: removeBody({ token: TOKEN.toUpperCase() }) }), w.deps);
+  ok("an upper-case token is accepted and normalized to lower case", upper.status === 200 && w.calls.remove[0]?.token === TOKEN);
+  for (const [label, token] of [["a missing token", undefined], ["a short token", "abc"], ["a token with extra text", `${TOKEN}x`], ["a token with a space inside", "3f2504e0-4f89-41d3-9a0c 0305e82c3301"], ["a non-string token", 12345], ["an SQL-looking token", "' or 1=1 --"]]) {
+    w = world();
+    const res = await handleWaitlist(w.request({ body: JSON.stringify({ action: "remove", token }) }), w.deps);
+    ok(`${label} is refused with 400 before any database work`, res.status === 400 && w.calls.remove.length === 0 && w.calls.reserve.length === 0);
+  }
+  w = world({ env: { NXQ_WAITLIST_ENABLED: undefined } });
+  const removeOff = await handleWaitlist(w.request({ body: removeBody() }), w.deps);
+  ok("removal is OFF with everything else: 404, the body is never read, nothing is removed", removeOff.status === 404 && w.calls.bodyReads === 0 && w.calls.remove.length === 0);
+  w = world();
+  const removeWrongOrigin = await handleWaitlist(w.request({ origin: "https://evil.test", body: removeBody() }), w.deps);
+  ok("removal from an unlisted origin gets the same 404 and removes nothing", removeWrongOrigin.status === 404 && w.calls.remove.length === 0);
+  w = world();
+  const removeBot = await handleWaitlist(w.request({ body: removeBody({ company_website: "http://spam.test" }) }), w.deps);
+  ok("the bot trap covers removal too: it looks like success and removes nothing", removeBot.status === 200 && w.calls.remove.length === 0 && w.calls.reserve.length === 0);
+  w = world();
+  const sameA = await handleWaitlist(w.request({ body: removeBody() }), w.deps);
+  const sameB = await handleWaitlist(w.request({ body: removeBody({ token: "11111111-2222-4333-8444-555555555555" }) }), w.deps);
+  ok("every well-formed token gets the identical answer (the handler never learns whether it matched anyone)", JSON.stringify(sameA) === JSON.stringify(sameB));
+  w = world();
+  const removals = [];
+  for (let i = 0; i < WAITLIST_LIMITS.removePerVisitor + 1; i += 1) removals.push((await handleWaitlist(w.request({ body: removeBody() }), w.deps)).status);
+  ok(`one visitor gets ${WAITLIST_LIMITS.removePerVisitor} removals an hour, then 429, and the extra one removes nothing`, removals.slice(0, -1).every((s) => s === 200) && removals.at(-1) === 429 && w.calls.remove.length === WAITLIST_LIMITS.removePerVisitor);
+  ok("removals count against their own limit under the 'waitlist' scope", w.calls.reserve.length > 0 && w.calls.reserve.every((r) => r.scope === "waitlist" && r.operation === "waitlist_remove_visitor_hourly" && r.limit === WAITLIST_LIMITS.removePerVisitor));
+  for (const [label, over] of [["a failing rate limiter", { reserve: async () => { throw new Error("secret-detail-123"); } }], ["a failing removal", { remove: async () => { throw new Error("secret-detail-123"); } }], ["a missing fingerprint secret", { env: { NXQ_LEAD_FINGERPRINT_SALT: undefined } }]]) {
+    w = world(over);
+    const res = await handleWaitlist(w.request({ body: removeBody() }), w.deps);
+    ok(`removal with ${label} gives one generic 500 that leaks no detail`, res.status === 500 && !JSON.stringify(res.body).includes("secret-detail-123"));
+  }
+  ok("tokens: a UUID is trimmed and lower-cased, anything else is null", normalizeToken(`  ${TOKEN.toUpperCase()} `) === TOKEN && ["", "x", null, 5, undefined, `${TOKEN}0`, TOKEN.replace(/-/g, "")].every((v) => normalizeToken(v) === null));
+
   ok("emails: trimmed, lower-cased, and the sensible ones pass", normalizeEmail("  Fan@Example.COM ") === "fan@example.com" && normalizeEmail("a.b+c@d.co.uk") === "a.b+c@d.co.uk");
   ok("emails: bad shapes, control characters, non-strings and over-long ones are refused", ["", "a@b", "a b@c.de", "a@@b.co", "@b.co", "a@.co", "a@b.", "a@b\u0007.co", "a\u0000@b.co", null, 12, undefined].every((v) => normalizeEmail(v) === null)
     && normalizeEmail(`${"a".repeat(249)}@b.co`) !== null && normalizeEmail(`${"a".repeat(250)}@b.co`) === null);
@@ -134,6 +174,8 @@ const mutants = [
   ["the whole-list limit is removed", [["if (!total.allowed) return limited;", ""]]],
   ["the fingerprint secret becomes optional", [['if (!salt) throw new Error("fingerprint salt missing");', ""]]],
   ["emails are not lower-cased", [["const value = raw.trim().toLowerCase();", "const value = raw.trim();"]]],
+  ["the removal token format is not checked", [["return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value) ? value : null;", "return value || null;"]]],
+  ["removals have no rate limit", [["if (!removals.allowed) return limited;", ""]]],
   ["a failure leaks its detail", [["} catch {\n    return { status: 500,", "} catch (e) {\n    return { status: 500,"], ['error: "The waiting list is unavailable right now."', "error: String(e)"]]],
 ];
 for (const [name, edits] of mutants) {
@@ -149,6 +191,7 @@ for (const [name, edits] of mutants) {
 // ---- the form rules and the wording shared with the server ------------------------------------------------------------------------
 check("the form wording, version and limits match the server file exactly", lib.WAITLIST_CONSENT_VERSION === real.WAITLIST_CONSENT_VERSION && lib.WAITLIST_CONSENT_TEXT === real.WAITLIST_CONSENT_TEXT && lib.WAITLIST_OK_MESSAGE === real.WAITLIST_OK_MESSAGE
   && lib.WAITLIST_EMAIL_MAX === real.WAITLIST_LIMITS.emailMax && lib.WAITLIST_SOURCE_MAX === real.WAITLIST_LIMITS.sourceMax);
+check("the removed message matches the server file, and tokenFromSearch accepts only a UUID", lib.WAITLIST_REMOVED_MESSAGE === real.WAITLIST_REMOVED_MESSAGE && lib.tokenFromSearch("?token=3F2504E0-4F89-41D3-9A0C-0305E82C3301") === "3f2504e0-4f89-41d3-9a0c-0305e82c3301" && ["", "?token=", "?token=abc", "?other=1", "?token=3f2504e0-4f89-41d3-9a0c-0305e82c3301x"].every((s) => lib.tokenFromSearch(s) === null));
 check("emailProblem: empty and malformed addresses get plain words, good ones get null", /enter your email/.test(lib.emailProblem("  ")) && /does not look/.test(lib.emailProblem("nope")) && lib.emailProblem(" a@b.co ") === null && /does not look/.test(lib.emailProblem(`${"a".repeat(250)}@b.co`)));
 check("sourceFromSearch: a creator tag is kept, anything odd is 'direct'", lib.sourceFromSearch("?ref=Creator_A") === "creator_a" && ["", "?ref=", "?ref=bad value!", "?other=1", `?ref=${"x".repeat(61)}`].every((s) => lib.sourceFromSearch(s) === "direct"));
 check("summaryFromRpc: counts only, and odd data never crashes", JSON.stringify(lib.summaryFromRpc({ by_status: { pending: 2, confirmed: 1, bad: -1, worse: "x" }, by_source: { direct: 3 } })) === JSON.stringify({ byStatus: { pending: 2, confirmed: 1 }, bySource: { direct: 3 } })
@@ -179,6 +222,11 @@ check("a 429 from the function becomes the 'too many' message, not a crash", lim
 f = fake({ invoke: async () => ({ data: { ok: false }, error: null }) });
 check("an answer that is not ok:true is a failure, never shown as success", (await createWaitlistGateway(f.client).join({ email: "a@b.co", source: "direct", honeypot: "" })).ok === false);
 f = fake();
+const gone = await createWaitlistGateway(f.client).remove("3f2504e0-4f89-41d3-9a0c-0305e82c3301");
+check("remove calls join-waitlist with action remove and the token only, and passes the message on", gone.ok === true && f.seen[0][1] === "join-waitlist" && JSON.stringify(f.seen[0][2]) === JSON.stringify({ body: { action: "remove", token: "3f2504e0-4f89-41d3-9a0c-0305e82c3301" } }));
+f = fake({ invoke: async () => ({ data: null, error: Object.assign(new Error("x"), { context: { status: 429 } }) }) });
+check("a failed removal is a failure, never shown as success", (await createWaitlistGateway(f.client).remove("3f2504e0-4f89-41d3-9a0c-0305e82c3301")).ok === false);
+f = fake();
 const summary = await createWaitlistGateway(f.client).summary();
 check("summary calls owner_waitlist_summary and maps the counts", summary.byStatus.confirmed === 4 && f.seen[0][1] === "owner_waitlist_summary");
 const invited = await createWaitlistGateway(f.client).inviteWave(2, 25);
@@ -195,7 +243,7 @@ const sqlArgs = (name, text = sql) => { const m = text.match(new RegExp(`create 
 const callArgs = (source, name) => { const m = source.match(new RegExp(`rpc\\("${name}"(?:,\\s*\\{([^}]*)\\})?`)); return m ? (m[1] || "").split(",").map((p) => p.split(":")[0].trim()).filter(Boolean) : null; };
 const gatewaySource = read(P.gateway);
 const fnSource = read(P.fn);
-for (const [source, label, name] of [[gatewaySource, "gateway", "owner_waitlist_summary"], [gatewaySource, "gateway", "owner_waitlist_invite_wave"], [fnSource, "function", "nxq_waitlist_join"]]) {
+for (const [source, label, name] of [[gatewaySource, "gateway", "owner_waitlist_summary"], [gatewaySource, "gateway", "owner_waitlist_invite_wave"], [fnSource, "function", "nxq_waitlist_join"], [fnSource, "function", "nxq_waitlist_remove"]]) {
   const wanted = sqlArgs(name); const got = callArgs(source, name);
   check(`${label} calls ${name} with exactly the SQL's argument names`, Boolean(wanted) && Boolean(got) && JSON.stringify(wanted) === JSON.stringify(got), `sql=${wanted} call=${got}`);
 }
@@ -207,7 +255,7 @@ check("the SQL and the code agree on the limits (254-character addresses, 60-cha
 check("the SQL join function is service-role only and the owner functions are owner-checked", /nxq_waitlist_join[\s\S]*?service_role/.test(sql) && /revoke all on function public\.nxq_waitlist_join\(text, text, text\) from public, anon, authenticated/.test(sql) && (sql.match(/Owner access required/g) || []).length >= 2);
 
 // ---- the function source: only an adapter ---------------------------------------------------------------------------------------
-check("the function hands every request to handleWaitlist and uses the shared rate limiter and the SQL join", fnSource.includes("handleWaitlist(") && fnSource.includes('"nxq_waitlist_join"') && fnSource.includes('"nxq_reserve_ingress_capacity"'));
+check("the function hands every request to handleWaitlist and uses the shared rate limiter and the SQL join", fnSource.includes("handleWaitlist(") && fnSource.includes('"nxq_waitlist_join"') && fnSource.includes('"nxq_waitlist_remove"') && fnSource.includes('"nxq_reserve_ingress_capacity"'));
 check("the function holds no rules of its own: it never mentions the switch or origin list (the handler owns them)", !/NXQ_WAITLIST_ENABLED|NXQ_WAITLIST_ALLOWED_ORIGINS/.test(fnSource.replace(/\/\/.*$/gm, "")));
 check("the function creates its database client only when a call needs it (a switched-off request touches no secret)", /let adminClient[\s\S]*function admin\(\)/.test(fnSource) && !/^const admin = createClient/m.test(fnSource));
 check("no secret value is written anywhere in the function", !/eyJ[A-Za-z0-9_-]{20,}|sk_(live|test)_|service_role_key\s*=\s*["']/.test(fnSource));
@@ -226,6 +274,10 @@ check("the sign-up page collects one address, one consent box and the hidden bot
 check("the sign-up page shows the consent sentence and does not store anything on the device", publicPage.includes("WAITLIST_CONSENT_TEXT") && !/localStorage|sessionStorage/.test(publicPage));
 const ownerPage = read(P.ownerPage);
 check("the owner page says plainly that inviting a wave sends no email, and asks before marking anyone", /does not send any email/.test(ownerPage) && ownerPage.includes("window.confirm(") && ownerPage.includes("waveProblem("));
+const removePage = read(P.removePage);
+check("the removal page removes only on a click, never on opening the link (email scanners and previews open links)", (removePage.match(/waitlistGateway\.remove\(/g) || []).length === 1 && /async function remove\(\)/.test(removePage) && /onClick=\{\(\) => void remove\(\)\}/.test(removePage) && !/useEffect\(\(\) => \{[^}]*remove\(/.test(removePage));
+check("the removal page stops before any call without a valid token or while the switch is off, and says so", removePage.includes("if (!waitlistGateway || !token || busy) return;") && removePage.includes('data-testid="remove-closed"') && removePage.includes('data-testid="remove-no-token"') && removePage.includes("tokenFromSearch("));
+check("the removal page keeps the token out of storage and logs", !/localStorage|sessionStorage|console\./.test(removePage));
 check("the owner page shows counts only, never email addresses", !/\.email\b/.test(ownerPage) && !/email address/i.test(ownerPage.replace(/never email addresses/g, "")));
 
 // ---- after promotion: the wiring (skipped while this is still a draft) ----------------------------------------------------------
@@ -237,7 +289,8 @@ if (!isDraft) {
   const app = read(`${root}/src/App.tsx`);
   check("/waitlist is public and /owner/waitlist is behind the owner login", /path === "\/waitlist"\) return <PublicWaitlist \/>/.test(app) && /path === "\/owner\/waitlist"\) return <OwnerProtectedRoute><OwnerWaitlist \/><\/OwnerProtectedRoute>/.test(app));
   check("the owner portal links to the waiting list", read(`${root}/src/pages/OwnerPortal.tsx`).includes('href="/owner/waitlist"'));
-  check("the built-routes smoke check lists /waitlist", /"\/waitlist"/.test(read(`${root}/scripts/smoke-built-routes.mjs`)));
+  check("the built-routes smoke check lists /waitlist and /waitlist/remove", /"\/waitlist"/.test(read(`${root}/scripts/smoke-built-routes.mjs`)) && /"\/waitlist\/remove"/.test(read(`${root}/scripts/smoke-built-routes.mjs`)));
+  check("/waitlist/remove is a public route", /path === "\/waitlist\/remove"\) return <PublicWaitlistRemove \/>/.test(app));
   check("test:store runs this test", read(`${root}/scripts/run-store-tests.mjs`).includes('"test-waitlist"'));
 }
 
