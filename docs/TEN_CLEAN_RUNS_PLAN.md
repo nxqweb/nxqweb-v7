@@ -5,18 +5,18 @@
 **Correction to an earlier version of this plan and to `docs/QA_RUN_RUNBOOK.md`:** the runbook used to suggest mixing in DENY runs ("8 APPROVE and 2 DENY"; it now carries a correction note). The counter does not work that way. `count_strict_clean_business_runs()` (migration 181) counts only runs with `test_kind = 'business_e2e'`, `target_outcome = 'approve'` and `monitor_version = 'disposable-business-v2'` whose strict evidence flags are all true. **DENY runs do not count toward the ten.** They feed a separate check (`deny_flow_passed`), which is already green. So the ten must all be approve runs, and no more DENY runs are needed.
 
 ## Where it stands (the owner's page, 2026-11-04)
-The page lists eight runs. It does not show the counter, so the count below is from the handoff notes, not from the page.
+The page lists nine runs. It does not show the counter; **the count was read from the database on 2026-11-04: `launch_readiness_checks.ten_clean_runs` evidence `strict_clean_business_e2e_runs` = 3** (the August 23 approve pass, the October 7 pass and the November 4 pass).
 | # | Started | Kind | Run code | Result |
 |---|---|---|---|---|
 | 1 | 2026-08-18 | DENY | QA-5FFA8E8CD185 | passed (feeds `deny_flow_passed`; does not count toward ten) |
 | 2 | 2026-08-18 | APPROVE | QA-1BB60A84DD4F | failed |
 | 3 | 2026-08-22 | APPROVE | QA-8E1612E7D953 | failed |
-| 4 | 2026-08-23 | APPROVE | QA-3BC433C6634E | passed (may or may not count: the page does not say which monitor version it used) |
+| 4 | 2026-08-23 | APPROVE | QA-3BC433C6634E | **passed (counted: verified in the database on 2026-11-04)** |
 | 5 | 2026-10-06 | APPROVE | QA-B0605777AAEA | failed |
 | 6 | 2026-10-06 | APPROVE | QA-8CC192C8705A | failed |
-| 7 | 2026-10-07 | APPROVE | QA-E45F85D69C9A | **passed** (the handoff counts this as the first clean run, "1 of 10") |
+| 7 | 2026-10-07 | APPROVE | QA-E45F85D69C9A | **passed** (counted) |
 | 8 | 2026-10-07 | APPROVE | QA-16A49D9B4A3E | failed (ended 14 minutes after it started; the `stop_builds` fix hit a Netlify 400, fixed the same day, redeployed with all 44 functions on 2026-10-22, never run since) |
-**UPDATE 2026-11-04 2:30 PM: run #9 `QA-842A688FA6D1` PASSED, so at least TWO clean approve passes now exist (run #7 and run #9; the September to October counter value is read from `launch_readiness_checks`, see below), and no run is running.** Plan for about **eight more approve passes** (seven if the August 23 pass also counted). The count is total passes; a failure does not reset it. The evidence of the running count is `strict_clean_business_e2e_runs` inside the `ten_clean_runs` check.
+**UPDATE 2026-11-04 2:30 PM: run #9 `QA-842A688FA6D1` PASSED, so **THREE clean approve passes are now counted (verified in the database: the August 23, October 7 and November 4 runs)**, and no run is running.** Plan for **seven more approve passes**. The count is total passes; a failure does not reset it. The evidence of the running count is `strict_clean_business_e2e_runs` inside the `ten_clean_runs` check.
 
 ## The traps (all found in the repo or on the page)
 1. **DENY runs do not count** (above).
@@ -26,12 +26,14 @@ The page lists eight runs. It does not show the counter, so the count below is f
 
 5. **The monthly platform cost pool is drained on the 1st by maintenance of old disposable QA clients (FOUND 2026-11-04, first measured run).** The run `QA-842A688FA6D1` stalled at its third step: `prepare_build_plan` and `provision_project_infrastructure` sat `queued, attempts 0` with "Skipped by billing guard: PLATFORM_COST_BLOCKER: monthly platform cost limit reached" (so no Netlify credits were spent). A read-only query of `nxq_platform_cost_reservations` for November showed **500 reservations, all `qa:technical_maintenance`, 1 cent each = 500 cents, the last at 2026-11-01 00:49 UTC**: the whole $5 cap was used within the first hour of the month. Cause: `nxq_guard_maintenance_transition` (migration 246) reserves 1 cent every time a `website_maintenance_tasks` row for a QA-only client goes to `running`, and the monthly maintenance for the leftover disposable QA clients made 500 attempts at the start of November. It will recur every month. Estimated cost per run is only about 21 cents (prepare_build_plan 10, provisioning 2, safe branch 5, previews and checks 1-2 each). Options: (a) raise `monthly_limit_cents` (estimates only: no paid AI or email provider is connected, so real spend is $0; reversible); (b) stop old disposable QA clients' maintenance (owner row edits); (c) a migration that stops QA maintenance drawing from the pool (gated product decision). Unblocking by (a) is the quick path; (b) or (c) removes the monthly recurrence. **(a) was done by the owner at about 1:53 PM on 2026-11-04 (`monthly_limit_cents` 500 to 2000) and the run RESUMED BY ITSELF within about five minutes** (blocked jobs sit on a 15-minute retry timer, no manual rescue): `prepare_build_plan` completed at 21:58 UTC and `provision_project_infrastructure` started at 21:59 UTC. **(c) is drafted and tested: `docs/drafts/migrations/05_qa_maintenance_off_the_cost_pool.sql`** (QA maintenance reserves 0 cents and a full pool no longer stops it; every other check, such as a stopped QA client, still applies; real clients unchanged; local harness 51/51; planted bugs for "still 1 cent", "pool still blocks" and "swallows every refusal" are each caught). Applying it is a gated migration. After it is applied the cap can go back to 500.
 
-## Credit calendar for nine approve runs (unverified until one run is measured; keep a 60-credit reserve)
-| Per-run cost | This cycle (to Nov 22): 209.5 - 60 = 149.5 usable | Next cycle (Nov 23 to Dec 22): 240 usable | Nine runs done |
+## Credit calendar for the seven remaining approve runs (re-based 2026-11-04 after run #9; keep a 60-credit reserve)
+Run #9 used an expected 45 to 60 credits (three production deploys, plus a branch deploy if billed; the settled figure is still to be read). That leaves about 150 to 165 credits this cycle, so about **90 to 105 usable** after the reserve; the next cycle (Nov 23 to Dec 22) has 300, so **240 usable**.
+| Per-run cost | This cycle (to Nov 22) | Next cycle (Nov 23 to Dec 22) | Seven runs done |
 |---|---|---|---|
-| 45 credits (as measured before the fix) | 3 runs (135) | 5 runs (225) = 8 total | the ninth falls in the cycle starting Dec 23 |
-| 30 credits (if the fix works) | 4 runs (120) | 5 runs (150) = 9 total | late November to early December |
-Creators' real sites cost the same credits, and a clean run uses a real GitHub repo and Netlify site each time. A bigger Netlify plan (decision A7 in `docs/REAL_LAUNCH_GATE.md`; Personal was about $9 for 1,000 credits, unverified) would let all nine run within about two weeks, but it is a paid step against the spending hold. The free-plan schedule above still fits the "launch-ready by about Jan 4" target.
+| 45 credits (3 production deploys) | 2 runs (90) | 5 runs (225) | late November to December 22 |
+| 60 credits (branch deploy billed too) | 1 run (60) | 4 runs (240) | 5 of 7 by Dec 22; the last 2 in the cycle starting Dec 23 |
+| 30 credits (if the double production deploy at promotion is removed) | 3 runs (90) | 4 runs (120) | early December |
+Creators' real sites cost the same credits, and a clean run uses a real GitHub repo and Netlify site each time. A bigger Netlify plan (decision A7 in `docs/REAL_LAUNCH_GATE.md`; Personal was about $9 for 1,000 credits, unverified) would let all seven run within about two weeks, but it is a paid step against the spending hold. The free-plan schedule above still fits the "launch-ready by about Jan 4" target.
 
 ## Before the FIRST run
 - [x] **Build guard raised (2026-11-04, owner, Supabase Table Editor):** it was the default 4 builds and 2 QA builds; both are now **12**. To go back, set 4 and 2.
