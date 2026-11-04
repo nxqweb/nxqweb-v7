@@ -13,7 +13,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `01_outreach_inbound_and_unsubscribe.sql` | Opt-out and inbound-reply service functions plus an index | `docs/OUTREACH_MIGRATION_PLAN.md` section 3 |
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
-| `05_qa_maintenance_off_the_cost_pool.sql` | Disposable QA clients' maintenance counts 0 cents and a full shared cost pool no longer stops it; real clients unchanged. Fixes the 2026-11-01 drain that stalled the first measured QA run (added 2026-11-04; test 51/51 on the local harness, with 3 planted bugs caught) | `docs/TEN_CLEAN_RUNS_PLAN.md` trap 5 |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
@@ -57,3 +56,5 @@ Draft 10 (website photos at setup) was promoted on 2026-10-18 (owner said "lets 
 Draft 09 (AI Desk build plans) was promoted on 2026-10-18 (owner chose "A") to real migration `277_ai_desk_build_plans`; its test lives in `scripts/sql/local-full-schema/regression/`. NOT applied yet: see `docs/AI_DESK_KIT.md` and `docs/OCT22_DEPLOY_DAY_CHECKLIST.md`.
 
 Note: `11_site_assistant.sql` was promoted to real migration 278 (`supabase/migrations/278_site_assistant.sql`) on 2026-10-26 with the owner's approval; it is in the repo but NOT applied (`docs/SITE_ASSISTANT_PLAN.md`, "Promotion progress").
+
+The QA-maintenance cost pool draft (`05_qa_maintenance_off_the_cost_pool`) was promoted on 2026-11-04 (owner chose option C in chat) to real migration `287_qa_maintenance_off_the_cost_pool`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT applied to staging; applying it needs the owner's typed phrase and the Approve click on the guarded workflow.

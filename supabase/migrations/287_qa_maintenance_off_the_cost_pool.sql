@@ -1,4 +1,5 @@
--- DRAFT (not applied). Disposable QA clients' maintenance must not draw from the shared monthly platform cost pool.
+-- 287: promoted from draft 05 on 2026-11-04 (owner chose option C in chat); NOT applied until the owner approves the guarded run.
+-- Disposable QA clients' maintenance must not draw from the shared monthly platform cost pool.
 -- Why (found 2026-11-04): migration 246's nxq_guard_maintenance_transition() reserves 1 cent from the shared pool every time a maintenance task of a
 -- QA-only client starts running. On 2026-11-01 the leftover disposable QA clients made 500 attempts in the first hour of the month, which used the
 -- whole 500-cent monthly cap, so every later paid job of a QA run (prepare_build_plan, provisioning...) was refused with
@@ -9,7 +10,7 @@
 --  * the reservation estimate is 0 cents instead of 1, so QA maintenance no longer fills the pool;
 --  * a full pool (PLATFORM_COST_BLOCKER) no longer stops a QA client's maintenance task;
 --  * every OTHER check inside nxq_authorize_paid_capability still applies to QA clients (a stopped, denied or unentitled QA client is still refused).
--- Same trigger, same privileges; only the function body changes. Apply only with the owner's approval via the guarded workflow.
+-- Same trigger, same privileges; only the function body changes.
 create or replace function public.nxq_guard_maintenance_transition()
 returns trigger language plpgsql security definer set search_path=public as $$
 declare is_qa boolean;
