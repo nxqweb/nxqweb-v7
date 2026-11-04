@@ -82,9 +82,13 @@ finishes. Stop and tell Claude instead.
 
 ## Suggested order
 
-Interleave so both paths are proven repeatedly. Example for 10 clean runs: 8 APPROVE and 2
-DENY, or 7/3. Do them one at a time, each only after the previous one finished. Don't
-batch several in the same minute.
+**Correction (2026-11-04): only APPROVE runs count toward the ten.** The counter
+`count_strict_clean_business_runs()` (migration 181) counts runs with `test_kind =
+'business_e2e'` and `target_outcome = 'approve'`; a DENY run feeds the separate, already-green
+`deny_flow_passed` check and does not add to the ten. So plan for ten APPROVE passes (see
+`docs/TEN_CLEAN_RUNS_PLAN.md`); the earlier advice here to mix in DENY runs was wrong.
+Do them one at a time, each only after the previous one finished. Don't batch several in the
+same minute.
 
 ## After the 10 runs
 
