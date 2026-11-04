@@ -13,7 +13,20 @@ const headerBlocks = [...toml.matchAll(/\[\[headers\]\]\s*for = "([^"]+)"\s*\[he
 const expectedAll = headerBlocks.find((b) => b.pattern === "/*")?.values ?? {};
 const expectedIndexCache = headerBlocks.find((b) => b.pattern === "/index.html")?.values["cache-control"] ?? "";
 const expectedAssetCache = headerBlocks.find((b) => b.pattern === "/assets/*")?.values["cache-control"] ?? "";
-export const publicPages = ["/", "/plans", "/about", "/contact", "/privacy", "/terms", "/portal/login", "/portal/signup"];
+// Netlify's edge rewrites some header text before it reaches the browser (spaces after commas are removed, "; preload" is added to HSTS, the home page's
+// cache header can come back as "public,max-age=0,must-revalidate"). Seen on the live staging site 2026-11-04. So headers are compared by MEANING, not letter for letter.
+const norm = (v) => String(v || "").toLowerCase().replace(/\s*([,;])\s*/g, "$1").trim();
+const headerMatches = (name, actual, expected) => {
+  const a = norm(actual), e = norm(expected);
+  if (a === e) return true;
+  return name === "strict-transport-security" && a === `${e};preload`; // stricter than asked, never weaker
+};
+// "Shows a new deploy at once": the browser must re-check every time (no-cache, no-store or max-age=0), and nothing may allow a positive max-age.
+const revalidatesEveryTime = (v) => {
+  const n = norm(v);
+  return (/(^|,)(no-cache|no-store)(,|$)/.test(n) || /(^|,)max-age=0(,|$)/.test(n)) && !/(^|,)(s-maxage|max-age)=[1-9]/.test(n);
+};
+export const publicPages =["/", "/plans", "/about", "/contact", "/privacy", "/terms", "/portal/login", "/portal/signup"];
 
 // `get(url)` returns { status, headers: Record<lowercase, string>, text }. Injected so the checks can be tested without a network.
 export async function smoke(base, storeSlug, get) {
@@ -22,15 +35,15 @@ export async function smoke(base, storeSlug, get) {
   const root = base.replace(/\/+$/, "");
   const home = await get(`${root}/`);
   ok("home page answers 200 with an HTML app shell", home.status === 200 && /<div id="root"/.test(home.text) && /text\/html/.test(home.headers["content-type"] || ""), `status ${home.status}`);
-  const missing = Object.entries(expectedAll).filter(([k, v]) => (home.headers[k] || "") !== v).map(([k]) => k);
+  const missing = Object.entries(expectedAll).filter(([k, v]) => !headerMatches(k, home.headers[k] || "", v)).map(([k]) => k);
   ok("every security header from netlify.toml is present with the same value (CSP, HSTS, frame, referrer, permissions...)", missing.length === 0, missing.length ? `wrong or missing: ${missing.join(", ")}` : "");
-  ok("the home page is never cached (a new deploy shows up at once)", (home.headers["cache-control"] || "") === expectedIndexCache, home.headers["cache-control"] || "no cache-control header");
+  ok("the home page is never cached (a new deploy shows up at once)", revalidatesEveryTime(home.headers["cache-control"] || ""), home.headers["cache-control"] || "no cache-control header");
   const assets = [...home.text.matchAll(/(?:src|href)="(\/assets\/[^"]+\.(?:js|css))"/g)].map((m) => m[1]);
   ok("the home page points at built scripts and styles", assets.some((a) => a.endsWith(".js")) && assets.some((a) => a.endsWith(".css")), `found ${assets.length}`);
   for (const asset of [...new Set(assets)].slice(0, 12)) {
     const res = await get(`${root}${asset}`);
     const want = asset.endsWith(".js") ? /javascript/ : /css/;
-    ok(`asset ${asset.split("/").pop()} loads with the right type and long caching`, res.status === 200 && want.test(res.headers["content-type"] || "") && (res.headers["cache-control"] || "") === expectedAssetCache, `status ${res.status}, ${res.headers["content-type"] || "no type"}`);
+    ok(`asset ${asset.split("/").pop()} loads with the right type and long caching`, res.status === 200 && want.test(res.headers["content-type"] || "") && norm(res.headers["cache-control"] || "") === norm(expectedAssetCache), `status ${res.status}, ${res.headers["content-type"] || "no type"}`);
   }
   ok("no inline script on the home page (the strict CSP would block it)", !/<script(?![^>]*\bsrc=)[^>]*>[^<]+<\/script>/.test(home.text));
   for (const page of publicPages.slice(1)) {
@@ -73,6 +86,17 @@ function selfTest() {
     expect("PLANTED BUG caught: a missing HSTS header", noHsts.some((r) => !r.ok && /security header/.test(r.name)));
     const cached = await smoke("https://x.test", "", make({ "/": { headers: { "cache-control": "public, max-age=3600" } } }));
     expect("PLANTED BUG caught: the home page gets cached", cached.some((r) => !r.ok && /never cached/.test(r.name)));
+    // Netlify's real spellings (seen live 2026-11-04) must PASS; genuinely weaker values must still FAIL.
+    const netlifyAsset = { "content-type": "text/css", "cache-control": expectedAssetCache.replace(/\s+/g, "") };
+    const netlifyStyle = async (u) => { const p = new URL(u).pathname; const r = await make({ "/": { headers: { "strict-transport-security": `${expectedAll["strict-transport-security"]}; preload`, "cache-control": "public,max-age=0,must-revalidate" } } })(u); return p === "/assets/app-abc.css" ? { ...r, headers: netlifyAsset } : r; };
+    const netlify = await smoke("https://x.test", "shop", netlifyStyle);
+    expect("Netlify's own header spellings (no spaces, '; preload', max-age=0) still pass", netlify.every((r) => r.ok));
+    const weakHsts = await smoke("https://x.test", "", make({ "/": { headers: { "strict-transport-security": "max-age=10" } } }));
+    expect("PLANTED BUG caught: a weakened HSTS (max-age=10)", weakHsts.some((r) => !r.ok && /security header/.test(r.name)));
+    const shortAsset = await smoke("https://x.test", "", async (u) => { const r = await make()(u); return new URL(u).pathname.endsWith(".css") ? { ...r, headers: { ...r.headers, "cache-control": "public,max-age=60" } } : r; });
+    expect("PLANTED BUG caught: built assets lose their long cache", shortAsset.some((r) => !r.ok && /\.css/.test(r.name)));
+    const positive = await smoke("https://x.test", "", make({ "/": { headers: { "cache-control": "public,max-age=60,must-revalidate" } } }));
+    expect("PLANTED BUG caught: a home page cached for 60 seconds", positive.some((r) => !r.ok && /never cached/.test(r.name)));
     const down = await smoke("https://x.test", "", make({ "/privacy": { status: 404, text: "Not Found" } }));
     expect("PLANTED BUG caught: a public page returns 404", down.some((r) => !r.ok && /privacy/.test(r.name)));
     const inline = await smoke("https://x.test", "", make({ "/": { text: page.replace("</body>", "<script>alert(1)</script></body>") } }));
