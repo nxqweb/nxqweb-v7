@@ -57,4 +57,4 @@ Draft 09 (AI Desk build plans) was promoted on 2026-10-18 (owner chose "A") to r
 
 Note: `11_site_assistant.sql` was promoted to real migration 278 (`supabase/migrations/278_site_assistant.sql`) on 2026-10-26 with the owner's approval; it is in the repo but NOT applied (`docs/SITE_ASSISTANT_PLAN.md`, "Promotion progress").
 
-The QA-maintenance cost pool draft (`05_qa_maintenance_off_the_cost_pool`) was promoted on 2026-11-04 (owner chose option C in chat) to real migration `287_qa_maintenance_off_the_cost_pool`; its test now lives in `scripts/sql/local-full-schema/regression/`. NOT applied to staging; applying it needs the owner's typed phrase and the Approve click on the guarded workflow.
+The QA-maintenance cost pool draft (`05_qa_maintenance_off_the_cost_pool`) was promoted on 2026-11-04 (owner chose option C in chat) to real migration `287_qa_maintenance_off_the_cost_pool`; its test now lives in `scripts/sql/local-full-schema/regression/`. APPLIED to staging on 2026-11-04 (run #282; the owner typed the phrase and approved; the read-only dry run #281 listed exactly 287).
