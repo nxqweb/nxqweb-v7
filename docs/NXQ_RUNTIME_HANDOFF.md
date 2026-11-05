@@ -1623,3 +1623,4 @@ The staging workflow cannot merge a branch, publish Netlify production,
 change DNS, enable billing, or mark QA evidence passed.
 
 - 2026-11-05: double-production-deploy fix (Option A) implemented locally and pushed, NOT deployed. Needs an approved `deploy_functions` run before the next approve run to save ~15 credits/site. See docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md.
+- 2026-11-05: `deploy_functions` run #283 (c898996) succeeded; promote-business-production now carries the double-deploy fix on staging. Proof pending: next approve run should show one fewer production build (needs Netlify builds unlocked).
