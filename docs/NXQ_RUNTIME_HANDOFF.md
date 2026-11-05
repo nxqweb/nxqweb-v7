@@ -1003,9 +1003,8 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice AND failed-payment (past_due only, no freeze) paths proven on staging (see the Stripe sandbox section at the top); refund, dispute and restore-to-active NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **3 of 10 done** (VERIFIED
-  2026-11-04 from the database: `launch_readiness_checks.ten_clean_runs`
-  evidence `strict_clean_business_e2e_runs` = 3; only APPROVE runs count:
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **4 of 10 done** (VERIFIED
+  2026-11-05 UTC from the database: `count_strict_clean_business_runs()` = 4 after run QA-612AD87391D7; only APPROVE runs count:
   `QA-3BC433C6634E` 2026-08-23, `QA-E45F85D69C9A` 2026-10-07 and
   `QA-842A688FA6D1` 2026-11-04, each `strict_evidence_passed`; failed
   runs are not counted and do not reset the count; 7 more needed, see
@@ -1624,3 +1623,4 @@ change DNS, enable billing, or mark QA evidence passed.
 
 - 2026-11-05: double-production-deploy fix (Option A) implemented locally and pushed, NOT deployed. Needs an approved `deploy_functions` run before the next approve run to save ~15 credits/site. See docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md.
 - 2026-11-05: `deploy_functions` run #283 (c898996) succeeded; promote-business-production now carries the double-deploy fix on staging. Proof pending: next approve run should show one fewer production build (needs Netlify builds unlocked).
+- 2026-11-04 6:30-6:46 PM local: approve run #4 QA-612AD87391D7 PASSED in 16 minutes (run #9 took 77: the cost-pool stall is gone with 287). `count_strict_clean_business_runs()` = 4 (owner pasted the result). Build count of the new QA site (does the double-deploy fix work?) and settled credits are still to be read; Netlify's counter still showed 209 at 8:42 PM.
