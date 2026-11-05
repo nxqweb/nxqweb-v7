@@ -1,0 +1,10 @@
+/* Top pages table (client Analytics). Text uses theme tokens only; scrolls sideways on narrow screens instead of overflowing the page. */
+.nxq-table-scroll { overflow-x: auto; margin: 0 0 12px; }
+.nxq-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.nxq-table th, .nxq-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid rgba(226, 232, 240, 0.12); white-space: nowrap; }
+.nxq-table thead th { color: var(--nxq-muted, #9aa3b2); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.nxq-table th:first-child, .nxq-table td:first-child { text-align: left; }
+.nxq-table tbody th { color: var(--nxq-text); font-weight: 600; max-width: 34ch; overflow: hidden; text-overflow: ellipsis; }
+.nxq-table td { color: var(--nxq-text); font-variant-numeric: tabular-nums; }
+body[data-nxq-theme="light"] .nxq-table th, body[data-nxq-theme="light"] .nxq-table td { border-bottom-color: rgba(15, 23, 42, 0.12); }
+.nxq-table-scroll:focus-visible { outline: 2px solid var(--nxq-gold, #f7c948); outline-offset: 2px; }

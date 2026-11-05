@@ -64,6 +64,12 @@ do $$ begin
 exception when duplicate_object then null;
 end $$;
 
+create table if not exists public.owner_users (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.packages (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
@@ -77,6 +83,7 @@ create table if not exists public.packages (
 
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique references auth.users(id) on delete set null,
   package_id uuid references public.packages(id) on delete set null,
   business_name text not null,
   contact_name text,
@@ -119,11 +126,35 @@ create table if not exists public.projects (
   client_id uuid not null references public.clients(id) on delete cascade,
   project_name text not null,
   stage public.project_stage not null default 'intake',
+  website_status text not null default 'intake' check (website_status in (
+    'intake','owner_review','planning','building','review','approved_for_launch',
+    'launching','live','maintenance','frozen','cancelled'
+  )),
   build_plan jsonb not null default '{}'::jsonb,
   current_blocker text,
   next_step text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.client_domains (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid not null references public.clients(id) on delete cascade,
+  domain_name text not null,
+  domain_type text not null default 'client_owned',
+  status text not null default 'owner_review',
+  registrar_name text,
+  dns_provider text,
+  ownership_confirmed boolean not null default false,
+  client_notes text,
+  dns_instructions text,
+  owner_notes text,
+  requested_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  connected_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (client_id, domain_name)
 );
 
 create table if not exists public.owner_approval_requests (
@@ -166,12 +197,18 @@ create table if not exists public.client_files (
   id uuid primary key default gen_random_uuid(),
   client_id uuid references public.clients(id) on delete cascade,
   bucket_name text not null default 'client-files',
+  bucket_id text not null default 'client-files',
   storage_path text not null,
   file_name text not null,
   file_type text,
   file_size bigint,
+  status text not null default 'uploaded',
+  uploaded_at timestamptz not null default now(),
+  expires_at timestamptz,
   ai_notes text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (bucket_id, storage_path),
+  check (file_size is null or file_size between 0 and 26214400)
 );
 
 create table if not exists public.activity_logs (
@@ -221,6 +258,11 @@ create trigger set_projects_updated_at
 before update on public.projects
 for each row execute function public.set_updated_at();
 
+drop trigger if exists set_client_domains_updated_at on public.client_domains;
+create trigger set_client_domains_updated_at
+before update on public.client_domains
+for each row execute function public.set_updated_at();
+
 insert into public.packages (name, slug, monthly_price, description, features)
 values
   (
@@ -263,9 +305,11 @@ values
 on conflict (rule_key) do nothing;
 
 alter table public.packages enable row level security;
+alter table public.owner_users enable row level security;
 alter table public.clients enable row level security;
 alter table public.client_intakes enable row level security;
 alter table public.projects enable row level security;
+alter table public.client_domains enable row level security;
 alter table public.owner_approval_requests enable row level security;
 alter table public.client_messages enable row level security;
 alter table public.owner_ai_messages enable row level security;
@@ -279,6 +323,48 @@ create policy "Public can read active packages"
 on public.packages
 for select
 using (is_active = true);
+
+drop policy if exists "Owner can read own owner record" on public.owner_users;
+create policy "Owner can read own owner record"
+on public.owner_users
+for select
+to authenticated
+using (auth_user_id = auth.uid());
+
+grant select on public.owner_users to authenticated;
+
+drop policy if exists "Owners can manage client domains" on public.client_domains;
+create policy "Owners can manage client domains"
+on public.client_domains
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.owner_users
+    where owner_users.auth_user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from public.owner_users
+    where owner_users.auth_user_id = auth.uid()
+  )
+);
+
+drop policy if exists "Clients can read own domains" on public.client_domains;
+create policy "Clients can read own domains"
+on public.client_domains
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.clients
+    where clients.id = client_domains.client_id
+      and clients.auth_user_id = auth.uid()
+  )
+);
+
+grant select on public.client_domains to authenticated;
 
 drop policy if exists "Temporary public read clients" on public.clients;
 create policy "Temporary public read clients"

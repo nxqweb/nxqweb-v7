@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { ArrowLeft, CheckCircle2, MessageSquareText, Send } from "lucide-react";
+import type { ChangeEvent, FormEvent } from "react";
+import { ArrowLeft, CheckCircle2, ImagePlus, MessageSquareText, Send } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { descriptionWithLink, normalizeInspirationLink } from "../lib/commerceRequestExtras";
 
 type PublicRequestSettings = {
   allow_guest_requests: boolean;
@@ -43,15 +44,16 @@ export function PublicCommerceRequest() {
   const [preferredContact, setPreferredContact] = useState("email");
   const [productName, setProductName] = useState("");
   const [description, setDescription] = useState("");
+  const [inspirationLink, setInspirationLink] = useState("");
   const [quantity, setQuantity] = useState("");
   const [budget, setBudget] = useState("");
   const [neededBy, setNeededBy] = useState("");
-  const [referenceLinks, setReferenceLinks] = useState("");
+  const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
   const [companyWebsite, setCompanyWebsite] = useState("");
 
   useEffect(() => {
     void loadForm();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial request-form bootstrap only
 
   async function loadForm() {
     setLoading(true);
@@ -87,10 +89,21 @@ export function PublicCommerceRequest() {
     setError("");
     setSuccess("");
 
-    const referenceUrls = referenceLinks
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const maxBytes = formData.settings.max_image_size_mb * 1024 * 1024;
+    const invalidFile = referenceFiles.find((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size < 1 || file.size > maxBytes);
+    if (referenceFiles.length > formData.settings.max_images_per_request || invalidFile) {
+      setSubmitting(false);
+      setError(invalidFile
+        ? `Each reference must be a JPEG, PNG, or WebP image no larger than ${formData.settings.max_image_size_mb} MB.`
+        : `Select no more than ${formData.settings.max_images_per_request} reference images.`);
+      return;
+    }
+
+    // Optional inspiration link: kept as the last line of the details (no database change). A bad link is explained before anything is sent.
+    const link = normalizeInspirationLink(inspirationLink);
+    if (!link.ok) { setSubmitting(false); setError(link.error); return; }
+    const details = descriptionWithLink(description, link.url);
+    if (!details.ok) { setSubmitting(false); setError(details.error); return; }
 
     const result = await supabase.rpc("submit_public_commerce_customer_request", {
       store_slug_input: storeSlug,
@@ -100,29 +113,80 @@ export function PublicCommerceRequest() {
         customer_email: customerEmail,
         preferred_contact_method: preferredContact,
         product_name: productName,
-        description,
+        description: details.text,
         desired_quantity: quantity,
         budget_range: budget,
         needed_by_date: neededBy,
-        reference_urls: referenceUrls,
+        reference_upload_count: referenceFiles.length,
         company_website: companyWebsite,
       },
     });
 
-    setSubmitting(false);
     if (result.error) {
+      setSubmitting(false);
       setError(result.error.message);
       return;
     }
 
-    const response = result.data as { confirmation_message?: string; response_time_text?: string };
-    setSuccess(`${response.confirmation_message || "Your request was sent successfully."} ${response.response_time_text || ""}`.trim());
+    const response = result.data as {
+      request_id?: string;
+      upload_ticket?: string;
+      confirmation_message?: string;
+      response_time_text?: string;
+    };
+    let uploadedCount = 0;
+    if (referenceFiles.length > 0) {
+      if (!response.request_id || !response.upload_ticket) {
+        setError("Your request was received, but secure reference-image upload authorization was unavailable.");
+      } else {
+        for (const file of referenceFiles) {
+          const uploadBody = new FormData();
+          uploadBody.append("request_id", response.request_id);
+          uploadBody.append("upload_ticket", response.upload_ticket);
+          uploadBody.append("file", file, file.name);
+          const upload = await supabase.functions.invoke("upload-commerce-request-reference", { body: uploadBody });
+          if (upload.error || upload.data?.ok !== true) {
+            setError(`Your request was received, but only ${uploadedCount} of ${referenceFiles.length} reference images uploaded. Please contact the store before resubmitting the request.`);
+            break;
+          }
+          uploadedCount += 1;
+        }
+      }
+    }
+
+    setSubmitting(false);
+    const uploadNotice = uploadedCount > 0
+      ? ` ${uploadedCount} private reference image${uploadedCount === 1 ? " was" : "s were"} received and will remain restricted until security scanning passes.`
+      : "";
+    setSuccess(`${response.confirmation_message || "Your request was sent successfully."} ${response.response_time_text || ""}${uploadNotice}`.trim());
     setProductName("");
     setDescription("");
+    setInspirationLink("");
     setQuantity("");
     setBudget("");
     setNeededBy("");
-    setReferenceLinks("");
+    setReferenceFiles([]);
+  }
+
+  function selectReferenceFiles(event: ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(event.target.files || []);
+    const settings = formData?.settings;
+    if (!settings) return;
+    const maxBytes = settings.max_image_size_mb * 1024 * 1024;
+    if (selected.length > settings.max_images_per_request) {
+      setError(`Select no more than ${settings.max_images_per_request} reference images.`);
+      event.target.value = "";
+      setReferenceFiles([]);
+      return;
+    }
+    if (selected.some((file) => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size < 1 || file.size > maxBytes)) {
+      setError(`Each reference must be a JPEG, PNG, or WebP image no larger than ${settings.max_image_size_mb} MB.`);
+      event.target.value = "";
+      setReferenceFiles([]);
+      return;
+    }
+    setError("");
+    setReferenceFiles(selected);
   }
 
   const availableTypes = requestTypeOptions.filter(([value]) => formData?.settings.allowed_request_types.includes(value));
@@ -140,7 +204,7 @@ export function PublicCommerceRequest() {
         </div>
 
         {loading ? <div className="empty-state">Loading request form...</div> : null}
-        {error ? <div className="auth-error">{error}</div> : null}
+        {error ? <div className="auth-error" role="alert">{error}</div> : null}
         {success ? <div className="auth-success"><CheckCircle2 size={18} /> {success}</div> : null}
 
         {!loading && formData ? (
@@ -159,9 +223,17 @@ export function PublicCommerceRequest() {
             </div>
 
             <label className="auth-label"><span>Request details</span><textarea className="auth-input" rows={7} value={description} onChange={(event) => setDescription(event.target.value)} minLength={10} maxLength={5000} placeholder="Describe the product, size, color, style, customization, or restock you need." required /></label>
+            <label className="auth-label"><span>Link to a photo of what you want (optional)</span><input className="auth-input" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" maxLength={300} value={inspirationLink} onChange={(event) => setInspirationLink(event.target.value)} placeholder="Paste an Instagram, Pinterest or Google Photos link" aria-describedby="inspiration-hint" /><small id="inspiration-hint" className="subtle">You can also upload pictures below. A link works right away.</small></label>
 
             {formData.settings.allow_image_uploads && formData.settings.max_images_per_request > 0 ? (
-              <label className="auth-label"><span>Reference image links (optional)</span><textarea className="auth-input" rows={3} value={referenceLinks} onChange={(event) => setReferenceLinks(event.target.value)} placeholder={`Paste one image link per line, up to ${formData.settings.max_images_per_request}.`} /><small className="subtle">Direct file uploads will be connected in the protected media phase. For now, customers can paste reference links.</small></label>
+              <label className="auth-label">
+                <span><ImagePlus size={16} /> Reference images (optional)</span>
+                <input className="auth-input" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={selectReferenceFiles} />
+                <small className="subtle">
+                  Select up to {formData.settings.max_images_per_request} JPEG, PNG, or WebP image{formData.settings.max_images_per_request === 1 ? "" : "s"}, {formData.settings.max_image_size_mb} MB each. Files are stored privately in this store's tenant namespace and remain unavailable until security scanning passes.
+                </small>
+                {referenceFiles.length > 0 ? <small className="subtle">Selected: {referenceFiles.map((file) => file.name).join(", ")}</small> : null}
+              </label>
             ) : null}
 
             <input aria-hidden="true" autoComplete="off" tabIndex={-1} value={companyWebsite} onChange={(event) => setCompanyWebsite(event.target.value)} style={{ position: "absolute", left: "-10000px" }} />

@@ -464,7 +464,7 @@ declare
   sub_row public.billing_subscriptions%rowtype;
   past_due_count integer := 0;
   review_count integer := 0;
-  frozen_count integer := 0;
+  awaiting_owner_review_count integer := 0;
   reminder_key text;
 begin
   -- Existing active clients become past due only when a connected processor has actually failed.
@@ -501,34 +501,19 @@ begin
       end if;
 
     elsif client_row.billing_status::text = 'freeze_review' then
-      -- Owner requested fully automatic normal-operation handling. Freeze only after:
-      -- a connected processor, exhausted retries, and completed grace period.
-      if sub_row.consecutive_failures >= sub_row.max_retry_attempts
-         and client_row.billing_overdue_since + make_interval(days => sub_row.grace_days) <= now() then
-        update public.clients
-        set billing_status = 'frozen',
-            billing_frozen_at = coalesce(billing_frozen_at, now()),
-            billing_updated_at = now(),
-            updated_at = now()
-        where id = client_row.id;
-
-        perform public.record_billing_notification(
-          client_row.id,
-          'service_frozen_for_nonpayment',
-          'billing:' || client_row.id::text || ':frozen:' || to_char(now() at time zone 'UTC', 'YYYYMMDD'),
-          jsonb_build_object('overdue_since', client_row.billing_overdue_since, 'retry_attempts', sub_row.consecutive_failures)
-        );
-
-        insert into public.automation_audit_log (client_id, event_type, actor_type, details)
-        values (
-          client_row.id,
-          'billing_service_automatically_frozen',
-          'backend',
-          jsonb_build_object('grace_days', sub_row.grace_days, 'retry_attempts', sub_row.consecutive_failures)
-        );
-
-        frozen_count := frozen_count + 1;
-      end if;
+      -- The backend may escalate and remind, but only a human owner can freeze service.
+      perform public.record_billing_notification(
+        client_row.id,
+        'freeze_review_owner_attention',
+        'billing:' || client_row.id::text || ':freeze-review:' || to_char(now() at time zone 'UTC', 'YYYYMMDD'),
+        jsonb_build_object(
+          'overdue_since', client_row.billing_overdue_since,
+          'retry_attempts', sub_row.consecutive_failures,
+          'requires_owner_decision', true,
+          'auto_freeze', false
+        )
+      );
+      awaiting_owner_review_count := awaiting_owner_review_count + 1;
     end if;
   end loop;
 
@@ -536,7 +521,8 @@ begin
     'ok', true,
     'past_due_reviewed', past_due_count,
     'moved_to_freeze_review', review_count,
-    'automatically_frozen', frozen_count,
+    'awaiting_owner_freeze_review', awaiting_owner_review_count,
+    'automatically_frozen', 0,
     'ran_at', now()
   );
 end;

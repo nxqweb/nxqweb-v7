@@ -1,0 +1,42 @@
+name: One-shot production worker lint cleanup
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.ref == 'refs/heads/safe/commerce-live-storefront'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Remove redundant production deployment id initialization
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('supabase/functions/promote-business-production/index.ts')
+          s = p.read_text()
+          s = s.replace('  let deploymentId = "";\n', '  let deploymentId: string;\n')
+          p.write_text(s)
+          PY
+      - run: npx eslint supabase/functions/promote-business-production/index.ts --max-warnings=0
+      - run: node scripts/validate-business-production-contract.mjs
+      - run: npm run build
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/promote-business-production/index.ts
+          git diff --cached --quiet || git commit -m "Clean production promotion worker lint"
+          git push
+
+# one-shot trigger marker

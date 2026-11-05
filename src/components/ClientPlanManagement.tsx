@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, BadgeDollarSign, CheckCircle2, Clock3 } from "lucide-react";
+import { ArrowRight, ArrowRightLeft, BadgeDollarSign, CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import {
   productFamilies as PRODUCT_FAMILIES,
+  byRequestTiers as BY_REQUEST_TIERS,
   productTiers as PRODUCT_TIERS,
   type ProductFamilySlug,
   type ProductTierKey,
 } from "../lib/productCatalog";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatStatus } from "../lib/format";
 
 type CurrentPlan = {
   clientId: string;
@@ -57,10 +59,6 @@ function formatDateTime(value: string | null) {
   });
 }
 
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
-
 export function ClientPlanManagement() {
   const [currentPlan, setCurrentPlan] = useState<CurrentPlan | null>(null);
   const [history, setHistory] = useState<PlanChangeView[]>([]);
@@ -101,7 +99,7 @@ export function ClientPlanManagement() {
       .maybeSingle();
 
     if (clientResult.error || !clientResult.data) {
-      setError(`Plan load failed: ${clientResult.error?.message || "Client workspace was not found."}`);
+      setError("Your plan could not be loaded right now. Nothing was changed. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -134,7 +132,7 @@ export function ClientPlanManagement() {
     const relatedError = familyResult.error || tierResult.error || historyResult.error;
 
     if (relatedError) {
-      setError(`Plan details failed to load: ${relatedError.message}`);
+      setError("Some plan details could not be loaded right now. Nothing was changed. Please try again shortly.");
       setLoading(false);
       return;
     }
@@ -149,7 +147,7 @@ export function ClientPlanManagement() {
     const loadedPlan: CurrentPlan = {
       clientId: clientResult.data.id,
       familySlug,
-      familyName: familyResult.data?.name || "NXQ Business",
+      familyName: familyResult.data?.name || "NXQX-Business",
       tierKey,
       tierName: tierResult.data?.name || "Starter",
       monthlyPrice,
@@ -212,7 +210,7 @@ export function ClientPlanManagement() {
       rows.map((row) => ({
         ...row,
         currentPlanLabel: `${
-          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQ Business"
+          (row.current_product_family_id && familyMap.get(row.current_product_family_id)) || "NXQX-Business"
         } · ${
           (row.current_product_tier_id && tierMap.get(row.current_product_tier_id)) || "Starter"
         }`,
@@ -234,9 +232,14 @@ export function ClientPlanManagement() {
     [requestedTier]
   );
 
+  const pendingRequest = useMemo(
+    () => history.find((request) => request.status === "pending_owner_review") || null,
+    [history]
+  );
+
   const isSamePlan =
     currentPlan?.familySlug === requestedFamily && currentPlan?.tierKey === requestedTier;
-  const hasPendingRequest = history.some((request) => request.status === "pending_owner_review");
+  const hasPendingRequest = Boolean(pendingRequest);
 
   async function submitRequest() {
     if (!supabase || isSamePlan || hasPendingRequest) return;
@@ -254,7 +257,7 @@ export function ClientPlanManagement() {
     setSubmitting(false);
 
     if (result.error) {
-      setError(`Plan change request failed: ${result.error.message}`);
+      setError("Your plan change request could not be sent right now. Nothing was changed. Please try again shortly.");
       return;
     }
 
@@ -264,12 +267,13 @@ export function ClientPlanManagement() {
   }
 
   return (
-    <section className="panel panel-wide">
-      <div className="panel-title">
+    <section className="panel panel-wide plan-management-panel">
+      <div className="panel-title plan-management-heading">
         <ArrowRightLeft size={20} />
         <div>
+          <span className="plan-management-kicker">Your NXQX-Web service</span>
           <h2>Plan & website upgrades</h2>
-          <p className="subtle">Upgrade, downgrade, or request a different NXQ product family.</p>
+          <p className="subtle">Compare your current plan with a requested change before sending anything for review.</p>
         </div>
       </div>
 
@@ -280,94 +284,132 @@ export function ClientPlanManagement() {
         <div className="empty-state">Loading current plan...</div>
       ) : (
         <>
-          <div className="owner-message-card plan-summary-card">
-            <span className="subtle">Current plan</span>
-            <strong>{currentPlan?.familyName} · {currentPlan?.tierName}</strong>
-            <p>{currentPlan?.priceLabel} monthly</p>
+          <div className="plan-management-comparison">
+            <article className="plan-state-card current">
+              <span className="plan-state-label"><CheckCircle2 size={16} /> Current plan</span>
+              <strong>{currentPlan?.familyName} · {currentPlan?.tierName}</strong>
+              <b>{currentPlan?.priceLabel}</b>
+              <p>This is the plan active on your account right now.</p>
+            </article>
+
+            <div className="plan-change-arrow" aria-hidden="true"><ArrowRight size={22} /></div>
+
+            <article className={`plan-state-card requested ${isSamePlan ? "same" : "changed"}`}>
+              <span className="plan-state-label"><BadgeDollarSign size={16} /> Requested plan</span>
+              <strong>{selectedFamily.name} · {selectedTier.name}</strong>
+              <b>{selectedTier.priceLabel}</b>
+              <p>{isSamePlan ? "Choose a different family or tier to request a change." : selectedTier.outcome}</p>
+            </article>
           </div>
 
-          {hasPendingRequest ? (
-            <div className="notice-card">A plan-change request is already awaiting owner review.</div>
-          ) : null}
-
-          <div className="setup-form-grid">
-            <label>
-              <span>Product family</span>
-              <select
-                className="auth-input"
-                value={requestedFamily}
-                onChange={(event) => setRequestedFamily(event.target.value as ProductFamilySlug)}
-              >
-                {PRODUCT_FAMILIES.map((family) => (
-                  <option key={family.slug} value={family.slug}>
-                    {family.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Tier</span>
-              <select
-                className="auth-input"
-                value={requestedTier}
-                onChange={(event) => setRequestedTier(event.target.value as ProductTierKey)}
-              >
-                {PRODUCT_TIERS.map((tier) => (
-                  <option key={tier.key} value={tier.key}>
-                    {tier.name} — {tier.priceLabel}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="owner-message-card">
-            <div className="panel-title">
-              <BadgeDollarSign size={18} />
+          {pendingRequest ? (
+            <div className="notice-card warning plan-pending-review">
+              <Clock3 size={18} />
               <div>
-                <strong>{selectedFamily.name} · {selectedTier.name}</strong>
-                <p>{selectedTier.priceLabel} monthly</p>
+                <strong>Owner review is already in progress</strong>
+                <p>{pendingRequest.currentPlanLabel} → {pendingRequest.requestedPlanLabel}</p>
+                <small>Requested {formatDateTime(pendingRequest.created_at)}. Your current plan stays active until NXQX approves the change.</small>
               </div>
             </div>
-            <p>{selectedFamily.description}</p>
-            <p className="subtle">
-              One-time website change fee: confirmed by NXQ before approval. Switching product families may require a larger rebuild.
-            </p>
+          ) : null}
+
+          <div className="plan-management-builder">
+            <div className="setup-form-grid plan-selector-grid">
+              <label>
+                <span>Product family</span>
+                <select
+                  className="auth-input"
+                  value={requestedFamily}
+                  onChange={(event) => setRequestedFamily(event.target.value as ProductFamilySlug)}
+                  disabled={hasPendingRequest}
+                >
+                  {PRODUCT_FAMILIES.map((family) => (
+                    <option key={family.slug} value={family.slug}>
+                      {family.name}{family.status === "planned" ? " — owner review only" : ""}
+                    </option>
+                  ))}
+                </select>
+                <small className="subtle">Only families supported by the guarded plan-change flow appear here.</small>
+              </label>
+
+              <label>
+                <span>Tier</span>
+                <select
+                  className="auth-input"
+                  value={requestedTier}
+                  onChange={(event) => setRequestedTier(event.target.value as ProductTierKey)}
+                  disabled={hasPendingRequest}
+                >
+                  {PRODUCT_TIERS.map((tier) => (
+                    <option key={tier.key} value={tier.key}>
+                      {tier.name} — {tier.priceLabel}
+                    </option>
+                  ))}
+                </select>
+                <small className="subtle">Enterprise is custom and starts at $300+/mo.</small>
+                {BY_REQUEST_TIERS.map((tier) => (
+                  <small className="subtle" data-testid="by-request-note" key={tier.key}>{tier.name} ({tier.priceLabel}) is arranged by hand: choose Enterprise, write "{tier.name}" in your note, and we will confirm what is included and the price before anything changes.</small>
+                ))}
+              </label>
+            </div>
+
+            <article className="owner-message-card plan-request-preview">
+              <div className="panel-title">
+                <BadgeDollarSign size={18} />
+                <div>
+                  <span className="plan-management-kicker">What you are asking NXQX to review</span>
+                  <strong>{selectedFamily.name} · {selectedTier.name}</strong>
+                  <p>{selectedTier.priceLabel}</p>
+                </div>
+              </div>
+              <p>{selectedFamily.description}</p>
+              <div className="plan-request-outcome">
+                <strong>{selectedTier.outcome}</strong>
+                <span>{selectedTier.description}</span>
+              </div>
+              <div className="plan-review-boundary">
+                <ShieldCheck size={18} />
+                <p>Submitting this does not change billing, features, or your website. NXQX reviews pricing, scope, and any one-time website change fee first.</p>
+              </div>
+            </article>
+
+            <label className="auth-label" htmlFor="plan-change-note">
+              What do you want changed?
+            </label>
+            <textarea
+              className="auth-input"
+              id="plan-change-note"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Tell NXQX what you want to add, remove, or improve."
+              rows={4}
+              disabled={hasPendingRequest}
+            />
+
+            <button
+              className="wide-btn plan-request-button"
+              type="button"
+              disabled={submitting || isSamePlan || hasPendingRequest}
+              onClick={() => void submitRequest()}
+            >
+              <CheckCircle2 size={16} />
+              {hasPendingRequest
+                ? "Awaiting owner review"
+                : isSamePlan
+                  ? "Current plan selected"
+                  : submitting
+                    ? "Sending request..."
+                    : "Send plan change for review"}
+            </button>
           </div>
-
-          <label className="auth-label" htmlFor="plan-change-note">
-            What do you want changed?
-          </label>
-          <textarea
-            className="auth-input"
-            id="plan-change-note"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="Tell NXQ what you want to add, remove, or improve."
-            rows={4}
-          />
-
-          <button
-            className="wide-btn"
-            type="button"
-            disabled={submitting || isSamePlan || hasPendingRequest}
-            onClick={() => void submitRequest()}
-          >
-            <CheckCircle2 size={16} />
-            {hasPendingRequest
-              ? "Awaiting owner review"
-              : isSamePlan
-                ? "Current plan selected"
-                : submitting
-                  ? "Sending request..."
-                  : "Request plan change"}
-          </button>
 
           <div className="plan-history-section">
             <div className="panel-title">
               <Clock3 size={18} />
-              <h3>Plan-change history</h3>
+              <div>
+                <h3>Plan-change history</h3>
+                <p className="subtle">A record of requested and resolved plan changes.</p>
+              </div>
             </div>
 
             {history.length === 0 ? (
@@ -391,7 +433,7 @@ export function ClientPlanManagement() {
                       <p>One-time website change fee: {formatMoney(Number(request.one_time_change_fee))}</p>
                     ) : null}
                     {request.client_note ? <p>Client request: {request.client_note}</p> : null}
-                    {request.owner_note ? <p className="recommendation">NXQ response: {request.owner_note}</p> : null}
+                    {request.owner_note ? <p className="recommendation">NXQX response: {request.owner_note}</p> : null}
                   </article>
                 ))}
               </div>

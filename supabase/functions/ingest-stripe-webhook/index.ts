@@ -1,0 +1,161 @@
+import { createClient } from "npm:@supabase/supabase-js@2";
+import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+import { applyReferralCreditToDraftInvoice } from "../_shared/referral-invoice-credit.ts";
+import type { CreditDeps, StripeInvoiceObject } from "../_shared/referral-invoice-credit.ts";
+
+const jsonHeaders={"Content-Type":"application/json"};
+const encoder=new TextEncoder();
+function response(body:unknown,status=200){return new Response(JSON.stringify(body),{status,headers:jsonHeaders});}
+function secret(name:string){const value=Deno.env.get(name)?.trim();if(!value)throw new Error(`Missing protected secret: ${name}`);return value;}
+function hex(bytes:ArrayBuffer){return [...new Uint8Array(bytes)].map((value)=>value.toString(16).padStart(2,"0")).join("");}
+function safeEqual(left:string,right:string){if(left.length!==right.length)return false;let diff=0;for(let index=0;index<left.length;index++)diff|=left.charCodeAt(index)^right.charCodeAt(index);return diff===0;}
+async function verifyStripeSignature(raw:string,header:string,webhookSecret:string){
+  const parts=header.split(",").map((part)=>part.trim().split("=",2));
+  const timestamp=parts.find(([key])=>key==="t")?.[1]||"";
+  const signatures=parts.filter(([key])=>key==="v1").map(([,value])=>value);
+  const seconds=Number(timestamp);
+  if(!Number.isFinite(seconds)||Math.abs(Date.now()/1000-seconds)>300||signatures.length===0)return false;
+  const key=await crypto.subtle.importKey("raw",encoder.encode(webhookSecret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  const expected=hex(await crypto.subtle.sign("HMAC",key,encoder.encode(`${timestamp}.${raw}`)));
+  return signatures.some((signature)=>safeEqual(expected,signature));
+}
+
+// Referral credit on a new draft invoice (Option A). Off unless NXQ_REFERRAL_CREDITS_ENABLED=true (on top of billing being enabled), and the database
+// itself does nothing while the referral program is off. The Stripe key is read only here, only when the switch is on, and only goes into the request header.
+async function creditNewInvoice(admin:ReturnType<typeof createClient<DynamicDatabase>>,object:Record<string,unknown>,clientId:string){
+  if(Deno.env.get("NXQ_REFERRAL_CREDITS_ENABLED")?.trim().toLowerCase()!=="true")return response({ok:true,ignored:true,reason:"referral_credits_off"},202);
+  const stripeKey=secret("STRIPE_SECRET_KEY");
+  const deps:CreditDeps={
+    matureCredits:async()=>{const matured=await admin.rpc("nxq_mature_referral_credits",{target_limit:100});if(matured.error)throw new Error("Referral maturation failed.");},
+    reserve:async({clientId:target,invoiceId,subtotalDollars})=>{
+      const reserved=await admin.rpc("nxq_reserve_referral_credit_for_invoice",{target_client_id:target,target_provider_key:"stripe",target_provider_invoice_id:invoiceId,target_invoice_subtotal:subtotalDollars});
+      if(reserved.error)throw new Error(`Referral credit reservation failed: ${reserved.error.message}`);
+      return {creditDollars:Number((reserved.data as {credit_applied?:number}|null)?.credit_applied||0)};
+    },
+    release:async({invoiceId,reason})=>{
+      const released=await admin.rpc("nxq_release_referral_credit_for_invoice",{target_provider_key:"stripe",target_provider_invoice_id:invoiceId,target_reason:reason});
+      if(released.error)throw new Error(`Referral credit release failed: ${released.error.message}`);
+    },
+    fetchInvoice:async(invoiceId)=>{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),15000);
+      try{
+        const result=await fetch(`https://api.stripe.com/v1/invoices/${invoiceId}`,{headers:{Authorization:`Bearer ${stripeKey}`},signal:controller.signal});
+        if(!result.ok){await result.body?.cancel();throw new Error(`Stripe invoice lookup failed (${result.status}).`);}
+        return await result.json() as StripeInvoiceObject;
+      }finally{clearTimeout(timer);}
+    },
+    send:async(request)=>{
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),15000);
+      try{const result=await fetch(request.url,{method:request.method,headers:request.headers,body:request.body,signal:controller.signal});await result.body?.cancel();return {status:result.status};}
+      finally{clearTimeout(timer);}
+    },
+  };
+  const result=await applyReferralCreditToDraftInvoice(object as StripeInvoiceObject,clientId,stripeKey,deps);
+  if(result.outcome==="uncertain"){
+    // Stripe may or may not have added the line. The credit stays used up so nobody is credited twice; the owner has to look at this invoice in Stripe.
+    await admin.from("activity_logs").insert({client_id:clientId,actor_type:"system",action:"referral_credit_uncertain",details:{provider_invoice_id:String(object.id||"").slice(0,180),credit_cents:result.creditCents,reason:result.reason}});
+    return response({ok:false,error:"Referral credit result is uncertain.",reason:result.reason},500);
+  }
+  if(result.outcome==="failed_released")return response({ok:false,reason:result.reason,credit_returned:true},202);
+  if(result.outcome==="applied")return response({ok:true,referral_credit_cents:result.creditCents},200);
+  return response({ok:true,ignored:true,reason:result.reason},202);
+}
+
+// Reads one charge from Stripe so a dispute can be tied to its customer. The key only goes into the request header and never into an error message.
+async function customerFromCharge(charge:unknown):Promise<string>{
+  const chargeId=typeof charge==="string"?charge:"";
+  if(!/^(ch|py)_[A-Za-z0-9_]{4,120}$/.test(chargeId))throw new Error("Stripe dispute has no usable charge reference.");
+  const key=Deno.env.get("STRIPE_SECRET_KEY")?.trim();
+  if(!key)throw new Error("A Stripe secret key is required to match a dispute to its customer.");
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),10000);
+  try{
+    const result=await fetch(`https://api.stripe.com/v1/charges/${chargeId}`,{headers:{Authorization:`Bearer ${key}`},signal:controller.signal});
+    if(!result.ok){await result.body?.cancel();throw new Error(`Stripe charge lookup failed (${result.status}).`);}
+    const body=await result.json() as {customer?:unknown};
+    return typeof body.customer==="string"?body.customer:"";
+  }finally{clearTimeout(timer);}
+}
+
+type StripeEvent={id?:string;type?:string;created?:number;livemode?:boolean;data?:{object?:Record<string,unknown>}};
+function normalizedType(eventType:string,object:Record<string,unknown>){
+  if(eventType==="invoice.paid")return "payment_succeeded";
+  if(eventType==="invoice.payment_failed"||eventType==="invoice.payment_action_required")return "payment_failed";
+  if(eventType==="charge.refunded")return "payment_refunded";
+  if(eventType==="charge.dispute.created")return "payment_disputed";
+  if(eventType==="customer.subscription.deleted")return "subscription_cancelled";
+  if((eventType==="customer.subscription.created"||eventType==="customer.subscription.updated")&&["active","trialing"].includes(String(object.status||"")))return "subscription_active";
+  return null;
+}
+
+Deno.serve(async(req)=>{
+  if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405);
+  if(Deno.env.get("NXQ_BILLING_ENABLED")?.trim().toLowerCase()!=="true")return response({ok:false,error:"Stripe billing is disabled."},503);
+  // Checked BEFORE the body is read or the signature is verified, and with a generic message, so an anonymous caller learns nothing about which secret is missing.
+  const webhookSecret=Deno.env.get("STRIPE_WEBHOOK_SECRET")?.trim();
+  if(!webhookSecret)return response({ok:false,error:"Stripe webhook is not configured."},503);
+  if(Number(req.headers.get("content-length")||0)>262144)return response({ok:false,error:"Stripe event is too large."},413);
+  try{
+    const raw=await req.text();
+    if(encoder.encode(raw).length>262144)throw new Error("Stripe event is too large.");
+    const signature=req.headers.get("stripe-signature")||"";
+    if(!await verifyStripeSignature(raw,signature,webhookSecret))return response({ok:false,error:"Invalid Stripe signature."},401);
+    const event=JSON.parse(raw) as StripeEvent;
+    const object=event.data?.object||{};
+    const eventId=String(event.id||"").slice(0,180);
+    const eventType=String(event.type||"").slice(0,120);
+    const createdSeconds=Number(event.created);
+    const mappedType=normalizedType(eventType,object);
+    // Events we do not act on are acknowledged before anything else, so a customer-less event never makes Stripe retry for days.
+    if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true,event_type:eventType},202);
+    // A dispute object has no customer field: its customer is found through the charge (needs the Stripe key; without it the event fails loudly and Stripe retries).
+    const providerCustomerId=(eventType==="charge.dispute.created"&&typeof object.customer!=="string"?await customerFromCharge(object.charge):String(object.customer||"")).slice(0,180);
+    if(!eventId||!providerCustomerId)throw new Error("Stripe event identity is incomplete.");
+    if(!Number.isFinite(createdSeconds)||createdSeconds<=0||Math.abs(Date.now()/1000-createdSeconds)>31536000)throw new Error("Stripe event creation time is invalid or outside the replay window.");
+    if(event.livemode&&Deno.env.get("NXQ_STRIPE_LIVE_MODE_ENABLED")?.trim().toLowerCase()!=="true")throw new Error("Live-mode Stripe events are disabled.");
+
+    const admin=createClient(secret("SUPABASE_URL"),secret("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false}});
+    const link=await admin.from("billing_provider_customer_links").select("client_id,status").eq("provider_key","stripe").eq("provider_customer_id",providerCustomerId).eq("status","active").maybeSingle();
+    if(link.error||!link.data)throw new Error("Stripe customer is not linked to an active NXQX client.");
+    const client=await admin.from("clients").select("id,qa_only").eq("id",link.data.client_id).single();
+    if(client.error||!client.data)throw new Error("Linked NXQX client was not found.");
+    if(client.data.qa_only)throw new Error("Billing artifacts are forbidden for QA-only clients.");
+    if(eventType==="invoice.created")return await creditNewInvoice(admin,object,client.data.id);
+
+    const existing=await admin.from("billing_provider_events").select("id").eq("provider_key","stripe").eq("provider_event_id",eventId).maybeSingle();
+    let recordId=existing.data?.id as string|undefined;
+    if(!recordId){
+      const amountRaw=mappedType==="payment_failed"?(object.amount_due??object.amount_paid):(object.amount_paid??object.amount_due??object.amount_refunded??object.amount);
+      const amount=typeof amountRaw==="number"?amountRaw/100:null;
+      const inserted=await admin.from("billing_provider_events").insert({
+        provider_key:"stripe",provider_event_id:eventId,provider_customer_id:providerCustomerId,
+        client_id:client.data.id,event_type:mappedType,amount,currency:typeof object.currency==="string"?object.currency.toUpperCase():null,
+        occurred_at:new Date(createdSeconds*1000).toISOString(),
+        normalized_payload:{stripe_event_type:eventType,livemode:Boolean(event.livemode),object_id:String(object.id||"").slice(0,180)}
+      }).select("id").single();
+      if(inserted.error)throw new Error(`Stripe event insert failed: ${inserted.error.message}`);
+      recordId=inserted.data.id;
+    }
+    const applied=await admin.rpc("apply_verified_billing_provider_event",{target_event_id:recordId});
+    if(applied.error)throw new Error(`Stripe event apply failed: ${applied.error.message}`);
+    const paidCents=Number(object.amount_paid??object.amount_due);
+    // A $0 invoice (trial, 100% coupon) is not evidence of a real first payment, so it never starts the referral hold.
+    if(mappedType==="payment_succeeded"&&Number.isFinite(paidCents)&&paidCents>0){
+      const amountRaw=object.amount_paid??object.amount_due;
+      const referral=await admin.rpc("nxq_record_referral_first_payment",{
+        target_client_id:client.data.id,target_provider:"stripe",target_event_id:eventId,
+        target_amount:typeof amountRaw==="number"?amountRaw/100:0,target_paid_at:new Date(createdSeconds*1000).toISOString()
+      });
+      if(referral.error)throw new Error(`Referral payment evidence failed: ${referral.error.message}`);
+    }else if(mappedType==="payment_refunded"||mappedType==="payment_disputed"){
+      const referral=await admin.rpc("nxq_flag_referral_payment_reversal",{
+        target_client_id:client.data.id,target_event_id:eventId,target_reason:mappedType==="payment_disputed"?"dispute":"refund"
+      });
+      if(referral.error)throw new Error(`Referral reversal evidence failed: ${referral.error.message}`);
+    }
+    await admin.rpc("record_worker_heartbeat",{target_worker_key:"ingest-stripe-webhook",target_execution_target:"stripe",target_status:"healthy",target_metadata:{signature_verified:true,server_mapped_customer:true,ordered_event_apply:true,livemode:Boolean(event.livemode)},target_last_error:null});
+    return response({ok:true,event_id:recordId,idempotent:Boolean(existing.data)});
+  }catch(error){return response({ok:false,error:error instanceof Error?error.message:"Unknown Stripe webhook failure."},400);}
+});

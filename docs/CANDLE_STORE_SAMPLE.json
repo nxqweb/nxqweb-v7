@@ -1,0 +1,29 @@
+{
+  "client_email": "her.real.contact.email@example.com",
+  "store_name": "Her Candle Shop",
+  "store_slug": "her-candle-shop",
+  "stripe_payment_link": "https://buy.stripe.com/PASTE_HER_LINK_HERE",
+  "payment_note": "Pay with the link after you order. Orders ship within 3 business days.",
+  "make_live": false,
+  "products": [
+    {
+      "name": "Lavender Calm Candle",
+      "short_description": "Hand-poured soy candle",
+      "description": "A calming lavender soy candle, hand poured in small batches.",
+      "base_price": 24.00,
+      "featured": true,
+      "attributes": [{ "label": "Scent", "value": "Lavender" }],
+      "variants": [
+        { "title": "8 oz", "price": 24.00, "inventory_quantity": 20 },
+        { "title": "12 oz", "price": 32.00, "inventory_quantity": 10 }
+      ]
+    },
+    {
+      "name": "Vanilla Bean Soap",
+      "short_description": "Cold-process bar soap",
+      "description": "A creamy vanilla bar soap.",
+      "base_price": 9.50,
+      "variants": [{ "title": "Bar", "price": 9.50, "inventory_quantity": 40 }]
+    }
+  ]
+}
