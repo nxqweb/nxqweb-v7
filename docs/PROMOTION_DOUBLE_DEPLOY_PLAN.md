@@ -1,6 +1,6 @@
 # The double production deploy at promotion: evidence, cause and a proposed fix (written 2026-11-05)
 
-**Status: ANALYSIS AND PROPOSAL ONLY. No code was changed.** Any fix is an Edge function change (`supabase/functions/promote-business-production/index.ts`), which reaches clients only after an approved `deploy_functions` run. Related: `docs/TEN_CLEAN_RUNS_PLAN.md`, `docs/WAVE_RELEASE_RUNBOOK.md`.
+**Status (2026-11-05): IMPLEMENTED LOCALLY, NOT DEPLOYED.** Option A was chosen. The wait rule is `supabase/functions/_shared/production-deploy-wait.mjs`, used by `promote-business-production/index.ts`, tested by `scripts/test-production-deploy-reuse.mjs` (16 checks incl. 4 planted-bug controls); `npm run test:ci-parity` 74/74. It reaches staging only after an approved `deploy_functions` run. Known side effect: a reused Git-triggered build is not counted by the Netlify build guard (no reservation is made), so the guard undercounts by one per site; the settled credit numbers remain the source of truth. The original proposal follows. Any fix is an Edge function change (`supabase/functions/promote-business-production/index.ts`), which reaches clients only after an approved `deploy_functions` run. Related: `docs/TEN_CLEAN_RUNS_PLAN.md`, `docs/WAVE_RELEASE_RUNBOOK.md`.
 
 ## Evidence (first measured approve QA run, 2026-11-04)
 Netlify's Builds list for the new site `nxq-qa-disposable-qa-842a688fa6d1-...-website` showed four builds, all completed:

@@ -1621,3 +1621,5 @@ healthy provider/worker evidence, recovery proof, owner signoff, a separate
 production change review, and an explicit production deployment decision.
 The staging workflow cannot merge a branch, publish Netlify production,
 change DNS, enable billing, or mark QA evidence passed.
+
+- 2026-11-05: double-production-deploy fix (Option A) implemented locally and pushed, NOT deployed. Needs an approved `deploy_functions` run before the next approve run to save ~15 credits/site. See docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md.

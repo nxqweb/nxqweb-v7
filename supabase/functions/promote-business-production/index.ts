@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { reuseGitTriggeredDeploy } from "../_shared/production-deploy-wait.mjs";
 
 type AutomationJob = {
   id: string;
@@ -362,6 +363,14 @@ async function processPromotion(admin: AdminClient, job: AutomationJob) {
   }
 
   let build = await findExistingProductionDeploy(configRes.data.netlify_site_id, sourceSha);
+  // The push to main above makes Netlify start its own production build a few seconds later. Look for it before paying for a second build of the same commit
+  // (docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md). Only after a push; if Netlify never starts one (builds stopped), the explicit build below runs exactly as before.
+  if (!build && sourceSha !== mainSha) {
+    build = await reuseGitTriggeredDeploy({
+      find: () => findExistingProductionDeploy(configRes.data.netlify_site_id, sourceSha),
+      sleep: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
+    });
+  }
   if (!build) {
     await assertProviderMutationAllowed(admin, job);
     await reserveNetlifyBuild(admin, job, runId, sourceSha);
