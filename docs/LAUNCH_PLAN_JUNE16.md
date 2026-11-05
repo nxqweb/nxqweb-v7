@@ -48,3 +48,12 @@ The owner's hold (no card, no paid keys, no lawyer) runs to about July 2027, **a
 - [ ] Email wiring drafted OFF by default (Resend, needs the owner's account later)
 - [ ] Ten clean end-to-end runs; production database and backup decision
 - [ ] The decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md` (what "cancel" does to a live site, deletion, product lines, SSL-expiry check)
+
+## Finish line check (2026-11-05, owner asked "how far until only Stripe and the AI key are left?")
+Code and staged migrations (checklist sections A and B) are essentially done: migrations 248-287 applied to staging, parity 74/74. The gap is live verification (section C). What stands between today and "only Stripe and the AI key left":
+- [ ] Ten clean approve runs: **4 of 10** (verified in the database). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
+- [ ] Theme and color picks applied to generated sites (owner picks; function change + approved `deploy_functions`).
+- [ ] Waitlist: owner chose a free outside tool for now (Option C); promoting the in-app draft is a gated migration and is NOT decided.
+- [ ] Decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md`, and staging vs a separate production project for creators.
+- Not "Stripe or AI", but also not free: email (Resend + a verified domain, A3), a production database with backups (A4, about $25/mo unverified), the lawyer read (A5). All sit under the spending hold to about July 2027, so Jan 4 means "everything except Stripe, the AI key and the paid items", and these three stay open until June 16.
+- The Team hours add-on was CANCELLED by the owner (2026-11-05); see `docs/BUSINESS_SUITE_PLAN.md`.
