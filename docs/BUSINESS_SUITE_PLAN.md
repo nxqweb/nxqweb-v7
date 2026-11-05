@@ -1,5 +1,7 @@
 # NXQX Web as a "web of your business": plan for after the June launch (written 2026-11-04)
 
+**DECISION (owner, 2026-11-05): Team hours is CANCELLED. Not building it, no employee portal, no payroll feed.** Reason in the owner's words: free tools already do it, so charging for it is trying too hard. A draft data layer was written and tested the same day and then deleted at the owner's request (it stays in git history: commits 9820020 and 8d47967). The notes below are kept only as the record of the idea. Draft 04 (generic add-on packs) is untouched; its seeded `team_hours` row is now just a placeholder and should be replaced if packs are ever revisited.
+
 **Status: PLAN ONLY, nothing built.** Owner decision in chat (2026-11-04): launch the website product FIRST (target June 16, 2027), then add business tools as add-on packs. This file keeps the idea, the honest limits and the order of work so none of it is lost. Not legal advice; the privacy and employment points need a lawyer's read before anything ships.
 
 ## The idea (the owner's words, tidied)
