@@ -43,7 +43,12 @@ async function ruleChecks(mod, ok) {
   const none = await reuseGitTriggeredDeploy({ find: async () => { looks += 1; return { id: "x" }; }, sleep: clock.sleep, attempts: 0 });
   ok("zero attempts asks nothing and returns null", none === null && looks === 0 && clock.waits.length === 0);
 
-  ok("the wait is 6 looks 4 seconds apart, 24 seconds in all, comfortably inside an Edge function's time limit", GIT_BUILD_WAIT.attempts === 6 && GIT_BUILD_WAIT.delayMs === 4000 && GIT_BUILD_WAIT.attempts * GIT_BUILD_WAIT.delayMs <= 30000);
+  // slow Netlify: each lookup takes 20 seconds of fake time; the 60 second budget must stop the loop after 3 looks, not 6
+  let fakeNow = 0; looks = 0;
+  const slow = await reuseGitTriggeredDeploy({ find: async () => { looks += 1; fakeNow += 20000; return null; }, sleep: async (ms) => { fakeNow += ms; }, now: () => fakeNow });
+  ok("slow lookups cannot stretch the wait past its 60 second budget (stops after 3 looks, returns null)", slow === null && looks === 3);
+
+  ok("the wait is 6 looks 4 seconds apart, 24 seconds in all, comfortably inside an Edge function's time limit", GIT_BUILD_WAIT.attempts === 6 && GIT_BUILD_WAIT.delayMs === 4000 && GIT_BUILD_WAIT.attempts * GIT_BUILD_WAIT.delayMs <= 30000 && GIT_BUILD_WAIT.budgetMs === 60000);
 }
 await ruleChecks(real, check);
 
@@ -53,6 +58,7 @@ const mutants = [
   ["a found deploy is ignored (it always pays for a second build)", [["if (found) return found;", ""]]],
   ["a failed deploy is swallowed", [["const found = await find();", "let found = null; try { found = await find(); } catch { found = null; }"]]],
   ["it never waits between looks", [["await sleep(delayMs);", ""]]],
+  ["the total time budget is ignored", [["if (now() - startedAt >= budgetMs) return null;", ""]]],
   ["it waits one look longer than allowed", [["attempt < attempts;", "attempt <= attempts;"]]],
 ];
 for (const [name, edits] of mutants) {

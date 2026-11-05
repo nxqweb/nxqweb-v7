@@ -46,3 +46,6 @@ If Netlify did start a build, it is reused and no explicit build (and no build r
 - **Option A: implement and test it locally now** (no deploy). Claude writes the change and the tests, keeps parity green, and pushes; nothing changes on staging until the owner approves `deploy_functions`.
 - **Option B: leave it** and live with about 45 credits per site (30 if this is fixed).
 - Recommendation: **A**. Seven more approve runs at 15 credits saved each is about 105 credits, roughly one whole extra run per cycle, and every real client site benefits too.
+
+## Addendum 2026-11-05 (night): time limit checked, budget added
+The job claim has no time limit that 24 seconds could trip. The one real risk was a slow Netlify API: six lookups of up to 15 seconds each could run past an Edge function's wall clock. The wait now has a total budget of 60 seconds (`budgetMs`, with a test and a planted-bug control). It is in the repo but NOT deployed: run #283 deployed the version without the budget, so the budget rides the next `deploy_functions` run. Run #4 passed on the deployed version.
