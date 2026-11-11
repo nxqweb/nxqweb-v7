@@ -59,3 +59,9 @@ Creators' real sites cost the same credits, and a clean run uses a real GitHub r
 
 ## After the tenth pass
 The `ten_clean_runs` check turns ready within five minutes. The sign-off still waits on every other required check, in the order set out in `docs/READINESS_GATE_MAP.md`; the six expiring evidence checks come last, in the final week.
+
+## MEASURED CREDITS (2026-11-11 2:39 PM, owner screenshots of Usage & billing; the Nov 4 billing lag has cleared)
+- Production deploys: 6 deploys / 90 credits before run #9 -> **11 deploys / 165 credits** now. Five new production deploys = 75 credits for runs #9 and #4 together. Preview/branch deploys are not billed (no line for them).
+- Run #9 (before the fix): 3 production deploys (site creation, Git-triggered, API-triggered) = **45 credits**. Run #4 (fix live from run #283): 5 minus 3 = **2 deploys = 30 credits**. The split is inferred from the totals plus run #9's Builds list; run #4's own Deploys list was not read. The fix saved one production deploy (15 credits) per site.
+- Balance: **132.9 of 300 remaining**, expires Nov 22; the next cycle (Nov 23 to Dec 22) starts at 300. Per-run cost to plan with: **30 credits plus about 1 for requests and bandwidth**.
+- Calendar: 132.9 allows 2 runs and keeps 72.9 (above the 60 reserve); a third run would leave about 43. A failed run still spends its builds without counting, so run the third only if the first two pass.

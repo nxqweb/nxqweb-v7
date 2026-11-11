@@ -49,3 +49,6 @@ If Netlify did start a build, it is reused and no explicit build (and no build r
 
 ## Addendum 2026-11-05 (night): time limit checked, budget added
 The job claim has no time limit that 24 seconds could trip. The one real risk was a slow Netlify API: six lookups of up to 15 seconds each could run past an Edge function's wall clock. The wait now has a total budget of 60 seconds (`budgetMs`, with a test and a planted-bug control). It is in the repo but NOT deployed: run #283 deployed the version without the budget, so the budget rides the next `deploy_functions` run. Run #4 passed on the deployed version.
+
+## Addendum 2026-11-11: measured, the fix worked
+Netlify's settled usage went from 6 production deploys (90 credits) to 11 (165): runs #9 and #4 used 5 deploys. Run #9 (without the fix) had 3; run #4 (with it) therefore had 2, so 30 credits per site instead of 45. Not read directly from run #4's own Deploys list.
