@@ -1003,8 +1003,8 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice AND failed-payment (past_due only, no freeze) paths proven on staging (see the Stripe sandbox section at the top); refund, dispute and restore-to-active NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **4 of 10 done** (VERIFIED
-  2026-11-05 UTC from the database: `count_strict_clean_business_runs()` = 4 after run QA-612AD87391D7; only APPROVE runs count:
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **5 of 10 done** (VERIFIED
+  2026-11-12 from the database: `count_strict_clean_business_runs()` = 5 after run QA-6049B35B713A (earlier: = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
   `QA-3BC433C6634E` 2026-08-23, `QA-E45F85D69C9A` 2026-10-07 and
   `QA-842A688FA6D1` 2026-11-04, each `strict_evidence_passed`; failed
   runs are not counted and do not reset the count; 7 more needed, see
@@ -1625,3 +1625,4 @@ change DNS, enable billing, or mark QA evidence passed.
 - 2026-11-05: `deploy_functions` run #283 (c898996) succeeded; promote-business-production now carries the double-deploy fix on staging. Proof pending: next approve run should show one fewer production build (needs Netlify builds unlocked).
 - 2026-11-04 6:30-6:46 PM local: approve run #4 QA-612AD87391D7 PASSED in 16 minutes (run #9 took 77: the cost-pool stall is gone with 287). `count_strict_clean_business_runs()` = 4 (owner pasted the result). Build count of the new QA site (does the double-deploy fix work?) and settled credits are still to be read; Netlify's counter still showed 209 at 8:42 PM.
 - 2026-11-05: owner CANCELLED the Team hours business extension (free competitors exist; not worth charging for). Draft 05 + TEAM_HOURS_PLAN deleted; see the decision line at the top of docs/BUSINESS_SUITE_PLAN.md. No migration, deploy or credits were ever involved.
+- 2026-11-12: approve run QA-6049B35B713A PASSED (started 10:45 AM, approved about 11:06, completed 11:18 AM) after the expired-token incident (Netlify token, Supabase GitHub secret, GitHub verify token all replaced by the owner; provider-health sweep bug fixed and deployed, run #288). `count_strict_clean_business_runs()` = 5. Failed run QA-14EEDD2E57C6 (2026-11-11) is not counted. Tokens and expiry dates: docs/EXPIRING_TOKENS.md.

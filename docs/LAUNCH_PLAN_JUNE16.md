@@ -27,7 +27,7 @@ Needs the owner (a specific yes each time, per `CLAUDE.md`):
 - Applying any migration (waitlist, add-on packs): the owner types `APPLY-NXQ-SUPABASE-STAGING` and clicks Approve; Claude reads the log.
 - One site build, only when the owner turns builds ON, then publishes by hand (Auto Publishing stays locked).
 
-The ten clean end-to-end runs (A8) are the real "launch-ready" test, and **credits and the build guard, not code, decide their calendar**: see `docs/TEN_CLEAN_RUNS_PLAN.md` (4 of 10 done, verified in the database on 2026-11-05 UTC; a new QA site cost about 45 to 60 Netlify credits when last measured; the default build guard allows about one approve run per cycle). They are fictional clients started from Launch readiness: the APPROVE path goes through approval, a private GitHub repo, a Netlify preview and production, and maintenance; the DENY path passes only if nothing at all is created. Each needs real Supabase, GitHub and Netlify evidence, and the owner signs off after ten. Target: finished by about Jan 4.
+The ten clean end-to-end runs (A8) are the real "launch-ready" test, and **credits and the build guard, not code, decide their calendar**: see `docs/TEN_CLEAN_RUNS_PLAN.md` (5 of 10 done, verified in the database on 2026-11-12; a new QA site cost about 45 to 60 Netlify credits when last measured; the default build guard allows about one approve run per cycle). They are fictional clients started from Launch readiness: the APPROVE path goes through approval, a private GitHub repo, a Netlify preview and production, and maintenance; the DENY path passes only if nothing at all is created. Each needs real Supabase, GitHub and Netlify evidence, and the owner signs off after ten. Target: finished by about Jan 4.
 
 ## Phase 2: waitlist and creators (about Jan 4 to Jun 16)
 
@@ -51,7 +51,7 @@ The owner's hold (no card, no paid keys, no lawyer) runs to about July 2027, **a
 
 ## Finish line check (2026-11-05, owner asked "how far until only Stripe and the AI key are left?")
 Code and staged migrations (checklist sections A and B) are essentially done: migrations 248-287 applied to staging, parity 74/74. The gap is live verification (section C). What stands between today and "only Stripe and the AI key left":
-- [ ] Ten clean approve runs: **4 of 10** (verified in the database). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
+- [ ] Ten clean approve runs: **5 of 10** (verified in the database 2026-11-12). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
 - [ ] Theme and color picks applied to generated sites (owner picks; function change + approved `deploy_functions`).
 - [ ] Waitlist: owner chose a free outside tool for now (Option C); promoting the in-app draft is a gated migration and is NOT decided.
 - [ ] Decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md`, and staging vs a separate production project for creators.
