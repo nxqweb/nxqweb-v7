@@ -57,3 +57,6 @@ Code and staged migrations (checklist sections A and B) are essentially done: mi
 - [ ] Decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md`, and staging vs a separate production project for creators.
 - Not "Stripe or AI", but also not free: email (Resend + a verified domain, A3), a production database with backups (A4, about $25/mo unverified), the lawyer read (A5). All sit under the spending hold to about July 2027, so Jan 4 means "everything except Stripe, the AI key and the paid items", and these three stay open until June 16.
 - The Team hours add-on was CANCELLED by the owner (2026-11-05); see `docs/BUSINESS_SUITE_PLAN.md`.
+
+## Launch readiness 2026-11-12: 20/26 (77%) after `run_evidence_suite`
+Ready: all security, runtime, QA-flow, provider-health, SEO and recovery checks. Remaining 6: ten clean runs (6 of 10, 4 more from 2026-11-23), change classifier + build-plan AI (AI key), notification dispatcher (Resend), file scanner (Scanii), owner launch signoff. Live Stripe is optional in the current launch mode. The evidence checks expire after 7 days (next refresh due by 2026-11-19).
