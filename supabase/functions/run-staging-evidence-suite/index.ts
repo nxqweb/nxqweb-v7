@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@6";
 import { normalizeGithubPrivateKey } from "../_shared/github-private-key.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { CLEANUP_RETRY, removeOneByOne } from "../_shared/fixture-cleanup.mjs";
 
 const workerName = "run-staging-evidence-suite";
 const headers = { "Content-Type": "application/json" };
@@ -162,13 +163,20 @@ async function removeFixtures(admin: SupabaseClient, bucket: string, paths: stri
     const removed = await admin.storage.from(bucket).remove(paths);
     if (removed.error) errors.push(`storage: ${removed.error.message}`);
   }
+  // One record at a time, retried briefly: deleting both temporary clients in a single statement timed out on 2026-11-12 and left them behind.
+  // An already-removed record counts as removed (the second cleanup pass used to report phantom "User not found" errors).
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
   if (clientIds.length) {
-    const removed = await admin.from("clients").delete().in("id", clientIds);
-    if (removed.error) errors.push(`clients: ${removed.error.message}`);
+    errors.push(...await removeOneByOne({
+      ids: clientIds, label: "clients", sleep, ...CLEANUP_RETRY,
+      deleteOne: (id: string) => admin.from("clients").delete().eq("id", id),
+    }));
   }
-  for (const userId of userIds) {
-    const removed = await admin.auth.admin.deleteUser(userId);
-    if (removed.error) errors.push(`auth user: ${removed.error.message}`);
+  if (userIds.length) {
+    errors.push(...await removeOneByOne({
+      ids: userIds, label: "auth user", sleep, ...CLEANUP_RETRY,
+      deleteOne: (id: string) => admin.auth.admin.deleteUser(id),
+    }));
   }
   return errors;
 }

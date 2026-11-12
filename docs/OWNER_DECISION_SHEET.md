@@ -1,5 +1,7 @@
 # Owner decision sheet: everything Claude is waiting on, one page (written 2026-11-05)
 
+**DECIDED 2026-11-12 (owner, in chat: "option a THEN B", where B = take the recommended defaults in section 1).** Every row in section 1 below is settled exactly as its "Recommended default" column says. Nothing was built for these; they are product rules. Section 2 stays the owner's to-do list.
+
 Goal (owner, 2026-11-05): get to the point where the owner only does a few things before launch. Everything Claude can do alone is already done or listed under "Claude, no approval needed". Each row below has a **recommended default**: replying "take the defaults" accepts every recommendation. Anything marked GATED still needs the owner's typed phrase and Approve click when it runs.
 
 ## 1. Decisions (no money, a sentence each)

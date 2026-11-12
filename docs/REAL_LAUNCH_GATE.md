@@ -25,6 +25,13 @@
 | B4 | **Which product lines to sell** | Booking, Membership and Property: do not sell yet. Commerce and Menu: request-only (email orders or payment links, not online checkout). |
 | B5 | **Real SSL-expiry check** | Not possible inside an Edge function. Options: a read-only call to the Netlify API (external service, owner approval) or a certificate log. |
 
+### Decisions recorded 2026-11-12 (owner took the recommended defaults; see `docs/OWNER_DECISION_SHEET.md`)
+- **B1 cancel:** the owner switches the live site OFF by hand (the take-down to-do from migration 285 exists); data kept 30 days.
+- **B2 deletion:** the client asks in the portal; the owner verifies by replying from the account email and runs the deletion by hand. No automated deleter before the lawyer read.
+- **B3 free first month / founding discounts:** tracked by hand on the lifecycle screen; no auto-invoicing until Stripe is live.
+- **B4 product lines:** sell Business now; Commerce and Menu request-only; do NOT sell Booking, Membership or Property yet.
+- **B5 SSL expiry check:** parked; Netlify renews certificates itself; the owner looks at Netlify by hand monthly.
+
 ## C. Things the owner can ask Claude to build (some need an approved migration)
 | # | Item | Needs a migration? |
 |---|---|---|

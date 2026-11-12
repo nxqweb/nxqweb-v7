@@ -36,3 +36,7 @@ New themes also need dark AND light variants whose text passes contrast (WCAG AA
 - **Option C: stay manual** until after the June 16 launch; the owner sets the look by hand when approving, as today. Zero risk.
 
 **Recommendation:** Option C for the first creators (hand-set, and their sites double as the design test), then Option A once enough real picks show which themes people actually choose; Option B only if creators ask for red or pastel. Whatever is chosen: the code can be written and tested on the safe branch for free (builds are OFF), but it reaches a client's site only after an approved `deploy_functions` run and one site build.
+
+
+## DECISION 2026-11-12 (owner took the defaults)
+Option C for the first creators (looks set by hand per creator when approving); Option A (map the picks to the closest template theme) only after the first creators show which themes people choose. Nothing to build now.

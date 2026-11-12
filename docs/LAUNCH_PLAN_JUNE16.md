@@ -60,3 +60,9 @@ Code and staged migrations (checklist sections A and B) are essentially done: mi
 
 ## Launch readiness 2026-11-12: 20/26 (77%) after `run_evidence_suite`
 Ready: all security, runtime, QA-flow, provider-health, SEO and recovery checks. Remaining 6: ten clean runs (6 of 10, 4 more from 2026-11-23), change classifier + build-plan AI (AI key), notification dispatcher (Resend), file scanner (Scanii), owner launch signoff. Live Stripe is optional in the current launch mode. The evidence checks expire after 7 days (next refresh due by 2026-11-19).
+
+## Decisions recorded 2026-11-12 (owner took the defaults on `docs/OWNER_DECISION_SHEET.md`)
+- Waitlist route: keep the free outside list tool for now; the in-app waitlist stays a draft (OFF, not promoted).
+- Creators' sites live on STAGING first (fake or low-stakes content only: it is the Free plan with no backups); move to a separate production project before anyone real depends on it.
+- Wave 1 = 5 creators (about 150 to 225 Netlify credits at 30 to 45 per site).
+- B1 to B5 (cancel, deletion, free first month, product lines, SSL check) are settled as listed in `docs/REAL_LAUNCH_GATE.md`.
