@@ -52,3 +52,10 @@ The job claim has no time limit that 24 seconds could trip. The one real risk wa
 
 ## Addendum 2026-11-11: measured, the fix worked
 Netlify's settled usage went from 6 production deploys (90 credits) to 11 (165): runs #9 and #4 used 5 deploys. Run #9 (without the fix) had 3; run #4 (with it) therefore had 2, so 30 credits per site instead of 45. Not read directly from run #4's own Deploys list.
+
+## FINAL READING 2026-11-12 (owner's Netlify team Builds list): the promotion fix works; the remaining variance is at site CREATION
+- QA-6049B35B713A (30 credits): 1 production deploy at site creation (11:11 AM, main@0389a06, no message) + 1 production deploy of the final commit (11:16 AM, main@5720f7a, Git-triggered, "generate client website config"). No second build of the final commit.
+- QA-08B27165B052 (45 credits): 2 production deploys at site creation (both 12:01 PM, same commit d052992: "Initial commit" by the provisioner bot AND a no-message deploy) + 1 production deploy of the final commit (12:08 PM, main@9bdadb7). Again no second build of the final commit.
+- QA-14EEDD2E57C6 (failed, 15 credits): 1 production deploy at creation (yesterday 3:11 PM, main@HEAD) + a preview; failed before promotion. 15 + 30 + 45 = 90 = the measured credit drop.
+- Conclusion: the promotion double deploy is FIXED (the 24-second wait did not race). A clean run costs 30 or 45 credits depending on whether Netlify also builds the provisioner's "Initial commit" push at site creation (2 creation deploys instead of 1). Plan with 45. A future saving of 15 credits per site would come from stopping that creation-time duplicate (see `stop_builds` notes in `docs/TEN_CLEAN_RUNS_PLAN.md`), not from the promotion function.
+- Preview/branch deploys are not billed.

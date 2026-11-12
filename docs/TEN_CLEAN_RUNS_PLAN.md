@@ -82,3 +82,6 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 
 ## Run QA-08B27165B052 PASSED (2026-11-12): the count is now 6 of 10 (verified: `count_strict_clean_business_runs()` = 6)
 Started 11:58 AM, completed 12:10 PM (12 minutes). Two clean runs in a row after the token fixes. Credits before: 87.8 (expected about 57.8 after; the settled number was not read yet). Owner chose to run one more this cycle and then stop; 4 more approve runs are needed, planned from 2026-11-23 when the free plan resets to 300 credits (about 30 per run, 4 runs = about 120).
+
+## CREDIT COST PER RUN, FINAL (2026-11-12): 30 or 45 credits, plan with 45
+Balance after run QA-08B27165B052: 42.8 of 300 (it was 87.8 before that run, so that run cost 45). The Netlify Builds list shows why (details in `docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md`, "FINAL READING"): 1 or 2 production deploys at site creation + 1 for the final commit. Four more runs from 2026-11-23 cost 120 to 180 of the fresh 300. The leftover 2 evidence-suite fixture clients were deleted by the owner (both "1 row deleted").
