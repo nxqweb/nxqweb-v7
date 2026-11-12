@@ -73,3 +73,9 @@ Update 2026-11-11 night: the guarded workflows were ALSO broken by an expired Su
 
 ## Run QA-6049B35B713A PASSED (2026-11-12): the count is now 5 of 10 (verified: `count_strict_clean_business_runs()` = 5)
 Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, completed 11:18 AM (about 12 minutes after the approve click). First run after the three expired tokens were replaced; it proves `NETLIFY_ACCESS_TOKEN` works end to end. Credits: not read yet (before the failed run #5 the balance was 132.9). 5 more approve runs needed.
+
+## MEASURED CREDITS (2026-11-12 11:54 AM, owner screenshots; billing has settled)
+- Balance **87.8 of 300** (was 132.9 on 2026-11-11 2:39 PM, before the failed run and the passing run): the two runs cost about **45**.
+- Production deploys 11 deploys / 165 credits -> **14 deploys / 210 credits**: three new deploys. The passing run QA-6049B35B713A = 2 deploys (site creation + Netlify's own Git build, fix reusing it) = **30 credits**; the failed run QA-14EEDD2E57C6 = 1 deploy (site creation only; the preview check failed with 401 before promotion) = **15 credits**. Split inferred from totals; Netlify's own Deploys list was not read. Previews are not billed.
+- A failed run therefore wastes only about 15 credits when it fails early; a passing run costs 30.
+- Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
