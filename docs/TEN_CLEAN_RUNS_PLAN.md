@@ -79,3 +79,6 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 - Production deploys 11 deploys / 165 credits -> **14 deploys / 210 credits**: three new deploys. The passing run QA-6049B35B713A = 2 deploys (site creation + Netlify's own Git build, fix reusing it) = **30 credits**; the failed run QA-14EEDD2E57C6 = 1 deploy (site creation only; the preview check failed with 401 before promotion) = **15 credits**. Split inferred from totals; Netlify's own Deploys list was not read. Previews are not billed.
 - A failed run therefore wastes only about 15 credits when it fails early; a passing run costs 30.
 - Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
+
+## Run QA-08B27165B052 PASSED (2026-11-12): the count is now 6 of 10 (verified: `count_strict_clean_business_runs()` = 6)
+Started 11:58 AM, completed 12:10 PM (12 minutes). Two clean runs in a row after the token fixes. Credits before: 87.8 (expected about 57.8 after; the settled number was not read yet). Owner chose to run one more this cycle and then stop; 4 more approve runs are needed, planned from 2026-11-23 when the free plan resets to 300 credits (about 30 per run, 4 runs = about 120).
