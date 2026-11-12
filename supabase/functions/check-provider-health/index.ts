@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requirePublicHttpsUrl } from "../_shared/outbound-security.ts";
 import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
+import { classifyHealthStatus } from "../_shared/provider-health-status.mjs";
 
 type ProviderConnection = {
   id: string;
@@ -117,10 +118,7 @@ async function checkThroughAdapter(connection: ProviderConnection) {
 }
 
 function connectionStatusFromHealth(status: string) {
-  if (status === "healthy" || status === "recovered") return "healthy";
-  if (status === "degraded" || status === "rate_limited" || status === "timeout") return "degraded";
-  if (status === "unauthorized" || status === "error") return "error";
-  return "degraded";
+  return classifyHealthStatus(status).connectionStatus;
 }
 
 Deno.serve(async (req) => {
@@ -170,6 +168,7 @@ Deno.serve(async (req) => {
     let degraded = 0;
     let errors = 0;
     let activityEvidence = 0;
+    let notConfigured = 0;
 
     for (const raw of due.data || []) {
       const connection = raw as ProviderConnection;
@@ -181,9 +180,23 @@ Deno.serve(async (req) => {
       if (!check.configured) continue;
 
       const result = check.result;
-      const healthStatus = String(result.status || "error");
-      const nextConnectionStatus = connectionStatusFromHealth(healthStatus);
+      const outcome = classifyHealthStatus(result.status);
       const now = new Date().toISOString();
+
+      // The adapter has no read-only check for this provider (billing, Stripe, AI ...): keep it "not configured" and move on.
+      // Before 2026-11-12 this word reached the health-events insert below, which rejects it, and the whole sweep returned HTTP 500.
+      if (outcome.kind === "not_configured") {
+        const reset = await admin
+          .from("nxq_provider_connections")
+          .update({ status: "not_configured", last_checked_at: now, last_error: null, updated_at: now })
+          .eq("id", connection.id);
+        if (reset.error) throw new Error(`Provider health state update failed: ${reset.error.message}`);
+        notConfigured += 1;
+        continue;
+      }
+
+      const healthStatus = String(outcome.eventStatus);
+      const nextConnectionStatus = connectionStatusFromHealth(healthStatus);
 
       const eventInsert = await admin.from("nxq_provider_health_events").insert({
         provider_connection_id: connection.id,
@@ -224,6 +237,7 @@ Deno.serve(async (req) => {
         degraded,
         errors,
         activity_evidence_connections_skipped: activityEvidence,
+        not_configured: notConfigured,
       },
       target_last_error: null,
     });
