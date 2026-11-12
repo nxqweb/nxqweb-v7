@@ -7,6 +7,7 @@ Why this exists: approve run #5 (QA-14EEDD2E57C6, 2026-11-11) failed because Net
 | `NETLIFY_ACCESS_TOKEN` | provisioning, build, promote, reconcile-domain, storefront provisioning | Netlify personal token `nxqweb-supabase-staging-nov2026` | **2027-11-11** (owner phone reminder about 2027-10-28) | replaced 2026-11-11 by the owner; run #5 failed with 401 before this |
 | `NXQ_NETLIFY_VERIFY_TOKEN` | read-only verify functions, provider health | same Netlify token as above | **2027-11-11** | replaced 2026-11-11 |
 | `NXQ_GITHUB_VERIFY_TOKEN` | 8 read-only verify functions | GitHub fine-grained token (both listed fine-grained tokens, `nxqweb-staging-verify` and `NXQ deployment verifier`, show EXPIRED on GitHub) | unknown, probably already expired | **NOT replaced yet** (next owner task; new fine-grained, read-only, long expiry, pasted by the owner into Supabase) |
+| GitHub environment secret `SUPABASE_ACCESS_TOKEN` (nxq-staging) | every guarded workflow (link, dry run, deploy, secrets check, remote contract query) | Supabase scoped token `nxqweb-github-actions-nov2026-b` (project nxqweb-staging only, Full access) | **2027-11-10** (phone reminder about 2027-10-27) | replaced 2026-11-11; the old `nxqweb-staging` token EXPIRED (last used Nov 4) and caused HTTP 401 in run #284; VERIFIED by run #286 (Link project and migration dry run passed; "Remote database is up to date") |
 | `GITHUB_APP_*` (id, installation id, private key) | repo creation and moving `main` (a GitHub App, not a personal token) | GitHub App | no date known | working (runs #4 and #5 got past the GitHub steps) |
 
 ## Old tokens still listed, to review after the new ones are proven (do not delete blindly)
@@ -15,3 +16,6 @@ Why this exists: approve run #5 (QA-14EEDD2E57C6, 2026-11-11) failed because Net
 
 ## Rule
 Long expiry (about 1 year), the date written here and in Proton Pass, a phone reminder 2 weeks before. Never "No Expiry" for a personal token that acts as the owner.
+
+## Provider health smoke (run #286, 2026-11-11, after both fixes): `checked 3, healthy 2, degraded 0, errors 1`
+Which provider errored is not printed by the workflow; read it on the owner Provider health screen. The expired GitHub verify token (`NXQ_GITHUB_VERIFY_TOKEN`) is the prime suspect. The remaining test of `NETLIFY_ACCESS_TOKEN` is a real QA run.
