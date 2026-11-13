@@ -17,10 +17,10 @@ async function sha256(value:string){const bytes=new TextEncoder().encode(value);
 async function reserveLeadQuota(admin:SupabaseClient,form:FormRow,fingerprint:string){
   const totalIdentity=await sha256(`lead-form:${form.id}`);
   const total=await admin.rpc("nxq_reserve_ingress_capacity",{target_scope_key:`lead-form:${form.id}`,target_operation_key:"lead_total_hourly",target_identity_hash:totalIdentity,target_units:1,target_limit_units:form.hourly_limit,target_window_seconds:3600});
-  if(total.error)throw new Error(`Lead quota reservation failed: ${total.error.message}`);
+  if(total.error){console.error("Lead quota reservation failed:",total.error.message);throw new Error("Lead quota reservation failed.");}
   if(!(total.data as QuotaReservation|null)?.allowed)return total.data as QuotaReservation;
   const perFingerprint=await admin.rpc("nxq_reserve_ingress_capacity",{target_scope_key:`lead-form:${form.id}`,target_operation_key:"lead_fingerprint_hourly",target_identity_hash:fingerprint,target_units:1,target_limit_units:Math.min(8,form.hourly_limit),target_window_seconds:3600});
-  if(perFingerprint.error)throw new Error(`Lead quota reservation failed: ${perFingerprint.error.message}`);
+  if(perFingerprint.error){console.error("Lead quota reservation failed:",perFingerprint.error.message);throw new Error("Lead quota reservation failed.");}
   return perFingerprint.data as QuotaReservation;
 }
 function emailOkay(v:string){return !v||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
@@ -94,7 +94,7 @@ Deno.serve(async(req)=>{
     const submissionAuthorization=await admin.rpc("nxq_authorize_paid_capability",{target_client_id:form.client_id,target_feature_key:"lead_capture",target_resources:{form_submissions:1},target_estimated_provider_cost_cents:0,target_idempotency_key:submissionReservationKey,target_metadata:{form_id:form.id}});
     if(submissionAuthorization.error||submissionAuthorization.data?.allowed!==true)return response({ok:false,error:"Lead intake is unavailable under the current subscription, billing state, or resource limits."},409,origin);
     const leadUrgency=urgency(message);const insert=await admin.from("client_leads").insert({client_id:form.client_id,project_id:form.project_id,source:"website",status:"new",urgency:leadUrgency,service_key:service||null,contact_name:name,contact_email:email||null,contact_phone:phone||null,message,service_area:serviceArea||null,lead_score:score(p),utm:p.utm&&typeof p.utm==="object"?p.utm:{},metadata:{form_id:form.id,origin,challenge_mode:challenge.mode}}).select("id,lead_code").single();
-    if(insert.error||!insert.data){await admin.rpc("nxq_finalize_economic_usage",{target_client_id:form.client_id,target_idempotency_key:submissionReservationKey,target_release:true});throw new Error(`Lead creation failed: ${insert.error?.message||"unknown"}`);}
+    if(insert.error||!insert.data){await admin.rpc("nxq_finalize_economic_usage",{target_client_id:form.client_id,target_idempotency_key:submissionReservationKey,target_release:true});console.error("Lead creation failed:",insert.error?.message||"unknown");throw new Error("Lead creation failed.");}
     const finalized=await admin.rpc("nxq_finalize_economic_usage",{target_client_id:form.client_id,target_idempotency_key:submissionReservationKey,target_actual_provider_cost_cents:0});
     if(finalized.error)throw new Error("Lead usage reservation could not be reconciled.");
     await admin.from("business_lead_intake_attempts").insert({form_id:form.id,client_id:form.client_id,request_fingerprint_hash:fingerprint,outcome:"accepted"});

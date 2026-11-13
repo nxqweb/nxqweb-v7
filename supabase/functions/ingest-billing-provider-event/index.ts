@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { constantTimeEqual } from "../_shared/constant-time-equal.ts";
 
 type BillingEvent={provider_key?:unknown;provider_event_id?:unknown;provider_customer_id?:unknown;event_type?:unknown;amount?:unknown;currency?:unknown;occurred_at?:unknown;normalized_payload?:unknown};
 const headers={"Content-Type":"application/json"};
@@ -9,7 +10,7 @@ function payloadSize(value:unknown){try{return new TextEncoder().encode(JSON.str
 
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return response({ok:false,error:"Method not allowed."},405);
-  if(req.headers.get("x-nxq-billing-adapter-token")!==secret("NXQ_BILLING_ADAPTER_TOKEN"))return response({ok:false,error:"Unauthorized."},401);
+  if(!(await constantTimeEqual(req.headers.get("x-nxq-billing-adapter-token")||"",secret("NXQ_BILLING_ADAPTER_TOKEN"))))return response({ok:false,error:"Unauthorized."},401);
   try{
     const body=await req.json() as BillingEvent;
     const providerKey=text(body.provider_key,80);

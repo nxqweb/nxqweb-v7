@@ -38,5 +38,12 @@ const githubTokenSources = [provision, build, production, maintenance].join("\n"
 check("GitHub installation tokens have no hardcoded ghs_ prefix dependency", !githubTokenSources.includes("ghs_"));
 check("GitHub installation tokens have no hardcoded token-length dependency", !/\btoken\s*\.\s*length\b/.test(githubTokenSources));
 
+const billingIngest = read("supabase/functions/ingest-billing-provider-event/index.ts");
+check("Billing adapter token is compared in constant time", billingIngest.includes('constantTimeEqual(req.headers.get("x-nxq-billing-adapter-token")') && !/get\("x-nxq-billing-adapter-token"\)\s*[!=]==/.test(billingIngest));
+for (const name of ["ingest-business-lead", "ingest-business-analytics"]) {
+  const source = read(`supabase/functions/${name}/index.ts`);
+  check(`${name} never puts a database error message inside a thrown (caller-visible) error`, !/new Error\(`[^`]*\$\{[^}]*error[^}]*\}/.test(source));
+}
+
 console.log(`\n${failures.length ? `${failures.length} runtime security hardening check(s) failed` : "Runtime security hardening contract passed"}.`);
 if (failures.length) process.exit(1);
