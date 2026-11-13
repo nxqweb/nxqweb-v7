@@ -16,7 +16,7 @@ Live Stripe is NOT required in the current launch mode (the billing check is opt
 | When | What | Gated? | Credits |
 |---|---|---|---|
 | Now to Nov 22 | free work only; no QA runs (42.8 credits left, they expire Nov 22) | | 0 |
-| About Nov 19 | refresh the staging evidence (`run_evidence_suite`; the six evidence checks expire after 7 days) and, with it, deploy the sturdier cleanup (`deploy_zero_netlify_readiness`) | yes: owner types the phrase and clicks Approve | 0 |
+| About Nov 19 | refresh the staging evidence (`run_evidence_suite`; the six evidence checks expire after 7 days) after a `deploy_functions` run (all functions, 0 credits: ships the sturdier cleanup and the small tidy-ups written since) | yes: owner types the phrase and clicks Approve | 0 |
 | Nov 23 | credits reset to 300; run the 4 remaining approve runs (budget 45 each = 180) | each run: owner starts + approves | 120-180 |
 | Late Nov | 10 of 10; owner records the launch signoff only when the other 5 are ready | owner | 0 |
 | Weekly | evidence refresh (7-day expiry) | yes, free | 0 |

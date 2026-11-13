@@ -14,6 +14,8 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
+| `05_tighten_two_read_and_insert_policies.sql` | Security review 2026-11-13: `ai_rules` reads become owner-only (the old policy was named "Temporary"); the change-request insert policy is rewritten to state its project check explicitly (no behaviour change) | `docs/NXQ_RUNTIME_HANDOFF.md`, "UPDATE 2026-11-13" |
+| `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
