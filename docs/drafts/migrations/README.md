@@ -16,6 +16,8 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 | `05_tighten_two_read_and_insert_policies.sql` | Security review 2026-11-13: `ai_rules` reads become owner-only (the old policy was named "Temporary"); the change-request insert policy is rewritten to state its project check explicitly (no behaviour change) | `docs/NXQ_RUNTIME_HANDOFF.md`, "UPDATE 2026-11-13" |
 | `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
+| `07_untracked_stock_is_orderable.sql` | Known bug: a product whose stock is not tracked showed "Sold out" on the public store page although the order function accepts it. One line in the listing function; no front-end change. Test fails against the old function (control) | `docs/NXQ_RUNTIME_HANDOFF.md`, "UPDATE 2026-11-13" |
+| `08_referral_credit_lock.sql` | Known bug: no per-client lock on referral credit. One statement in the credit function. Real two-session race run by hand on 2026-11-13 on the local database: old function recorded 80.00 of credit (40 + 40) when 45 existed; new function recorded 45.00 (40 + 5). The referral program is OFF today | same |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
