@@ -1,4 +1,4 @@
--- DRAFT (not a real migration; needs the owner's approval to promote and apply).
+-- 288: promoted from draft 05 on 2026-11-13 (owner chose Option A in chat); NOT applied until the owner approves the guarded run.
 -- From the 2026-11-13 security review. Two corrections, no product decision involved:
 --
 -- 1. public.ai_rules: the read policy was created as "Temporary" for the public role. Nothing in the app,

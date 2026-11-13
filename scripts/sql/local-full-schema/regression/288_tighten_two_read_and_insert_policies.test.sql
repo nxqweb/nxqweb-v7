@@ -1,4 +1,4 @@
--- Sidecar test for 05 (tighten the ai_rules read policy and the change-request insert policy). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 288 (was draft 05) (tighten the ai_rules read policy and the change-request insert policy). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 
@@ -49,7 +49,7 @@ begin
     values (c1, p1, 'design', 'Own project request', 'Fixture request for the client''s own project.', u1);
   reset role;
 
-  -- ... but not with its own client id and ANOTHER client's project (already refused before the draft,
+  -- ... but not with its own client id and ANOTHER client's project (already refused before this migration,
   -- through row security on projects; this pins the behaviour so the rewritten policy cannot loosen it)
   blocked := false;
   perform pg_temp.as_user(u1);

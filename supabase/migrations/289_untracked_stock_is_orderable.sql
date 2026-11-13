@@ -1,4 +1,4 @@
--- DRAFT (not a real migration; needs the owner's approval to promote and apply).
+-- 289: promoted from draft 07 on 2026-11-13 (owner chose Option A in chat); NOT applied until the owner approves the guarded run.
 -- Fixes a known bug from the handoff list: a product whose stock is NOT tracked showed "Sold out" on the
 -- public store page, although the order function accepts it (create_public_direct_payment_order only checks
 -- stock when track_inventory is true). The listing reported such a product's variants with the "deny" policy

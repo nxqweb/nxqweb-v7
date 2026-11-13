@@ -1,4 +1,4 @@
--- DRAFT (not a real migration; needs the owner's approval to promote and apply).
+-- 290: promoted from draft 08 on 2026-11-13 (owner chose Option A in chat); NOT applied until the owner approves the guarded run.
 -- Fixes a known bug from the handoff list: the referral-credit function had no lock per client.
 -- Two invoices for the SAME client handled at the same moment could each read the same available credit
 -- before either used it, and the second could record more credit than was really left.

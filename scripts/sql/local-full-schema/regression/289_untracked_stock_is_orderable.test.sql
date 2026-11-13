@@ -1,4 +1,4 @@
--- Sidecar test for 07 (untracked stock is orderable on the public store page). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 289 (was draft 07) (untracked stock is orderable on the public store page). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

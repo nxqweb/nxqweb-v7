@@ -1,6 +1,6 @@
--- Sidecar test for 08 (per-client lock on referral credit). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 290 (was draft 08) (per-client lock on referral credit). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 -- A single session cannot stage a real race; this pins that the lock is taken and that results are unchanged.
--- The two-session race itself was run by hand on 2026-11-13 (see the README row for this draft).
+-- The two-session race itself was run by hand on 2026-11-13 (see docs/drafts/migrations/README.md).
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

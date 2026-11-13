@@ -14,10 +14,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
-| `05_tighten_two_read_and_insert_policies.sql` | Security review 2026-11-13: `ai_rules` reads become owner-only (the old policy was named "Temporary"); the change-request insert policy is rewritten to state its project check explicitly (no behaviour change) | `docs/NXQ_RUNTIME_HANDOFF.md`, "UPDATE 2026-11-13" |
 | `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
-| `07_untracked_stock_is_orderable.sql` | Known bug: a product whose stock is not tracked showed "Sold out" on the public store page although the order function accepts it. One line in the listing function; no front-end change. Test fails against the old function (control) | `docs/NXQ_RUNTIME_HANDOFF.md`, "UPDATE 2026-11-13" |
-| `08_referral_credit_lock.sql` | Known bug: no per-client lock on referral credit. One statement in the credit function. Real two-session race run by hand on 2026-11-13 on the local database: old function recorded 80.00 of credit (40 + 40) when 45 existed; new function recorded 45.00 (40 + 5). The referral program is OFF today | same |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -62,3 +59,5 @@ Draft 09 (AI Desk build plans) was promoted on 2026-10-18 (owner chose "A") to r
 Note: `11_site_assistant.sql` was promoted to real migration 278 (`supabase/migrations/278_site_assistant.sql`) on 2026-10-26 with the owner's approval; it is in the repo but NOT applied (`docs/SITE_ASSISTANT_PLAN.md`, "Promotion progress").
 
 The QA-maintenance cost pool draft (`05_qa_maintenance_off_the_cost_pool`) was promoted on 2026-11-04 (owner chose option C in chat) to real migration `287_qa_maintenance_off_the_cost_pool`; its test now lives in `scripts/sql/local-full-schema/regression/`. APPLIED to staging on 2026-11-04 (run #282; the owner typed the phrase and approved; the read-only dry run #281 listed exactly 287).
+
+Drafts 05, 07 and 08 from the 2026-11-13 review were promoted on 2026-11-13 (owner chose Option A in chat) to real migrations `288_tighten_two_read_and_insert_policies`, `289_untracked_stock_is_orderable` and `290_referral_credit_lock`; their tests now live in `scripts/sql/local-full-schema/regression/`. NOT applied to staging. For 290, a real two-session race was run by hand on the local database on 2026-11-13: the old function recorded 80.00 of credit (40 + 40) when 45 existed, the new one 45.00 (40 + 5). Draft 06 (a product decision) stays a draft.
