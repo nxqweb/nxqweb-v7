@@ -1,4 +1,4 @@
--- DRAFT (not a real migration; needs the owner's approval to promote and apply).
+-- 292: promoted from draft 10 on 2026-11-13 (owner chose "promote 09 and 10" in chat); NOT applied until the owner approves the guarded run.
 -- Fixes a known bug from the handoff list: "orders have no idempotency key" on the direct-payment path (the protected checkout
 -- already has one). A retry after a lost answer, a double submit or two open tabs created a second order and reserved stock twice.
 -- Change: the key rides INSIDE the customer details (customer_payload->>'idempotency_key'), so no function signature changes and

@@ -1,4 +1,4 @@
--- DRAFT (not a real migration; needs the owner's approval to promote and apply).
+-- 291: promoted from draft 09 on 2026-11-13 (owner chose "promote 09 and 10" in chat); NOT applied until the owner approves the guarded run.
 -- Fixes a known bug from the handoff list: "order mode is not enforced by the server".
 -- A store can be set to take orders by email or as a menu (settings->>'order_mode' = 'email' or 'menu'); the public page then hides
 -- the online checkout, but the order functions never looked at the mode, so anyone calling them directly could still create orders,

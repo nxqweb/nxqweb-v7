@@ -1,4 +1,4 @@
--- Sidecar test for 10 (idempotency key on direct-payment orders). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 292 (was draft 10) (idempotency key on direct-payment orders). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

@@ -1,4 +1,4 @@
--- Sidecar test for 09 (the server enforces the store's order mode). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 291 (was draft 09) (the server enforces the store's order mode). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 
