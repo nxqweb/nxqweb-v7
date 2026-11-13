@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import {
   addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, friendlyCheckoutError, genericCheckoutError, isPurchasable, lowStockThreshold,
-  maxCartLines, maxQuantityPerLine, priceSummary, productHash, productImages, productInStock, restoreCart, saleInfo, serializeCart, slugFromHash, stockLabel, validateCheckout, variantStock,
+  maxCartLines, maxQuantityPerLine, priceSummary, productHash, productImages, productInStock, refitCart, isStockRefusal, restoreCart, saleInfo, serializeCart, slugFromHash, stockLabel, validateCheckout, variantStock,
 } from "../src/lib/storeCatalog.ts";
 
 let failures = 0;
@@ -81,6 +81,22 @@ check("every kept server sentence really exists in a migration (so the list cann
 check("first sentence for the hero: stops at the sentence end, trims, cuts long text on a word", firstSentence("Small-batch candles. Made in Sacramento.") === "Small-batch candles." && firstSentence("  Hello   world  ") === "Hello world" && firstSentence("") === ""
   && firstSentence("word ".repeat(60)).endsWith("…") && firstSentence("word ".repeat(60)).length <= 140 && firstSentence("Wow! Great.") === "Wow!");
 check("product links in the address bar round-trip and refuse anything odd", productHash("vanilla-candle") === "#product-vanilla-candle" && slugFromHash("#product-vanilla-candle") === "vanilla-candle" && slugFromHash("#product-<script>") === "" && slugFromHash("#other") === "" && slugFromHash("") === "");
+
+// ---- after a stock refusal the cart is re-fitted to fresh products
+check("stock refusal: recognised only for stock and availability messages", isStockRefusal("Vanilla Candle does not have enough available stock.") && isStockRefusal("A cart item is no longer available.")
+  && isStockRefusal("A product in this cart is no longer available.") && !isStockRefusal("A valid customer email is required.") && !isStockRefusal(null) && !isStockRefusal(""));
+check("refit: lowers a quantity above what is left, removes sold-out and vanished options, keeps the rest, uses the FRESH price", (() => {
+  const oldA = p("a", "A", [v("va", 10, 9)]); const oldB = p("b", "B", [v("vb", 5, 9)]); const oldC = p("c", "C", [v("vc", 7, 9)]); const oldD = p("d", "D", [v("vd", 3, 9)]);
+  const cart = [{ product: oldA, variant: oldA.variants[0], quantity: 6 }, { product: oldB, variant: oldB.variants[0], quantity: 2 }, { product: oldC, variant: oldC.variants[0], quantity: 1 }, { product: oldD, variant: oldD.variants[0], quantity: 4 }];
+  const fresh = [p("a", "A", [v("va", 12, 2)]), p("b", "B", [v("vb", 5, 0)]), p("d", "D", [v("vd", 3, 9)])]; // A: 2 left and a new price, B: sold out, C: gone, D: unchanged
+  const r = refitCart(cart, fresh);
+  return r.changed && r.cart.length === 2 && r.cart[0].variant.id === "va" && r.cart[0].quantity === 2 && r.cart[0].variant.price === 12 && r.cart[1].variant.id === "vd" && r.cart[1].quantity === 4;
+})());
+check("refit: nothing to change means changed is false and the cart is the same size; an untracked option keeps its quantity", (() => {
+  const A = p("a", "A", [v("va", 10, 9)]); const M = p("m", "M", [v("vm", 10, 0, "continue")]);
+  const r = refitCart([{ product: A, variant: A.variants[0], quantity: 3 }, { product: M, variant: M.variants[0], quantity: 5 }], [A, M]);
+  return !r.changed && r.cart.length === 2 && r.cart[0].quantity === 3 && r.cart[1].quantity === 5 && refitCart([], [A]).cart.length === 0 && !refitCart([], [A]).changed;
+})());
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store-catalog checks passed (offline).");
 process.exit(failures ? 1 : 0);

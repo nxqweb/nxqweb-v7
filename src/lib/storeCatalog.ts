@@ -121,6 +121,24 @@ export function restoreCart(raw: string | null, products: StoreProduct[]): CartL
   }
   return lines;
 }
+// After the store refused an order for stock, the page asks for fresh products and re-fits the cart to them:
+// lines whose option is gone or sold out are removed, quantities above what is left are lowered.
+export const isStockRefusal = (message: unknown): boolean =>
+  typeof message === "string" && /(does not have enough (available )?stock|is no longer available)/i.test(message);
+export function refitCart(cart: CartLine[], products: StoreProduct[]): { cart: CartLine[]; changed: boolean } {
+  const lines: CartLine[] = [];
+  let changed = false;
+  for (const line of cart) {
+    const product = products.find((p) => (p.variants || []).some((variant) => variant.id === line.variant.id));
+    const variant = product?.variants.find((candidate) => candidate.id === line.variant.id);
+    if (!product || !variant) { changed = true; continue; }
+    const quantity = Math.min(line.quantity, variantStock(variant).max);
+    if (quantity < 1) { changed = true; continue; }
+    if (quantity !== line.quantity) changed = true;
+    lines.push({ product, variant, quantity });
+  }
+  return { cart: lines, changed };
+}
 export const cartStorageKey = (slug: string) => `nxq-cart-v1-${slug}`;
 
 // ---------- checkout form

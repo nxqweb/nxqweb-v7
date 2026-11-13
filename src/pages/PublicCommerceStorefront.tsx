@@ -15,7 +15,7 @@ import { dedupeProfile, emptyWebsite, websiteFromRow, websiteHasInfo, websiteHas
 import { StoreAnnouncement, StoreInfo, StoreMessageAndVerse } from "../components/StoreWebsiteSections";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 import {
-  addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, productHash, restoreCart, serializeCart, slugFromHash,
+  addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, isStockRefusal, productHash, refitCart, restoreCart, serializeCart, slugFromHash,
   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
 } from "../lib/storeCatalog";
 
@@ -291,8 +291,21 @@ export function PublicCommerceStorefront() {
         shipping_address: { address: form.address },
       },
     });
-    if (result.error) setError(friendlyCheckoutError(result.error.message));
-    else {
+    if (result.error) {
+      let message = friendlyCheckoutError(result.error.message);
+      // Stock changed while the customer was shopping: get fresh numbers and fit the cart to them, so the next try can work.
+      if (isStockRefusal(result.error.message)) {
+        const fresh = await supabase.rpc("get_public_stripe_ready_commerce_storefront", { store_slug_value: slug });
+        if (!fresh.error && fresh.data) {
+          const freshData = fresh.data as StoreData;
+          const refit = refitCart(cart, freshData.products);
+          setData(freshData);
+          setCart(refit.cart);
+          if (refit.changed) message = `${message} Your cart was updated to what is available now.`;
+        }
+      }
+      setError(message);
+    } else {
       setOrder(result.data as OrderResult);
       setCart([]);
       setToast("");
