@@ -56,6 +56,14 @@ async function creditNewInvoice(admin:ReturnType<typeof createClient<DynamicData
   if(result.outcome==="uncertain"){
     // Stripe may or may not have added the line. The credit stays used up so nobody is credited twice; the owner has to look at this invoice in Stripe.
     await admin.from("activity_logs").insert({client_id:clientId,actor_type:"system",action:"referral_credit_uncertain",details:{provider_invoice_id:String(object.id||"").slice(0,180),credit_cents:result.creditCents,reason:result.reason}});
+    // Also put it where the owner looks: the exception center reads automation_escalations. Stripe retries a failed webhook, so one open item per invoice.
+    try{
+      const invoiceRef=String(object.id||"").slice(0,180);
+      const open=await admin.from("automation_escalations").select("id").eq("escalation_type","referral_credit_uncertain").in("status",["open","acknowledged"]).eq("client_id",clientId).contains("details",{provider_invoice_id:invoiceRef}).limit(1);
+      if(!open.error&&(open.data||[]).length===0){
+        await admin.from("automation_escalations").insert({client_id:clientId,escalation_type:"referral_credit_uncertain",severity:"high",title:"Referral credit needs a look in Stripe",summary:"A referral credit was used up for a Stripe invoice, but Stripe did not confirm the discount line. Open that invoice in Stripe and check whether the credit line is on it. The credit stays used so nobody is credited twice.",details:{provider_invoice_id:invoiceRef,credit_cents:result.creditCents,reason:result.reason}});
+      }
+    }catch{/* the activity log above already holds the record; never fail the webhook answer because of this */}
     return response({ok:false,error:"Referral credit result is uncertain.",reason:result.reason},500);
   }
   if(result.outcome==="failed_released")return response({ok:false,reason:result.reason,credit_returned:true},202);
