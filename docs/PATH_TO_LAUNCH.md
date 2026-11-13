@@ -27,7 +27,7 @@ Live Stripe is NOT required in the current launch mode (the billing check is opt
 | Jun 16, 2027 | launch: waitlist invited in waves; AI Desk copy-paste covers the missing AI key; live Stripe once it exists | | |
 
 ## Recurring chores (so nothing silently dies again)
-- Tokens (names and dates only, in `docs/EXPIRING_TOKENS.md`): Supabase (10 Nov 2027), Netlify (11 Nov 2027), GitHub verify (11 Nov 2027); phone reminders about 2 weeks before each.
+- Tokens (names and expiry month only, in `docs/EXPIRING_TOKENS.md`; exact days in the owner's Proton Pass): Supabase (Nov 2027), Netlify (Nov 2027), GitHub verify (Nov 2027); phone reminders about 2 weeks before each.
 - Netlify credit cycle: 300 free credits, resets on the 23rd; production deploys 15 each; previews not billed; builds stay OFF on the main staging site.
 - Before every push: `npm run test:ci-parity` (74 commands).
 
@@ -35,5 +35,5 @@ Live Stripe is NOT required in the current launch mode (the billing check is opt
 - Lift the spending hold early for the AI key and email? (launch is Jun 16, the hold ends about Jul)
 - Lawyer read of Terms and Privacy (parked; needed before real clients rely on the legal wording).
 - The creation-time duplicate Netlify build (15 credits per site) is researched but unsolved; parked until the ten runs are done (`docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md`).
-- Housekeeping: Proton Pass notes for the three new tokens, delete the old expired Netlify and GitHub tokens, delete the unused full-access `cli_eyetw...` Supabase tokens if they are yours (unconfirmed).
+- Housekeeping: Proton Pass notes for the three new tokens, delete the old expired Netlify and GitHub tokens, delete the three old unused full-access Supabase CLI tokens if they are yours (unconfirmed).
 Decisions already settled (2026-11-12): `docs/OWNER_DECISION_SHEET.md`.

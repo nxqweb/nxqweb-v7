@@ -1,13 +1,15 @@
-# Tokens and secrets that expire (names and dates only; NEVER put a value in this file) (written 2026-11-11)
+# Tokens and secrets that expire (names and expiry MONTH only; NEVER put a value in this file) (written 2026-11-11)
+
+**Public-repo rule (owner, 2026-11-13):** this repository is public, so this file carries the expiry MONTH only. The exact day lives in the owner's Proton Pass note and phone reminder (owner housekeeping, not yet confirmed done). Exact days written before 2026-11-13 remain in git history.
 
 Why this exists: approve run #5 (QA-14EEDD2E57C6, 2026-11-11) failed because Netlify answered 401 to our token; see the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`. Nothing reminded us a token had an end date. Check this table before every QA run and before launch.
 
 | Supabase Edge secret | Feeds | Token (where it was made) | Expires | Status |
 |---|---|---|---|---|
-| `NETLIFY_ACCESS_TOKEN` | provisioning, build, promote, reconcile-domain, storefront provisioning | Netlify personal token `nxqweb-supabase-staging-nov2026` | **2027-11-11** (owner phone reminder about 2027-10-28) | replaced 2026-11-11 by the owner; run #5 failed with 401 before this |
-| `NXQ_NETLIFY_VERIFY_TOKEN` | read-only verify functions, provider health | same Netlify token as above | **2027-11-11** | replaced 2026-11-11 |
-| `NXQ_GITHUB_VERIFY_TOKEN` | 8 read-only verify functions | GitHub fine-grained token (both listed fine-grained tokens, `nxqweb-staging-verify` and `NXQ deployment verifier`, show EXPIRED on GitHub) | unknown, probably already expired | replaced 2026-11-11 by the owner (new fine-grained token `nxqweb-staging-verify-nov2026`, All repositories, Contents + Metadata read-only, expires **2027-11-11**; phone reminder about 2027-10-28); VERIFIED 2026-11-12: Provider health shows github healthy (last success 10:30 AM) |
-| GitHub environment secret `SUPABASE_ACCESS_TOKEN` (nxq-staging) | every guarded workflow (link, dry run, deploy, secrets check, remote contract query) | Supabase scoped token `nxqweb-github-actions-nov2026-b` (project nxqweb-staging only, Full access) | **2027-11-10** (phone reminder about 2027-10-27) | replaced 2026-11-11; the old `nxqweb-staging` token EXPIRED (last used Nov 4) and caused HTTP 401 in run #284; VERIFIED by run #286 (Link project and migration dry run passed; "Remote database is up to date") |
+| `NETLIFY_ACCESS_TOKEN` | provisioning, build, promote, reconcile-domain, storefront provisioning | Netlify personal token `nxqweb-supabase-staging-nov2026` | **Nov 2027** (owner phone reminder about late Oct 2027) | replaced 2026-11-11 by the owner; run #5 failed with 401 before this |
+| `NXQ_NETLIFY_VERIFY_TOKEN` | read-only verify functions, provider health | same Netlify token as above | **Nov 2027** | replaced 2026-11-11 |
+| `NXQ_GITHUB_VERIFY_TOKEN` | 8 read-only verify functions | GitHub fine-grained token (both listed fine-grained tokens, `nxqweb-staging-verify` and `NXQ deployment verifier`, show EXPIRED on GitHub) | unknown, probably already expired | replaced 2026-11-11 by the owner (new fine-grained token `nxqweb-staging-verify-nov2026`, All repositories, Contents + Metadata read-only, expires **Nov 2027**; phone reminder about late Oct 2027); VERIFIED 2026-11-12: Provider health shows github healthy (last success 10:30 AM) |
+| GitHub environment secret `SUPABASE_ACCESS_TOKEN` (nxq-staging) | every guarded workflow (link, dry run, deploy, secrets check, remote contract query) | Supabase scoped token `nxqweb-github-actions-nov2026-b` (project nxqweb-staging only, Full access) | **Nov 2027** (phone reminder about late Oct 2027) | replaced 2026-11-11; the old `nxqweb-staging` token EXPIRED (last used Nov 4) and caused HTTP 401 in run #284; VERIFIED by run #286 (Link project and migration dry run passed; "Remote database is up to date") |
 | `GITHUB_APP_*` (id, installation id, private key) | repo creation and moving `main` (a GitHub App, not a personal token) | GitHub App | no date known | working (runs #4 and #5 got past the GitHub steps) |
 
 ## Old tokens still listed, to review after the new ones are proven (do not delete blindly)
@@ -15,7 +17,7 @@ Why this exists: approve run #5 (QA-14EEDD2E57C6, 2026-11-11) failed because Net
 - GitHub classic `NXQ Web Automation` (admin:org, repo, workflow, no expiry, "Never used"): nothing in the code uses a classic token; delete after a clean run.
 
 ## Rule
-Long expiry (about 1 year), the date written here and in Proton Pass, a phone reminder 2 weeks before. Never "No Expiry" for a personal token that acts as the owner.
+Long expiry (about 1 year), the expiry month written here, the exact date in Proton Pass, a phone reminder 2 weeks before. Never "No Expiry" for a personal token that acts as the owner.
 
 ## Provider health smoke (run #286, 2026-11-11, after both fixes): `checked 3, healthy 2, degraded 0, errors 1`
 Which provider errored is not printed by the workflow; read it on the owner Provider health screen. The expired GitHub verify token (`NXQ_GITHUB_VERIFY_TOKEN`) is the prime suspect. The remaining test of `NETLIFY_ACCESS_TOKEN` is a real QA run.

@@ -117,6 +117,24 @@ equivalent:
   done/left checklist for that chat specifically (checkboxes: what shipped
   this chat, what's still open from it).
 
+## Public repository writing rule (owner decision, 2026-11-13)
+
+This repository is PUBLIC and stays public until the owner says otherwise
+(the `nxq-staging` Approve gate is believed to depend on it on the free
+plan). Do not change its visibility, and do not suggest going private
+without first naming the replacement Approve gate. Write every file,
+commit message and workflow log line as if a stranger reads it:
+
+- No personal identifiers (personal emails, handles, account names).
+- No secret values ever (unchanged); token expiry as a MONTH only, the exact
+  day stays in the owner's password manager.
+- No new money, margin or pricing-strategy detail beyond the operational
+  minimum the next session needs to act safely.
+- No step-by-step description of an unfixed weakness: name the fix to make,
+  give the detail to the owner in chat.
+- Do not rewrite history to remove old text; that is a destructive gated
+  action.
+
 ## Verification discipline
 
 - Treat a locally cached `origin/<branch>` ref as untrusted until refreshed
