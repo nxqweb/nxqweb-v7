@@ -139,6 +139,14 @@ export function refitCart(cart: CartLine[], products: StoreProduct[]): { cart: C
   }
   return { cart: lines, changed };
 }
+// One key per checkout attempt, sent with the order so a retry, a double submit or a second tab gets the SAME order back from the
+// server instead of a second one. 12 to 120 letters, digits, hyphens or underscores (the database refuses anything else).
+export function newCheckoutKey(): string {
+  const random = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  return `co-${random}`.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 120);
+}
 export const cartStorageKey = (slug: string) => `nxq-cart-v1-${slug}`;
 
 // ---------- checkout form

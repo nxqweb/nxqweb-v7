@@ -15,7 +15,7 @@ import { dedupeProfile, emptyWebsite, websiteFromRow, websiteHasInfo, websiteHas
 import { StoreAnnouncement, StoreInfo, StoreMessageAndVerse } from "../components/StoreWebsiteSections";
 import { mergeCheckoutAutofill, normalizeProfileInput, profileToCheckoutFields, shopperAccountPath, type ShopperProfileRow } from "../lib/shopperAccount";
 import {
-  addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, isStockRefusal, productHash, refitCart, restoreCart, serializeCart, slugFromHash,
+  addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, isStockRefusal, newCheckoutKey, productHash, refitCart, restoreCart, serializeCart, slugFromHash,
   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
 } from "../lib/storeCatalog";
 
@@ -27,6 +27,9 @@ export function PublicCommerceStorefront() {
   const [data, setData] = useState<StoreData | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [cartReady, setCartReady] = useState(false);
+  // The key for this checkout attempt. It stays the same for a retry of the same cart and is dropped when the cart changes or an order goes through.
+  const checkoutKeyRef = useRef("");
+  useEffect(() => { checkoutKeyRef.current = ""; }, [cart]);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
   const [fieldErrors, setFieldErrors] = useState<CheckoutErrors>({});
   const [accountsEnabled, setAccountsEnabled] = useState(false);
@@ -280,6 +283,7 @@ export function PublicCommerceStorefront() {
       return;
     }
     setBusy(true); setError("");
+    if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
     const result = await supabase.rpc("create_public_stripe_ready_direct_payment_order", {
       store_slug_value: slug,
       items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
@@ -289,6 +293,7 @@ export function PublicCommerceStorefront() {
         phone: form.phone,
         note,
         shipping_address: { address: form.address },
+        idempotency_key: checkoutKeyRef.current,
       },
     });
     if (result.error) {

@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import {
   addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, friendlyCheckoutError, genericCheckoutError, isPurchasable, lowStockThreshold,
-  maxCartLines, maxQuantityPerLine, priceSummary, productHash, productImages, productInStock, refitCart, isStockRefusal, restoreCart, saleInfo, serializeCart, slugFromHash, stockLabel, validateCheckout, variantStock,
+  maxCartLines, maxQuantityPerLine, priceSummary, productHash, productImages, productInStock, refitCart, isStockRefusal, newCheckoutKey, restoreCart, saleInfo, serializeCart, slugFromHash, stockLabel, validateCheckout, variantStock,
 } from "../src/lib/storeCatalog.ts";
 
 let failures = 0;
@@ -81,6 +81,12 @@ check("every kept server sentence really exists in a migration (so the list cann
 check("first sentence for the hero: stops at the sentence end, trims, cuts long text on a word", firstSentence("Small-batch candles. Made in Sacramento.") === "Small-batch candles." && firstSentence("  Hello   world  ") === "Hello world" && firstSentence("") === ""
   && firstSentence("word ".repeat(60)).endsWith("…") && firstSentence("word ".repeat(60)).length <= 140 && firstSentence("Wow! Great.") === "Wow!");
 check("product links in the address bar round-trip and refuse anything odd", productHash("vanilla-candle") === "#product-vanilla-candle" && slugFromHash("#product-vanilla-candle") === "vanilla-candle" && slugFromHash("#product-<script>") === "" && slugFromHash("#other") === "" && slugFromHash("") === "");
+
+// ---- the checkout key that makes a retried order safe
+check("checkout key: 12 to 120 letters, digits, hyphens or underscores (what the database accepts), and every attempt gets a new one", (() => {
+  const a = newCheckoutKey(); const b = newCheckoutKey();
+  return /^[A-Za-z0-9_-]{12,120}$/.test(a) && /^[A-Za-z0-9_-]{12,120}$/.test(b) && a !== b;
+})());
 
 // ---- after a stock refusal the cart is re-fitted to fresh products
 check("stock refusal: recognised only for stock and availability messages", isStockRefusal("Vanilla Candle does not have enough available stock.") && isStockRefusal("A cart item is no longer available.")
