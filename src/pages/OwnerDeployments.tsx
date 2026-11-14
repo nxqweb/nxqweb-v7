@@ -12,6 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+import { formatDateTimeShort as formatDateTime, formatStatus } from "../lib/format";
 
 type ClientRow = {
   id: string;
@@ -73,17 +74,6 @@ type VerificationResult = {
   checks: Record<string, VerificationCheck>;
   note: string;
 };
-
-function formatStatus(value: string) {
-  return value.replaceAll("_", " ");
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 function shortCommit(value: string | null) {
   return value ? value.slice(0, 8) : "None yet";
@@ -179,7 +169,6 @@ export function OwnerDeployments() {
   );
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
-  const selectedConfig = configs.find((config) => config.project_id === selectedProjectId) || null;
 
   function loadProjectIntoForm(projectId: string) {
     setSelectedProjectId(projectId);
@@ -244,25 +233,15 @@ export function OwnerDeployments() {
     setActionMessage("");
     setErrorMessage("");
 
-    const saveResult = await supabase
-      .from("project_deployment_configs")
-      .upsert(
-        {
-          project_id: selectedProject.id,
-          client_id: selectedProject.client_id,
-          github_owner: cleanGithubOwner || null,
-          github_repo: cleanGithubRepo || null,
-          production_branch: cleanProductionBranch,
-          netlify_site_id: cleanNetlifySiteId || null,
-          production_url: cleanProductionUrl || null,
-          auto_publish_locked: autoPublishLocked,
-          last_deployment_status: selectedConfig?.last_deployment_status || "not_configured",
-          last_deployed_commit: selectedConfig?.last_deployed_commit || null,
-        },
-        { onConflict: "project_id" }
-      )
-      .select(deploymentConfigSelect)
-      .single();
+    const saveResult = await supabase.rpc("owner_save_deployment_connection", {
+      target_project_id: selectedProject.id,
+      target_github_owner: cleanGithubOwner || null,
+      target_github_repo: cleanGithubRepo || null,
+      target_production_branch: cleanProductionBranch,
+      target_netlify_site_id: cleanNetlifySiteId || null,
+      target_production_url: cleanProductionUrl || null,
+      target_auto_publish_locked: autoPublishLocked,
+    });
 
     setIsSaving(false);
 

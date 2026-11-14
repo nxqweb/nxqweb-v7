@@ -1,0 +1,124 @@
+name: NXQ Sync Staging Local AI Adapter
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type APPLY-NXQ-SUPABASE-STAGING exactly"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    environment: nxq-staging
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+      NXQ_AI_PROVIDER_ROUTE: ${{ secrets.NXQ_AI_PROVIDER_ROUTE }}
+      NXQ_LOCAL_AI_ADAPTER_URL: ${{ secrets.NXQ_LOCAL_AI_ADAPTER_URL }}
+      NXQ_LOCAL_AI_ADAPTER_TOKEN: ${{ secrets.NXQ_LOCAL_AI_ADAPTER_TOKEN }}
+      NXQ_LOCAL_AI_ADAPTER_MODEL: ${{ secrets.NXQ_LOCAL_AI_ADAPTER_MODEL }}
+      NXQ_LOCAL_AI_ADAPTER_PROTOCOL: ${{ secrets.NXQ_LOCAL_AI_ADAPTER_PROTOCOL }}
+      SUPABASE_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked tooling
+        run: npm ci
+
+      - name: Verify fixed staging branch and confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_NAME" != "safe/checkpoint-autonomy-wave35-sales" ]; then
+            echo "Refused: this workflow is restricted to the fixed NXQ staging branch."
+            exit 1
+          fi
+          if [ "${{ inputs.confirmation }}" != "APPLY-NXQ-SUPABASE-STAGING" ]; then
+            echo "Mutation refused. Exact confirmation phrase is required."
+            exit 1
+          fi
+
+      - name: Validate protected local-adapter configuration without displaying values
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          node --input-type=module <<'NODE'
+          const required = [
+            "SUPABASE_ACCESS_TOKEN",
+            "SUPABASE_PROJECT_REF",
+            "NXQ_AI_PROVIDER_ROUTE",
+            "NXQ_LOCAL_AI_ADAPTER_URL",
+            "NXQ_LOCAL_AI_ADAPTER_TOKEN",
+            "NXQ_LOCAL_AI_ADAPTER_MODEL",
+            "NXQ_LOCAL_AI_ADAPTER_PROTOCOL",
+          ];
+          for (const name of required) {
+            const value = process.env[name]?.trim();
+            if (!value) throw new Error(`Missing protected staging configuration: ${name}`);
+          }
+
+          if (process.env.NXQ_AI_PROVIDER_ROUTE.trim() !== "local_adapter") {
+            throw new Error("NXQ_AI_PROVIDER_ROUTE must be local_adapter for this staging-only workflow.");
+          }
+          if (process.env.NXQ_LOCAL_AI_ADAPTER_MODEL.trim() !== "qwen3:14b") {
+            throw new Error("NXQ_LOCAL_AI_ADAPTER_MODEL must be qwen3:14b for the guarded staging proof path.");
+          }
+          if (process.env.NXQ_LOCAL_AI_ADAPTER_PROTOCOL.trim() !== "openai_chat_completions") {
+            throw new Error("NXQ_LOCAL_AI_ADAPTER_PROTOCOL must be openai_chat_completions.");
+          }
+
+          const rawUrl = process.env.NXQ_LOCAL_AI_ADAPTER_URL.trim();
+          let url;
+          try { url = new URL(rawUrl); }
+          catch { throw new Error("NXQ_LOCAL_AI_ADAPTER_URL must be a valid URL."); }
+          const host = url.hostname.toLowerCase();
+          const privateIpv4 = /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host);
+          const privateIpv6 = host === "::1" || /^\[?(?:fc|fd|fe[89ab])/i.test(host);
+          if (url.protocol !== "https:" || url.username || url.password || host === "localhost" || privateIpv4 || privateIpv6) {
+            throw new Error("NXQ_LOCAL_AI_ADAPTER_URL must be a credential-free public HTTPS endpoint.");
+          }
+
+          const token = process.env.NXQ_LOCAL_AI_ADAPTER_TOKEN;
+          if (token !== token.trim() || token.length < 32 || /[\u0000-\u001f\u007f]/.test(token)) {
+            throw new Error("NXQ_LOCAL_AI_ADAPTER_TOKEN is not safe for the guarded staging bridge.");
+          }
+          console.log("Protected local-adapter configuration shape validated; no values displayed.");
+          NODE
+
+      - name: Synchronize only the five guarded local-adapter secrets to Supabase staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          secrets_file="$RUNNER_TEMP/nxq-staging-local-ai-adapter.env"
+          trap 'rm -f "$secrets_file"' EXIT
+
+          {
+            printf 'NXQ_AI_PROVIDER_ROUTE=%s\n' "$NXQ_AI_PROVIDER_ROUTE"
+            printf 'NXQ_LOCAL_AI_ADAPTER_URL=%s\n' "$NXQ_LOCAL_AI_ADAPTER_URL"
+            printf 'NXQ_LOCAL_AI_ADAPTER_TOKEN=%s\n' "$NXQ_LOCAL_AI_ADAPTER_TOKEN"
+            printf 'NXQ_LOCAL_AI_ADAPTER_MODEL=%s\n' "$NXQ_LOCAL_AI_ADAPTER_MODEL"
+            printf 'NXQ_LOCAL_AI_ADAPTER_PROTOCOL=%s\n' "$NXQ_LOCAL_AI_ADAPTER_PROTOCOL"
+          } > "$secrets_file"
+          chmod 600 "$secrets_file"
+
+          npx --no-install supabase secrets set \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --env-file "$secrets_file"
+
+          rm -f "$secrets_file"
+          echo "Guarded staging local-AI adapter configuration synchronized; no protected value was displayed."

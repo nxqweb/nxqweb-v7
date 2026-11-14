@@ -96,39 +96,188 @@ body[data-nxq-theme="light"] select.auth-input option:checked {
   display: none;
 }
 
-.owner-plan-change-shortcut {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 50;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  border: 1px solid rgba(250, 204, 21, 0.5);
-  border-radius: 999px;
-  background: rgba(3, 7, 18, 0.94);
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
-  color: #fef08a;
-  font-weight: 900;
-  padding: 0 18px;
-}
-
-.owner-plan-change-shortcut:hover {
-  border-color: rgba(250, 204, 21, 0.85);
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
 body[data-nxq-theme="light"] .plan-history-card,
 body[data-nxq-theme="light"] .plan-resolution-card {
   background: rgba(255, 255, 255, 0.72);
   border-color: rgba(15, 23, 42, 0.18);
 }
 
-@media (max-width: 700px) {
-  .owner-plan-change-shortcut {
-    right: 14px;
-    bottom: 14px;
-  }
+/* Optional sections on long setup forms: collapsed by default so clients see what is required first. */
+.optional-section { padding: 0; }
+.optional-section > .optional-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+}
+.optional-section > .optional-summary::-webkit-details-marker { display: none; }
+.optional-section > .optional-summary::after { content: "Show"; margin-left: auto; font-size: .85rem; color: var(--muted, #a9acb7); }
+.optional-section[open] > .optional-summary::after { content: "Hide"; }
+.optional-summary small { display: block; margin-top: .2rem; color: var(--muted, #a9acb7); font-weight: 400; }
+.optional-section > :not(summary) { margin-left: 1.1rem; margin-right: 1.1rem; }
+.optional-section[open] > :last-child { margin-bottom: 1.1rem; }
+.optional-tag, .required-mark { font-style: normal; font-size: .78rem; font-weight: 600; opacity: .85; }
+.required-mark { color: var(--gold, #e4c476); }
+
+/* Commerce workspace menu: a grid on wide screens, one swipeable row on phones so it does not push the page content off the first screen. */
+.commerce-nav { margin-bottom: 1rem; }
+.commerce-nav-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(138px, 1fr)); gap: 0.75rem; width: 100%; }
+.commerce-nav-more:not(.is-shown) { display: none; }
+.commerce-nav-toggle { justify-content: center; min-height: 48px; }
+.commerce-nav-link { justify-content: center; min-width: 0; min-height: 48px; padding-inline: 0.85rem; text-align: center; white-space: normal; line-height: 1.15; }
+@media (max-width: 640px) {
+  .commerce-nav { padding: 0.6rem !important; }
+  .commerce-nav-grid { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 0.5rem; padding-bottom: 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+  .commerce-nav-more:not(.is-shown) { display: inline-flex; }
+  .commerce-nav-toggle { display: none; }
+  .commerce-nav-link { flex: 0 0 auto; min-width: 104px; min-height: 44px; white-space: nowrap; scroll-snap-align: start; }
+}
+
+.quick-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.quick-actions > a { flex: 1 1 150px; justify-content: center; min-height: 48px; text-align: center; }
+.order-mode-choices { display: grid; gap: 0.75rem; margin-bottom: 0.75rem; }
+.order-mode-option { display: flex; gap: 0.75rem; align-items: flex-start; cursor: pointer; }
+.order-mode-option input { margin-top: 0.3rem; flex-shrink: 0; }
+.order-mode-option small { display: block; opacity: 0.85; margin-top: 0.2rem; }
+.assistant-log { max-height: 340px; overflow-y: auto; display: grid; gap: 0.6rem; padding: 0.25rem; margin-bottom: 0.75rem; }
+.assistant-turn { border-radius: 14px; padding: 0.7rem 0.9rem; max-width: 92%; }
+.assistant-turn p { margin: 0.25rem 0 0.5rem; }
+.assistant-assistant { background: rgba(255, 255, 255, 0.06); justify-self: start; }
+.assistant-you { background: rgba(212, 175, 90, 0.16); justify-self: end; }
+.assistant-who { display: inline-flex; gap: 0.35rem; align-items: center; font-size: 0.8rem; opacity: 0.85; }
+.assistant-turn .icon-btn, .assistant-turn .wide-btn { margin-top: 0.25rem; }
+.assistant-suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+.assistant-form { display: grid; gap: 0.5rem; }
+.report-problem-btn { position: fixed; right: 16px; bottom: 16px; z-index: 40; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+.report-problem-dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid rgba(212, 175, 90, 0.4); border-radius: 18px; padding: 1.25rem; background: #14161b; color: #f3f0e8; }
+.report-problem-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.report-problem-dialog form { display: grid; gap: 0.75rem; }
+.help-term { display: inline; position: relative; }
+.help-term-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 0; margin-inline: 0.25rem; border: 0; background: transparent; color: inherit; opacity: 0.8; cursor: pointer; vertical-align: middle; border-radius: 50%; }
+.help-term-btn:hover, .help-term-btn:focus-visible { opacity: 1; outline: 2px solid currentColor; outline-offset: 1px; }
+.help-term-text { display: block; margin: 0.35rem 0; padding: 0.6rem 0.8rem; border-radius: 12px; background: rgba(255, 255, 255, 0.08); font-size: 0.9rem; font-weight: 400; text-transform: none; letter-spacing: normal; line-height: 1.4; max-width: 46ch; }
+.field-hint { display: block; font-weight: 400; text-transform: none; letter-spacing: normal; opacity: 0.8; font-size: 0.82rem; margin-top: 0.15rem; }
+.rewards-steps { margin: 0.5rem 0 1rem; padding-left: 1.25rem; line-height: 1.6; }
+.rewards-steps li { margin-bottom: 0.35rem; }
+.rewards-meta { display: block; margin-top: 0.2rem; }
+.info-page .panel { margin-bottom: 1rem; }
+.info-page p, .info-list { max-width: 70ch; line-height: 1.65; }
+.info-list { padding-left: 1.25rem; }
+.info-list li { margin-bottom: 0.4rem; }
+.info-draft { margin-bottom: 1rem; }
+.info-footer-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+.info-footer-links a { color: inherit; text-decoration: underline; padding: 6px 2px; }
+
+/* Get more reviews: the printable card is always black on white so phone cameras can read the code, whatever the page theme. */
+.review-card, .review-card h3, .review-card p { color: #111 !important; }
+.review-card { background: #fff; border-radius: 16px; padding: 1.5rem; max-width: 360px; margin: 0.75rem auto; text-align: center; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
+.review-card h3 { margin: 0 0 0.4rem; font-size: 1.25rem; }
+.review-card p { margin: 0.25rem 0; }
+.review-card .review-card-scan { font-weight: 700; }
+.review-qr { display: block; width: 220px; max-width: 100%; height: auto; margin: 0.75rem auto; }
+.review-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; align-items: stretch; margin-top: 0.75rem; }
+.review-actions > * { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 48px; margin: 0; }
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff !important; }
+  .review-card { box-shadow: none; border: 1px solid #000; max-width: 100%; }
+}
+
+/* Booking: the request page and the manager page. */
+.booking-shell { max-width: 720px; }
+.booking-form .auth-input { margin-bottom: 0.5rem; }
+.booking-times { border: 0; margin: 0.5rem 0; padding: 0; }
+.booking-times legend { font-weight: 600; margin-bottom: 0.4rem; }
+.booking-slots { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.booking-slot { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 5.5rem; min-height: 44px; padding: 0 0.9rem; border: 1px solid currentColor; border-radius: 999px; cursor: pointer; opacity: 0.85; }
+.booking-slot input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.booking-slot.is-picked { opacity: 1; font-weight: 700; box-shadow: 0 0 0 2px currentColor; }
+.booking-slot:focus-within { outline: 3px solid currentColor; outline-offset: 2px; }
+.booking-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.field-error { color: #ff9a9a; margin: 0.1rem 0 0.5rem; }
+.booking-hours-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin: 0.4rem 0; }
+.booking-hours-day { min-width: 8.5rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+.booking-hours-row .auth-input { width: auto; min-width: 7.5rem; margin: 0; }
+.booking-request { margin: 0.6rem 0; }
+/* The storefront theme makes every label a block with extra margins; time chips and the hidden bot field need to opt out of that. */
+.store-theme .portal-shell .booking-slot { display: inline-flex; margin: 0; }
+.store-theme .portal-shell .booking-slot span { display: inline; margin: 0; }
+.store-theme .portal-shell .booking-hp label { display: block; margin: 0; }
+.store-theme .portal-shell .booking-times legend { margin-bottom: 0.4rem; }
+
+/* Owner outreach card: black on white so phone cameras read the code; six cards per sheet. */
+.outreach-sheet { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+.outreach-card, .outreach-card h3, .outreach-card p { color: #111 !important; }
+.outreach-card { background: #fff; border-radius: 12px; padding: 1rem; text-align: center; border: 1px solid #bbb; break-inside: avoid; }
+.outreach-card h3 { margin: 0 0 0.3rem; font-size: 1.15rem; }
+.outreach-card p { margin: 0.25rem 0; font-size: 0.9rem; }
+.outreach-card .review-qr { width: 130px; margin: 0.5rem auto; }
+@media (max-width: 520px) { .outreach-sheet { grid-template-columns: minmax(0, 1fr); } }
+@media print {
+  .outreach-sheet { grid-template-columns: repeat(2, 1fr); gap: 0; margin: 0; }
+  .outreach-card { border: 1px dashed #000; border-radius: 0; padding: 0.6cm; }
+}
+
+/* Request-your-website flow (client portal): the steps card, the website look options, the signup summary, and the owner's billing chip. */
+.request-steps { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .6rem; }
+.request-steps li { display: grid; gap: .15rem; padding: .8rem 1rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; }
+.request-steps li.done { border-color: rgba(114, 225, 180, .45); }
+.request-steps li span { color: var(--muted, #a9acb7); font-size: .92rem; }
+.website-look { border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; padding: 1rem; margin: 1rem 0; display: grid; gap: .75rem; min-width: 0; }
+.website-look legend { padding: 0 .4rem; font-weight: 700; }
+.website-look-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: .6rem; }
+.look-mode, .look-check { display: flex; align-items: flex-start; gap: .6rem; padding: .7rem .8rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 12px; cursor: pointer; }
+.look-mode.active { border-color: var(--gold, #e4c476); }
+.look-mode input, .look-check input { margin-top: .25rem; flex: 0 0 auto; }
+.look-mode small, .look-check small { display: block; margin-top: .15rem; color: var(--muted, #a9acb7); font-weight: 400; }
+.signup-answers-summary { border: 1px dashed var(--line, rgba(255, 255, 255, .22)); border-radius: 12px; padding: .7rem 1rem; margin: .8rem 0; }
+.signup-answers-summary summary { cursor: pointer; font-weight: 600; }
+.signup-answers-summary ul { margin: .6rem 0 0; padding-left: 1.1rem; }
+.billing-chip { display: inline-block; margin: 0 0 .6rem; padding: .25rem .7rem; border-radius: 999px; font-size: .85rem; font-weight: 600; border: 1px solid var(--line, rgba(255, 255, 255, .2)); }
+
+/* Website photos panel (client portal brief and redesign form) */
+.site-photos { border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 14px; padding: 1rem; margin: 1rem 0; display: grid; gap: .75rem; min-width: 0; }
+.site-photos legend { padding: 0 .4rem; font-weight: 700; }
+.site-photo-queue, .site-photo-list { display: grid; gap: .9rem; }
+.site-photo-row { display: flex; gap: .9rem; align-items: flex-start; padding: .8rem; border: 1px solid var(--line, rgba(255, 255, 255, .14)); border-radius: 12px; min-width: 0; }
+.site-photo-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; flex: 0 0 auto; }
+.site-photo-fields { display: grid; gap: .45rem; min-width: 0; flex: 1 1 auto; }
+.site-photo-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.scan-pill { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .82rem; border: 1px solid var(--line, rgba(255, 255, 255, .2)); width: fit-content; max-width: 100%; }
+.scan-pill.ok { border-color: rgba(114, 225, 180, .6); }
+.scan-pill.bad { border-color: rgba(255, 140, 140, .7); }
+@media (max-width: 520px) { .site-photo-row { flex-direction: column; } .site-photo-thumb { width: 100%; height: 160px; } }
+
+/* "My assistant" page (client portal) */
+.assistant-page .assistant-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .8rem; }
+.assistant-page .assistant-list .settings-card { display: grid; gap: .5rem; min-width: 0; overflow-wrap: anywhere; }
+.assistant-page .assistant-list p { margin: 0; }
+.assistant-page .assistant-form, .assistant-page .assistant-try { display: grid; gap: .6rem; margin: 1rem 0; min-width: 0; }
+.assistant-page .assistant-starters { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.assistant-page .assistant-switch { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.assistant-page .assistant-switch input[type="checkbox"] { width: 24px; height: 24px; flex: none; }
+.assistant-page .auth-error ul { margin: 0; padding-left: 1.2rem; }
+.assistant-page .assistant-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: .6rem; }
+.assistant-page h2[tabindex="-1"]:focus { outline: none; }
+
+/* Quick links: the card grid at the bottom of the portal home and the Commerce pages. Reuses .icon-btn so light and dark mode need no new colours. */
+.quick-links-footer { padding: 0 32px 88px; } /* room under the last card for the floating Report a problem button */
+/* The page paints its light background on .nxq-page, which this footer is not inside; without this it would sit on the dark backdrop with dark text. #f4f1e8 is the colour the page ends on. */
+body[data-nxq-theme="light"] .quick-links-footer { background: #f4f1e8; color: #171a1f; }
+.quick-links-footer .portal-shell { padding-bottom: 0; }
+.quick-links-footer .portal-shell::before { display: none; }
+.quick-links h2 { margin: 0 0 0.25rem; }
+.quick-links > .subtle { margin: 0 0 1rem; }
+.quick-links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.quick-link { display: flex; align-items: flex-start; gap: 0.75rem; min-height: 64px; border-radius: 18px; padding: 0.8rem 1rem; text-decoration: none; text-align: left; }
+.quick-link > span { display: grid; gap: 2px; min-width: 0; }
+.quick-link strong { font-size: 0.98rem; line-height: 1.2; }
+.quick-link small { font-size: 0.82rem; line-height: 1.3; opacity: 0.8; overflow-wrap: anywhere; }
+.quick-link[aria-current="page"] { outline: 2px solid currentColor; outline-offset: 2px; }
+.quick-link:focus-visible { outline: 3px solid #fde68a; outline-offset: 2px; }
+@media (max-width: 640px) {
+  .quick-links-footer { padding: 0 16px 96px; }
+  .quick-links-grid { grid-template-columns: 1fr; }
 }

@@ -1,0 +1,49 @@
+name: One-shot Business analytics worker hook
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.ref == 'refs/heads/safe/commerce-live-storefront'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch Business analytics generation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('supabase/functions/build-business-website/index.ts')
+          s = p.read_text()
+          s = s.replace('const blueprintFiles = ["index.html", "app.js", "styles.css"];', 'const blueprintFiles = ["index.html", "app.js", "styles.css", "analytics.js"];')
+          old = '  const primaryCta = clean(architecture.primary_cta) || "Contact us";\n\n  return {'
+          new = '  const primaryCta = clean(architecture.primary_cta) || "Contact us";\n  const tierKey = clean(buildPlan.product_tier_key).toLowerCase() || "starter";\n  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";\n  const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);\n  const mouseTracking = tierKey === "premium";\n\n  return {'
+          if old not in s and 'const tierKey = clean(buildPlan.product_tier_key)' not in s:
+              raise SystemExit('Could not locate buildSiteConfig insertion point')
+          s = s.replace(old, new)
+          old_seo = '''    seo: {\n      title: `${businessName} | ${businessType}`,\n      description: `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),\n    },\n  };'''
+          new_seo = '''    seo: {\n      title: `${businessName} | ${businessType}`,\n      description: `${businessName} provides ${businessType} services${serviceArea ? ` in ${serviceArea}` : ""}. Contact the team to get started.`.slice(0, 155),\n    },\n    analytics: {\n      enabled: advancedAnalytics && Boolean(analyticsEndpoint),\n      endpoint: analyticsEndpoint,\n      consentRequired: true,\n      consentVersion: "v1",\n      clicks: true,\n      scrollDepth: true,\n      mouseTracking,\n    },\n  };'''
+          if old_seo not in s and 'mouseTracking,' not in s:
+              raise SystemExit('Could not locate analytics config insertion point')
+          s = s.replace(old_seo, new_seo)
+          p.write_text(s)
+          PY
+      - run: npx eslint supabase/functions/build-business-website/index.ts --max-warnings=0
+      - run: npm run build
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/build-business-website/index.ts
+          git diff --cached --quiet || git commit -m "Wire tier-aware analytics into Business generator"
+          git push
