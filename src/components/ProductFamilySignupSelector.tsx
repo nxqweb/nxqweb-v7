@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, Sparkles } from "lucide-react";
+import { ArrowRight, Clock3, PhoneCall, Sparkles } from "lucide-react";
 import {
   isPubliclySelectableFamily,
   productFamilyCatalog as PRODUCT_FAMILIES,
@@ -14,6 +14,13 @@ export function ProductFamilySignupSelector() {
       <p className="px-sub" data-px-reveal>
         NXQX-Business is available now. Upcoming systems stay visible so you can see what is next, while signup remains limited to client-ready experiences.
       </p>
+
+      <div className="px-soon-bar" data-px-reveal role="note">
+        <PhoneCall size={20} aria-hidden="true" />
+        <strong>NXQX AI Receptionist</strong>
+        <span className="px-soon-tag">Coming soon</span>
+        <span>An AI assistant that answers your business calls, takes messages and booking requests, and sends you a summary of every call. Use it with an NXQX website or on its own.</span>
+      </div>
 
       <div className="px-grid4">
         {visibleFamilies.map((family, index) => {
@@ -60,6 +67,18 @@ export function ProductFamilySignupSelector() {
             </a>
           );
         })}
+
+        {/* Standalone product, not one of the website systems: shown as coming soon only (no signup link, no prices). */}
+        <article aria-disabled="true" className="px-card px-fam px-muted" data-px-reveal key="receptionist">
+          <div className="px-fam-meta">
+            <span className="px-st">
+              Coming soon <Clock3 size={13} />
+            </span>
+          </div>
+          <h3>NXQX-Receptionist</h3>
+          <p>An AI assistant that answers your business calls, takes messages and booking requests, and sends you a summary of every call.</p>
+          <p>Keep your own phone number. It is always open about being an AI assistant, and it works with or without an NXQX website.</p>
+        </article>
       </div>
     </div>
   );
