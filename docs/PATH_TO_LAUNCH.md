@@ -8,8 +8,8 @@
 | Ten clean runs | 4 more approve runs (30 or 45 Netlify credits each) | no (credits only) | owner starts + approves each, Claude reads results |
 | Owner launch signoff | last: unlocks only after the other 5 are ready | no | owner |
 | Website change classifier + AI build-plan enrichment (2 checks) | the AI model key | yes (about $3-14 per site build, unverified) | owner enters the key by hand |
-| Notification dispatcher | an email provider (Resend) + a verified sending domain | free tier, domain cost | owner |
-| Client file scanner | a scanner provider account (Scanii) + one clean staging scan | trial then paid | owner |
+| Notification dispatcher | NOT a new account: Resend and its key are already set up on staging and a real email was delivered on 2026-10-06; the readiness check wants a successful send within the last 30 days, so repeat one test email (a verified sending domain is only needed before emailing real clients) | no | owner approves, Claude reads the log |
+| Client file scanner | NOT a new account: Scanii is already set up and was proven on 2026-10-05 and 2026-10-06 (infected file quarantined, clean file released); the check wants a clean scan within the last 30 days, so upload one harmless file again (the free trial has a limited number of scans left: check Scanii, Account, Usage) | no | owner uploads, Claude reads the log |
 Live Stripe is NOT required in the current launch mode (the billing check is optional).
 
 ## Calendar

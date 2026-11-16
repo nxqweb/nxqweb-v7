@@ -32,6 +32,7 @@ You create the test subscription by hand in Stripe and link the customer; paymen
 Roll back any time by setting `NXQ_BILLING_ENABLED` to `false`.
 
 ## 3. Email (Resend) for the notification dispatcher
+ALREADY SET UP ON STAGING (checked 2026-11-16): the Resend account, `NXQ_RESEND_API_KEY` and `NXQ_NOTIFICATION_FROM_EMAIL` were saved in October and a real email was delivered on 2026-10-06. The readiness check only wants a successful send within the last 30 days, so what is left is one fresh test email, not a new key. A verified sender domain is only needed before emailing real clients.
 | Edge secret | Value |
 |---|---|
 | `NXQ_RESEND_API_KEY` | the Resend key |
@@ -40,6 +41,7 @@ Roll back any time by setting `NXQ_BILLING_ENABLED` to `false`.
 Adapter token and URL secrets (`NXQ_NOTIFICATION_ADAPTER_TOKEN`, `NXQ_NOTIFICATION_ADAPTER_URL`) are internal; check them with the provider-readiness validation before the first send.
 
 ## 4. File scanner (Scanii)
+ALREADY SET UP ON STAGING (checked 2026-11-16): Scanii was proven on 2026-10-05 (infected test file quarantined) and 2026-10-06 (clean file released). The readiness check wants a clean scan within the last 30 days, so what is left is one fresh harmless upload through a billing-active, non-QA test client's Files page, not a new account. Mind the free trial's limited scan count.
 | Edge secret | Value |
 |---|---|
 | `NXQ_SCANII_API_KEY`, `NXQ_SCANII_API_SECRET` | from the Scanii account |
