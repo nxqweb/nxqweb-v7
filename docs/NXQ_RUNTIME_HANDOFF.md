@@ -24,6 +24,8 @@ dispatched. Each item has its own detailed block further down (dated 2026-11-17)
 6. Commerce home: a Next step card. Empty pages speak plain words.
 7. `new_order` email template in the shared allow-list (inert until email sending is on).
 8. Orders page: an Email the customer button on each real order. It opens the owner's own mail app with words written for the order's state (payment reminder, payment received, shipped with tracking, ready for pickup, delivered). The app sends nothing. `src/lib/orderCustomerEmail.ts`, `scripts/test-order-customer-email.mjs`.
+9. Orders page: a Print packing slip button on each real order (customer name and address, what to pack with tick boxes, the customer's note, totals; on paper it is the only thing printed). `src/lib/packingSlip.ts`, `src/components/PackingSlip.tsx`, print styles in `src/styles/plan-forms.css`, `scripts/test-packing-slip.mjs`. Browser print-view check passed (shopper text prints as text, page returns to normal afterwards). A sample PDF was made locally but is not in the repo.
+10. Orders page: an automatically cancelled order is told apart from one the owner cancelled by hand (from the order history), so a hand-cancelled order never says it was cancelled automatically.
 
 **Drafts waiting for the owner (docs/drafts/migrations, each with a passing sidecar test and a control run):**
 - 07 new-order notice for the shop owner. 08 shipping fee (flat fee, free-over, pickup). 09 confirm a payment that arrived after the 2-hour hold.
