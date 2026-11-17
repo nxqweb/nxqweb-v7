@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, ChevronDown, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
+import { BadgeCheck, ChevronDown, Copy, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
+import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, type OrderDelivery } from "../lib/orderDelivery";
 
 type OrderItem = {
   id: string;
@@ -75,7 +76,24 @@ export function ClientCommerceOrders() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, { status: string; tracking: string; note: string }>>({});
 
-  useEffect(() => { void loadOrders(); }, []);
+  // Where each order goes (address, phone, the shopper's note, pickup). Read separately so a failure never blocks the orders list.
+  const [delivery, setDelivery] = useState<Record<string, OrderDelivery>>({});
+  const [copiedAddress, setCopiedAddress] = useState("");
+
+  useEffect(() => { void loadOrders(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loads once when the page opens
+
+  async function loadDelivery() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.from("commerce_orders").select(deliveryColumns).order("created_at", { ascending: false }).limit(500);
+      if (!result.error) setDelivery(deliveryById(result.data));
+    } catch { /* the delivery block simply stays hidden */ }
+  }
+
+  async function copyAddress(orderId: string, address: string) {
+    try { await navigator.clipboard.writeText(address); setCopiedAddress(orderId); window.setTimeout(() => setCopiedAddress(""), 2500); }
+    catch { setError("Could not copy automatically. Please select the address and copy it."); }
+  }
 
   const orders = useMemo(() => data?.orders || [], [data]);
   const summary = data?.summary || {};
@@ -102,6 +120,7 @@ export function ClientCommerceOrders() {
       const next = (result.data as OrdersResult) || { orders: [], summary: {} };
       setData(next);
       setVerified(true);
+      if ((next.orders || []).length > 0) void loadDelivery();
       // What the server holds now, per order. An order whose draft the owner has changed since the last load keeps what they typed (a refresh or saving ANOTHER
       // order must never wipe a tracking number or note that is still being typed); untouched drafts follow the server.
       const fresh: Record<string, { status: string; tracking: string; note: string }> = {};
@@ -196,11 +215,13 @@ export function ClientCommerceOrders() {
       ) : verified ? sortedOrders.map((order) => {
         const draft = drafts[order.id] || { status: order.fulfillment_status, tracking: order.tracking_number || "", note: order.fulfillment_note || "" };
         const isOpen = Boolean(expanded[order.id]);
+        const going = delivery[order.id];
+        const badge = deliveryBadge(going);
         return (
           <section className="panel panel-wide" key={order.id}>
             <div className="panel-title panel-title-row">
               <div><h2>{order.order_number} {order.is_test ? <span className="subtle">· Test</span> : null}</h2><p>{order.customer_name}{order.customer_email ? ` · ${order.customer_email}` : ""}</p></div>
-              <div style={{ textAlign: "right" }}><strong>{formatMoney(order.total, order.currency)}</strong><p>{humanize(order.fulfillment_status)} · {humanize(order.payment_status)}</p></div>
+              <div style={{ textAlign: "right" }}><strong>{formatMoney(order.total, order.currency)}</strong><p>{humanize(order.fulfillment_status)} · {humanize(order.payment_status)}{badge ? ` · ${badge}` : ""}</p></div>
             </div>
             {order.payment_status !== "paid" && !order.is_test ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
             <button className="wide-btn" disabled={Boolean(busy)} onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
@@ -209,6 +230,15 @@ export function ClientCommerceOrders() {
                 <article className="settings-card"><span>Placed</span><strong>{new Date(order.placed_at).toLocaleString("en-US")}</strong></article>
                 <article className="settings-card"><span>Payment</span><strong>{humanize(order.payment_status)}</strong></article>
               </div>
+              {hasDeliveryDetails(going) ? <article className="settings-card" data-testid="order-delivery" style={{ marginTop: "1rem" }}>
+                <span>{going.pickup ? "Pickup order" : "Send this order to"}</span>
+                {going.pickup ? <strong>The customer will pick this up. No shipping needed.</strong> : null}
+                {!going.pickup && going.address ? <><strong style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{going.address}</strong><button className="icon-btn" type="button" onClick={() => void copyAddress(order.id, going.address)}><Copy size={16} /> {copiedAddress === order.id ? "Copied" : "Copy address"}</button></> : null}
+                {!going.pickup && !going.address ? <strong>No shipping address was given.</strong> : null}
+                {going.phone ? <p>Phone: {going.phone}</p> : null}
+                {going.shippingTotal > 0 ? <p>Shipping charged: {formatMoney(going.shippingTotal, order.currency)} (already in the total)</p> : null}
+                {going.note ? <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>Customer's note: {going.note}</p> : null}
+              </article> : null}
               <h3 style={{ marginTop: "1rem" }}>Items</h3>
               {order.items.map((item) => <article className="settings-card" key={item.id} style={{ marginBottom: ".75rem" }}><strong>{item.product_name}</strong><p>{item.variant_title || "Default"}{item.sku ? ` · ${item.sku}` : ""}</p><p>{item.quantity} × {formatMoney(item.unit_price, order.currency)} = {formatMoney(item.line_total, order.currency)}</p></article>)}
               <div className="setup-form-grid">
