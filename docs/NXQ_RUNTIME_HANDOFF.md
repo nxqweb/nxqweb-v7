@@ -10,6 +10,32 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## OVERNIGHT 2026-11-17 (newest; the owner asked for unattended building; read this first)
+
+Everything below is committed and pushed on `safe/checkpoint-autonomy-wave35-sales`. Nothing was applied to a database, deployed, or
+dispatched. Each item has its own detailed block further down (dated 2026-11-17). Do NOT rebuild any of it.
+
+**In the app now (front end only, live after the next site deploy):**
+1. Orders page shows where to send each order (address, phone, the customer's note, pickup, shipping charged).
+2. Orders page shows the 2-hour hold on each unpaid order and says why an order was cancelled automatically; no Confirm button on a cancelled order.
+3. Store page: a recent-order card brings the payment steps back after a refresh or closed tab; the order steps mention the 2-hour hold.
+4. Live store page: QR code for the store link, with a saved picture.
+5. Product photos are shrunk in the browser before upload.
+6. Commerce home: a Next step card. Empty pages speak plain words.
+7. `new_order` email template in the shared allow-list (inert until email sending is on).
+
+**Drafts waiting for the owner (docs/drafts/migrations, each with a passing sidecar test and a control run):**
+- 07 new-order notice for the shop owner. 08 shipping fee (flat fee, free-over, pickup). 09 confirm a payment that arrived after the 2-hour hold.
+- Screens for 08 and 09 are parked in `docs/drafts/patches/` (see its README); `scripts/test-parked-patches.mjs` guards them.
+
+**Owner decisions needed (ask as Option A/B/C):**
+- Promote 07, 08, 09 (and when: Nov 19 deploy day with 288-293, or after the QA window).
+- How long an unpaid order is held (2 hours today; the owner confirms payments by hand, so this matters). Changing it is a migration.
+- Still open from before: draft 06, the add-ons plan location, the receptionist extra-minute price, demo voice minutes.
+
+**Checks at the last push:** `npm run test:ci-parity` 74/74; local full-schema harness 64/64 (includes drafts 01-09).
+**Mistake to avoid (made twice tonight, both caught before commit or fixed at once):** (1) never pipe parity into `tail` before `&&` (the pipe hides a failure): write it to a log and test the exit code; (2) grep for an existing file before writing a "new" one (`src/lib/qrCode.ts` already existed).
+
 ## UPDATE 2026-11-13 (newest; read before the HANDOFF 2026-11-12 block below)
 **Product photos shrink before upload (2026-11-17; front end only, not deployed).** Phone photos (3 to 12 MB, 4000+ pixels) were uploaded as they were: slow, sometimes refused at the 8 MB limit, and every shopper downloaded the full picture. `src/lib/photoShrink.ts` now makes each JPEG/PNG/WEBP at most 1600 pixels on its longest side in the owner's browser (GIFs and small pictures untouched; any failure keeps the original). Wired into `src/components/ProductImageManager.tsx` only; the size told to the server is the smaller file's. `scripts/test-photo-shrink.mjs`. Real-browser check: a 12-megapixel JPEG went from 8.3 MB to 0.3 MB at 1600x1200. Not yet checked on a real iPhone (owner or client: upload one phone photo after the next site deploy and confirm it looks right and is not sideways).
 
