@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, ChevronDown, Copy, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
+import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
 import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, type OrderDelivery } from "../lib/orderDelivery";
+import { customerEmail } from "../lib/orderCustomerEmail";
 
 type OrderItem = {
   id: string;
@@ -218,6 +219,7 @@ export function ClientCommerceOrders() {
         const isOpen = Boolean(expanded[order.id]);
         const going = delivery[order.id];
         const badge = deliveryBadge(going);
+        const mail = order.is_test ? null : customerEmail({ email: order.customer_email, customerName: order.customer_name, orderNumber: order.order_number, status: order.fulfillment_status, paid: order.payment_status === "paid", tracking: order.tracking_number, pickup: going?.pickup });
         const hold = order.is_test ? "" : holdMessage(going, order.payment_status === "paid", deliveryReadAt, (at) => new Date(at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }));
         return (
           <section className="panel panel-wide" key={order.id}>
@@ -242,6 +244,10 @@ export function ClientCommerceOrders() {
                 {going.shippingTotal > 0 ? <p>Shipping charged: {formatMoney(going.shippingTotal, order.currency)} (already in the total)</p> : null}
                 {going.note ? <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>Customer's note: {going.note}</p> : null}
               </article> : null}
+              {mail ? <div data-testid="order-customer-email" style={{ marginTop: "1rem" }}>
+                <a className="icon-btn" href={mail.href}><Mail size={16} /> {mail.label}</a>
+                <p className="subtle">Opens your own email with the message written for you. Read it, change anything you like, then send.</p>
+              </div> : null}
               <h3 style={{ marginTop: "1rem" }}>Items</h3>
               {order.items.map((item) => <article className="settings-card" key={item.id} style={{ marginBottom: ".75rem" }}><strong>{item.product_name}</strong><p>{item.variant_title || "Default"}{item.sku ? ` · ${item.sku}` : ""}</p><p>{item.quantity} × {formatMoney(item.unit_price, order.currency)} = {formatMoney(item.line_total, order.currency)}</p></article>)}
               <div className="setup-form-grid">

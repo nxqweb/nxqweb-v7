@@ -39,10 +39,10 @@ index 1ce5762..43cdcbd 100644
  check("after a stock refusal the store is asked again and the cart is re-fitted before the message is shown", /if \(isStockRefusal\(result\.error\.message\)\)/.test(page) && /const refit = refitCart\(cart, freshData\.products\);/.test(page) && /setCart\(refit\.cart\);/.test(page));
 diff --git a/scripts/test-store-shipping-wiring.mjs b/scripts/test-store-shipping-wiring.mjs
 new file mode 100644
-index 0000000..d26774e
+index 0000000..f1cd1e0
 --- /dev/null
 +++ b/scripts/test-store-shipping-wiring.mjs
-@@ -0,0 +1,20 @@
+@@ -0,0 +1,21 @@
 +// Offline test: the shipping fee screens are wired the safe way (applied from docs/drafts/patches/08_store_shipping_frontend.patch when
 +// draft migration 08 becomes a real migration).
 +import fs from "node:fs";
@@ -60,15 +60,16 @@ index 0000000..d26774e
 +const card = read("src/components/StoreShippingCard.tsx");
 +check("the owner's card hides itself when the database has no shipping functions", card.includes('rpc("get_my_store_shipping")') && card.includes("if (!available) return null;") && card.includes('rpc("save_my_store_shipping", checked.args)'));
 +check("the Live store page shows the card for online ordering only", read("src/pages/ClientCommerceLiveStore.tsx").includes('{orderMode === "email" || orderMode === "menu" ? null : <StoreShippingCard />}'));
++check("the owner is warned that a fixed-price Stripe link cannot add shipping", card.includes("A link with a fixed price cannot add shipping."));
 +
 +console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store shipping wiring checks passed (offline).");
 +process.exit(failures ? 1 : 0);
 diff --git a/src/components/StoreShippingCard.tsx b/src/components/StoreShippingCard.tsx
 new file mode 100644
-index 0000000..e1c208d
+index 0000000..40b78af
 --- /dev/null
 +++ b/src/components/StoreShippingCard.tsx
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,76 @@
 +import { useEffect, useState } from "react";
 +import { Truck } from "lucide-react";
 +import { supabase } from "../lib/supabaseClient";
@@ -138,6 +139,7 @@ index 0000000..e1c208d
 +      <label style={{ display: "flex", gap: ".6rem", alignItems: "center", minHeight: 44 }}><input type="checkbox" checked={form.pickupAllowed} onChange={(e) => set("pickupAllowed", e.target.checked)} /><span>Customers can pick up their order instead (free)</span></label>
 +      {form.pickupAllowed ? <label><span>Pickup details <em className="optional-tag">(optional)</em></span><input className="auth-input" maxLength={300} placeholder="Pickup is Saturdays at the market" value={form.pickupNote} onChange={(e) => set("pickupNote", e.target.value)} /></label> : null}
 +      {example ? <p className="subtle" data-testid="store-shipping-example">{example}</p> : null}
++      {form.mode === "flat" ? <p className="subtle" data-testid="store-shipping-stripe-note">Using a Stripe Payment Link? A link with a fixed price cannot add shipping. Use PayPal or Venmo, or set the Stripe link so customers type the amount, and they will be told the exact total to pay.</p> : null}
 +      {error ? <div className="auth-error" role="alert">{error}</div> : null}
 +      {message ? <div className="notice-card" role="status">{message}</div> : null}
 +      <button className="wide-btn" type="button" disabled={busy} onClick={() => void save()}>{busy ? "Saving..." : "Save shipping"}</button>
@@ -166,7 +168,7 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index af5c037..136265e 100644
+index 3a46070..5388bf3 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
 @@ -19,9 +19,10 @@ import {
@@ -263,7 +265,7 @@ index af5c037..136265e 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -441,16 +460,26 @@ export function PublicCommerceStorefront() {
+@@ -442,16 +461,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
