@@ -2,7 +2,7 @@
 // the customer's name and email but never the shipping address, phone or note, so an owner could not tell where to send an order.
 // Everything here is text a shopper typed: it must come out as plain capped text, and odd data must never break the orders list.
 import fs from "node:fs";
-import { holdMessage, addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
+import { canConfirmLate, lateConfirmError, holdMessage, addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -33,6 +33,12 @@ check("a hold that just ran out asks the owner to confirm now", /confirm the pay
 check("an automatically cancelled order says why", (() => { const gone = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z", reservation_released_at: "2026-11-17T19:45:00Z" }); return gone.released && /cancelled automatically because the payment was not confirmed in time/.test(holdMessage(gone, false, at, fmtTime)); })());
 check("a paid order, a missing row or an order without a hold says nothing", holdMessage(held, true, at, fmtTime) === "" && holdMessage(undefined, false, at, fmtTime) === "" && holdMessage(deliveryFromRow({}), false, at, fmtTime) === "");
 check("odd dates are ignored", [undefined, null, 5, "soon", {}].every((v) => deliveryFromRow({ reservation_expires_at: v, reservation_released_at: v }).heldUntil === null && !deliveryFromRow({ reservation_released_at: v }).released));
+
+// ---- "the money arrived late" helpers (the button itself waits in docs/drafts/patches until draft 09 is a real migration)
+const goneRow = deliveryFromRow({ reservation_released_at: "2026-11-17T19:45:00Z" });
+check("late confirm is offered only on a real unpaid order whose hold ran out", canConfirmLate(goneRow, false, false) && !canConfirmLate(goneRow, true, false) && !canConfirmLate(goneRow, false, true) && !canConfirmLate(held, false, false) && !canConfirmLate(undefined, false, false));
+check("clear server refusals are shown word for word", lateConfirmError("Late Candle has sold out since this order was cancelled. Refund the customer or add stock first.") === "Late Candle has sold out since this order was cancelled. Refund the customer or add stock first." && /too old/.test(lateConfirmError("This order is too old to confirm late. Contact the customer instead.")));
+check("anything else becomes one calm sentence (no database wording leaks)", [undefined, null, "", 5, 'duplicate key value violates unique constraint "x"', "permission denied for function"].every((m) => lateConfirmError(m) === "This order could not be reopened right now. Nothing was changed. Please try again."));
 
 const page = fs.readFileSync("src/pages/ClientCommerceOrders.tsx", "utf8");
 check("the page reads only the needed columns from the shop's own orders, and a failure hides the block instead of the list", page.includes('.from("commerce_orders").select(deliveryColumns)') && page.includes("if (!result.error) { setDelivery(deliveryById(result.data)); setDeliveryReadAt(Date.now()); }") && page.includes("/* the delivery block simply stays hidden */") && deliveryColumns === "id, customer_phone, customer_note, shipping_address, shipping_total, metadata, reservation_expires_at, reservation_released_at");

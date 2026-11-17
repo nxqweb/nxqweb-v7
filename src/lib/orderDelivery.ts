@@ -72,3 +72,13 @@ export function holdMessage(delivery: OrderDelivery | undefined, paid: boolean, 
   if (delivery.heldUntil <= now) return "The hold on these items has run out. This order will be cancelled automatically in a few minutes unless you confirm the payment now.";
   return `The items are held until ${formatTime(delivery.heldUntil)}. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.`;
 }
+
+// "The money arrived late" (draft migration 09): offered only on a real, unpaid order whose hold ran out.
+export const canConfirmLate = (delivery: OrderDelivery | undefined, paid: boolean, isTest: boolean): boolean => Boolean(delivery && delivery.released && !paid && !isTest);
+
+// The server's refusals that are clear and safe to show the owner are kept word for word; anything else becomes one calm sentence.
+const lateSafe = [/has sold out since this order was cancelled/i, /is no longer in your store/i, /too old to confirm late/i, /cancelled automatically for running out of time/i, /still being held/i];
+export function lateConfirmError(message: unknown): string {
+  const text = typeof message === "string" ? message.trim().slice(0, 300) : "";
+  return text && lateSafe.some((pattern) => pattern.test(text)) ? text : "This order could not be reopened right now. Nothing was changed. Please try again.";
+}
