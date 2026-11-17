@@ -2,7 +2,7 @@
 // rehearsal, remembers progress safely, and the dashboard nudge stops when finished or switched off.
 import fs from "node:fs";
 import {
-  guideProgress, launchGuideSteps, nextStepIndex, readAutoOff, readDoneSteps, shouldShowGuidePrompt, toggleStepDone, writeAutoOff, writeDoneSteps,
+  guideProgress, launchGuideSteps, nextStepCard, nextStepIndex, readAutoOff, readDoneSteps, shouldShowGuidePrompt, toggleStepDone, writeAutoOff, writeDoneSteps,
 } from "../src/lib/commerceLaunchGuide.ts";
 
 let failures = 0;
@@ -57,6 +57,18 @@ check("tutorial page says it never changes the store", page.includes("The guide 
 check("tutorial page does not write to the database", !/\.rpc\(|\.from\(/.test(page));
 const dash = fs.readFileSync("src/pages/ClientCommerceDashboard.tsx", "utf8");
 check("dashboard shows the nudge with a dismiss button", dash.includes("shouldShowGuidePrompt(") && dash.includes("Don't remind me again") && dash.includes('href="/client/commerce/tutorial"'));
+
+check("the home card names the first undone step with its own button", dash.includes("nextStepCard(") && dash.includes('data-testid="next-step-card"') && dash.includes("href={card.step.href}"));
+{
+  const fresh = nextStepCard([]);
+  check("a fresh store is told to start with setup (step 1)", fresh.step.id === "setup" && fresh.number === 1 && fresh.count === 0);
+  const afterSetup = nextStepCard(["setup"]);
+  check("after setup the next step is the first product", afterSetup.step.id === "product" && afterSetup.number === 2);
+  const hasProducts = nextStepCard(["setup"], 3);
+  check("a store that already has products skips the product step", hasProducts.step.id === "photos" && hasProducts.count === 2);
+  check("an unknown or missing product count changes nothing", nextStepCard(["setup"], undefined).step.id === "product" && nextStepCard(["setup"], 0).step.id === "product");
+  check("every card button points at a real portal page", launchGuideSteps.every((st) => nextStepCard(launchGuideSteps.map((x) => x.id).filter((id) => id !== st.id)).step.href.startsWith("/client/commerce/")));
+}
 
 const tutorialPage = fs.readFileSync("src/pages/ClientCommerceTutorial.tsx", "utf8");
 check("the guide's progress bar is a real progressbar for screen readers (role, range, value and a plain-words text)", /className="usage-progress" role="progressbar" aria-label="Guide progress" aria-valuemin=\{0\} aria-valuemax=\{100\} aria-valuenow=\{progress\.percent\} aria-valuetext=\{`\$\{progress\.count\} of \$\{progress\.total\} steps done`\}/.test(tutorialPage));

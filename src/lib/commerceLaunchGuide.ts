@@ -159,6 +159,13 @@ export function nextStepIndex(done: string[]): number {
   return index === -1 ? 0 : index;
 }
 
+// The "Next step" card on the Commerce home: the first step not yet done, with its own button. A store that already has products counts the product step as done.
+export function nextStepCard(done: string[], productCount = 0) {
+  const effective = productCount > 0 && !done.includes("product") ? [...done, "product"] : done;
+  const index = nextStepIndex(effective);
+  return { step: launchGuideSteps[index], number: index + 1, ...guideProgress(effective) };
+}
+
 export function readAutoOff(storage: StorageLike | null = browserStorage()): boolean {
   try { return storage?.getItem(guideStorageKeys.autoOff) === "true"; } catch { return false; }
 }
