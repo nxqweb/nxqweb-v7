@@ -17,6 +17,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
 | `07_new_order_owner_notification.sql` | Shop owner gets an in-app notice (fixed wording, email via the shared allow-list) when a real order arrives; test orders never notify (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
 | `08_store_shipping_fee.sql` | Store shipping: one flat fee per order, optional free-over amount, optional free pickup. Five new functions only; the server works the fee out; the app uses them only when a rule is on (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
+| `09_confirm_late_direct_payment.sql` | The shop owner can confirm a payment AFTER the 2-hour hold cancelled the order: stock is taken again (refused if sold out), never for a hand-cancelled or practice order. One new function (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in

@@ -101,6 +101,7 @@ export const launchGuideSteps: LaunchGuideStep[] = [
       "Open Orders and find the new order by its number.",
       "Check your own Stripe, PayPal, or Venmo to see that the money arrived.",
       "Only then press Confirm payment received, and update fulfillment as you ship.",
+      "Do this within 2 hours of the order. After that an unpaid order is cancelled by itself and the items go back on sale.",
     ],
     watchOut: "Never confirm a payment you have not seen arrive in your own account.",
     href: "/client/commerce/orders",

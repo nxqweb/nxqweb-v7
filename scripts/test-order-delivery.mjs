@@ -2,7 +2,7 @@
 // the customer's name and email but never the shipping address, phone or note, so an owner could not tell where to send an order.
 // Everything here is text a shopper typed: it must come out as plain capped text, and odd data must never break the orders list.
 import fs from "node:fs";
-import { addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
+import { holdMessage, addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -24,11 +24,23 @@ check("anything that is not a list of rows gives an empty map", [undefined, null
 check("the block shows only when there is something to show", hasDeliveryDetails(d) && hasDeliveryDetails(map.o2) && !hasDeliveryDetails(undefined) && !hasDeliveryDetails(deliveryFromRow({})));
 check("the closed card says Ship or Pickup, or nothing", deliveryBadge(d) === "Ship" && deliveryBadge(map.o2) === "Pickup" && deliveryBadge(deliveryFromRow({})) === "" && deliveryBadge(undefined) === "");
 
+// ---- the two-hour hold on an unpaid order (the server cancels it automatically afterwards)
+const at = Date.parse("2026-11-17T18:00:00Z");
+const fmtTime = (ms) => new Date(ms).toISOString().slice(11, 16);
+const held = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z" });
+check("an unpaid order says until when the items are held and what happens after", held.heldUntil === Date.parse("2026-11-17T19:30:00Z") && !held.released && holdMessage(held, false, at, fmtTime) === "The items are held until 19:30. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.");
+check("a hold that just ran out asks the owner to confirm now", /confirm the payment now/.test(holdMessage(held, false, Date.parse("2026-11-17T19:31:00Z"), fmtTime)));
+check("an automatically cancelled order says why", (() => { const gone = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z", reservation_released_at: "2026-11-17T19:45:00Z" }); return gone.released && /cancelled automatically because the payment was not confirmed in time/.test(holdMessage(gone, false, at, fmtTime)); })());
+check("a paid order, a missing row or an order without a hold says nothing", holdMessage(held, true, at, fmtTime) === "" && holdMessage(undefined, false, at, fmtTime) === "" && holdMessage(deliveryFromRow({}), false, at, fmtTime) === "");
+check("odd dates are ignored", [undefined, null, 5, "soon", {}].every((v) => deliveryFromRow({ reservation_expires_at: v, reservation_released_at: v }).heldUntil === null && !deliveryFromRow({ reservation_released_at: v }).released));
+
 const page = fs.readFileSync("src/pages/ClientCommerceOrders.tsx", "utf8");
-check("the page reads only the needed columns from the shop's own orders, and a failure hides the block instead of the list", page.includes('.from("commerce_orders").select(deliveryColumns)') && page.includes("if (!result.error) setDelivery(deliveryById(result.data));") && page.includes("/* the delivery block simply stays hidden */") && deliveryColumns === "id, customer_phone, customer_note, shipping_address, shipping_total, metadata");
+check("the page reads only the needed columns from the shop's own orders, and a failure hides the block instead of the list", page.includes('.from("commerce_orders").select(deliveryColumns)') && page.includes("if (!result.error) { setDelivery(deliveryById(result.data)); setDeliveryReadAt(Date.now()); }") && page.includes("/* the delivery block simply stays hidden */") && deliveryColumns === "id, customer_phone, customer_note, shipping_address, shipping_total, metadata, reservation_expires_at, reservation_released_at");
 check("the read happens after the orders list is shown, never before it", page.indexOf("setVerified(true);") < page.indexOf("void loadDelivery();") && page.indexOf("void loadDelivery();") > 0);
 check("shopper text is shown as plain text only (no link, no HTML injection)", !/dangerouslySetInnerHTML/.test(page) && !/href=\{[^}]*going\./.test(page) && page.includes('data-testid="order-delivery"'));
 check("the owner can copy the address and sees pickup orders clearly", page.includes("Copy address") && page.includes("The customer will pick this up. No shipping needed."));
+
+check("the owner sees the hold deadline on the order card, before the Confirm button, and never on practice orders", page.indexOf('data-testid="order-hold"') > 0 && page.indexOf('data-testid="order-hold"') < page.indexOf("Confirm payment received") && page.includes('const hold = order.is_test ? "" : holdMessage('));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll order delivery checks passed (offline).");
 process.exit(failures ? 1 : 0);

@@ -8,13 +8,16 @@ export type OrderDelivery = {
   note: string;
   pickup: boolean;
   shippingTotal: number;
+  heldUntil: number | null; // when the shop stops holding the items for an unpaid order (milliseconds), or null
+  released: boolean; // the hold already ended: the order was cancelled and the items went back on sale
 };
 
-export const deliveryColumns = "id, customer_phone, customer_note, shipping_address, shipping_total, metadata";
+export const deliveryColumns = "id, customer_phone, customer_note, shipping_address, shipping_total, metadata, reservation_expires_at, reservation_released_at";
 
 // Control characters (other than tab, new line and carriage return) are dropped by character code.
 const printable = (value: string): string => Array.from(value).filter((ch) => { const code = ch.charCodeAt(0); return code === 9 || code === 10 || code === 13 || (code >= 32 && code !== 127); }).join("");
 const text = (value: unknown, max: number): string => typeof value === "string" ? printable(value).trim().slice(0, max) : "";
+const time = (value: unknown): number | null => { const at = typeof value === "string" ? Date.parse(value) : NaN; return Number.isFinite(at) ? at : null; };
 const record = (value: unknown): Record<string, unknown> => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 
 // The store page saves the address as { address: "..." }; the older checkout saved separate parts. Both become one readable block.
@@ -35,6 +38,8 @@ export function deliveryFromRow(row: unknown): OrderDelivery {
     note: text(raw.customer_note, 2000),
     pickup: record(raw.metadata).delivery_method === "pickup",
     shippingTotal: Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0,
+    heldUntil: time(raw.reservation_expires_at),
+    released: time(raw.reservation_released_at) !== null,
   };
 }
 
@@ -57,4 +62,13 @@ export function deliveryBadge(delivery: OrderDelivery | undefined): string {
   if (!delivery) return "";
   if (delivery.pickup) return "Pickup";
   return delivery.address ? "Ship" : "";
+}
+
+// What an unpaid order's hold means for the owner, in plain words. "" when there is nothing to say (paid, test, or no hold recorded).
+export function holdMessage(delivery: OrderDelivery | undefined, paid: boolean, now: number, formatTime: (at: number) => string): string {
+  if (!delivery || paid) return "";
+  if (delivery.released) return "This order was cancelled automatically because the payment was not confirmed in time. The items went back on sale.";
+  if (delivery.heldUntil === null) return "";
+  if (delivery.heldUntil <= now) return "The hold on these items has run out. This order will be cancelled automatically in a few minutes unless you confirm the payment now.";
+  return `The items are held until ${formatTime(delivery.heldUntil)}. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.`;
 }

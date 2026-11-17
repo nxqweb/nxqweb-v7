@@ -370,6 +370,7 @@ export function PublicCommerceStorefront() {
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
         <ol className="store-next-steps" data-testid="store-next-steps">
           <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
+          <li>Please pay soon: the shop holds your items for 2 hours.</li>
           <li>The shop confirms your payment once it arrives in their account.</li>
           <li>Keep your order number. Use it if you contact the shop about this order.</li>
         </ol>

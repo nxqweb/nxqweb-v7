@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, PackageCheck, Plus, RefreshCcw, Shopping
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
-import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, type OrderDelivery } from "../lib/orderDelivery";
+import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, type OrderDelivery } from "../lib/orderDelivery";
 
 type OrderItem = {
   id: string;
@@ -79,6 +79,7 @@ export function ClientCommerceOrders() {
   // Where each order goes (address, phone, the shopper's note, pickup). Read separately so a failure never blocks the orders list.
   const [delivery, setDelivery] = useState<Record<string, OrderDelivery>>({});
   const [copiedAddress, setCopiedAddress] = useState("");
+  const [deliveryReadAt, setDeliveryReadAt] = useState(0); // the moment the hold times were read, so "held until" is judged against a fixed time
 
   useEffect(() => { void loadOrders(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loads once when the page opens
 
@@ -86,7 +87,7 @@ export function ClientCommerceOrders() {
     if (!supabase) return;
     try {
       const result = await supabase.from("commerce_orders").select(deliveryColumns).order("created_at", { ascending: false }).limit(500);
-      if (!result.error) setDelivery(deliveryById(result.data));
+      if (!result.error) { setDelivery(deliveryById(result.data)); setDeliveryReadAt(Date.now()); }
     } catch { /* the delivery block simply stays hidden */ }
   }
 
@@ -217,12 +218,14 @@ export function ClientCommerceOrders() {
         const isOpen = Boolean(expanded[order.id]);
         const going = delivery[order.id];
         const badge = deliveryBadge(going);
+        const hold = order.is_test ? "" : holdMessage(going, order.payment_status === "paid", deliveryReadAt, (at) => new Date(at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }));
         return (
           <section className="panel panel-wide" key={order.id}>
             <div className="panel-title panel-title-row">
               <div><h2>{order.order_number} {order.is_test ? <span className="subtle">· Test</span> : null}</h2><p>{order.customer_name}{order.customer_email ? ` · ${order.customer_email}` : ""}</p></div>
               <div style={{ textAlign: "right" }}><strong>{formatMoney(order.total, order.currency)}</strong><p>{humanize(order.fulfillment_status)} · {humanize(order.payment_status)}{badge ? ` · ${badge}` : ""}</p></div>
             </div>
+            {hold ? <p className="subtle" data-testid="order-hold" style={{ marginBottom: ".75rem" }}>{hold}</p> : null}
             {order.payment_status !== "paid" && !order.is_test ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
             <button className="wide-btn" disabled={Boolean(busy)} onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
             {isOpen ? <div style={{ marginTop: "1rem" }}>
