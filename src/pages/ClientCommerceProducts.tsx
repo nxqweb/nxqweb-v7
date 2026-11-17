@@ -364,7 +364,7 @@ export function ClientCommerceProducts() {
 
         <section className="panel panel-wide">
           <div className="panel-title"><PackagePlus size={20} /><div><h2>Product drafts</h2><p className="subtle">{products.length} verified product{products.length === 1 ? "" : "s"}</p></div></div>
-          {products.length === 0 ? <div className="empty-state">No verified product drafts yet.</div> : (
+          {products.length === 0 ? <div className="empty-state" data-testid="empty-products">You have no products yet. Fill in the form above and press Save product draft to add your first one.</div> : (
             <div className="settings-grid">
               {products.map((product) => {
                 const variants = product.variants || [];

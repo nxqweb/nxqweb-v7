@@ -116,7 +116,7 @@ export function ClientCommerceInventory() {
         <article className="settings-card"><span>Low stock</span><strong>{displayMetric(summary?.low_stock)}</strong><p>At or below the warning threshold.</p></article>
         <article className="settings-card"><span>Needs reorder</span><strong>{displayMetric(summary?.needs_reorder)}</strong><p>At or below the reorder point.</p></article>
       </div></section>
-      {loading ? <div className="empty-state">Loading inventory...</div> : error && !inventory ? <div className="empty-state">Inventory status is unavailable until the protected data can be verified.</div> : items.length === 0 ? <div className="empty-state">No product variants yet. Add products first.</div> : Object.entries(grouped).map(([productName, productItems]) => (
+      {loading ? <div className="empty-state">Loading inventory...</div> : error && !inventory ? <div className="empty-state">Inventory status is unavailable until the protected data can be verified.</div> : items.length === 0 ? <div className="empty-state">Nothing to count yet. Add a product and its stock shows up here. <a className="icon-btn" href="/client/commerce/products">Add a product</a></div> : Object.entries(grouped).map(([productName, productItems]) => (
         <section className="panel panel-wide" key={productName}><h2>{productName}</h2>{productItems.map((item) => {
           const draft = adjustments[item.variant_id] || { delta: "", note: "" };
           const saving = savingVariantId === item.variant_id;

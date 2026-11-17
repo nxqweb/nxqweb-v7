@@ -91,7 +91,7 @@ export function ClientCommerceProductImages() {
 
         {!loading && loaded && products.length === 0 ? (
           <div className="empty-state">
-            No saved products were found. Create and save a product first, then return here to upload its photos.
+            You have no products yet. Add one first, then come back here to add its photos. <a className="icon-btn" href="/client/commerce/products">Add a product</a>
           </div>
         ) : null}
 

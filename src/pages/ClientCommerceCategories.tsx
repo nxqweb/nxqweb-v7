@@ -84,7 +84,7 @@ export function ClientCommerceCategories() {
         <label className="auth-label"><span>Description</span><textarea className="auth-input" rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
         <button className="wide-btn" disabled={saving} onClick={saveCategory} type="button">{saving ? "Saving..." : "Save category"}</button>
       </section>
-      <section className="panel panel-wide"><h2>Categories</h2>{loading ? <div className="empty-state">Loading categories...</div> : categories.length === 0 ? <div className="empty-state">No categories yet.</div> : categories.map((category) => (
+      <section className="panel panel-wide"><h2>Categories</h2>{loading ? <div className="empty-state">Loading categories...</div> : categories.length === 0 ? <div className="empty-state">No categories yet. They are optional: a category groups products, like Candles or Wax melts.</div> : categories.map((category) => (
         <article className="settings-card" key={category.id}><div className="panel-title panel-title-row"><div><strong>{category.name}</strong><p>{category.product_count} product{category.product_count === 1 ? "" : "s"} · {category.is_visible ? "visible" : "hidden"}</p></div><div style={{ display: "flex", gap: ".5rem" }}><button className="icon-btn" type="button" onClick={() => setDraft({ id: category.id, parent_category_id: category.parent_category_id || "", name: category.name, description: category.description || "", sort_order: category.sort_order, is_visible: category.is_visible })}>Edit</button><button className="icon-btn" type="button" onClick={() => deleteCategory(category)}><Trash2 size={15} /> Delete</button></div></div></article>
       ))}</section>
     </section></main>

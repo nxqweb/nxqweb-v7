@@ -343,7 +343,7 @@ export function ClientCommerceLiveStore() {
         <section className="panel panel-wide" data-tour="live-visibility">
           <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
           <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
-          {(data.products || []).length === 0 ? <div className="empty-state">No verified products are available for storefront visibility yet.</div> : data.products.map((product) => (
+          {(data.products || []).length === 0 ? <div className="empty-state" data-testid="empty-live-products">No products yet. Add your first product, then come back here to show it in your store. <a className="icon-btn" href="/client/commerce/products">Add a product</a></div> : data.products.map((product) => (
             <article className="settings-card" key={product.id} style={{ marginBottom: ".75rem" }}>
               <div className="panel-title panel-title-row">
                 <div><strong>{product.name}</strong><p>${Number(product.base_price || 0).toFixed(2)} · {product.status}</p></div>

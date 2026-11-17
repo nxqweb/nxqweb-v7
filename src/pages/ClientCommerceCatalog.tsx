@@ -284,7 +284,7 @@ export function ClientCommerceCatalog() {
 
         {!loading && products.length === 0 ? (
           <div className="empty-state">
-            Save a product draft first, then return here to assign its category and upload images.
+            You have no products yet. Add one first, then come back here to give it a category. <a className="icon-btn" href="/client/commerce/products">Add a product</a>
           </div>
         ) : null}
 
