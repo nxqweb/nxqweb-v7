@@ -202,7 +202,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
             <p className="subtle">Upload up to 8 images. The first image is the main storefront photo after an approved storefront publish.</p>
           </div>
         </div>
-        <label className="icon-btn" aria-disabled={busy || loading || !verified || images.length >= maxImages}>
+        <label className="icon-btn" data-tour="photos-upload" aria-disabled={busy || loading || !verified || images.length >= maxImages}>
           <ImagePlus size={15} /> {busy ? "Uploading..." : "Upload photos"}
           <input
             hidden

@@ -171,7 +171,7 @@ export function ClientCommerceOrders() {
     <main className="nxq-page"><section className="portal-shell">
       <CommerceNav />
       <div className="panel-title panel-title-row">
-        <div className="panel-title"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">See your orders, confirm payments when the money arrives, and update shipping.</p></div></div>
+        <div className="panel-title" data-tour="orders-head"><ShoppingBag size={22} /><div><h1>Commerce orders</h1><p className="subtle">See your orders, confirm payments when the money arrives, and update shipping.</p></div></div>
         <button className="icon-btn" disabled={loading || Boolean(busy)} onClick={loadOrders} type="button"><RefreshCcw size={16} /> Refresh</button>
       </div>
 

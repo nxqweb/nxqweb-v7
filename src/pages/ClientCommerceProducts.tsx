@@ -286,7 +286,7 @@ export function ClientCommerceProducts() {
 
         {loading ? <div className="empty-state">Loading product drafts...</div> : null}
         {!loading && verified ? <>
-        <section className="panel panel-wide">
+        <section className="panel panel-wide" data-tour="product-form">
           <div className="panel-title">
             <Save size={20} />
             <div>
@@ -357,7 +357,7 @@ export function ClientCommerceProducts() {
           </OptionalSection>
 
           <div className="panel-actions">
-            <button className="wide-btn" type="button" disabled={saving} onClick={saveProduct}><Save size={16} /> {saving ? "Saving..." : "Save product draft"}</button>
+            <button className="wide-btn" data-tour="product-save" type="button" disabled={saving} onClick={saveProduct}><Save size={16} /> {saving ? "Saving..." : "Save product draft"}</button>
             {editing ? <button className="icon-btn" type="button" disabled={saving} onClick={resetDraft}>Cancel edit</button> : null}
           </div>
         </section>

@@ -40,6 +40,7 @@ export function CommerceNav() {
           <a
             aria-current={path === href ? "page" : undefined}
             className={`commerce-nav-link ${path === href ? "wide-btn" : "icon-btn"}${index >= everydayCount ? " commerce-nav-more" : ""}${showMore ? " is-shown" : ""}`}
+            data-tour={`nav-${href.split("/").pop()}`}
             href={href}
             key={href}
           >

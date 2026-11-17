@@ -295,7 +295,7 @@ export function ClientCommerceLiveStore() {
       {!loading && !verified ? <div className="empty-state">Storefront settings could not be verified, so publishing controls are unavailable.</div> : null}
 
       {!loading && verified && data ? <>
-        {orderMode !== null ? <section className="panel panel-wide" data-testid="order-mode-panel">
+        {orderMode !== null ? <section className="panel panel-wide" data-testid="order-mode-panel" data-tour="live-order-mode">
           <div className="panel-title"><Store size={20} /><div><h2>How do customers order?</h2><p className="subtle">Pick one. You can change it any time.</p></div></div>
           <div role="radiogroup" aria-label="How customers order" className="order-mode-choices">
             <label className="settings-card order-mode-option"><input type="radio" name="order-mode" checked={orderChoice === "online"} onChange={() => setOrderChoice("online")} /><span><strong>Online, with a payment link</strong><small>Customers place the order on your store, then pay with your Venmo, PayPal or Stripe link.</small></span></label>
@@ -310,7 +310,7 @@ export function ClientCommerceLiveStore() {
           </div>
         </section> : null}
 
-        <section className="panel panel-wide">
+        <section className="panel panel-wide" data-tour="live-payment">
           <div className="panel-title"><Save size={20} /><div><h2>Store and payment handoff</h2><p className="subtle">A public payment link can be recorded here later, but this page does not create a payment account, store secrets, charge customers, or connect payouts.</p></div></div>
           {orderMode === "email" || orderMode === "menu" ? <p className="subtle">{orderMode === "menu" ? "Your menu does not take payments online, so no payment link is needed." : "Your store takes orders by email, so no payment link is needed."} Just set the store name.</p> : null}
           {orderMode === "email" || orderMode === "menu" ? null : <p className="subtle" data-testid="payment-link-hint">You only need one payment link: Stripe, PayPal or Venmo. Fill in just the one you use and leave the others empty. PayPal and Venmo links carry the exact order total.</p>}
@@ -332,11 +332,11 @@ export function ClientCommerceLiveStore() {
           {data.status === "active" ? <a className="wide-btn" href={liveUrl} target="_blank" rel="noreferrer"><ExternalLink size={16} /> Open verified storefront</a> : null}
           {data.status === "active" ? <div data-testid="store-link-box">
             <p className="subtle" style={{ marginTop: ".75rem" }}>Your store address: <strong>{liveUrl}</strong></p>
-            <button className="icon-btn" type="button" onClick={() => void copyStoreLink()}><Copy size={16} /> Copy store link</button>
+            <button className="icon-btn" data-tour="live-share" type="button" onClick={() => void copyStoreLink()}><Copy size={16} /> Copy store link</button>
           </div> : null}
         </section>
 
-        <section className="panel panel-wide">
+        <section className="panel panel-wide" data-tour="live-visibility">
           <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
           <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
           {(data.products || []).length === 0 ? <div className="empty-state">No verified products are available for storefront visibility yet.</div> : data.products.map((product) => (
