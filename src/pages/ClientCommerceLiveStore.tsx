@@ -4,6 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { GetPaidHelper } from "../components/GetPaidHelper";
+import { StoreQrCard } from "../components/StoreQrCard";
 import { withCommerceReason } from "../lib/commerceRpcReason";
 import { emptyStoreProfile, normalizeStoreProfile, profileFromRow, storeProfileLimits, type StoreProfile } from "../lib/storeProfile";
 
@@ -335,6 +336,7 @@ export function ClientCommerceLiveStore() {
           {data.status === "active" ? <div data-testid="store-link-box">
             <p className="subtle" style={{ marginTop: ".75rem" }}>Your store address: <strong>{liveUrl}</strong></p>
             <button className="icon-btn" data-tour="live-share" type="button" onClick={() => void copyStoreLink()}><Copy size={16} /> Copy store link</button>
+            <StoreQrCard url={liveUrl} storeName={storeName} />
           </div> : null}
         </section>
 
