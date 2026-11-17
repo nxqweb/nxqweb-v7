@@ -3,6 +3,8 @@
 You do not need to know anything technical. Everything happens in your client portal, in the **Commerce** area. Words in **bold** are the buttons and menu names you will see.
 The menu along the top of Commerce reads: **Dashboard, Tutorial, Products, Photos, Live store, Orders, Setup**, then **More pages**.
 
+**Stuck? Press Guide me** (top right of every Commerce page, after the next site update). Pick what you want to do and it points at each button, one step at a time.
+
 ## 0. Before you start: photo format (iPhone)
 Your store accepts **JPG, PNG, WEBP or GIF** photos, up to 8 per product. iPhones save photos as **HEIC** by default, and HEIC files are refused.
 - **Easiest fix for next time:** on your iPhone open **Settings, Camera, Formats** and choose **Most Compatible**. New photos will be JPG.

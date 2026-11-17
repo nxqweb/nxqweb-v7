@@ -2,7 +2,7 @@
 // to real pages, anything needing a person must be offered to the team, and reports must never carry sign-in codes from the address bar.
 import fs from "node:fs";
 import { answerQuestion, faq, maxTeamQuestionLength, noAnswerText, suggestedQuestions, teamMessage } from "../src/lib/assistantAnswers.ts";
-import { buildProblemReport, problemCategories, problemLimits, safePath } from "../src/lib/problemReport.ts";
+import { buildProblemReport, countProblemReports, parseProblemReport, problemCategories, problemLimits, safePath } from "../src/lib/problemReport.ts";
 import { helpTerms } from "../src/lib/helpTerms.ts";
 
 let failures = 0;
@@ -58,6 +58,22 @@ const starterAnalytics = /\('business','starter','advanced_analytics',false/.tes
 const intelHeat = /mouse_tracking/.test(tiers) || /\('business','intelligence','mouse_tracking',true/.test(read("supabase/migrations/130_server_side_tier_entitlements.sql"));
 check("Growth is shown as getting click and scroll summaries because the database gives it analytics, and Starter does not", growthAnalytics && starterAnalytics && /label: "Behavior analytics"[^}]*starter: "—", growth: "Page, click \+ scroll summaries"/.test(home));
 check("heat-point tracking is shown as an Intelligence feature (worded honestly: the portal shows heat-point data, not a map yet) because only Intelligence and Enterprise have mouse tracking", intelHeat && /intelligence: "Adds heat-point tracking \(with consent\)"/.test(home) && !/Adds heat maps/.test(home));
+
+// ---- the owner's "Problem reports and ideas" card reads reports back out of portal messages
+{
+  const built = buildProblemReport({ category: "idea", text: "Please add a way to charge for shipping.\nSecond line.", path: "/client/commerce/live?code=SECRET#x", width: 390.4, height: 844 });
+  const parsed = parseProblemReport(built.message);
+  check("a report round-trips: kind, page (path only), screen and the client's own words", parsed && parsed.category === "idea" && parsed.categoryLabel === "I have an idea" && parsed.page === "/client/commerce/live" && parsed.screen === "390x844" && parsed.text === "Please add a way to charge for shipping.\nSecond line.");
+  check("ordinary messages are not reports", [null, undefined, 5, "", "hello", "Re: [Problem report] thanks", " [Problem report] leading space"].every((m) => parseProblemReport(m) === null));
+  const odd = parseProblemReport("[Problem report] <b>Made up kind</b>\nPage: javascript:alert(1)\nScreen: <script>\n\n<img src=x onerror=alert(1)>");
+  check("a hand-typed or tampered report is read safely: unknown kind becomes Something else, a bad page becomes /, a bad screen becomes unknown", odd && odd.category === "other" && odd.categoryLabel === "Something else" && odd.page === "/" && odd.screen === "unknown" && odd.text.startsWith("<img"));
+  check("a report with missing lines still parses, and very long text is cut to the normal limit", parseProblemReport("[Problem report] Something is broken")?.text === "" && parseProblemReport(`[Problem report] Something is broken\n\n${"x".repeat(5000)}`).text.length === problemLimits.max);
+  const counts = countProblemReports([built.message, "[Problem report] Something is broken\n\nA", "[Problem report] Something is broken\n\nB", "[Problem report] Something is confusing\n\nC", "[Problem report] nonsense\n\nD"].map(parseProblemReport));
+  check("counts by kind", counts.broken === 2 && counts.confusing === 1 && counts.idea === 1 && counts.other === 1);
+  const card = fs.readFileSync("src/components/OwnerProblemReports.tsx", "utf8");
+  const ownerPage = fs.readFileSync("src/pages/OwnerPortal.tsx", "utf8");
+  check("the owner card shows report text as plain text, runs no query of its own, and opens the client's chat", !/dangerouslySetInnerHTML|supabase|fetch\(/.test(card) && /onOpen\(row\.client_id\)/.test(card) && /<OwnerProblemReports messages=\{ownerReviewMessages\}/.test(ownerPage));
+}
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll portal-help checks passed (offline).");
 process.exit(failures ? 1 : 0);

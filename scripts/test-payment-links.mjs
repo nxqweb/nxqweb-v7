@@ -40,7 +40,7 @@ const storefront = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "ut
 const live = fs.readFileSync("src/pages/ClientCommerceLiveStore.tsx", "utf8");
 check("the store builds all three links through orderPaymentHref", ["stripe", "paypal", "venmo"].every((p) => new RegExp(`orderPaymentHref\\("${p}", safePaymentUrl\\("${p}"`).test(storefront)));
 check("the store never links a provider URL without the safe-host check", !/href=\{order\.(stripe_payment_link|paypal_url|venmo_url)/.test(storefront) && (storefront.match(/safePaymentUrl\(/g) || []).length === 3);
-check("the order page tells Stripe shoppers the exact amount to pay", storefront.includes("please pay exactly {money(order.total, order.currency)} for order {order.order_number}"));
+check("the order page tells Stripe shoppers the exact amount to pay", storefront.includes("please pay exactly {formatMoney(order.total, order.currency)} for order {order.order_number}"));
 check("the Live store page explains how amounts work for the owner", live.includes("How amounts work") && live.includes("lets customers choose what to pay") && live.includes("PayPal.me and Venmo links get each order's exact total added automatically"));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll payment-link checks passed (offline).");

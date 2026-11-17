@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { OwnerOverviewGraph } from "../components/OwnerOverviewGraph";
+import { OwnerProblemReports } from "../components/OwnerProblemReports";
 import { formatDateTimeShort as formatDateTime, formatStatus, formatUsdWhole as formatMoney } from "../lib/format";
 import { setupFieldsFromNotes } from "../lib/aiDesk";
 import { OwnerAiDesk } from "../components/OwnerAiDesk";
@@ -1005,6 +1006,8 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
               )}
 
             </div>
+
+            <OwnerProblemReports messages={ownerReviewMessages} clientName={(clientId) => clients.find((client) => client.id === clientId)?.business_name || "Unknown client"} formatWhen={formatDateTime} onOpen={(clientId) => void openClientMessageThread(clientId)} />
 
             <div className="chat-feed">
 

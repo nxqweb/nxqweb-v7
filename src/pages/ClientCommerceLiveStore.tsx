@@ -3,6 +3,7 @@ import { Copy, ExternalLink, Save, Store, ToggleLeft, ToggleRight, UserRound } f
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
+import { GetPaidHelper } from "../components/GetPaidHelper";
 import { withCommerceReason } from "../lib/commerceRpcReason";
 import { emptyStoreProfile, normalizeStoreProfile, profileFromRow, storeProfileLimits, type StoreProfile } from "../lib/storeProfile";
 
@@ -323,6 +324,7 @@ export function ClientCommerceLiveStore() {
             <label><span>Payment instructions</span><input className="auth-input" placeholder="Public customer-facing instructions only" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} /></label>
             </>}
           </div>
+          {orderMode === "email" || orderMode === "menu" ? null : <GetPaidHelper links={{ stripe: stripePaymentLink, paypal: paypalUrl, venmo: venmoUrl }} />}
           <div className="settings-grid">
             <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void save(false)} type="button">{busy === "settings" ? "Saving..." : "Save private draft"}</button>
             {orderMode === "email" || orderMode === "menu" ? null : <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void save(true)} type="button">{busy === "settings" ? "Saving..." : "Open storefront"}</button>}

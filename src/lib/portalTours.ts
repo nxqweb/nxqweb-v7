@@ -25,6 +25,8 @@ const orderModeStep: TourStep = { ...live, target: "live-order-mode", title: "Ch
 const paymentStep: TourStep = { ...live, target: "live-payment", title: "Add how you get paid", text: "For online ordering, paste ONE payment link (PayPal, Venmo or Stripe) and press Save private draft. Never type a password here." };
 const shareStep: TourStep = { ...live, target: "live-share", title: "Share your shop", text: "Press Copy store link, then paste it on Instagram, in emails or on your business cards.", missing: "The link appears here once your store is open. Open your store first, then come back to this step." };
 
+const getPaidStep: TourStep = { ...live, target: "live-get-paid", title: "Not sure how to get a link?", text: "Press PayPal, Venmo or Stripe here for three short steps. Then press Test my link to check it opens your own payment page.", missing: "This help shows when your store takes orders online. Choose online ordering first." };
+
 export const tours: Tour[] = [
   { id: "welcome", label: "Show me around", steps: [
     { ...home, target: "nav-products", title: "Products", text: "This is where you add what you sell: the name, the price and how many you have." },
@@ -36,7 +38,7 @@ export const tours: Tour[] = [
   { id: "post-product", label: "Post a product", steps: [formStep, saveStep, uploadStep, visibleStep] },
   { id: "add-photos", label: "Add photos to a product", steps: [uploadStep] },
   { id: "show-in-shop", label: "Show a product in my shop", steps: [visibleStep] },
-  { id: "how-to-order", label: "Choose how customers order and pay", steps: [orderModeStep, paymentStep] },
+  { id: "how-to-order", label: "Choose how customers order and pay", steps: [orderModeStep, paymentStep, getPaidStep] },
   { id: "share-link", label: "Share my store link", steps: [shareStep] },
   { id: "see-orders", label: "See my orders", steps: [
     { ...orders, target: "orders-head", title: "Your orders", text: "Every order is listed on this page with the customer, what they bought and the total. Update each order as you pack and send it." },
