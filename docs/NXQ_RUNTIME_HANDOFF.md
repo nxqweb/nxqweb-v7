@@ -23,6 +23,7 @@ dispatched. Each item has its own detailed block further down (dated 2026-11-17)
 5. Product photos are shrunk in the browser before upload.
 6. Commerce home: a Next step card. Empty pages speak plain words.
 7. `new_order` email template in the shared allow-list (inert until email sending is on).
+8. Orders page: an Email the customer button on each real order. It opens the owner's own mail app with words written for the order's state (payment reminder, payment received, shipped with tracking, ready for pickup, delivered). The app sends nothing. `src/lib/orderCustomerEmail.ts`, `scripts/test-order-customer-email.mjs`.
 
 **Drafts waiting for the owner (docs/drafts/migrations, each with a passing sidecar test and a control run):**
 - 07 new-order notice for the shop owner. 08 shipping fee (flat fee, free-over, pickup). 09 confirm a payment that arrived after the 2-hour hold.

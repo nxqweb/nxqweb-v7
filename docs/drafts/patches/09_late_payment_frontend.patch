@@ -21,19 +21,19 @@ index 0000000..669eccb
 +console.log(failures ? `\n${failures} check(s) failed.` : "\nAll late payment wiring checks passed (offline).");
 +process.exit(failures ? 1 : 0);
 diff --git a/src/pages/ClientCommerceOrders.tsx b/src/pages/ClientCommerceOrders.tsx
-index 049980e..b0685b3 100644
+index 5357b15..9653e5a 100644
 --- a/src/pages/ClientCommerceOrders.tsx
 +++ b/src/pages/ClientCommerceOrders.tsx
-@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, PackageCheck, Plus, RefreshCcw, Shopping
+@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Plus, RefreshCcw, Sh
  import { CommerceNav } from "../components/CommerceNav";
  import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
  import { formatMoneyIn as formatMoney } from "../lib/format";
 -import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, type OrderDelivery } from "../lib/orderDelivery";
 +import { canConfirmLate, deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, lateConfirmError, type OrderDelivery } from "../lib/orderDelivery";
+ import { customerEmail } from "../lib/orderCustomerEmail";
  
  type OrderItem = {
-   id: string;
-@@ -142,6 +142,21 @@ export function ClientCommerceOrders() {
+@@ -143,6 +143,21 @@ export function ClientCommerceOrders() {
      setLoading(false);
    }
  
@@ -55,7 +55,7 @@ index 049980e..b0685b3 100644
    async function createTestOrder() {
      if (!supabase || busy) return;
      setBusy("create"); setError(""); setMessage("");
-@@ -227,6 +242,7 @@ export function ClientCommerceOrders() {
+@@ -229,6 +244,7 @@ export function ClientCommerceOrders() {
              </div>
              {hold ? <p className="subtle" data-testid="order-hold" style={{ marginBottom: ".75rem" }}>{hold}</p> : null}
              {order.payment_status !== "paid" && !order.is_test && order.fulfillment_status !== "cancelled" ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
