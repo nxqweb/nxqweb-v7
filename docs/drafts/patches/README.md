@@ -10,3 +10,5 @@ so the screens wait here until the owner approves promoting the draft.
 
 To apply after the draft is promoted to a real migration: `git apply docs/drafts/patches/<name>.patch`, then `npm run test:ci-parity`.
 If the patch no longer applies because the files changed, re-make the same edits by hand; the patch is the reference.
+
+A patch goes stale whenever the pages it touches change. `scripts/test-store-shipping.mjs` fails as soon as that happens. To refresh: commit your work, run `git apply --3way docs/drafts/patches/<name>.patch`, fix any conflict, run the store tests (two shipping checks fail on purpose while the screens are wired), write the new diff of the parked files over the patch, then take the screens out again with `git apply -R`.
