@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
+import { shrinkPhoto } from "../lib/photoShrink";
 
 type ProductImageManagerProps = {
   productId: string;
@@ -16,6 +17,7 @@ type ProductImageResult = {
 const bucketName = "commerce-product-images";
 const maxImages = 8;
 const maxFileSize = 8 * 1024 * 1024;
+const maxPickSize = 40 * 1024 * 1024; // what may be picked; a photo this big is shrunk before upload and must then fit maxFileSize
 
 function getStoragePath(url: string) {
   const marker = `/storage/v1/object/public/${bucketName}/`;
@@ -91,8 +93,9 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       return;
     }
 
+    // Big phone photos are welcome: each one is made smaller in this browser first (src/lib/photoShrink.ts), and only the result must fit.
     const invalidFile = selectedFiles.find(
-      (file) => !file.type.startsWith("image/") || file.size > maxFileSize
+      (file) => !file.type.startsWith("image/") || file.size > maxPickSize
     );
     if (invalidFile) {
       setError("Use JPG, PNG, WEBP, or GIF images up to 8 MB each.");
@@ -102,12 +105,19 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
     setBusy(true);
     setError("");
     setMessage("");
+    const preparedFiles: File[] = [];
+    for (const original of selectedFiles) preparedFiles.push(await shrinkPhoto(original));
+    if (preparedFiles.some((file) => file.size > maxFileSize)) {
+      setError("Use JPG, PNG, WEBP, or GIF images up to 8 MB each. One of these is still too large after it was made smaller.");
+      setBusy(false);
+      return;
+    }
     const uploadedUrls: string[] = [];
     const uploadedPaths: string[] = [];
     const uploadTickets: string[] = [];
 
     try {
-      for (const file of selectedFiles) {
+      for (const file of preparedFiles) {
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const filePath = `${clientId}/${productId}/${crypto.randomUUID()}.${extension}`;
         const uploadTicketId = await authorizeStorageUpload(storageClient, bucketName, filePath, file);
