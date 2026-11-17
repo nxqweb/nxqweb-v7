@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
+import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Printer, Plus, RefreshCcw, ShoppingBag } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
 import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, wasAutoCancelled, type OrderDelivery } from "../lib/orderDelivery";
 import { customerEmail } from "../lib/orderCustomerEmail";
+import { PackingSlip } from "../components/PackingSlip";
+import { packingSlip, type PackingSlipData } from "../lib/packingSlip";
 
 type OrderItem = {
   id: string;
@@ -80,6 +82,16 @@ export function ClientCommerceOrders() {
   // Where each order goes (address, phone, the shopper's note, pickup). Read separately so a failure never blocks the orders list.
   const [delivery, setDelivery] = useState<Record<string, OrderDelivery>>({});
   const [copiedAddress, setCopiedAddress] = useState("");
+  // Printing a packing slip: the slip is put in the page, the browser's print window opens, and afterwards the page is back to normal.
+  const [printing, setPrinting] = useState<PackingSlipData | null>(null);
+  useEffect(() => {
+    if (!printing) return;
+    const done = () => { document.body.classList.remove("printing-slip"); setPrinting(null); };
+    document.body.classList.add("printing-slip");
+    window.addEventListener("afterprint", done, { once: true });
+    const timer = window.setTimeout(() => { try { window.print(); } catch { done(); } }, 50);
+    return () => { window.clearTimeout(timer); window.removeEventListener("afterprint", done); document.body.classList.remove("printing-slip"); };
+  }, [printing]);
   const [deliveryReadAt, setDeliveryReadAt] = useState(0); // the moment the hold times were read, so "held until" is judged against a fixed time
 
   useEffect(() => { void loadOrders(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loads once when the page opens
@@ -244,6 +256,7 @@ export function ClientCommerceOrders() {
                 {going.shippingTotal > 0 ? <p>Shipping charged: {formatMoney(going.shippingTotal, order.currency)} (already in the total)</p> : null}
                 {going.note ? <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>Customer's note: {going.note}</p> : null}
               </article> : null}
+              {order.is_test ? null : <button className="icon-btn" data-testid="print-slip" type="button" style={{ marginTop: "1rem" }} onClick={() => setPrinting(packingSlip(order, going, (iso) => new Date(iso).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })))}><Printer size={16} /> Print packing slip</button>}
               {mail ? <div data-testid="order-customer-email" style={{ marginTop: "1rem" }}>
                 <a className="icon-btn" href={mail.href}><Mail size={16} /> {mail.label}</a>
                 <p className="subtle">Opens your own email with the message written for you. Read it, change anything you like, then send.</p>
@@ -264,6 +277,6 @@ export function ClientCommerceOrders() {
           </section>
         );
       }) : null}
-    </section></main>
+    </section>{printing ? <PackingSlip slip={printing} formatMoney={(amount) => formatMoney(amount, orders.find((o) => o.order_number === printing.orderNumber)?.currency || "USD")} /> : null}</main>
   );
 }
