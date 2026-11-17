@@ -62,8 +62,13 @@ check("owner alerts are capped", MAX_OWNER_RECIPIENTS === 5 && (await ensureEmai
 check("an owner alert about a QA-only client stays in-app", (await ensureEmailCopies(makeStore({ clients: { c1: { ...real, qa_only: true } }, owners: ["boss@gmail.com"] }), ownerAlert(), true)).skipped === "qa_only_client");
 check("no valid owner address means nothing is created", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["nope"] }), ownerAlert(), true)).skipped === "no_deliverable_owner_email");
 check("a client template is not emailed to an owner row and vice versa", (await ensureEmailCopies(makeStore({ clients: { c1: real }, owners: ["boss@gmail.com"] }), ownerAlert({ template_key: "billing_payment_failed" }), true)).skipped === "template_not_emailed" && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "billing_freeze_review_owner_attention" }), true)).skipped === "template_not_emailed");
-check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 7 && OWNER_EMAIL_TEMPLATES.size === 2);
+check("allow-lists are small and explicit", CLIENT_EMAIL_TEMPLATES.size === 8 && OWNER_EMAIL_TEMPLATES.size === 2);
 check("a denied-setup notice is never emailed (the billing guard would always refuse it)", !CLIENT_EMAIL_TEMPLATES.has("business_setup_denied") && (await ensureEmailCopies(makeStore({ clients: { c1: real } }), inApp({ template_key: "business_setup_denied" }), true)).skipped === "template_not_emailed");
+
+// ---- new store order emails use fixed wording too
+store = makeStore({ clients: { c1: real } });
+r = await ensureEmailCopies(store, inApp({ template_key: "new_order", subject: "x", body: "Shopper Jo http://evil.example ordered a candle" }), true);
+check("a new store order is emailed to the shop owner with fixed wording only", r.created === 1 && store.inserted[0].template_key === "new_order" && !/evil|Jo|candle/i.test(store.inserted[0].body) && /Sign in to your NXQX portal/.test(store.inserted[0].body));
 
 // ---- website lead emails use fixed wording (a visitor's typed name must never be emailed from our domain)
 const leadAlert = (extra = {}) => inApp({ template_key: "new_lead", subject: "New website lead", body: "Click http://evil.example to verify your account submitted a website inquiry about Tree removal.", ...extra });

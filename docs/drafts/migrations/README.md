@@ -15,6 +15,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 | `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
+| `07_new_order_owner_notification.sql` | Shop owner gets an in-app notice (fixed wording, email via the shared allow-list) when a real order arrives; test orders never notify (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
