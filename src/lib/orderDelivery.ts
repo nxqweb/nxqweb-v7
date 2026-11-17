@@ -64,17 +64,27 @@ export function deliveryBadge(delivery: OrderDelivery | undefined): string {
   return delivery.address ? "Ship" : "";
 }
 
+// True when the SYSTEM cancelled the order because its hold ran out, and the owner did not also close it by hand afterwards.
+// (The same rule the server uses in draft migration 09.) The order's history comes from the orders list the page already has.
+export function wasAutoCancelled(events: unknown): boolean {
+  if (!Array.isArray(events)) return false;
+  const rows = events.map((event) => record(event));
+  return rows.some((event) => event.event_type === "reservation_expired")
+    && !rows.some((event) => event.event_type === "fulfillment_status_changed" && event.to_status === "cancelled");
+}
+
 // What an unpaid order's hold means for the owner, in plain words. "" when there is nothing to say (paid, test, or no hold recorded).
-export function holdMessage(delivery: OrderDelivery | undefined, paid: boolean, now: number, formatTime: (at: number) => string): string {
+export function holdMessage(delivery: OrderDelivery | undefined, paid: boolean, now: number, formatTime: (at: number) => string, autoCancelled: boolean): string {
   if (!delivery || paid) return "";
-  if (delivery.released) return "This order was cancelled automatically because the payment was not confirmed in time. The items went back on sale.";
+  // "released" is also set when the owner cancels an order by hand; only the system's own cancel gets this explanation.
+  if (delivery.released) return autoCancelled ? "This order was cancelled automatically because the payment was not confirmed in time. The items went back on sale." : "";
   if (delivery.heldUntil === null) return "";
   if (delivery.heldUntil <= now) return "The hold on these items has run out. This order will be cancelled automatically in a few minutes unless you confirm the payment now.";
   return `The items are held until ${formatTime(delivery.heldUntil)}. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.`;
 }
 
 // "The money arrived late" (draft migration 09): offered only on a real, unpaid order whose hold ran out.
-export const canConfirmLate = (delivery: OrderDelivery | undefined, paid: boolean, isTest: boolean): boolean => Boolean(delivery && delivery.released && !paid && !isTest);
+export const canConfirmLate = (delivery: OrderDelivery | undefined, paid: boolean, isTest: boolean, autoCancelled: boolean): boolean => Boolean(delivery && delivery.released && autoCancelled && !paid && !isTest);
 
 // The server's refusals that are clear and safe to show the owner are kept word for word; anything else becomes one calm sentence.
 const lateSafe = [/has sold out since this order was cancelled/i, /is no longer in your store/i, /too old to confirm late/i, /cancelled automatically for running out of time/i, /still being held/i];

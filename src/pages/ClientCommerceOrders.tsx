@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Plus, RefreshCcw, Sh
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
-import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, type OrderDelivery } from "../lib/orderDelivery";
+import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, wasAutoCancelled, type OrderDelivery } from "../lib/orderDelivery";
 import { customerEmail } from "../lib/orderCustomerEmail";
 
 type OrderItem = {
@@ -220,7 +220,7 @@ export function ClientCommerceOrders() {
         const going = delivery[order.id];
         const badge = deliveryBadge(going);
         const mail = order.is_test ? null : customerEmail({ email: order.customer_email, customerName: order.customer_name, orderNumber: order.order_number, status: order.fulfillment_status, paid: order.payment_status === "paid", tracking: order.tracking_number, pickup: going?.pickup });
-        const hold = order.is_test ? "" : holdMessage(going, order.payment_status === "paid", deliveryReadAt, (at) => new Date(at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }));
+        const hold = order.is_test ? "" : holdMessage(going, order.payment_status === "paid", deliveryReadAt, (at) => new Date(at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" }), wasAutoCancelled(order.events));
         return (
           <section className="panel panel-wide" key={order.id}>
             <div className="panel-title panel-title-row">

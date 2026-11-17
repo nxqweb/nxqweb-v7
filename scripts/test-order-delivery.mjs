@@ -2,7 +2,7 @@
 // the customer's name and email but never the shipping address, phone or note, so an owner could not tell where to send an order.
 // Everything here is text a shopper typed: it must come out as plain capped text, and odd data must never break the orders list.
 import fs from "node:fs";
-import { canConfirmLate, lateConfirmError, holdMessage, addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
+import { wasAutoCancelled, canConfirmLate, lateConfirmError, holdMessage, addressText, deliveryBadge, deliveryById, deliveryColumns, deliveryFromRow, hasDeliveryDetails } from "../src/lib/orderDelivery.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -28,15 +28,22 @@ check("the closed card says Ship or Pickup, or nothing", deliveryBadge(d) === "S
 const at = Date.parse("2026-11-17T18:00:00Z");
 const fmtTime = (ms) => new Date(ms).toISOString().slice(11, 16);
 const held = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z" });
-check("an unpaid order says until when the items are held and what happens after", held.heldUntil === Date.parse("2026-11-17T19:30:00Z") && !held.released && holdMessage(held, false, at, fmtTime) === "The items are held until 19:30. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.");
-check("a hold that just ran out asks the owner to confirm now", /confirm the payment now/.test(holdMessage(held, false, Date.parse("2026-11-17T19:31:00Z"), fmtTime)));
-check("an automatically cancelled order says why", (() => { const gone = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z", reservation_released_at: "2026-11-17T19:45:00Z" }); return gone.released && /cancelled automatically because the payment was not confirmed in time/.test(holdMessage(gone, false, at, fmtTime)); })());
-check("a paid order, a missing row or an order without a hold says nothing", holdMessage(held, true, at, fmtTime) === "" && holdMessage(undefined, false, at, fmtTime) === "" && holdMessage(deliveryFromRow({}), false, at, fmtTime) === "");
+check("an unpaid order says until when the items are held and what happens after", held.heldUntil === Date.parse("2026-11-17T19:30:00Z") && !held.released && holdMessage(held, false, at, fmtTime, true) === "The items are held until 19:30. If the payment is not confirmed by then, the order is cancelled automatically and the items go back on sale.");
+check("a hold that just ran out asks the owner to confirm now", /confirm the payment now/.test(holdMessage(held, false, Date.parse("2026-11-17T19:31:00Z"), fmtTime, true)));
+check("an automatically cancelled order says why", (() => { const gone = deliveryFromRow({ reservation_expires_at: "2026-11-17T19:30:00Z", reservation_released_at: "2026-11-17T19:45:00Z" }); return gone.released && /cancelled automatically because the payment was not confirmed in time/.test(holdMessage(gone, false, at, fmtTime, true)); })());
+check("a paid order, a missing row or an order without a hold says nothing", holdMessage(held, true, at, fmtTime, true) === "" && holdMessage(undefined, false, at, fmtTime, true) === "" && holdMessage(deliveryFromRow({}), false, at, fmtTime, true) === "");
 check("odd dates are ignored", [undefined, null, 5, "soon", {}].every((v) => deliveryFromRow({ reservation_expires_at: v, reservation_released_at: v }).heldUntil === null && !deliveryFromRow({ reservation_released_at: v }).released));
+
+// ---- only the system's own cancel counts as "automatic" (an order the owner cancelled by hand must never say so)
+const expiredEvent = { event_type: "reservation_expired", to_status: "cancelled" };
+const handCancel = { event_type: "fulfillment_status_changed", to_status: "cancelled" };
+check("the history tells an automatic cancel from a hand cancel", wasAutoCancelled([expiredEvent]) && !wasAutoCancelled([handCancel]) && !wasAutoCancelled([handCancel, expiredEvent]) && !wasAutoCancelled([{ event_type: "order_created" }]) && [undefined, null, "x", {}, [null, 5]].every((v) => wasAutoCancelled(v) === false));
+check("a hand-cancelled order gets no 'cancelled automatically' line and no late-confirm offer", (() => { const gone = deliveryFromRow({ reservation_released_at: "2026-11-17T19:45:00Z" }); return holdMessage(gone, false, at, fmtTime, false) === "" && !canConfirmLate(gone, false, false, false) && /cancelled automatically/.test(holdMessage(gone, false, at, fmtTime, true)); })());
+check("the page judges it from the order's own history", fs.readFileSync("src/pages/ClientCommerceOrders.tsx", "utf8").includes("wasAutoCancelled(order.events));"));
 
 // ---- "the money arrived late" helpers (the button itself waits in docs/drafts/patches until draft 09 is a real migration)
 const goneRow = deliveryFromRow({ reservation_released_at: "2026-11-17T19:45:00Z" });
-check("late confirm is offered only on a real unpaid order whose hold ran out", canConfirmLate(goneRow, false, false) && !canConfirmLate(goneRow, true, false) && !canConfirmLate(goneRow, false, true) && !canConfirmLate(held, false, false) && !canConfirmLate(undefined, false, false));
+check("late confirm is offered only on a real unpaid order whose hold ran out", canConfirmLate(goneRow, false, false, true) && !canConfirmLate(goneRow, true, false, true) && !canConfirmLate(goneRow, false, true, true) && !canConfirmLate(held, false, false, true) && !canConfirmLate(undefined, false, false, true));
 check("clear server refusals are shown word for word", lateConfirmError("Late Candle has sold out since this order was cancelled. Refund the customer or add stock first.") === "Late Candle has sold out since this order was cancelled. Refund the customer or add stock first." && /too old/.test(lateConfirmError("This order is too old to confirm late. Contact the customer instead.")));
 check("anything else becomes one calm sentence (no database wording leaks)", [undefined, null, "", 5, 'duplicate key value violates unique constraint "x"', "permission denied for function"].every((m) => lateConfirmError(m) === "This order could not be reopened right now. Nothing was changed. Please try again."));
 
