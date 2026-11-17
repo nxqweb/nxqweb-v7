@@ -18,6 +18,7 @@ import {
   addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, isStockRefusal, newCheckoutKey, productHash, refitCart, restoreCart, serializeCart, slugFromHash,
   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
 } from "../lib/storeCatalog";
+import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
 
 type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
 type OrderResult = { order_number: string; total: number; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
@@ -49,6 +50,20 @@ export function PublicCommerceStorefront() {
   const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
   const [website, setWebsite] = useState<StoreWebsite | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
+  // An order placed from this browser in the last two hours: after a refresh or a closed tab the shopper can still get back to the payment steps.
+  const [recentOrder, setRecentOrder] = useState<{ order: RecentOrder; minutesLeft: number } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(recentOrderKey(slug));
+      const found = restoreRecentOrder(raw, Date.now());
+      if (found) setRecentOrder({ order: found, minutesLeft: recentOrderMinutesLeft(raw, Date.now()) });
+      else if (raw) window.localStorage.removeItem(recentOrderKey(slug));
+    } catch { /* private browsing: nothing to remember */ }
+  }, [slug]);
+  function forgetRecentOrder() {
+    try { window.localStorage.removeItem(recentOrderKey(slug)); } catch { /* nothing stored */ }
+    setRecentOrder(null);
+  }
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
   const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
@@ -312,6 +327,8 @@ export function PublicCommerceStorefront() {
       setError(message);
     } else {
       setOrder(result.data as OrderResult);
+      try { window.localStorage.setItem(recentOrderKey(slug), serializeRecentOrder(result.data as OrderResult, Date.now())); } catch { /* the steps stay on screen */ }
+      setRecentOrder(null);
       setCart([]);
       setToast("");
       if (signedIn && saveToAccount) {
@@ -339,6 +356,12 @@ export function PublicCommerceStorefront() {
       <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
       {customRequestsOpen && !order && !paused ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
+      {!order && recentOrder ? <section className="notice-card" data-testid="recent-order-card" aria-label="Your recent order">
+        <strong>You placed order {recentOrder.order.order_number} for {formatMoney(recentOrder.order.total, recentOrder.order.currency)}.</strong>
+        <p>Not paid yet? The shop is holding your items{recentOrder.minutesLeft > 0 ? ` for about ${recentOrder.minutesLeft} more ${recentOrder.minutesLeft === 1 ? "minute" : "minutes"}` : ""}. You do not need to order again.</p>
+        <button className="wide-btn" type="button" onClick={() => { setOrder(recentOrder.order); setRecentOrder(null); window.scrollTo?.({ top: 0 }); }}>Show how to pay</button>
+        <button className="icon-btn" type="button" onClick={forgetRecentOrder}>I already paid</button>
+      </section> : null}
       {!order ? <StoreMessageAndVerse website={website} /> : null}
 
       {order ? <section className="panel panel-wide">
