@@ -1,6 +1,6 @@
 diff --git a/scripts/test-late-payment-wiring.mjs b/scripts/test-late-payment-wiring.mjs
 new file mode 100644
-index 0000000..669eccb
+index 0000000..87c3eb5
 --- /dev/null
 +++ b/scripts/test-late-payment-wiring.mjs
 @@ -0,0 +1,16 @@
@@ -12,7 +12,7 @@ index 0000000..669eccb
 +function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
 +
 +const page = fs.readFileSync("src/pages/ClientCommerceOrders.tsx", "utf8");
-+check("the button shows only where the helper allows it (a real unpaid order whose hold ran out)", page.includes('{canConfirmLate(going, order.payment_status === "paid", order.is_test) ? <button className="wide-btn" data-testid="confirm-late"'));
++check("the button shows only where the helper allows it (a real unpaid order whose hold ran out)", page.includes('{canConfirmLate(going, order.payment_status === "paid", order.is_test, wasAutoCancelled(order.events)) ? <button className="wide-btn" data-testid="confirm-late"'));
 +check("the owner is asked to confirm the money really arrived before anything is sent", /window\.confirm\(`Did the payment for \$\{order\.order_number\} arrive in your own account\?/.test(page) && page.indexOf("if (!confirmed) return;", page.indexOf("async function confirmLatePayment")) < page.indexOf('rpc("confirm_my_late_direct_payment"'));
 +check("only the order id is sent", page.includes('rpc("confirm_my_late_direct_payment", { order_uuid: order.id })'));
 +check("a refusal is shown through the safe-message helper and the list reloads after success", page.includes("setError(lateConfirmError(result.error.message))") && /is open again and marked paid\. You can send it now\.`\);\s*await loadOrders\(\);/.test(page));
@@ -21,19 +21,18 @@ index 0000000..669eccb
 +console.log(failures ? `\n${failures} check(s) failed.` : "\nAll late payment wiring checks passed (offline).");
 +process.exit(failures ? 1 : 0);
 diff --git a/src/pages/ClientCommerceOrders.tsx b/src/pages/ClientCommerceOrders.tsx
-index 5357b15..9653e5a 100644
+index f30b17b..459d7ea 100644
 --- a/src/pages/ClientCommerceOrders.tsx
 +++ b/src/pages/ClientCommerceOrders.tsx
-@@ -3,7 +3,7 @@ import { BadgeCheck, ChevronDown, Copy, Mail, PackageCheck, Plus, RefreshCcw, Sh
- import { CommerceNav } from "../components/CommerceNav";
+@@ -4,6 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
  import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
  import { formatMoneyIn as formatMoney } from "../lib/format";
--import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, type OrderDelivery } from "../lib/orderDelivery";
-+import { canConfirmLate, deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, lateConfirmError, type OrderDelivery } from "../lib/orderDelivery";
+ import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, wasAutoCancelled, type OrderDelivery } from "../lib/orderDelivery";
++import { canConfirmLate, lateConfirmError } from "../lib/orderDelivery"; // the late-payment button (draft migration 09)
  import { customerEmail } from "../lib/orderCustomerEmail";
  
  type OrderItem = {
-@@ -143,6 +143,21 @@ export function ClientCommerceOrders() {
+@@ -143,6 +144,21 @@ export function ClientCommerceOrders() {
      setLoading(false);
    }
  
@@ -55,11 +54,11 @@ index 5357b15..9653e5a 100644
    async function createTestOrder() {
      if (!supabase || busy) return;
      setBusy("create"); setError(""); setMessage("");
-@@ -229,6 +244,7 @@ export function ClientCommerceOrders() {
+@@ -229,6 +245,7 @@ export function ClientCommerceOrders() {
              </div>
              {hold ? <p className="subtle" data-testid="order-hold" style={{ marginBottom: ".75rem" }}>{hold}</p> : null}
              {order.payment_status !== "paid" && !order.is_test && order.fulfillment_status !== "cancelled" ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
-+            {canConfirmLate(going, order.payment_status === "paid", order.is_test) ? <button className="wide-btn" data-testid="confirm-late" disabled={Boolean(busy)} onClick={() => void confirmLatePayment(order)} type="button"><BadgeCheck size={16} /> {busy === `late-${order.id}` ? "Reopening..." : "The money arrived: reopen and mark paid"}</button> : null}
++            {canConfirmLate(going, order.payment_status === "paid", order.is_test, wasAutoCancelled(order.events)) ? <button className="wide-btn" data-testid="confirm-late" disabled={Boolean(busy)} onClick={() => void confirmLatePayment(order)} type="button"><BadgeCheck size={16} /> {busy === `late-${order.id}` ? "Reopening..." : "The money arrived: reopen and mark paid"}</button> : null}
              <button className="wide-btn" disabled={Boolean(busy)} onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
              {isOpen ? <div style={{ marginTop: "1rem" }}>
                <div className="settings-grid">
