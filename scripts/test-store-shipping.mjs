@@ -2,6 +2,7 @@
 // odd or missing data must always mean "no fee" (so an older database changes nothing), and the pages must only use the new order
 // function when a rule is actually on.
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import { checkShippingForm, noShipping, shippingFor, shippingFormFromRule, shippingHint, shippingRuleActive, shippingRuleFromRow } from "../src/lib/storeShipping.ts";
 
 let failures = 0;
@@ -50,6 +51,13 @@ check("the draft adds five functions only (no table, policy, trigger or change t
 const srcFiles = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? srcFiles(`${dir}/${e.name}`) : /\.tsx?$/.test(e.name) ? [`${dir}/${e.name}`] : []);
 const promoted = fs.readdirSync("supabase/migrations").some((f) => /store_shipping_fee/.test(f));
 check("until the draft is a real migration, no page calls its functions (the screens wait in docs/drafts/patches)", promoted || (!srcFiles("src").some((f) => /get_public_store_shipping|create_public_store_order_with_shipping|get_my_store_shipping|save_my_store_shipping/.test(read(f))) && fs.existsSync("docs/drafts/patches/08_store_shipping_frontend.patch")));
+
+// A parked patch goes stale every time the pages it touches change. This fails the moment that happens, so it is refreshed right away
+// (re-apply with `git apply --3way`, fix, and write the new diff) instead of being found broken on the day it is needed.
+if (!promoted) {
+  const applies = spawnSync("git", ["apply", "--check", "docs/drafts/patches/08_store_shipping_frontend.patch"], { encoding: "utf8" });
+  check("the parked screens patch still applies cleanly to the current pages", applies.status === 0, (applies.stderr || "").split("\n")[0]);
+}
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store shipping checks passed (offline).");
 process.exit(failures ? 1 : 0);

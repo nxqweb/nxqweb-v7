@@ -1,13 +1,13 @@
 diff --git a/scripts/run-store-tests.mjs b/scripts/run-store-tests.mjs
-index c10d38d..2d39a62 100644
+index 114f202..47a861a 100644
 --- a/scripts/run-store-tests.mjs
 +++ b/scripts/run-store-tests.mjs
 @@ -4,7 +4,7 @@
  import { spawnSync } from "node:child_process";
  
  const tests = [
--  "test-shopper-account", "test-guide-tour", "test-get-paid-helper", "test-production-deploy-reuse", "test-provider-health-status", "test-fixture-cleanup", "test-netlify-budget-screen", "test-enterprise-by-request", "test-quick-links", "test-setup-report-style-line", "test-visits-graph", "test-plan-card-matches-catalog", "test-owner-style-backfill", "test-revenue-excludes-complimentary", "test-assistant-match", "test-site-assistant-draft", "test-site-assistant-ui", "test-site-assistant-builder", "test-commerce-seed", "test-commerce-request-extras", "test-store-website-content", "test-client-lifecycle", "test-store-branding", "test-sensitive-changes", "test-screen-attention-map", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
-+  "test-shopper-account", "test-guide-tour", "test-get-paid-helper", "test-store-shipping", "test-store-shipping-wiring", "test-production-deploy-reuse", "test-provider-health-status", "test-fixture-cleanup", "test-netlify-budget-screen", "test-enterprise-by-request", "test-quick-links", "test-setup-report-style-line", "test-visits-graph", "test-plan-card-matches-catalog", "test-owner-style-backfill", "test-revenue-excludes-complimentary", "test-assistant-match", "test-site-assistant-draft", "test-site-assistant-ui", "test-site-assistant-builder", "test-commerce-seed", "test-commerce-request-extras", "test-store-website-content", "test-client-lifecycle", "test-store-branding", "test-sensitive-changes", "test-screen-attention-map", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
+-  "test-shopper-account", "test-guide-tour", "test-get-paid-helper", "test-store-shipping", "test-order-delivery", "test-store-qr", "test-production-deploy-reuse", "test-provider-health-status", "test-fixture-cleanup", "test-netlify-budget-screen", "test-enterprise-by-request", "test-quick-links", "test-setup-report-style-line", "test-visits-graph", "test-plan-card-matches-catalog", "test-owner-style-backfill", "test-revenue-excludes-complimentary", "test-assistant-match", "test-site-assistant-draft", "test-site-assistant-ui", "test-site-assistant-builder", "test-commerce-seed", "test-commerce-request-extras", "test-store-website-content", "test-client-lifecycle", "test-store-branding", "test-sensitive-changes", "test-screen-attention-map", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
++  "test-shopper-account", "test-guide-tour", "test-get-paid-helper", "test-store-shipping", "test-store-shipping-wiring", "test-order-delivery", "test-store-qr", "test-production-deploy-reuse", "test-provider-health-status", "test-fixture-cleanup", "test-netlify-budget-screen", "test-enterprise-by-request", "test-quick-links", "test-setup-report-style-line", "test-visits-graph", "test-plan-card-matches-catalog", "test-owner-style-backfill", "test-revenue-excludes-complimentary", "test-assistant-match", "test-site-assistant-draft", "test-site-assistant-ui", "test-site-assistant-builder", "test-commerce-seed", "test-commerce-request-extras", "test-store-website-content", "test-client-lifecycle", "test-store-branding", "test-sensitive-changes", "test-screen-attention-map", "test-commerce-launch-guide", "test-commerce-rpc-reason", "test-commerce-setup-form", "test-client-setup-sheet",
    "test-storefront-theme", "test-store-polish", "test-order-attention", "test-commerce-nav", "test-commerce-polish", "test-email-orders", "test-portal-help", "test-menu-mode", "test-referral-link", "test-reviews", "test-qr-code", "test-booking", "test-booking-time", "test-membership", "test-scan-fixes", "test-outreach-card", "test-example-sites", "test-by-request-tier", "test-ai-desk", "test-ai-desk-plan", "test-ai-desk-gateway", "test-website-brief", "test-site-options", "test-site-photos", "test-site-photos-ui", "test-referral-invoice-credit", "test-rewards-page", "test-info-pages", "test-owner-billing-safety", "test-store-profile", "test-client-wording", "test-link-integrity", "test-app-resilience", "test-a11y-basics", "test-store-catalog", "test-store-experience",
  ];
  
@@ -158,18 +158,18 @@ index 0000000..e1c208d
 +  );
 +}
 diff --git a/src/pages/ClientCommerceLiveStore.tsx b/src/pages/ClientCommerceLiveStore.tsx
-index 9075533..3a79b73 100644
+index 6777dd7..9864a51 100644
 --- a/src/pages/ClientCommerceLiveStore.tsx
 +++ b/src/pages/ClientCommerceLiveStore.tsx
-@@ -4,6 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
- import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+@@ -5,6 +5,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
  import { safePaymentUrl } from "../lib/safeUrl";
  import { GetPaidHelper } from "../components/GetPaidHelper";
+ import { StoreQrCard } from "../components/StoreQrCard";
 +import { StoreShippingCard } from "../components/StoreShippingCard";
  import { withCommerceReason } from "../lib/commerceRpcReason";
  import { emptyStoreProfile, normalizeStoreProfile, profileFromRow, storeProfileLimits, type StoreProfile } from "../lib/storeProfile";
  
-@@ -338,6 +339,8 @@ export function ClientCommerceLiveStore() {
+@@ -340,6 +341,8 @@ export function ClientCommerceLiveStore() {
            </div> : null}
          </section>
  
@@ -179,13 +179,13 @@ index 9075533..3a79b73 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index b0c6641..a169ca5 100644
+index af5c037..136265e 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
-@@ -18,9 +18,10 @@ import {
-   addLine, cartCount, cartNeedsShipping, cartStorageKey, cartTotal, changeLine, firstSentence, formatMoney, friendlyCheckoutError, isStockRefusal, newCheckoutKey, productHash, refitCart, restoreCart, serializeCart, slugFromHash,
+@@ -19,9 +19,10 @@ import {
    stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
  } from "../lib/storeCatalog";
+ import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
 +import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
  
  type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
@@ -194,8 +194,8 @@ index b0c6641..a169ca5 100644
  
  export function PublicCommerceStorefront() {
    const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
-@@ -51,6 +52,9 @@ export function PublicCommerceStorefront() {
-   const [orderCopied, setOrderCopied] = useState(false);
+@@ -66,6 +67,9 @@ export function PublicCommerceStorefront() {
+   }
    // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
    const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
 +  // The shop's shipping rule (draft migration 08). Until that exists, or when the shop set none, nothing about checkout changes.
@@ -204,7 +204,7 @@ index b0c6641..a169ca5 100644
    const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
    const [emailCopied, setEmailCopied] = useState(false);
    const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
-@@ -60,6 +64,10 @@ export function PublicCommerceStorefront() {
+@@ -75,6 +79,10 @@ export function PublicCommerceStorefront() {
    const itemCount = useMemo(() => cartCount(cart), [cart]);
    const total = useMemo(() => cartTotal(cart), [cart]);
    const needsShipping = useMemo(() => cartNeedsShipping(cart), [cart]);
@@ -215,7 +215,7 @@ index b0c6641..a169ca5 100644
    const openProduct = useMemo(() => (openSlug && data ? data.products.find((p) => p.slug === openSlug) ?? null : null), [openSlug, data]);
  
    function showToast(message: string) {
-@@ -95,7 +103,7 @@ export function PublicCommerceStorefront() {
+@@ -110,7 +118,7 @@ export function PublicCommerceStorefront() {
    // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
    async function loadOrderMode() {
      if (!supabase) return;
@@ -224,7 +224,7 @@ index b0c6641..a169ca5 100644
      try {
        const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
        if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
-@@ -103,6 +111,15 @@ export function PublicCommerceStorefront() {
+@@ -118,6 +126,15 @@ export function PublicCommerceStorefront() {
      await statusLoad;
    }
  
@@ -240,7 +240,7 @@ index b0c6641..a169ca5 100644
    // The shop's own look. Any failure (or an older database) means the normal default theme.
    async function loadStoreLook() {
      if (!supabase) return;
-@@ -273,7 +290,7 @@ export function PublicCommerceStorefront() {
+@@ -288,7 +305,7 @@ export function PublicCommerceStorefront() {
  
    async function placeOrder() {
      if (!supabase || cart.length === 0) return;
@@ -249,7 +249,7 @@ index b0c6641..a169ca5 100644
      setFieldErrors(problems);
      if (Object.keys(problems).length > 0) {
        setError("Please check the details marked below.");
-@@ -284,7 +301,7 @@ export function PublicCommerceStorefront() {
+@@ -299,7 +316,7 @@ export function PublicCommerceStorefront() {
      }
      setBusy(true); setError("");
      if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
@@ -258,7 +258,7 @@ index b0c6641..a169ca5 100644
        store_slug_value: slug,
        items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
        customer_payload: {
-@@ -294,6 +311,7 @@ export function PublicCommerceStorefront() {
+@@ -309,6 +326,7 @@ export function PublicCommerceStorefront() {
          note,
          shipping_address: { address: form.address },
          idempotency_key: checkoutKeyRef.current,
@@ -266,7 +266,7 @@ index b0c6641..a169ca5 100644
        },
      });
      if (result.error) {
-@@ -343,7 +361,8 @@ export function PublicCommerceStorefront() {
+@@ -366,7 +384,8 @@ export function PublicCommerceStorefront() {
  
        {order ? <section className="panel panel-wide">
          <h2>Order {order.order_number} created</h2>
@@ -276,7 +276,7 @@ index b0c6641..a169ca5 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -418,16 +437,26 @@ export function PublicCommerceStorefront() {
+@@ -441,16 +460,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
