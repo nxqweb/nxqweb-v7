@@ -226,7 +226,7 @@ export function ClientCommerceOrders() {
               <div style={{ textAlign: "right" }}><strong>{formatMoney(order.total, order.currency)}</strong><p>{humanize(order.fulfillment_status)} · {humanize(order.payment_status)}{badge ? ` · ${badge}` : ""}</p></div>
             </div>
             {hold ? <p className="subtle" data-testid="order-hold" style={{ marginBottom: ".75rem" }}>{hold}</p> : null}
-            {order.payment_status !== "paid" && !order.is_test ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
+            {order.payment_status !== "paid" && !order.is_test && order.fulfillment_status !== "cancelled" ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
             <button className="wide-btn" disabled={Boolean(busy)} onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
             {isOpen ? <div style={{ marginTop: "1rem" }}>
               <div className="settings-grid">
