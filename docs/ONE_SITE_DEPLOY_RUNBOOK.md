@@ -32,3 +32,4 @@ Resend email account (no automatic emails to clients or shoppers yet), live Stri
 
 ## Deploy log
 - 2026-10-29: the ONE build was triggered by the commit that added this line (after migrations 285 and 286 were applied to staging; Netlify showed 225 credits before the build, so expect about 210 after). Owner publishes by hand (Auto Publishing is locked), then turns builds OFF.
+- 2026-11-18: the ONE build ran on commit `b2ac7f7` (migrations through 295 applied and all 45 functions deployed first). 31-second build, published by the owner at 1:36 PM, builds turned OFF again. Credits showed 41.9 right after (lagging; expect about 27).
