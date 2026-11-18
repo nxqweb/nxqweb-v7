@@ -4,6 +4,7 @@ import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { formatMoneyIn as formatMoney } from "../lib/format";
 import { deliveryBadge, deliveryById, deliveryColumns, hasDeliveryDetails, holdMessage, wasAutoCancelled, type OrderDelivery } from "../lib/orderDelivery";
+import { canConfirmLate, lateConfirmError } from "../lib/orderDelivery"; // the late-payment button (draft migration 09)
 import { customerEmail } from "../lib/orderCustomerEmail";
 import { PackingSlip } from "../components/PackingSlip";
 import { packingSlip, type PackingSlipData } from "../lib/packingSlip";
@@ -155,6 +156,21 @@ export function ClientCommerceOrders() {
     setLoading(false);
   }
 
+  // The hold ran out and the order was cancelled automatically, but the money did arrive: confirm it afterwards (draft migration 09).
+  async function confirmLatePayment(order: CommerceOrder) {
+    if (!supabase || busy || order.payment_status === "paid") return;
+    const confirmed = window.confirm(`Did the payment for ${order.order_number} arrive in your own account? This reopens the order, takes the items from your stock again and marks it paid.`);
+    if (!confirmed) return;
+    setBusy(`late-${order.id}`); setError(""); setMessage("");
+    const result = await supabase.rpc("confirm_my_late_direct_payment", { order_uuid: order.id });
+    if (result.error) setError(lateConfirmError(result.error.message));
+    else {
+      setMessage(`${order.order_number} is open again and marked paid. You can send it now.`);
+      await loadOrders();
+    }
+    setBusy("");
+  }
+
   async function createTestOrder() {
     if (!supabase || busy) return;
     setBusy("create"); setError(""); setMessage("");
@@ -241,6 +257,7 @@ export function ClientCommerceOrders() {
             </div>
             {hold ? <p className="subtle" data-testid="order-hold" style={{ marginBottom: ".75rem" }}>{hold}</p> : null}
             {order.payment_status !== "paid" && !order.is_test && order.fulfillment_status !== "cancelled" ? <button className="wide-btn" disabled={Boolean(busy)} onClick={() => void confirmPayment(order)} type="button"><BadgeCheck size={16} /> {busy === `pay-${order.id}` ? "Confirming..." : "Confirm payment received"}</button> : null}
+            {canConfirmLate(going, order.payment_status === "paid", order.is_test, wasAutoCancelled(order.events)) ? <button className="wide-btn" data-testid="confirm-late" disabled={Boolean(busy)} onClick={() => void confirmLatePayment(order)} type="button"><BadgeCheck size={16} /> {busy === `late-${order.id}` ? "Reopening..." : "The money arrived: reopen and mark paid"}</button> : null}
             <button className="wide-btn" disabled={Boolean(busy)} onClick={() => setExpanded((current) => ({ ...current, [order.id]: !isOpen }))} type="button"><ChevronDown size={16} /> {isOpen ? "Hide order details" : "Open order details"}</button>
             {isOpen ? <div style={{ marginTop: "1rem" }}>
               <div className="settings-grid">

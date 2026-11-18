@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## DECISIONS 2026-11-18 (newest)
+
+Owner chose (in chat): **promote 07 and 09 now, 08 later; keep the 2-hour unpaid-order hold.** Done: draft 07 is now migration `294_new_order_owner_notification`, draft 09 is now `295_confirm_late_direct_payment` (tests moved to `scripts/sql/local-full-schema/regression/`), and the Orders page late-payment button is applied (patch 09 deleted). **Migrations 288 to 295 are now PENDING (none applied).** Deploy-day dry run (`validate_foundation`) must list exactly 288-295, then the owner's typed phrase and Approve click, then the site deploy AFTER the migrations (the Orders page calls 295). Draft 08 (shipping fee) and its parked patch stay parked until after the QA window. Hold time stays 2 hours (draft 09 is the safety net).
+
 ## OVERNIGHT 2026-11-17 (newest; the owner asked for unattended building; read this first)
 
 Everything below is committed and pushed on `safe/checkpoint-autonomy-wave35-sales`. Nothing was applied to a database, deployed, or
@@ -32,8 +36,7 @@ dispatched. Each item has its own detailed block further down (dated 2026-11-17)
 - Screens for 08 and 09 are parked in `docs/drafts/patches/` (see its README); `scripts/test-parked-patches.mjs` guards them.
 
 **Owner decisions needed (ask as Option A/B/C):**
-- Promote 07, 08, 09 (and when: Nov 19 deploy day with 288-293, or after the QA window).
-- How long an unpaid order is held (2 hours today; the owner confirms payments by hand, so this matters). Changing it is a migration.
+- DECIDED 2026-11-18: 07 and 09 promoted (294, 295); 08 waits until after the QA window. Hold time stays 2 hours.
 - Still open from before: draft 06, the add-ons plan location, the receptionist extra-minute price, demo voice minutes.
 
 **Checks at the last push:** `npm run test:ci-parity` 74/74; local full-schema harness 64/64 (includes drafts 01-09).

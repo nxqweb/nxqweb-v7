@@ -1,3 +1,4 @@
+-- 295: promoted from draft 09 on 2026-11-18 (owner chose "07 and 09 now" in chat); NOT applied until the owner approves the guarded run.
 -- Draft 09: "the money arrived late" (added 2026-11-17). ADDITIVE ONLY: one new function. Nothing existing is changed.
 --
 -- Today an unpaid direct-payment order is cancelled automatically two hours after it is placed (migration 115: the items go back on

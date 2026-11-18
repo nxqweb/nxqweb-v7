@@ -1,3 +1,4 @@
+-- 294: promoted from draft 07 on 2026-11-18 (owner chose "07 and 09 now" in chat); NOT applied until the owner approves the guarded run.
 -- Draft 07: tell the shop owner when a real order comes in (added 2026-11-17). Additive only: one function + one trigger on commerce_orders.
 -- Writes ONE in-app notification with fixed wording (no shopper name, email, address or order text is copied), so nothing a shopper types can reach an email.
 -- Email copy is produced later by the shared allow-list ("new_order"); it stays inert while NXQ_EMAIL_NOTIFICATIONS_ENABLED is off.

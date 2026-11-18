@@ -13,7 +13,6 @@ const srcFiles = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((
 // patch file -> the draft it waits for, and the word in a real migration's file name that means the draft was promoted
 const parked = [
   { patch: "08_store_shipping_frontend.patch", draft: "08_store_shipping_fee.sql", promotedName: /store_shipping_fee/ },
-  { patch: "09_late_payment_frontend.patch", draft: "09_confirm_late_direct_payment.sql", promotedName: /confirm_late_direct_payment/ },
 ];
 
 const onDisk = fs.readdirSync("docs/drafts/patches").filter((f) => f.endsWith(".patch")).sort();
