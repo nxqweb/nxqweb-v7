@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## FUNCTIONS DEPLOYED 2026-11-18 (newest)
+
+Run #292 (`deploy_functions`) was refused by the confirmation check because the typed phrase had a trailing space (the safety check worked; nothing changed). Run #293 (`deploy_functions`, phrase typed exactly, owner approved on `nxq-staging`) on commit `3ce313e` deployed all Edge functions and its coverage check passed: "Remote Supabase project reports all 45 required Edge functions". 0 Netlify credits. **Next:** `run_evidence_suite` (0 credits) to refresh the evidence checks, then the site deploy (15 credits, builds ON then OFF; after the migrations, which is now true). Tip for the owner: TYPE the confirmation phrase by hand, no trailing space.
+
 ## MIGRATIONS 288-295 APPLIED TO STAGING 2026-11-18 (newest; supersedes the "PENDING" wording below)
 
 Run `NXQ Manual Supabase Stage` #290 (`validate_foundation`, read-only) listed exactly 288-295 and passed. Run #291 (`apply_migrations`, owner typed the phrase and clicked Approve on `nxq-staging`) on commit `93e434e` applied all eight in order with no errors; the only NOTICEs were harmless "does not exist, skipping" lines from drop-if-exists statements (288 and 294). **Staging database is now migrated through 295.** Still to do: `deploy_functions` (all 45 functions, 0 Netlify credits), `run_evidence_suite` (the evidence checks are due for refresh about 2026-11-19), THEN the site deploy (15 credits; the Orders page calls function 295, so it must come after the migrations, which is now true). Netlify builds are still OFF.
