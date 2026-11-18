@@ -10,9 +10,13 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## MIGRATIONS 288-295 APPLIED TO STAGING 2026-11-18 (newest; supersedes the "PENDING" wording below)
+
+Run `NXQ Manual Supabase Stage` #290 (`validate_foundation`, read-only) listed exactly 288-295 and passed. Run #291 (`apply_migrations`, owner typed the phrase and clicked Approve on `nxq-staging`) on commit `93e434e` applied all eight in order with no errors; the only NOTICEs were harmless "does not exist, skipping" lines from drop-if-exists statements (288 and 294). **Staging database is now migrated through 295.** Still to do: `deploy_functions` (all 45 functions, 0 Netlify credits), `run_evidence_suite` (the evidence checks are due for refresh about 2026-11-19), THEN the site deploy (15 credits; the Orders page calls function 295, so it must come after the migrations, which is now true). Netlify builds are still OFF.
+
 ## DECISIONS 2026-11-18 (newest)
 
-Owner chose (in chat): **promote 07 and 09 now, 08 later; keep the 2-hour unpaid-order hold.** Done: draft 07 is now migration `294_new_order_owner_notification`, draft 09 is now `295_confirm_late_direct_payment` (tests moved to `scripts/sql/local-full-schema/regression/`), and the Orders page late-payment button is applied (patch 09 deleted). **Migrations 288 to 295 are now PENDING (none applied).** Deploy-day dry run (`validate_foundation`) must list exactly 288-295, then the owner's typed phrase and Approve click, then the site deploy AFTER the migrations (the Orders page calls 295). Draft 08 (shipping fee) and its parked patch stay parked until after the QA window. Hold time stays 2 hours (draft 09 is the safety net).
+Owner chose (in chat): **promote 07 and 09 now, 08 later; keep the 2-hour unpaid-order hold.** Done: draft 07 is now migration `294_new_order_owner_notification`, draft 09 is now `295_confirm_late_direct_payment` (tests moved to `scripts/sql/local-full-schema/regression/`), and the Orders page late-payment button is applied (patch 09 deleted). **Migrations 288 to 295 were APPLIED to staging on 2026-11-18 (run #291).** Deploy-day dry run (`validate_foundation`) must list exactly 288-295, then the owner's typed phrase and Approve click, then the site deploy AFTER the migrations (the Orders page calls 295). Draft 08 (shipping fee) and its parked patch stay parked until after the QA window. Hold time stays 2 hours (draft 09 is the safety net).
 
 ## OVERNIGHT 2026-11-17 (newest; the owner asked for unattended building; read this first)
 
