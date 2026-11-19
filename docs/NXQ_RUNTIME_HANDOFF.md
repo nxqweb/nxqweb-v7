@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## PROVIDER HEALTH SMOKE PASSED 2026-11-19 (newest)
+
+Run #295 (`smoke_provider_health_once`, owner typed the phrase and approved on `nxq-staging`) returned `ok: true`, HTTP 200, **checked 3, healthy 3, degraded 0, errors 0**, `launch_readiness_evaluated: true`, 4 connections skipped (no activity evidence). 0 Netlify credits. This refreshes the provider-health heartbeat that had made `provider_health_pipeline_ready` "unknown" (readiness 19/26). The new readiness number was NOT read from the log: next session, open the owner Launch readiness page (or ask the owner) and record the count; expected 20/26 if the heartbeat was the cause.
+
 ## SMOKE TEST + PHOTO UPLOAD RESOLVED 2026-11-18 (newest)
 
 Owner smoke test on the live site as the Commerce test client "Email Test Tree Service 2" (the "client2" account): a product photo UPLOADED and showed on the public store page, so the Photos page, the storage gate and the public store all work after the deploy. Earlier the upload failed with "Upload denied by account, tier, or billing state" (HTTP 400, PostgREST P0001): that account had been in billing **freeze review** since 2026-10-16 (grace period ended), and the upload gate refuses it. NOT a code bug (migrations 288-295 do not touch storage). Fixed by the owner with Billing lifecycle -> **Record Payment + Restore** (manual record, no charge); the account is active again and the dashboard shows 0 accounts needing review and 0 human freeze decisions. Lessons: (1) a test account left in freeze review cannot upload; (2) the page only shows a generic "Images could not be uploaded" message. **Queued for the next bundled site deploy (not built, no credits spent):** show the real reason in plain words when the upload gate refuses (billing/approval), and fix the floating "Report a problem" button overlapping the "Upload photos" button on a phone-sized screen.
