@@ -27,6 +27,11 @@ const manager = fs.readFileSync("src/components/ProductImageManager.tsx", "utf8"
 check("the photo page shows the plain words, and keeps its old line when the reason is unknown", manager.includes("const plainReason = uploadDeniedFromError(caught);") && manager.includes('setError(plainReason ?? "Images could not be uploaded. No storefront publish was triggered.");'));
 check("the server's raw sentence is never put on the page", !/result\.error\.message|\.reason\b.*setError|setError\([^)]*caught/.test(manager));
 
+for (const file of ["src/pages/ClientCommerceCatalog.tsx", "src/pages/ClientCommerceWebsiteContent.tsx", "src/pages/ClientPortal.tsx", "src/lib/sitePhotoUpload.ts"]) {
+  const text = fs.readFileSync(file, "utf8");
+  check(`${file}: shows the plain words when the server's reason is known, and keeps its old line otherwise`, /catch \(caught\)/.test(text) && text.includes("uploadDeniedFromError(caught) ??") && text.includes('uploadDeniedFromError }'));
+}
+
 const css = fs.readFileSync("src/styles/plan-forms.css", "utf8");
 const report = fs.readFileSync("src/components/ReportProblem.tsx", "utf8");
 check("on a phone the Report a problem button is a 44px round flag so it stops covering page buttons", /@media \(max-width: 640px\) \{\s*\.report-problem-btn \{[^}]*width: 44px;[^}]*height: 44px;/.test(css));

@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## SECOND SITE DEPLOY 2026-11-20 (newest; using credits that expire 2026-11-22)
+
+Owner turned Netlify builds ON (26.6 credits left, they expire 2026-11-22 and reset to 300 on 2026-11-23; a QA run needs 30 or 45, so these could not fund one). ONE trigger commit carries: the plain-words upload refusal message (now also on the Commerce catalog, Website content, Files card and site photo uploads, not only product photos) and the phone-sized Report a problem button, plus the handoff note. After the build is green the owner presses Publish deploy, then turns builds OFF and says "builds stopped". Until then NO other push (each one builds, 15 credits).
+
 ## TWO QUEUED FIXES BUILT 2026-11-20 (newest; in the repo, NOT live: they ship with the next bundled site deploy, no credits spent, builds still OFF)
 
 (1) A refused product-photo upload now says why in plain words (account not approved with billing active, not on the Commerce plan, photo space used up, wrong file type or size, please sign in again) instead of the one generic line; the server's own sentence is never shown, and an unknown reason keeps the old line. `src/lib/uploadDenied.ts`, `src/lib/storageUploadAuthorization.ts` (the thrown error keeps its old message and now carries the reason), `src/components/ProductImageManager.tsx`. (2) On a phone the floating "Report a problem" button is a 44px round flag (label kept for screen readers) so it stops covering page buttons; wide screens unchanged (`src/components/ReportProblem.tsx`, `src/styles/plan-forms.css`). `scripts/test-upload-denied.mjs` plus a mocked-backend browser check (phone and desktop, three refusal reasons, no page errors). Other upload pages (site photos, Commerce catalog, website content) still show their own old messages; wiring the same helper there is a small follow-up.

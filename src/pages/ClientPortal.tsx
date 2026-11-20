@@ -29,6 +29,7 @@ import { clearPendingReferral } from "../lib/referralCode";
 import { inlineReportLines } from "../lib/setupReportLines";
 import { productTiers } from "../lib/productCatalog";
 import { siteAssistantGateway } from "../lib/siteAssistantConfig";
+import { uploadDeniedFromError } from "../lib/uploadDenied";
 
 type ClientRow = {
   id: string;
@@ -1028,8 +1029,8 @@ export function ClientPortal() {
       let uploadTicketId: string | null = null;
       try {
         uploadTicketId = await authorizeStorageUpload(supabase, "client-files", filePath, selectedFile);
-      } catch {
-        setUploadStatus({ tone: "error", text: "The file upload is not available under the current account limits or billing state." });
+      } catch (caught) {
+        setUploadStatus({ tone: "error", text: uploadDeniedFromError(caught) ?? "The file upload is not available under the current account limits or billing state." });
         return;
       }
       const uploadResult = await supabase.storage

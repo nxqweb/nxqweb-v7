@@ -3,6 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "./storageUploadAuthorization";
 import type { PhotoUploader } from "./sitePhotos";
+import { uploadDeniedFromError } from "./uploadDenied";
 
 export function createPhotoUploader(client: SupabaseClient, clientId: string): PhotoUploader {
   return async (file) => {
@@ -11,8 +12,8 @@ export function createPhotoUploader(client: SupabaseClient, clientId: string): P
     let ticket: string;
     try {
       ticket = await authorizeStorageUpload(client, "client-files", path, file);
-    } catch {
-      return { ok: false, message: "Photo uploads are not available for your account yet. If you have paid and this keeps showing, message support." };
+    } catch (caught) {
+      return { ok: false, message: uploadDeniedFromError(caught) ?? "Photo uploads are not available for your account yet. If you have paid and this keeps showing, message support." };
     }
     const stored = await client.storage.from("client-files").upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type || undefined });
     if (stored.error) {

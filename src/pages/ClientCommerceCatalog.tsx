@@ -3,6 +3,7 @@ import { ImagePlus, PackageSearch, Save, Star, Trash2 } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
+import { uploadDeniedFromError } from "../lib/uploadDenied";
 
 type Category = {
   id: string;
@@ -146,9 +147,9 @@ export function ClientCommerceCatalog() {
 
     try {
       uploadTicketId = await authorizeStorageUpload(supabase, "commerce-product-media", storagePath, file);
-    } catch {
+    } catch (caught) {
       setSaving(false);
-      setError("Image upload is not available under the current account limits or billing state.");
+      setError(uploadDeniedFromError(caught) ?? "Image upload is not available under the current account limits or billing state.");
       return;
     }
 

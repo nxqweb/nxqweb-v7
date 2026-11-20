@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, ImagePlus, Save, Sparkles } from "lucide-react";
 import { CommerceNav } from "../components/CommerceNav";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
+import { uploadDeniedFromError } from "../lib/uploadDenied";
 
 type WebsiteContent = {
   client_id?: string;
@@ -171,9 +172,9 @@ export function ClientCommerceWebsiteContent() {
     let uploadTicketId: string;
     try {
       uploadTicketId = await authorizeStorageUpload(supabase, "commerce-website-content", path, file);
-    } catch {
+    } catch (caught) {
       setUploading(false);
-      setError("Image upload is not available under the current account limits or billing state.");
+      setError(uploadDeniedFromError(caught) ?? "Image upload is not available under the current account limits or billing state.");
       return;
     }
     const upload = await supabase.storage.from("commerce-website-content").upload(path, file, { upsert: false, contentType: file.type });
