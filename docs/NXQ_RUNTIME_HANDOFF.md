@@ -10,7 +10,11 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
-## SECOND SITE DEPLOY 2026-11-20 (newest; using credits that expire 2026-11-22)
+## SECOND SITE DEPLOY DONE 2026-11-20 (newest)
+
+Build for commit `b1dcd58` was green (23 seconds) and the owner published it at 2:57 PM; **builds are OFF again** ("Builds are stopped"). Netlify showed 27 credits right after (lags; expect about 11 once the 15-credit build is counted; they expire 2026-11-22, then reset to 300 on 2026-11-23). Verified from outside: the live bundle changed, contains the phone-sized Report a problem markup, and the new `uploadDenied` file (plain-words upload refusal) is served. **Live now:** the plain-words upload message on product photos, Commerce catalog, Website content, Files card and site photos; the phone-sized report button; everything from the 2026-11-18 deploy. Nothing is queued for the next deploy. Still open: provider-health readiness count to read in /owner, the candle store look (owner enters colors), the 4 QA runs from 2026-11-23, AI key decision, scanner and email proofs.
+
+## SECOND SITE DEPLOY 2026-11-20 (superseded by the block above)
 
 Owner turned Netlify builds ON (26.6 credits left, they expire 2026-11-22 and reset to 300 on 2026-11-23; a QA run needs 30 or 45, so these could not fund one). ONE trigger commit carries: the plain-words upload refusal message (now also on the Commerce catalog, Website content, Files card and site photo uploads, not only product photos) and the phone-sized Report a problem button, plus the handoff note. After the build is green the owner presses Publish deploy, then turns builds OFF and says "builds stopped". Until then NO other push (each one builds, 15 credits).
 
