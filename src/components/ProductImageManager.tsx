@@ -3,6 +3,7 @@ import { ArrowDown, ArrowUp, ImagePlus, Trash2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { authorizeStorageUpload, cancelStorageUpload, completeStorageUpload } from "../lib/storageUploadAuthorization";
 import { shrinkPhoto } from "../lib/photoShrink";
+import { uploadDeniedFromError } from "../lib/uploadDenied";
 
 type ProductImageManagerProps = {
   productId: string;
@@ -147,7 +148,8 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
       }
 
       setMessage(`${uploadedUrls.length} image${uploadedUrls.length === 1 ? "" : "s"} uploaded. This does not publish or activate the storefront.`);
-    } catch {
+    } catch (caught) {
+      const plainReason = uploadDeniedFromError(caught);
       if (uploadedPaths.length) {
         const cleanup = await storageClient.storage.from(bucketName).remove(uploadedPaths);
         if (cleanup.error) {
@@ -156,7 +158,7 @@ export function ProductImageManager({ productId }: ProductImageManagerProps) {
         }
       }
       await Promise.all(uploadTickets.map((ticketId) => cancelStorageUpload(storageClient, ticketId)));
-      setError("Images could not be uploaded. No storefront publish was triggered.");
+      setError(plainReason ?? "Images could not be uploaded. No storefront publish was triggered.");
     } finally {
       setBusy(false);
     }

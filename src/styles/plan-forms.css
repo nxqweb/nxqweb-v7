@@ -151,6 +151,11 @@ body[data-nxq-theme="light"] .plan-resolution-card {
 .assistant-suggestions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
 .assistant-form { display: grid; gap: 0.5rem; }
 .report-problem-btn { position: fixed; right: 16px; bottom: 16px; z-index: 40; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+/* On a phone the labelled button covered the page's own buttons as they scrolled under it: show just the flag (44px, still labelled for screen readers). */
+@media (max-width: 640px) {
+  .report-problem-btn { right: 12px; bottom: 12px; width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 999px; }
+  .report-problem-btn .report-problem-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
 .report-problem-dialog { width: min(520px, calc(100vw - 32px)); border: 1px solid rgba(212, 175, 90, 0.4); border-radius: 18px; padding: 1.25rem; background: #14161b; color: #f3f0e8; }
 .report-problem-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .report-problem-dialog form { display: grid; gap: 0.75rem; }

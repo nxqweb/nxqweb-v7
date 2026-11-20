@@ -44,7 +44,7 @@ export function ReportProblem() {
 
   return (
     <>
-      <button ref={openerRef} className="report-problem-btn icon-btn" type="button" onClick={begin} data-testid="report-problem-open"><Flag size={15} /> Report a problem</button>
+      <button ref={openerRef} className="report-problem-btn icon-btn" type="button" aria-label="Report a problem" onClick={begin} data-testid="report-problem-open"><Flag size={15} aria-hidden="true" /> <span className="report-problem-label">Report a problem</span></button>
       {open ? <dialog ref={dialogRef} className="report-problem-dialog" aria-labelledby="report-problem-title" onClose={() => { setOpen(false); openerRef.current?.focus(); }}>
         <form method="dialog" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
           <h2 id="report-problem-title">Report a problem</h2>

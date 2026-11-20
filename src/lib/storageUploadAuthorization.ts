@@ -4,6 +4,16 @@ type UploadTicketResult = {
   ticket_id?: string;
 };
 
+// Same message as before for every existing caller; `reason` carries the server's own sentence (never shown as is, see src/lib/uploadDenied.ts).
+export class UploadDeniedError extends Error {
+  reason: string;
+  constructor(reason: string) {
+    super("Storage upload authorization was denied.");
+    this.name = "UploadDeniedError";
+    this.reason = reason;
+  }
+}
+
 export async function authorizeStorageUpload(
   client: SupabaseClient,
   bucketId: string,
@@ -17,7 +27,7 @@ export async function authorizeStorageUpload(
     target_mime_type: file.type || "application/octet-stream",
   });
   const ticketId = (result.data as UploadTicketResult | null)?.ticket_id?.trim();
-  if (result.error || !ticketId) throw new Error("Storage upload authorization was denied.");
+  if (result.error || !ticketId) throw new UploadDeniedError(typeof result.error?.message === "string" ? result.error.message.slice(0, 400) : "");
   return ticketId;
 }
 
