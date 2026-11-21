@@ -168,13 +168,13 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index 60620a8..73dfa0a 100644
+index 6c60b53..c8ff0ca 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
-@@ -19,9 +19,10 @@ import {
-   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
+@@ -20,9 +20,10 @@ import {
  } from "../lib/storeCatalog";
  import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
+ import { cutoutLogoUrl } from "../lib/logoCutout";
 +import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
  
  type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
@@ -183,7 +183,7 @@ index 60620a8..73dfa0a 100644
  
  export function PublicCommerceStorefront() {
    const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
-@@ -66,6 +67,9 @@ export function PublicCommerceStorefront() {
+@@ -76,6 +77,9 @@ export function PublicCommerceStorefront() {
    }
    // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
    const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
@@ -193,7 +193,7 @@ index 60620a8..73dfa0a 100644
    const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
    const [emailCopied, setEmailCopied] = useState(false);
    const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
-@@ -75,6 +79,10 @@ export function PublicCommerceStorefront() {
+@@ -85,6 +89,10 @@ export function PublicCommerceStorefront() {
    const itemCount = useMemo(() => cartCount(cart), [cart]);
    const total = useMemo(() => cartTotal(cart), [cart]);
    const needsShipping = useMemo(() => cartNeedsShipping(cart), [cart]);
@@ -204,7 +204,7 @@ index 60620a8..73dfa0a 100644
    const openProduct = useMemo(() => (openSlug && data ? data.products.find((p) => p.slug === openSlug) ?? null : null), [openSlug, data]);
  
    function showToast(message: string) {
-@@ -110,7 +118,7 @@ export function PublicCommerceStorefront() {
+@@ -120,7 +128,7 @@ export function PublicCommerceStorefront() {
    // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
    async function loadOrderMode() {
      if (!supabase) return;
@@ -213,7 +213,7 @@ index 60620a8..73dfa0a 100644
      try {
        const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
        if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
-@@ -118,6 +126,15 @@ export function PublicCommerceStorefront() {
+@@ -128,6 +136,15 @@ export function PublicCommerceStorefront() {
      await statusLoad;
    }
  
@@ -229,7 +229,7 @@ index 60620a8..73dfa0a 100644
    // The shop's own look. Any failure (or an older database) means the normal default theme.
    async function loadStoreLook() {
      if (!supabase) return;
-@@ -288,7 +305,7 @@ export function PublicCommerceStorefront() {
+@@ -298,7 +315,7 @@ export function PublicCommerceStorefront() {
  
    async function placeOrder() {
      if (!supabase || cart.length === 0) return;
@@ -238,7 +238,7 @@ index 60620a8..73dfa0a 100644
      setFieldErrors(problems);
      if (Object.keys(problems).length > 0) {
        setError("Please check the details marked below.");
-@@ -299,7 +316,7 @@ export function PublicCommerceStorefront() {
+@@ -309,7 +326,7 @@ export function PublicCommerceStorefront() {
      }
      setBusy(true); setError("");
      if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
@@ -247,7 +247,7 @@ index 60620a8..73dfa0a 100644
        store_slug_value: slug,
        items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
        customer_payload: {
-@@ -309,6 +326,7 @@ export function PublicCommerceStorefront() {
+@@ -319,6 +336,7 @@ export function PublicCommerceStorefront() {
          note,
          shipping_address: { address: form.address },
          idempotency_key: checkoutKeyRef.current,
@@ -255,7 +255,7 @@ index 60620a8..73dfa0a 100644
        },
      });
      if (result.error) {
-@@ -366,7 +384,8 @@ export function PublicCommerceStorefront() {
+@@ -376,7 +394,8 @@ export function PublicCommerceStorefront() {
  
        {order ? <section className="panel panel-wide">
          <h2>Order {order.order_number} created</h2>
@@ -265,7 +265,7 @@ index 60620a8..73dfa0a 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -447,16 +466,26 @@ export function PublicCommerceStorefront() {
+@@ -457,16 +476,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
@@ -295,10 +295,10 @@ index 60620a8..73dfa0a 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index 4c5584f..ab54c32 100644
+index 7b9f494..8e00b8f 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -326,3 +326,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+@@ -330,3 +330,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
    .store-theme[data-showcase] .store-hero-copy { grid-column: 1; grid-row: 2; }
    .store-theme[data-showcase] .store-nav { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
  }

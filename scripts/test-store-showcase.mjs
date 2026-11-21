@@ -7,7 +7,9 @@ function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); el
 const page = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
 const css = fs.readFileSync("src/styles/storefront-theme.css", "utf8");
 const info = fs.readFileSync("src/components/StoreWebsiteSections.tsx", "utf8");
-const block = css.slice(css.indexOf("/* Showcase layout:"));
+const start = css.indexOf("/* Showcase layout:");
+const nextComment = css.indexOf("\n/* ", start + 10); // other features may add CSS after this block (for example the parked shipping screens)
+const block = css.slice(start, nextComment === -1 ? undefined : nextComment);
 
 check("the layout switches on only when the saved look has a logo", page.includes('data-showcase={branding?.logo ? "true" : undefined}'));
 check("the menu, big hero logo, hero title and section title are rendered only for that case", (page.match(/branding\?\.logo \? <nav className="store-nav"/g) || []).length === 1 && page.includes('{branding?.logo ? <img className="store-hero-logo" src={') && page.includes('{branding?.logo ? <h2 className="store-hero-title">') && page.includes("{branding?.logo && data.products.length > 0 ? <h2 className=\"store-section-title\""));
