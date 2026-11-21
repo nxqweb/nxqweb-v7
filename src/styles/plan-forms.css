@@ -306,3 +306,40 @@ body[data-nxq-theme="light"] .quick-links-footer { background: #f4f1e8; color: #
   .packing-slip-totals tr:last-child td { font-weight: 700; border-top: 1px solid #000; }
   .packing-slip-thanks { margin-top: .8cm; text-align: center; }
 }
+
+/* Safety net: plain form controls (no class at all) on portal pages were unreadable (light text on a light list, or a light pill with white text).
+   The shared .auth-input class already styles most controls; this covers every select, text box and text area that skips it.
+   Controls with their own class keep their own styling. Colors are high contrast (see scripts/test-form-contrast.mjs). */
+body:not([data-nxq-theme="light"]) .portal-shell select:not([class]),
+body:not([data-nxq-theme="light"]) .portal-shell input:not([class]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]),
+body:not([data-nxq-theme="light"]) .portal-shell textarea:not([class]) {
+  background-color: #0b1020;
+  color: #f8fafc;
+  color-scheme: dark;
+  border: 1px solid rgba(248, 250, 252, 0.35);
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  min-height: 44px;
+  font: inherit;
+}
+body:not([data-nxq-theme="light"]) .portal-shell select:not([class]) option,
+body:not([data-nxq-theme="light"]) .portal-shell select:not([class]) optgroup { background-color: #0b1020; color: #f8fafc; }
+body:not([data-nxq-theme="light"]) .portal-shell select:not([class]) option:checked { background-color: #164e63; color: #ffffff; }
+body:not([data-nxq-theme="light"]) .portal-shell input:not([class])::placeholder,
+body:not([data-nxq-theme="light"]) .portal-shell textarea:not([class])::placeholder { color: #aab4c8; opacity: 1; }
+body[data-nxq-theme="light"] .portal-shell select:not([class]),
+body[data-nxq-theme="light"] .portal-shell input:not([class]):not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="hidden"]),
+body[data-nxq-theme="light"] .portal-shell textarea:not([class]) {
+  background-color: #ffffff;
+  color: #111827;
+  color-scheme: light;
+  border: 1px solid #6b7280;
+  border-radius: 12px;
+  padding: 0.55rem 0.75rem;
+  min-height: 44px;
+  font: inherit;
+}
+body[data-nxq-theme="light"] .portal-shell select:not([class]) option,
+body[data-nxq-theme="light"] .portal-shell select:not([class]) optgroup { background-color: #ffffff; color: #111827; }
+body[data-nxq-theme="light"] .portal-shell input:not([class])::placeholder,
+body[data-nxq-theme="light"] .portal-shell textarea:not([class])::placeholder { color: #4b5563; opacity: 1; }

@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## READABLE FORM CONTROLS BUILT 2026-11-21 (newest; in the repo, NOT live; do NOT spend credits to ship it)
+
+Owner complaint (Store look page): dropdown list showed light text on a light list, and the text box had white text on a light pill. Cause: the shared `.auth-input` class already had dark-theme styling, but many controls have no class at all (Store look, Client lifecycle picker, screen attention map, Stripe customer links, several text areas) and the browser's native dropdown list ignores page colors unless `color-scheme` and option colors are set. Fix: a safety net at the end of `src/styles/plan-forms.css` that styles every class-less select, text box and text area inside `.portal-shell`, dark and light themes (18:1 typed text, 9:1 hints, 44px tall, native list follows the theme); controls with their own class are untouched. `scripts/test-form-contrast.mjs` plus a real-browser check in both themes (all pass). It goes live with the NEXT site build, which should be a QA-run build from 2026-11-23, not a deploy made just for this (owner rule below).
+
 ## OWNER RULE 2026-11-20: NO MORE NETLIFY CREDITS (newest)
 
 The owner said (in chat): do not use any more Netlify credits. **Netlify builds stay OFF.** Do not ask the owner to turn them on, and do not push a "trigger" commit for any reason. With builds OFF, pushes to the repo cost 0 credits. The ONLY planned credit use is the 4 remaining clean QA runs from 2026-11-23 (30 or 45 credits each, credits reset to 300 that day), and even those need the owner's explicit go, one run at a time. The candle client's store look was set by the owner on `/owner/store-look` (no build, 0 credits) and shows on her store. Post-QA wish list (needs a gated migration): a store picker on the Store look page and an automatic look seeded from the client's own setup colors (readability check still applies).
