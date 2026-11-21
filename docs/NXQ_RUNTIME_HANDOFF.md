@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## SHOWCASE: GLASS WINDOW (CRISP LOGO, FROSTED CARDS) 2026-11-21 (in the repo, NOT live)
+
+Owner wanted the background logo crisp and full strength, with only the cards blurring what is behind them, "like behind a glass window". Done: the fixed background logo is now full strength (no fade); the header, intro card, product cards, cart, about panel, section-title pill and search box are frosted glass (`backdrop-filter: blur(22px)` over a half-transparent white), so only the area behind a card goes soft; the logo gets a gentle sharpening pass after it is enlarged (`sharpen` in `src/lib/logoCutout.ts`, color only, transparency untouched). Browser checks pass (desktop and phone). Limit: sharpening cannot add detail the 240 px file does not have; a sharper logo file is the real fix and needs no code.
+
 ## SHOWCASE: LOGO AS A FIXED PAGE BACKGROUND 2026-11-21 (in the repo, NOT live)
 
 Owner pointed at the NXQX home page (a fixed background that stays put while the page scrolls) and asked for the same on the candle store: the logo as the background with the cards on top. Done: showcase stores get a fixed, full-page, click-through logo layer (`.store-bg-logo`, `position: fixed`, z-index 0, aria-hidden, 26% strength, the automatic transparent cutout) behind the page; the hero no longer holds its own logo copy, it is a glass card over the background; cards and the cart/about panels are translucent with a blur so the background shows softly through. Real-browser checks (desktop and phone): the logo does not move when the page scrolls, clicks pass through to the page, no errors. Limit: the logo file is 240 px, so as a large background it looks soft; a sharper file replaces it with no code change.
