@@ -168,7 +168,7 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index 054a169..a7788be 100644
+index c955cba..1cc9df0 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
 @@ -20,9 +20,11 @@ import {
@@ -256,7 +256,7 @@ index 054a169..a7788be 100644
        },
      });
      if (result.error) {
-@@ -382,7 +401,8 @@ export function PublicCommerceStorefront() {
+@@ -384,7 +403,8 @@ export function PublicCommerceStorefront() {
  
        {order ? <section className="panel panel-wide">
          <h2>Order {order.order_number} created</h2>
@@ -266,7 +266,7 @@ index 054a169..a7788be 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -464,16 +484,26 @@ export function PublicCommerceStorefront() {
+@@ -465,16 +485,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
@@ -296,13 +296,13 @@ index 054a169..a7788be 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index 1e9f82e..341c5f8 100644
+index cab815b..009c9ef 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -382,3 +382,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
- @media (max-width: 1000px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
- @media (max-width: 560px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: 1fr; } }
- .store-theme[data-showcase] .portal-shell::before { display: none; } /* a decorative glow that sticks out 24px per side made a nearly full-width page scroll sideways */
+@@ -397,3 +397,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+ .store-theme[data-showcase] .store-hero { background: transparent !important; }
+ .store-theme[data-showcase] .store-bg-logo img { opacity: .26; }
+ @media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { opacity: .22; } }
 +/* Shipping or pickup choice at checkout (shown only when the shop offers pickup). */
 +.store-theme .store-delivery-choice { border: 1px solid var(--store-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; display: grid; gap: .5rem; }
 +.store-theme .store-delivery-choice legend { font-weight: 600; padding: 0 .35rem; }
