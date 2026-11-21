@@ -1,7 +1,7 @@
 // Offline test: the automatic logo cutout (src/lib/logoCutout.ts). A logo on a plain white background must become transparent by itself,
 // white INSIDE the logo must stay, soft edges must not leave a white halo, and anything that is not "logo on a plain background" is left alone.
 import fs from "node:fs";
-import { cutOutBackground } from "../src/lib/logoCutout.ts";
+import { cutOutBackground, visibleBox } from "../src/lib/logoCutout.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -35,6 +35,13 @@ check("its color is un-blended from the white (no white halo): it is redder than
 // Colored plain background (cream) works the same way.
 const cream = make(50, 50, [250, 246, 239], (set) => { for (let y = 15; y < 35; y++) for (let x = 15; x < 35; x++) set(x, y, [30, 47, 79]); });
 check("a plain cream background is cut out too", cutOutBackground(cream).ok && px(cream, 1, 1)[3] === 0 && px(cream, 25, 25)[3] === 255);
+
+// The empty margin around a logo is found so the picture can be trimmed.
+const boxed = make(100, 80, [255, 255, 255], (set) => { for (let y = 30; y < 50; y++) for (let x = 40; x < 70; x++) set(x, y, RED); });
+cutOutBackground(boxed);
+const vb = visibleBox(boxed);
+check("the visible box of a cut-out logo is found exactly (so blank margins can be trimmed)", vb && vb.left <= 40 && vb.left >= 36 && vb.right >= 70 && vb.right <= 74 && vb.top <= 30 && vb.top >= 26 && vb.bottom >= 50 && vb.bottom <= 54, JSON.stringify(vb));
+check("a fully transparent picture has no visible box", visibleBox({ width: 10, height: 10, data: new Uint8ClampedArray(400) }) === null);
 
 // Things that must be left alone.
 const clear = make(30, 30, [255, 255, 255], () => {}); clear.data[3] = 0;

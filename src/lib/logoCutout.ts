@@ -84,9 +84,20 @@ export function cutOutBackground(img: Pixels): CutoutResult {
   return { ok: true, reason: "cut", removedShare: share };
 }
 
+// The rectangle that holds every visible (not transparent) pixel, or null when nothing is visible.
+export function visibleBox(img: Pixels, minAlpha = 12): { left: number; top: number; right: number; bottom: number } | null {
+  const { width: w, height: h, data: d } = img;
+  let left = w, top = h, right = -1, bottom = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (d[(y * w + x) * 4 + 3] > minAlpha) { if (x < left) left = x; if (x > right) right = x; if (y < top) top = y; if (y > bottom) bottom = y; }
+  }
+  return right < 0 ? null : { left, top, right: right + 1, bottom: bottom + 1 };
+}
+
 // ---- browser part -------------------------------------------------------------------------------------------------------------------------
 
 const MAX_SIDE = 1600;
+const UPSCALE_TARGET = 900;
 const cache = new Map<string, Promise<string | null>>();
 
 // A transparent version of the logo as a data URL, or null when it is not possible or not needed (the page then uses the original picture).
@@ -111,7 +122,31 @@ export function cutoutLogoUrl(url: string): Promise<string | null> {
       const result = cutOutBackground({ width, height, data: pixels.data });
       if (!result.ok) return null;
       ctx.putImageData(pixels, 0, 0);
-      return canvas.toDataURL("image/png");
+      // Trim the empty transparent margin around the logo (a logo file is often a square with a lot of blank space), keeping a small border.
+      const box = visibleBox(pixels);
+      let current = canvas;
+      if (box) {
+        const pad = Math.round(Math.max(box.right - box.left, box.bottom - box.top) * 0.03);
+        const left = Math.max(0, box.left - pad); const top = Math.max(0, box.top - pad);
+        const cw = Math.min(width, box.right + pad) - left; const ch = Math.min(height, box.bottom + pad) - top;
+        if (cw > 8 && ch > 8 && (cw < width || ch < height)) {
+          const trimmed = document.createElement("canvas");
+          trimmed.width = cw; trimmed.height = ch;
+          const tctx = trimmed.getContext("2d");
+          if (tctx) { tctx.drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch); current = trimmed; }
+        }
+      }
+      // The logo is shown big (up to ~660 px). A small file is enlarged in smooth doubling steps so its edges are not blocky; detail still cannot be added.
+      while (current.width < UPSCALE_TARGET && current.width * 2 <= MAX_SIDE) {
+        const bigger = document.createElement("canvas");
+        bigger.width = current.width * 2; bigger.height = current.height * 2;
+        const bctx = bigger.getContext("2d");
+        if (!bctx) break;
+        bctx.imageSmoothingEnabled = true; bctx.imageSmoothingQuality = "high";
+        bctx.drawImage(current, 0, 0, bigger.width, bigger.height);
+        current = bigger;
+      }
+      return current.toDataURL("image/png");
     } catch { return null; }
   })();
   cache.set(url, job);
