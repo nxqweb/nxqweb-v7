@@ -295,13 +295,13 @@ index 6c60b53..c8ff0ca 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index 7b9f494..8e00b8f 100644
+index b297db9..580d636 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -330,3 +330,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
-   .store-theme[data-showcase] .store-hero-copy { grid-column: 1; grid-row: 2; }
-   .store-theme[data-showcase] .store-nav { order: 3; width: 100%; justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; }
- }
+@@ -340,3 +340,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+ .store-theme[data-showcase] .store-product-body .wide-btn::before { content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 8px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E") center / contain no-repeat; vertical-align: -3px; }
+ .store-theme[data-showcase] .store-header > .panel-title { align-items: center; }
+ .store-theme[data-showcase] .store-header > .panel-title > div { display: flex; align-items: center; }
 +/* Shipping or pickup choice at checkout (shown only when the shop offers pickup). */
 +.store-theme .store-delivery-choice { border: 1px solid var(--store-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; display: grid; gap: .5rem; }
 +.store-theme .store-delivery-choice legend { font-weight: 600; padding: 0 .35rem; }
