@@ -409,3 +409,10 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] .store-section-title { align-self: center; justify-self: center; width: fit-content; margin-inline: auto; padding: 6px 28px; border-radius: 999px; background: rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border: 1px solid rgba(255, 255, 255, .7); }
 .store-theme[data-showcase] .store-section-title::before, .store-theme[data-showcase] .store-section-title::after { display: none; }
 .store-theme[data-showcase] .store-search input { background: rgba(255, 255, 255, .6); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+
+/* Crisp size: the candle client's logo file is small (240 px), so it is shown at the size where it still looks sharp. When a bigger logo file arrives,
+   raise --showcase-logo-size (for example 900px) and nothing else needs to change. */
+.store-theme[data-showcase] { --showcase-logo-size: 460px; }
+.store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 82vw); max-height: 70vh; }
+@media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 78vw); } }
+@media (min-width: 861px) { .store-theme[data-showcase] .store-bg-logo { justify-content: flex-end; align-items: flex-start; padding: 150px 7vw 0 0; } }

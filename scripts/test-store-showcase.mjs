@@ -27,5 +27,7 @@ check("the logo is a fixed full-page background behind the content (page scrolls
 
 check("the background logo is full strength and crisp; only the cards blur what is behind them (frosted glass)", /\.store-bg-logo img \{ opacity: 1; filter: none;/.test(css) && /backdrop-filter: blur\(22px\)/.test(css) && !/\.store-bg-logo img \{[^}]*filter: blur/.test(css));
 
+check("the background logo is capped at a crisp size through one setting (--showcase-logo-size) that can be raised for a sharper file", css.includes("--showcase-logo-size: 460px;") && css.includes("width: min(var(--showcase-logo-size), 82vw)"));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store showcase checks passed (offline).");
 process.exit(failures ? 1 : 0);
