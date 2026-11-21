@@ -21,5 +21,7 @@ check("a logo saved on a white background blends into the page, and an older gri
 check("menu links are at least 40px tall and the cart, checkout and payment code is not touched", block.includes("min-height: 40px") && !/create_public|placeOrder|checkout/i.test(block));
 check("motion and layout stay safe: no animation added, no fixed widths that can overflow a phone", !/animation|@keyframes/.test(block) && !/width: [0-9]{4,}px/.test(block));
 
+check("the search icon and bar exist only for showcase stores, the search is client-side, and an empty result says so", page.includes('{branding?.logo ? <button className="icon-btn store-search-btn" type="button" aria-label="Search products"') && page.includes('{branding?.logo && searchOpen ? <div className="store-search" role="search">') && page.includes("const needle = branding?.logo ? query.trim().toLowerCase() : \"\";") && page.includes('data-testid="store-search-empty"') && !/rpc\([^)]*query/.test(page));
+check("the header shows the logo's icon alone when one was found, and the search styles are scoped to showcase", page.includes('data-mark={logoCut && logoCut.source === branding.logo && logoCut.mark ? "true" : undefined}') && css.includes('.store-theme[data-showcase] .store-logo[data-mark]') && css.includes(".store-theme .store-search-btn, .store-theme .store-search { display: none; }"));
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store showcase checks passed (offline).");
 process.exit(failures ? 1 : 0);

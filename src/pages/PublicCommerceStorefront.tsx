@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Share2, ShoppingCart, Store, Trash2, MessageSquareText } from "lucide-react";
+import { Minus, Plus, Search, Share2, ShoppingCart, Store, Trash2, MessageSquareText } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { orderPaymentHref } from "../lib/paymentLinks";
@@ -19,7 +19,7 @@ import {
   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
 } from "../lib/storeCatalog";
 import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
-import { cutoutLogoUrl } from "../lib/logoCutout";
+import { cutoutLogo } from "../lib/logoCutout";
 
 type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
 type OrderResult = { order_number: string; total: number; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
@@ -49,12 +49,14 @@ export function PublicCommerceStorefront() {
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
   const [branding, setBranding] = useState<StoreBranding | null>(null); // this shop's own colors and logo (owner-set, migration 286)
   // The big logo in the showcase hero: a logo saved on a plain white background is turned transparent automatically (src/lib/logoCutout.ts), so nobody has to supply a special file.
-  const [logoCut, setLogoCut] = useState<{ source: string; url: string } | null>(null);
+  const [logoCut, setLogoCut] = useState<{ source: string; url: string; mark: string | null } | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false); // showcase stores: the search icon in the header
+  const [query, setQuery] = useState("");
   useEffect(() => {
     const source = branding?.logo;
     if (!source) { setLogoCut(null); return; }
     let live = true;
-    void cutoutLogoUrl(source).then((url) => { if (live && url) setLogoCut({ source, url }); });
+    void cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark }); });
     return () => { live = false; };
   }, [branding?.logo]);
   const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
@@ -358,12 +360,16 @@ export function PublicCommerceStorefront() {
   if (!data) return <main className="nxq-page store-theme"><section className="portal-shell"><div className="auth-error" role="alert">{error || "Store unavailable."}</div><p className="subtle">If a shop gave you this link, please check back soon.</p></section></main>;
 
   const currency = data.store.currency;
+  // Showcase stores: the header search filters the products by name or description (no server call, nothing is stored).
+  const needle = branding?.logo ? query.trim().toLowerCase() : "";
+  const visibleProducts = needle ? data.products.filter((product) => `${product.name} ${product.short_description || ""} ${product.description || ""}`.toLowerCase().includes(needle)) : data.products;
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
     <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}><section className="portal-shell">
       <StoreAnnouncement website={website} />
-      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div>{branding?.logo ? <nav className="store-nav" aria-label="Store sections"><a href="#top">Home</a><a href="#products">Shop</a><a href="#store-about">About</a><a href="#store-about">Contact</a></nav> : null}<div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={logoCut && logoCut.source === branding.logo && logoCut.mark ? logoCut.mark : branding.logo} data-mark={logoCut && logoCut.source === branding.logo && logoCut.mark ? "true" : undefined} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div>{branding?.logo ? <nav className="store-nav" aria-label="Store sections"><a href="#top">Home</a><a href="#products">Shop</a><a href="#store-about">About</a><a href="#store-about">Contact</a></nav> : null}<div>{branding?.logo ? <button className="icon-btn store-search-btn" type="button" aria-label="Search products" aria-expanded={searchOpen} onClick={() => setSearchOpen((open) => !open)}><Search size={18} /></button> : null}{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      {branding?.logo && searchOpen ? <div className="store-search" role="search"><label className="store-search-label" htmlFor="store-search-input">Search products</label><input id="store-search-input" type="search" autoFocus autoComplete="off" maxLength={80} placeholder="Search products" value={query} onChange={(event) => setQuery(event.target.value)} /></div> : null}
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
       {customRequestsOpen && !order && !paused ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
       {!order && recentOrder ? <section className="notice-card" data-testid="recent-order-card" aria-label="Your recent order">
@@ -438,7 +444,8 @@ export function PublicCommerceStorefront() {
         {branding?.logo && data.products.length > 0 ? <h2 className="store-section-title" data-testid="store-section-title">{orderMode.mode === "menu" ? "Our menu" : "Our products"}</h2> : null}
         <section className="settings-grid store-product-grid" id="products" aria-label="Products">
           {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div>
-            : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu" || paused} />)}
+            : visibleProducts.length === 0 ? <div className="empty-state store-empty" data-testid="store-search-empty"><strong>Nothing matches that search.</strong><p>Try a different word, or clear the search.</p></div>
+            : visibleProducts.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu" || paused} />)}
         </section>
 
         {orderMode.mode === "menu" || paused ? null : <>

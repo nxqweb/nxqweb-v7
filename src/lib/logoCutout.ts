@@ -94,18 +94,40 @@ export function visibleBox(img: Pixels, minAlpha = 12): { left: number; top: num
   return right < 0 ? null : { left, top, right: right + 1, bottom: bottom + 1 };
 }
 
+// Where the logo's picture part (a candle, a tree, a monogram) ends and its wordmark text begins: the first wide empty horizontal band that has
+// a real picture above it. Returns the first row of that band, or null when the logo has no such split (then no icon is made).
+export function markEndRow(img: Pixels, minAlpha = 12): number | null {
+  const { width: w, height: h, data: d } = img;
+  const empty: boolean[] = [];
+  for (let y = 0; y < h; y++) { let any = false; for (let x = 0; x < w && !any; x++) if (d[(y * w + x) * 4 + 3] > minAlpha) any = true; empty.push(!any); }
+  const minGap = Math.max(3, Math.round(h * 0.04));
+  let y = 0;
+  while (y < h) {
+    if (!empty[y]) { y++; continue; }
+    let end = y; while (end < h && empty[end]) end++;
+    const above = y; const below = h - end;
+    if (end - y >= minGap && above >= h * 0.35 && above <= h * 0.85 && below >= h * 0.08) return y;
+    y = end;
+  }
+  return null;
+}
+
 // ---- browser part -------------------------------------------------------------------------------------------------------------------------
 
 const MAX_SIDE = 1600;
 const UPSCALE_TARGET = 900;
-const cache = new Map<string, Promise<string | null>>();
+export type CutoutLogo = { full: string; mark: string | null };
+const cache = new Map<string, Promise<CutoutLogo | null>>();
 
-// A transparent version of the logo as a data URL, or null when it is not possible or not needed (the page then uses the original picture).
-export function cutoutLogoUrl(url: string): Promise<string | null> {
+const toCanvas = (w: number, h: number) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+
+// A transparent, trimmed version of the logo, plus (when the logo has a picture above its text) just the picture as a small icon. Null when
+// not possible or not needed: the page then uses the original picture. Never throws.
+export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
   if (typeof document === "undefined" || !url) return Promise.resolve(null);
   const known = cache.get(url);
   if (known) return known;
-  const job = (async () => {
+  const job = (async (): Promise<CutoutLogo | null> => {
     try {
       const img = new Image();
       img.decoding = "async";
@@ -113,8 +135,7 @@ export function cutoutLogoUrl(url: string): Promise<string | null> {
       await img.decode();
       const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
       const width = Math.max(1, Math.round(img.naturalWidth * scale)); const height = Math.max(1, Math.round(img.naturalHeight * scale));
-      const canvas = document.createElement("canvas");
-      canvas.width = width; canvas.height = height;
+      const canvas = toCanvas(width, height);
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
       if (!ctx) return null;
       ctx.drawImage(img, 0, 0, width, height);
@@ -130,25 +151,46 @@ export function cutoutLogoUrl(url: string): Promise<string | null> {
         const left = Math.max(0, box.left - pad); const top = Math.max(0, box.top - pad);
         const cw = Math.min(width, box.right + pad) - left; const ch = Math.min(height, box.bottom + pad) - top;
         if (cw > 8 && ch > 8 && (cw < width || ch < height)) {
-          const trimmed = document.createElement("canvas");
-          trimmed.width = cw; trimmed.height = ch;
+          const trimmed = toCanvas(cw, ch);
           const tctx = trimmed.getContext("2d");
           if (tctx) { tctx.drawImage(canvas, left, top, cw, ch, 0, 0, cw, ch); current = trimmed; }
         }
       }
+      // The icon alone (the part above the wordmark), for the small header spot.
+      let mark: string | null = null;
+      try {
+        const cctx = current.getContext("2d", { willReadFrequently: true });
+        const cpx = cctx ? cctx.getImageData(0, 0, current.width, current.height) : null;
+        const cut = cpx ? markEndRow({ width: current.width, height: current.height, data: cpx.data }) : null;
+        if (cctx && cpx && cut) {
+          const top = { width: current.width, height: cut, data: cpx.data.slice(0, current.width * cut * 4) };
+          const tb = visibleBox(top);
+          if (tb && tb.right - tb.left > 8 && tb.bottom - tb.top > 8) {
+            let m = toCanvas(tb.right - tb.left, tb.bottom - tb.top);
+            const mctx = m.getContext("2d");
+            if (mctx) {
+              mctx.drawImage(current, tb.left, tb.top, m.width, m.height, 0, 0, m.width, m.height);
+              while (m.width < 200) { const b = toCanvas(m.width * 2, m.height * 2); const bctx = b.getContext("2d"); if (!bctx) break; bctx.imageSmoothingEnabled = true; bctx.imageSmoothingQuality = "high"; bctx.drawImage(m, 0, 0, b.width, b.height); m = b; }
+              mark = m.toDataURL("image/png");
+            }
+          }
+        }
+      } catch { mark = null; }
       // The logo is shown big (up to ~660 px). A small file is enlarged in smooth doubling steps so its edges are not blocky; detail still cannot be added.
       while (current.width < UPSCALE_TARGET && current.width * 2 <= MAX_SIDE) {
-        const bigger = document.createElement("canvas");
-        bigger.width = current.width * 2; bigger.height = current.height * 2;
+        const bigger = toCanvas(current.width * 2, current.height * 2);
         const bctx = bigger.getContext("2d");
         if (!bctx) break;
         bctx.imageSmoothingEnabled = true; bctx.imageSmoothingQuality = "high";
         bctx.drawImage(current, 0, 0, bigger.width, bigger.height);
         current = bigger;
       }
-      return current.toDataURL("image/png");
+      return { full: current.toDataURL("image/png"), mark };
     } catch { return null; }
   })();
   cache.set(url, job);
   return job;
 }
+
+// Kept for callers that only need the full transparent logo.
+export async function cutoutLogoUrl(url: string): Promise<string | null> { return (await cutoutLogo(url))?.full ?? null; }

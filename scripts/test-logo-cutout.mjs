@@ -1,7 +1,7 @@
 // Offline test: the automatic logo cutout (src/lib/logoCutout.ts). A logo on a plain white background must become transparent by itself,
 // white INSIDE the logo must stay, soft edges must not leave a white halo, and anything that is not "logo on a plain background" is left alone.
 import fs from "node:fs";
-import { cutOutBackground, visibleBox } from "../src/lib/logoCutout.ts";
+import { cutOutBackground, markEndRow, visibleBox } from "../src/lib/logoCutout.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -43,6 +43,14 @@ const vb = visibleBox(boxed);
 check("the visible box of a cut-out logo is found exactly (so blank margins can be trimmed)", vb && vb.left <= 40 && vb.left >= 36 && vb.right >= 70 && vb.right <= 74 && vb.top <= 30 && vb.top >= 26 && vb.bottom >= 50 && vb.bottom <= 54, JSON.stringify(vb));
 check("a fully transparent picture has no visible box", visibleBox({ width: 10, height: 10, data: new Uint8ClampedArray(400) }) === null);
 
+// The picture part of a logo is separated from its wordmark text by the first wide empty band.
+const emblem = make(60, 100, [255, 255, 255], (set) => { for (let y = 5; y < 60; y++) for (let x = 15; x < 45; x++) set(x, y, RED); for (let y = 72; y < 90; y++) for (let x = 5; x < 55; x++) set(x, y, RED); });
+cutOutBackground(emblem);
+const cutRow = markEndRow(emblem);
+check("the icon is separated from the text at the empty band between them", cutRow !== null && cutRow >= 58 && cutRow <= 62, String(cutRow));
+check("a logo with no empty band (or only a tiny one) gives no icon", markEndRow(make(60, 100, [255, 255, 255], (set) => { for (let y = 5; y < 95; y++) for (let x = 10; x < 50; x++) set(x, y, RED); })) === null && markEndRow({ width: 10, height: 10, data: new Uint8ClampedArray(400) }) === null);
+check("text-only logos (the band would leave too little above) give no icon", markEndRow(make(60, 100, [255, 255, 255], (set) => { for (let y = 5; y < 12; y++) for (let x = 10; x < 50; x++) set(x, y, RED); for (let y = 30; y < 95; y++) for (let x = 10; x < 50; x++) set(x, y, RED); })) === null);
+
 // Things that must be left alone.
 const clear = make(30, 30, [255, 255, 255], () => {}); clear.data[3] = 0;
 check("a picture that is already transparent at the corners is left alone", cutOutBackground(clear).reason === "already-transparent");
@@ -57,7 +65,7 @@ check("odd input never throws", [{ width: 0, height: 0, data: new Uint8ClampedAr
 
 const page = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
 check("the showcase hero uses the cutout only when it matches the current logo, and falls back to the original otherwise", page.includes('src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo}') && page.includes('data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined}'));
-check("the cutout is requested only for a logo that exists, and a late answer for an old logo is ignored", page.includes("cutoutLogoUrl(source).then((url) => { if (live && url) setLogoCut({ source, url }); })") && page.includes("return () => { live = false; };"));
+check("the cutout is requested only for a logo that exists, and a late answer for an old logo is ignored", page.includes("cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark }); })") && page.includes("return () => { live = false; };"));
 const lib = fs.readFileSync("src/lib/logoCutout.ts", "utf8");
 check("the picture is processed in the browser only (nothing is uploaded or sent anywhere)", !/fetch\(|supabase|XMLHttpRequest|sendBeacon/.test(lib) && lib.includes("catch { return null; }"));
 

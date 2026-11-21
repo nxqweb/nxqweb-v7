@@ -367,3 +367,18 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] { font-size: 1.12rem; }
 .store-theme[data-showcase] .store-hero-cta, .store-theme[data-showcase] .store-product-body .wide-btn { border-color: var(--store-ink) !important; }
 .store-theme[data-showcase] .store-header .icon-btn[aria-label="Share this store"] { border-color: var(--store-line) !important; }
+
+/* Showcase, exact-match pass: wider page like the mockup, a plain search icon, the logo's icon alone in the header, photos feathered on every edge. */
+.store-theme .store-search-btn, .store-theme .store-search { display: none; }
+.store-theme[data-showcase] .portal-shell { width: min(1240px, 100%); }
+.store-theme[data-showcase] .store-search-btn { display: inline-flex; width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border: 0 !important; background: transparent !important; box-shadow: none; }
+.store-theme[data-showcase] .store-search { display: block; margin: -10px 0 18px; }
+.store-theme[data-showcase] .store-search-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.store-theme[data-showcase] .store-search input { width: 100%; min-height: 48px; padding: 0 20px; border-radius: 999px; border: 1px solid var(--store-line); background: var(--store-surface, #fff); color: var(--store-ink); font-size: 1.15rem; }
+.store-theme[data-showcase] .store-logo[data-mark] { width: auto; height: 46px; max-width: 64px; border-radius: 0; border: 0; background: transparent; object-fit: contain; }
+.store-theme[data-showcase] .store-header h1 { max-width: 17em; }
+.store-theme[data-showcase] .store-product-photo { -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%); mask-image: linear-gradient(to bottom, #000 78%, transparent 100%); }
+.store-theme[data-showcase] .store-product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+@media (max-width: 1000px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: 1fr; } }
+.store-theme[data-showcase] .portal-shell::before { display: none; } /* a decorative glow that sticks out 24px per side made a nearly full-width page scroll sideways */
