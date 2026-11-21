@@ -6,15 +6,6 @@ const rawSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | un
 const supabaseUrl = rawSupabaseUrl?.trim();
 const supabaseAnonKey = rawSupabaseAnonKey?.trim();
 
-export const supabaseDebug = {
-  url: supabaseUrl || "",
-  hasUrl: Boolean(supabaseUrl),
-  hasAnonKey: Boolean(supabaseAnonKey),
-  anonKeyPreview: supabaseAnonKey
-    ? `${supabaseAnonKey.slice(0, 8)}...${supabaseAnonKey.slice(-6)}`
-    : "missing",
-};
-
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase = isSupabaseConfigured

@@ -1,0 +1,53 @@
+name: Harden Domain Reconciliation
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - scripts/patch-domain-reconciliation-hardening.py
+      - .github/workflows/harden-domain-reconciliation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply domain reconciliation hardening
+        run: python scripts/patch-domain-reconciliation-hardening.py
+      - name: Verify persistence and lease fences
+        run: |
+          F=supabase/functions/reconcile-domain/index.ts
+          grep -q 'claim_next_external_automation_job_v2' "$F"
+          grep -q 'target_lock_token: job.lock_token' "$F"
+          grep -q 'Connected domain state persistence failed' "$F"
+          grep -q 'Pending DNS state persistence failed' "$F"
+          grep -q 'timedFetch' "$F"
+          if grep -q 'await fetch(`https://api.netlify.com' "$F"; then exit 1; fi
+      - name: Typecheck Edge functions
+        run: node scripts/check-edge-functions.mjs
+      - name: Lint zero warnings
+        run: npm run lint -- --max-warnings=0
+      - name: Commit hardened domain worker
+        run: |
+          F=supabase/functions/reconcile-domain/index.ts
+          if git diff --quiet -- "$F"; then
+            echo 'No domain worker changes required.'
+            exit 0
+          fi
+          git config user.name 'nxqweb'
+          git config user.email 'NXQweb@protonmail.com'
+          git add "$F"
+          git commit -m 'fix: make domain reconciliation persistence authoritative'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

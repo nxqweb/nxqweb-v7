@@ -1,0 +1,61 @@
+name: Harden Business Worker Leases
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - scripts/patch-business-workers-to-lease-v2.py
+      - .github/workflows/harden-business-worker-leases.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply Business lease-v2 patch
+        run: python scripts/patch-business-workers-to-lease-v2.py
+      - name: Verify token-fenced semantics
+        run: |
+          for f in \
+            supabase/functions/provision-project-infrastructure/index.ts \
+            supabase/functions/prepare-build-plan/index.ts \
+            supabase/functions/build-business-website/index.ts \
+            supabase/functions/promote-business-production/index.ts; do
+            grep -q 'claim_next_external_automation_job_v2' "$f"
+            grep -q 'target_lock_token: job.lock_token' "$f"
+            grep -q 'lock_token: string' "$f"
+            if grep -q 'admin.rpc("claim_next_external_automation_job",' "$f"; then
+              echo "Legacy claim RPC remains in $f"
+              exit 1
+            fi
+          done
+      - name: Migration integrity
+        run: npm run test:migrations
+      - name: Typecheck Edge functions
+        run: node scripts/check-edge-functions.mjs
+      - name: Lint zero warnings
+        run: npm run lint -- --max-warnings=0
+      - name: Commit hardened Business workers
+        run: |
+          FILES='supabase/functions/provision-project-infrastructure/index.ts supabase/functions/prepare-build-plan/index.ts supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts'
+          if git diff --quiet -- $FILES; then
+            echo 'No worker changes required.'
+            exit 0
+          fi
+          git config user.name 'nxqweb'
+          git config user.email 'NXQweb@protonmail.com'
+          git add $FILES
+          git commit -m 'fix: fence Business worker claims with lease tokens'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

@@ -1,0 +1,178 @@
+// Scratch end-to-end check of the Booking pages in a real browser (shared in-memory database via scripts/manual/harness/booking.html; no network at all).
+import { createRequire } from "node:module";
+const require = createRequire(process.env.PW_FROM || "/node-tools/node_modules/");
+const { chromium } = require("playwright");
+const base = process.env.BASE_URL || "http://127.0.0.1:5199";
+const url = (q = "") => `${base}/scripts/manual/harness/booking.html${q}`;
+let failures = 0;
+const ok = (name, cond) => { if (cond) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}`); } };
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" }).catch(() => chromium.launch());
+const pageErrors = [];
+async function open(q = "", width = 900) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, permissions: ["clipboard-read", "clipboard-write"] });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => pageErrors.push(e.message));
+  await page.goto(url(q), { waitUntil: "networkidle" });
+  await page.waitForTimeout(250);
+  return page;
+}
+const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+
+// ===== public page
+let page = await open("?gw=none");
+ok("not connected: the public page says it is not open and shows no form", (await page.getByTestId("booking-closed").count()) === 1 && (await page.getByTestId("booking-form").count()) === 0);
+page = await open("?reset=1");
+ok("a page that is not switched on shows the calm closed message", (await page.getByTestId("booking-closed").count()) === 1);
+page = await open("?seed=1&reset=1&slug=wrong-slug");
+ok("an unknown address shows the closed message and reveals nothing", (await page.getByTestId("booking-closed").count()) === 1 && !/Salon/.test((await page.textContent("body")) || ""));
+
+page = await open("?seed=1&reset=1");
+ok("the page shows the business name, intro, time zone and cancellation note", /Book Salon One/.test((await page.textContent("h1")) || "") && /America\/Los Angeles/.test((await page.textContent("body")) || "") && (await page.getByTestId("booking-policy").count()) === 1);
+ok("no day or time choices until a service is picked", (await page.locator("#book-day").count()) === 0);
+await page.getByRole("button", { name: "Send request" }).click();
+ok("sending an empty form is refused with a plain message on each field and the cursor moves to the first problem", (await page.getByRole("alert").count()) >= 4 && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === "book-service");
+ok("nothing was sent after the empty attempt", (await page.evaluate(() => (window.__submits || []).length)) === 0);
+await page.selectOption("#book-service", "cut");
+await page.locator("#book-day").waitFor();
+await page.getByRole("button", { name: "Send request" }).click();
+await page.waitForTimeout(150);
+ok("with a service but no day or time chosen, the cursor moves to the day box (the time box does not exist yet)", (await page.evaluate(() => document.activeElement && document.activeElement.id)) === "book-day");
+const dayOptions = await page.locator("#book-day option").allTextContents();
+ok("days are listed (weekdays only) and start with a prompt", dayOptions.length > 5 && dayOptions[0].startsWith("Choose") && dayOptions.slice(1).every((t) => !/Saturday|Sunday/.test(t)));
+await page.selectOption("#book-day", { index: 2 });
+const slotCount = await page.locator(".booking-slot").count();
+ok("times appear for the chosen day as radio buttons", slotCount >= 10 && (await page.locator('input[name="book-slot"]').first().getAttribute("type")) === "radio");
+await page.locator(".booking-slot").nth(2).click();
+ok("a picked time is highlighted and selected", (await page.locator(".booking-slot.is-picked").count()) === 1);
+await page.selectOption("#book-service", "color");
+ok("changing the service clears the day and time (they depend on how long it takes)", (await page.locator(".booking-slot.is-picked").count()) === 0 && (await page.locator("#book-day").inputValue()) === "");
+await page.selectOption("#book-day", { index: 2 });
+const colorSlots = await page.locator(".booking-slot").allTextContents();
+ok("a 2-hour service offers no start after 3:00 PM", !colorSlots.some((t) => /^(3:30|4:00|4:30) PM$/.test(t.trim())) && colorSlots.some((t) => t.trim() === "3:00 PM"));
+await page.locator(".booking-slot").nth(0).click();
+await page.getByLabel("Your name").fill("Pat Visitor");
+await page.getByLabel("Email", { exact: true }).fill("not-an-email");
+await page.getByRole("button", { name: "Send request" }).click();
+ok("a bad email is refused on the field, nothing sent", /valid email/i.test((await page.locator("#err-email").textContent()) || "") && (await page.evaluate(() => (window.__submits || []).length)) === 0);
+await page.getByLabel("Email", { exact: true }).fill("pat@example.com");
+await page.getByLabel(/Anything we should know/).fill("First visit, <b>please</b>");
+await page.getByRole("button", { name: "Send request" }).click();
+ok("markup in the note is refused", /cannot contain/.test((await page.locator("#err-notes").textContent()) || ""));
+await page.getByLabel(/Anything we should know/).fill("First visit.");
+ok("the hidden bot field is out of reach of people and screen readers (inert, aria-hidden, tab-proof, unusual name)", (await page.locator(".booking-hp").getAttribute("aria-hidden")) === "true" && (await page.locator(".booking-hp").evaluate((el) => el.inert)) === true && (await page.locator('.booking-hp input').getAttribute("tabindex")) === "-1" && (await page.locator('.booking-hp input').getAttribute("name")) === "nxq_extra_field");
+await page.getByRole("button", { name: "Send request" }).dblclick();
+await page.getByTestId("booking-done").waitFor();
+const submits = await page.evaluate(() => window.__submits);
+ok("a double-click sends exactly one request (one idempotency key)", submits.length === 1 && submits[0].idempotencyKey.length >= 8);
+ok("the sent request carries the right values and an empty bot field", submits[0].serviceKey === "color" && submits[0].name === "Pat Visitor" && submits[0].email === "pat@example.com" && submits[0].website === "" && /^\d{4}-\d{2}-\d{2}T/.test(submits[0].startIso));
+ok("the confirmation says REQUEST (not confirmed), shows a code, and no booking is claimed", /request/i.test((await page.getByTestId("booking-done").textContent()) || "") && /not a confirmed appointment/.test((await page.getByTestId("booking-done").textContent()) || "") && /^BOOK-/.test((await page.getByTestId("booking-code").textContent()) || ""));
+ok("no sideways scrolling on the public page", await noSideways(page));
+
+// ===== the business sees it
+const ownerPage = await page.context().newPage();
+ownerPage.on("pageerror", (e) => pageErrors.push(e.message));
+await ownerPage.goto(url("?view=owner"), { waitUntil: "networkidle" });
+await ownerPage.waitForTimeout(250);
+ok("the business sees the new request with the customer's details, service and time", (await ownerPage.getByTestId("booking-request").count()) === 2 && /Pat Visitor/.test((await ownerPage.getByTestId("booking-requests").textContent()) || "") && /Hair color/.test((await ownerPage.getByTestId("booking-requests").textContent()) || "") && (await ownerPage.getByRole("link", { name: "pat@example.com" }).getAttribute("href")) === "mailto:pat@example.com");
+ok("the page says nothing is confirmed, reminded or charged automatically", /does not confirm appointments, send reminders or take payments/.test((await ownerPage.getByTestId("booking-requests").textContent()) || ""));
+const row = ownerPage.getByTestId("booking-request").filter({ hasText: "Pat Visitor" });
+await row.getByLabel(/Your note/).fill("Called, voicemail left");
+await row.getByRole("button", { name: "I'm on it" }).click();
+await ownerPage.getByRole("status").filter({ hasText: "Marked as in progress" }).waitFor();
+ok("marking a request in progress saves the status and the note", JSON.stringify((await ownerPage.evaluate(() => window.__owner)).at(-1)).includes("needs_review") && JSON.stringify((await ownerPage.evaluate(() => window.__owner)).at(-1)).includes("Called, voicemail left"));
+await ownerPage.selectOption("#req-filter", "needs_review");
+await ownerPage.waitForTimeout(200);
+ok("the filter shows only requests in that state", (await ownerPage.getByTestId("booking-request").count()) === 1);
+ownerPage.once("dialog", (d) => d.dismiss());
+await ownerPage.getByTestId("booking-request").first().getByRole("button", { name: /Delete/ }).click();
+ok("delete asks first, and cancelling keeps the request", (await ownerPage.getByTestId("booking-request").count()) === 1);
+ownerPage.once("dialog", (d) => d.accept());
+await ownerPage.getByTestId("booking-request").first().getByRole("button", { name: /Delete/ }).click();
+await ownerPage.getByRole("status").filter({ hasText: "Request deleted" }).waitFor();
+ok("confirming delete removes it", (await ownerPage.getByTestId("booking-request").count()) === 0);
+ok("no sideways scrolling on the manager page", await noSideways(ownerPage));
+
+// ===== owner: typing in one section survives actions in another, warnings, 5-minute hours
+page = await open("?seed=1&reset=1&view=owner");
+await page.getByLabel(/Page name/).fill("Typed But Not Saved");
+await page.getByRole("button", { name: "Hide from page" }).first().click();
+await page.getByRole("status").filter({ hasText: "hidden from your page" }).waitFor();
+ok("unsaved typing in the page-settings box survives clicking a service button", (await page.getByLabel(/Page name/).inputValue()) === "Typed But Not Saved");
+await page.getByLabel("Monday opens").fill("09:07");
+await page.getByRole("button", { name: "Hide from page" }).first().click();
+await page.waitForTimeout(250);
+ok("unsaved opening times survive too, and hiding the last service shows a plain warning that visitors see a closed page", (await page.getByLabel("Monday opens").inputValue()) === "09:07" && (await page.getByTestId("booking-no-active-service").count()) === 1);
+await page.getByRole("button", { name: "Save opening hours" }).click();
+ok("opening times off the 5-minute grid are refused before saving", /5-minute mark/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByLabel("Monday opens").fill("09:00");
+ok("the hours inputs step by 5 minutes", (await page.getByLabel("Monday opens").getAttribute("step")) === "300");
+const reqPage = await open("?seed=1&reset=1&view=owner");
+ok("request times show the year", /20\d\d/.test((await reqPage.getByTestId("booking-request").first().textContent()) || ""));
+
+// ===== owner setup from scratch
+page = await open("?view=owner&reset=1");
+ok("a new business sees the start screen with a time zone choice", (await page.getByTestId("booking-start").count()) === 1);
+await page.getByLabel("Your time zone").selectOption("America/Chicago");
+await page.getByRole("button", { name: "Set up booking" }).click();
+await page.getByTestId("booking-page-settings").waitFor();
+ok("setting up creates the workspace in the chosen time zone and shows the page, services and hours sections", (await page.evaluate(() => window.__owner[0].ensure)) === "America/Chicago" && (await page.getByTestId("booking-services").count()) === 1 && (await page.getByTestId("booking-hours").count()) === 1);
+await page.getByRole("button", { name: "Turn page on" }).click();
+ok("turning the page on too early explains what is missing", /Choose a page address first/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByLabel(/Page name/).fill("Chicago Studio");
+await page.getByLabel("Page address").fill("chicago-studio");
+await page.getByLabel(/Minimum notice/).fill("abc");
+await page.getByRole("button", { name: "Save page settings" }).click();
+ok("a bad notice time is refused before anything is sent", /whole number/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByLabel(/Minimum notice/).fill("60");
+await page.getByRole("button", { name: "Save page settings" }).click();
+await page.getByRole("status").filter({ hasText: "Saved" }).waitFor();
+await page.getByLabel("New service name").fill("Consultation");
+await page.getByLabel(/How long it takes/).fill("30");
+await page.getByRole("button", { name: "Add service" }).click();
+await page.getByRole("status").filter({ hasText: "Service added" }).waitFor();
+ok("a service is added with a code made from its name", JSON.stringify(await page.evaluate(() => window.__owner.find((x) => x.service).service)).includes('"serviceKey":"consultation"'));
+await page.getByRole("button", { name: "Turn page on" }).click();
+ok("it still needs opening hours", /opening hours first/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByRole("checkbox", { name: "Monday" }).check();
+await page.getByLabel("Monday closes").fill("08:00");
+await page.getByRole("button", { name: "Save opening hours" }).click();
+ok("hours that close before they open are refused on the page", /after opening/.test((await page.getByRole("alert").textContent()) || ""));
+await page.getByLabel("Monday closes").fill("17:00");
+await page.getByRole("button", { name: "Save opening hours" }).click();
+await page.getByRole("status").filter({ hasText: "Opening hours saved" }).waitFor();
+await page.getByRole("button", { name: "Turn page on" }).click();
+await page.getByRole("status").filter({ hasText: "Your page is on" }).waitFor();
+ok("with everything in place the page turns on and the share link appears", /\/book\/chicago-studio$/.test(await page.locator("#book-link").inputValue()));
+await page.getByRole("button", { name: /Copy link/ }).click();
+ok("the link can be copied", (await page.evaluate(() => navigator.clipboard.readText())).endsWith("/book/chicago-studio"));
+const publicFromOwner = await page.context().newPage();
+await publicFromOwner.goto(url("?slug=chicago-studio"), { waitUntil: "networkidle" });
+await publicFromOwner.waitForTimeout(250);
+ok("the public page for the new business is live, in its own time zone", /Chicago Studio/.test((await publicFromOwner.textContent("h1")) || "") && /America\/Chicago/.test((await publicFromOwner.textContent("body")) || ""));
+await page.getByRole("button", { name: "Turn page off" }).click();
+await page.getByRole("status").filter({ hasText: "Your page is off" }).waitFor();
+await publicFromOwner.reload({ waitUntil: "networkidle" });
+ok("turning it off closes the public page", (await publicFromOwner.getByTestId("booking-closed").count()) === 1);
+
+// ===== failures stay calm
+page = await open("?seed=1&reset=1&gw=fail&view=owner");
+await page.getByRole("button", { name: "Turn page off" }).click();
+const msg = (await page.getByRole("alert").textContent()) || "";
+ok("a failing save shows plain words, never raw database text", /could not save/i.test(msg) && !/duplicate|constraint|pkey/i.test(msg));
+page = await open("?seed=1&reset=1&gw=fail");
+await page.selectOption("#book-service", "cut"); await page.selectOption("#book-day", { index: 2 }); await page.locator(".booking-slot").nth(1).click();
+await page.getByLabel("Your name").fill("Pat Visitor"); await page.getByLabel("Email", { exact: true }).fill("pat@example.com");
+await page.getByRole("button", { name: "Send request" }).click();
+const msg2 = (await page.getByRole("alert").textContent()) || "";
+ok("a failing request shows plain words, keeps what was typed, and says nothing was sent", /Nothing was sent/.test(msg2) && !/duplicate|constraint|pkey/i.test(msg2) && (await page.getByLabel("Your name").inputValue()) === "Pat Visitor");
+
+// ===== phone width
+page = await open("?seed=1&reset=1", 360);
+await page.selectOption("#book-service", "cut");
+ok("no sideways scrolling at 360px (public)", await noSideways(page));
+page = await open("?seed=1&reset=1&view=owner", 360);
+ok("no sideways scrolling at 360px (manager)", await noSideways(page));
+ok("no page errors happened", pageErrors.length === 0);
+await browser.close();
+console.log(failures ? `\n${failures} browser check(s) failed` : "\nAll browser checks passed");
+process.exit(failures ? 1 : 0);

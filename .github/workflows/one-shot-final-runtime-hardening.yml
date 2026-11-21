@@ -1,0 +1,50 @@
+name: NXQ Final Runtime Hardening
+on:
+  push:
+    branches: [safe/checkpoint-autonomy-wave35-sales]
+    paths:
+      - .github/workflows/one-shot-final-runtime-hardening.yml
+permissions:
+  contents: write
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply all pending runtime hardening
+        run: |
+          python scripts/patch-runtime-gateway-hardening.py
+          python scripts/patch-remaining-edge-network-timeouts.py
+      - run: npm ci
+      - name: Runtime staging contract
+        run: npm run test:runtime-stage
+      - name: Exhaustive runtime error-surface audit
+        run: node scripts/validate-runtime-error-surface-contract.mjs
+      - name: Migration integrity
+        run: npm run test:migrations
+      - name: Type-check every Edge function
+        run: npm run test:edge
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Commit final hardened runtime state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add scripts/edge-function-manifest.mjs supabase/config.toml supabase/functions/*/index.ts
+          if git diff --cached --quiet; then
+            echo "No runtime hardening changes required."
+            exit 0
+          fi
+          git commit -m "fix: persist final runtime error hardening"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
