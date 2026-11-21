@@ -298,16 +298,18 @@ html:has(.store-theme) { scroll-behavior: smooth; }
    and a four-across product grid with soft rounded cards. Stores without a saved look keep the plain layout. */
 .store-theme[data-showcase] { scroll-behavior: smooth; }
 .store-theme .store-nav, .store-theme .store-section-title { display: none; }
-.store-theme[data-showcase] .store-header { position: sticky; top: 8px; z-index: 30; background: var(--store-surface, #fff); border: 1px solid var(--store-line); border-radius: 18px; padding: 10px 16px; margin-bottom: 26px; box-shadow: 0 6px 24px rgba(29, 47, 79, .08); }
-.store-theme[data-showcase] .store-header h1 { font-size: 1.05rem; line-height: 1.15; }
+.store-theme[data-showcase] .store-header { display: flex !important; /* an older rule makes the first header on any page a two-column grid */ flex-wrap: nowrap; position: sticky; top: 8px; z-index: 30; background: var(--store-surface, #fff); border: 1px solid var(--store-line); border-radius: 18px; padding: 10px 16px; margin-bottom: 26px; box-shadow: 0 6px 24px rgba(29, 47, 79, .08); }
+.store-theme[data-showcase] .store-header h1 { font-size: 1.05rem !important; line-height: 1.15 !important; letter-spacing: 0 !important; margin: 0; }
+.store-theme[data-showcase] .store-header > .panel-title { flex: 0 1 auto; gap: 12px; }
+.store-theme[data-showcase] .store-header > div:last-child { margin-left: 0; flex: 0 0 auto; }
 .store-theme[data-showcase] .store-header .subtle { display: none; }
 .store-theme[data-showcase] .store-logo { width: 44px; height: 44px; }
 .store-theme[data-showcase] .store-nav { display: flex; gap: 6px; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
 .store-theme[data-showcase] .store-nav a { color: var(--store-ink) !important; text-decoration: none; padding: 8px 14px; border-radius: 999px; font-weight: 600; min-height: 40px; display: inline-flex; align-items: center; }
 .store-theme[data-showcase] .store-nav a:first-child { border: 1px solid var(--store-ink); }
 .store-theme[data-showcase] .store-nav a:hover { background: var(--store-tint); }
-.store-theme[data-showcase] .store-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 28px 40px; margin-bottom: 34px; padding: 0; background: transparent !important; border: 0; box-shadow: none; }
-.store-theme[data-showcase] .store-hero-logo { grid-column: 2; grid-row: 1; justify-self: center; width: min(380px, 100%); height: auto; object-fit: contain; }
+.store-theme[data-showcase] .store-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 28px 40px; margin-bottom: 34px; padding: 0; background: var(--store-bg, #faf6ef) !important; /* the page color, so the logo can blend into it */ border: 0; box-shadow: none; }
+.store-theme[data-showcase] .store-hero-logo { grid-column: 2; grid-row: 1; justify-self: center; width: min(380px, 100%); height: auto; object-fit: contain; background: transparent; mix-blend-mode: multiply; /* a logo saved on a white background blends into the page */ }
 .store-theme[data-showcase] .store-hero-copy { grid-column: 1; grid-row: 1; background: var(--store-surface, #fff); border: 1px solid var(--store-line); border-radius: 24px; padding: clamp(22px, 4vw, 38px); box-shadow: 0 10px 34px rgba(29, 47, 79, .08); display: grid; gap: 14px; justify-items: start; }
 .store-theme[data-showcase] .store-hero-title { margin: 0; font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.05; color: var(--store-ink) !important; }
 .store-theme[data-showcase] .store-hero-text { margin: 0; font-style: italic; color: var(--store-muted) !important; font-size: clamp(1.02rem, 2.2vw, 1.2rem); }
@@ -321,6 +323,7 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] .store-product-body .wide-btn { width: auto; min-width: 150px; border-radius: 999px; background: transparent !important; color: var(--store-ink) !important; border: 1px solid var(--store-ink); box-shadow: none; }
 .store-theme[data-showcase] .store-product-body .wide-btn:hover { background: var(--store-tint) !important; }
 @media (max-width: 860px) {
+  .store-theme[data-showcase] .store-header { flex-wrap: wrap; }
   .store-theme[data-showcase] .store-hero { grid-template-columns: 1fr; }
   .store-theme[data-showcase] .store-hero-logo { grid-column: 1; grid-row: 1; width: min(260px, 70%); }
   .store-theme[data-showcase] .store-hero-copy { grid-column: 1; grid-row: 2; }
