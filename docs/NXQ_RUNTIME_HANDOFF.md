@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## HAND REDRAW OF THE CANDLE LOGO AS CODE TESTED 2026-11-21 (research only; nothing in the repo)
+
+Owner asked to remake the logo as code so it is razor sharp, and whether that would work for future clients. Built two quick drafts by hand as an SVG (live text with the already-licensed Cormorant Garamond embedded, a drawn jar, flame, and generated laurel branches; about 32 KB). RESULT: perfectly sharp at any size, and draft 2 is clearly the same family (a jar with a pink-to-coral wax and a white stripe, a flame, a laurel wreath, the same two text lines), but NOT identical: the flame floats above the jar instead of sitting at its rim, the jar and leaves differ in detail, and the font is not her original lettering. Getting it truly identical would take several more careful passes plus the client's approval, because a redraw is a new version of her brand art. CONCLUSION: not an automatic pipeline step. For future clients the scalable path is (1) accept the client's own good file or an SVG, (2) the automatic cleaning we already have (cutout, trim, smooth enlarge), (3) optionally the free in-browser upscaler at upload time, and (4) a manual, client-approved "logo redraw" as an owner-run service when a client only has a tiny file.
+
 ## SHOWCASE LOGO SIZE CAPPED TO STAY CRISP 2026-11-21 (in the repo, NOT live)
 
 Owner chose Option A: the candle client's logo file is 240 px and looked soft shown at 900 px, so the fixed background logo is capped at 460 px (82% of the screen width on small screens) and placed on the right of the page on desktop, beside the intro card. ONE setting controls it: `--showcase-logo-size` in `src/styles/storefront-theme.css`; when a bigger logo file arrives, raise it (for example to 900px) and nothing else changes. Glass cards, fixed background and automatic cutout unchanged. Browser check passes.
