@@ -12,7 +12,7 @@ index 4985f7c..4fcbf8c 100644
  check("every shopper database call is a real function from migration 268", shopperRpcs.length >= 6 && shopperRpcs.every((n) => definedIn268.has(n)), shopperRpcs.filter((n) => !definedIn268.has(n)).join(","));
  const signedInOnly = ["get_my_shopper_profile", "save_my_shopper_profile", "delete_my_shopper_profile", "list_my_shopper_orders"];
 diff --git a/scripts/test-store-branding.mjs b/scripts/test-store-branding.mjs
-index 5c7c22b..aea8a0a 100644
+index 3afbabd..e9c4cfc 100644
 --- a/scripts/test-store-branding.mjs
 +++ b/scripts/test-store-branding.mjs
 @@ -17,7 +17,7 @@ check("owner page: the default look is saveable; unreadable text, a pale button,
@@ -21,7 +21,7 @@ index 5c7c22b..aea8a0a 100644
  const store = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
 -check("the store reads its look from the database, tolerates any failure, and waits for it before first paint", /rpc\("get_public_store_look", \{ store_slug_value: slug \}\)/.test(store) && /catch \{ \/\* default look \*\/ \}/.test(store) && /Promise\.all\(\[loadStoreStatus\(\), loadStoreLook\(\)\]\)/.test(store) && /await statusLoad;/.test(store));
 +check("the store reads its look from the database, tolerates any failure, and waits for it before first paint", /rpc\("get_public_store_look", \{ store_slug_value: slug \}\)/.test(store) && /catch \{ \/\* default look \*\/ \}/.test(store) && /Promise\.all\(\[loadStoreStatus\(\), loadStoreLook\(\), loadShippingRule\(\)\]\)/.test(store) && /await statusLoad;/.test(store));
- check("the page applies it through the helper (marker, inline variables, decorative logo) and nothing is hardcoded per shop", /data-branded=/.test(store) && /branding\?\.logo/.test(store) && /className="store-logo" src=\{branding\.logo\} alt=""/.test(store) && !/light-of-the-world/.test(store) && !/light-of-the-world/.test(fs.readFileSync("src/lib/storeBranding.ts", "utf8")));
+ check("the page applies it through the helper (marker, inline variables, decorative logo) and nothing is hardcoded per shop", /data-branded=/.test(store) && /branding\?\.logo/.test(store) && /className="store-logo" src=\{[^}]*\} data-mark=\{[^}]*\} alt=""/.test(store) && !/light-of-the-world/.test(store) && !/light-of-the-world/.test(fs.readFileSync("src/lib/storeBranding.ts", "utf8")));
  const sql = fs.readFileSync("supabase/migrations/286_store_look.sql", "utf8");
  check("migration 286: owner-only setters, contrast and logo rules, public read is the look only", /from public\.owner_users where auth_user_id = auth\.uid\(\)/.test(sql) && /< 4\.5/.test(sql) && /\^\/brand\//.test(sql) && /grant execute on function public\.get_public_store_look\(text\) to anon, authenticated;/.test(sql) && !/grant execute on function public\.owner_[a-z_]+\([^)]*\) to anon/.test(sql));
 diff --git a/scripts/test-store-experience.mjs b/scripts/test-store-experience.mjs
@@ -168,13 +168,14 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index 6c60b53..c8ff0ca 100644
+index 054a169..a7788be 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
-@@ -20,9 +20,10 @@ import {
+@@ -20,9 +20,11 @@ import {
  } from "../lib/storeCatalog";
  import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
- import { cutoutLogoUrl } from "../lib/logoCutout";
+ import { cutoutLogo } from "../lib/logoCutout";
++import { cutoutLogoUrl } from "../lib/logoCutout";
 +import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
  
  type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
@@ -183,7 +184,7 @@ index 6c60b53..c8ff0ca 100644
  
  export function PublicCommerceStorefront() {
    const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
-@@ -76,6 +77,9 @@ export function PublicCommerceStorefront() {
+@@ -78,6 +80,9 @@ export function PublicCommerceStorefront() {
    }
    // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
    const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
@@ -193,7 +194,7 @@ index 6c60b53..c8ff0ca 100644
    const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
    const [emailCopied, setEmailCopied] = useState(false);
    const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
-@@ -85,6 +89,10 @@ export function PublicCommerceStorefront() {
+@@ -87,6 +92,10 @@ export function PublicCommerceStorefront() {
    const itemCount = useMemo(() => cartCount(cart), [cart]);
    const total = useMemo(() => cartTotal(cart), [cart]);
    const needsShipping = useMemo(() => cartNeedsShipping(cart), [cart]);
@@ -204,7 +205,7 @@ index 6c60b53..c8ff0ca 100644
    const openProduct = useMemo(() => (openSlug && data ? data.products.find((p) => p.slug === openSlug) ?? null : null), [openSlug, data]);
  
    function showToast(message: string) {
-@@ -120,7 +128,7 @@ export function PublicCommerceStorefront() {
+@@ -122,7 +131,7 @@ export function PublicCommerceStorefront() {
    // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
    async function loadOrderMode() {
      if (!supabase) return;
@@ -213,7 +214,7 @@ index 6c60b53..c8ff0ca 100644
      try {
        const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
        if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
-@@ -128,6 +136,15 @@ export function PublicCommerceStorefront() {
+@@ -130,6 +139,15 @@ export function PublicCommerceStorefront() {
      await statusLoad;
    }
  
@@ -229,7 +230,7 @@ index 6c60b53..c8ff0ca 100644
    // The shop's own look. Any failure (or an older database) means the normal default theme.
    async function loadStoreLook() {
      if (!supabase) return;
-@@ -298,7 +315,7 @@ export function PublicCommerceStorefront() {
+@@ -300,7 +318,7 @@ export function PublicCommerceStorefront() {
  
    async function placeOrder() {
      if (!supabase || cart.length === 0) return;
@@ -238,7 +239,7 @@ index 6c60b53..c8ff0ca 100644
      setFieldErrors(problems);
      if (Object.keys(problems).length > 0) {
        setError("Please check the details marked below.");
-@@ -309,7 +326,7 @@ export function PublicCommerceStorefront() {
+@@ -311,7 +329,7 @@ export function PublicCommerceStorefront() {
      }
      setBusy(true); setError("");
      if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
@@ -247,7 +248,7 @@ index 6c60b53..c8ff0ca 100644
        store_slug_value: slug,
        items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
        customer_payload: {
-@@ -319,6 +336,7 @@ export function PublicCommerceStorefront() {
+@@ -321,6 +339,7 @@ export function PublicCommerceStorefront() {
          note,
          shipping_address: { address: form.address },
          idempotency_key: checkoutKeyRef.current,
@@ -255,7 +256,7 @@ index 6c60b53..c8ff0ca 100644
        },
      });
      if (result.error) {
-@@ -376,7 +394,8 @@ export function PublicCommerceStorefront() {
+@@ -382,7 +401,8 @@ export function PublicCommerceStorefront() {
  
        {order ? <section className="panel panel-wide">
          <h2>Order {order.order_number} created</h2>
@@ -265,7 +266,7 @@ index 6c60b53..c8ff0ca 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -457,16 +476,26 @@ export function PublicCommerceStorefront() {
+@@ -464,16 +484,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
@@ -295,13 +296,13 @@ index 6c60b53..c8ff0ca 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index 1ac654e..f1561ed 100644
+index 1e9f82e..341c5f8 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -367,3 +367,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
- .store-theme[data-showcase] { font-size: 1.12rem; }
- .store-theme[data-showcase] .store-hero-cta, .store-theme[data-showcase] .store-product-body .wide-btn { border-color: var(--store-ink) !important; }
- .store-theme[data-showcase] .store-header .icon-btn[aria-label="Share this store"] { border-color: var(--store-line) !important; }
+@@ -382,3 +382,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+ @media (max-width: 1000px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+ @media (max-width: 560px) { .store-theme[data-showcase] .store-product-grid { grid-template-columns: 1fr; } }
+ .store-theme[data-showcase] .portal-shell::before { display: none; } /* a decorative glow that sticks out 24px per side made a nearly full-width page scroll sideways */
 +/* Shipping or pickup choice at checkout (shown only when the shop offers pickup). */
 +.store-theme .store-delivery-choice { border: 1px solid var(--store-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; display: grid; gap: .5rem; }
 +.store-theme .store-delivery-choice legend { font-weight: 600; padding: 0 .35rem; }
