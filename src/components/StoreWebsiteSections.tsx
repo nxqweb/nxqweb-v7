@@ -27,7 +27,7 @@ export function StoreInfo({ website, storeName }: { website: StoreWebsite | null
   const facts: [string, string][] = [["Hours", website.hours], ["Pickup", website.pickup]];
   const shownFacts = facts.filter(([, value]) => value);
   return (
-    <section className="store-info" data-testid="store-website-info" aria-label={`About ${storeName}`}>
+    <section className="store-info" id="store-about" data-testid="store-website-info" aria-label={`About ${storeName}`}>
       {website.story ? <><h2>{website.story.heading || "Our story"}</h2><p>{website.story.body}</p></> : <h2>About the shop</h2>}
       {shownFacts.length ? <dl className="store-facts">{shownFacts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl> : null}
       {website.email || website.phone ? <ul className="store-contact-list">

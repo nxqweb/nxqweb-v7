@@ -351,9 +351,9 @@ export function PublicCommerceStorefront() {
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
-    <main className="nxq-page store-theme" data-branded={branding ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}><section className="portal-shell">
+    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}><section className="portal-shell">
       <StoreAnnouncement website={website} />
-      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div><div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
+      <div className="panel-title panel-title-row store-header"><div className="panel-title">{branding?.logo ? <img className="store-logo" src={branding.logo} alt="" width={64} height={64} /> : <Store size={24} />}<div><h1>{data.store.name}</h1><p className="subtle">{orderMode.mode === "menu" ? "Menu · call or email to order" : orderMode.mode === "email" ? "Order by email · the shop replies with how to pay" : "Secure order request · payment goes directly to this business"}</p></div></div>{branding?.logo ? <nav className="store-nav" aria-label="Store sections"><a href="#top">Home</a><a href="#products">Shop</a><a href="#store-about">About</a><a href="#store-about">Contact</a></nav> : null}<div>{accountsEnabled ? <a className="icon-btn" href={shopperAccountPath(slug)}>{signedIn ? "My account" : "Sign in"}</a> : null} <button className="icon-btn" type="button" onClick={() => void shareStore()} aria-label="Share this store"><Share2 size={16} /> Share</button> {!order && orderMode.mode !== "menu" && !paused ? <a className="store-cart-link" href="#store-cart" aria-label={`Cart, ${itemCount} ${itemCount === 1 ? "item" : "items"}`}><ShoppingCart size={20} /> {itemCount}</a> : null}</div></div>
       {error ? <div className="auth-error" role="alert" ref={errorRef}>{error}</div> : null}
       {customRequestsOpen && !order && !paused ? <section className="notice-card" data-testid="custom-request-card" aria-label="Custom orders"><strong>Want something made just for you?</strong><p>Tell the shop what you have in mind. You can add a photo or a link, and the shop replies to say if it can make it.</p><a className="icon-btn" href={`/store/request?store=${encodeURIComponent(slug)}`}><MessageSquareText size={16} /> Request a custom order</a></section> : null}
       {!order && recentOrder ? <section className="notice-card" data-testid="recent-order-card" aria-label="Your recent order">
@@ -408,8 +408,12 @@ export function PublicCommerceStorefront() {
         </section> : null}
         {paused ? <section className="notice-card" role="status" data-testid="store-paused"><strong>This shop is not taking new orders right now.</strong><p>You can still look around. Please check back soon.</p></section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
-          <p className="store-hero-text">{tagline}</p>
-          <a className="wide-btn store-hero-cta" href="#products">{orderMode.mode === "menu" ? "See the menu" : paused ? "Look around" : "Shop now"}</a>
+          {branding?.logo ? <img className="store-hero-logo" src={branding.logo} alt="" /> : null}
+          <div className="store-hero-copy">
+            {branding?.logo ? <h2 className="store-hero-title">{data.store.name}</h2> : null}
+            <p className="store-hero-text">{tagline}</p>
+            <a className="wide-btn store-hero-cta" href="#products">{orderMode.mode === "menu" ? "See the menu" : paused ? "Look around" : "Shop now"}</a>
+          </div>
         </section> : null}
 
         {orderMode.mode === "menu" ? <section className="panel panel-wide store-how-to-order" data-testid="menu-how-to-order" aria-label="How to order">
@@ -421,6 +425,7 @@ export function PublicCommerceStorefront() {
           </div>
         </section> : null}
 
+        {branding?.logo && data.products.length > 0 ? <h2 className="store-section-title" data-testid="store-section-title">{orderMode.mode === "menu" ? "Our menu" : "Our products"}</h2> : null}
         <section className="settings-grid store-product-grid" id="products" aria-label="Products">
           {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div>
             : data.products.map((product) => <StoreProductCard key={product.id} product={product} currency={currency} onOpen={openProductView} onAdd={add} viewOnly={orderMode.mode === "menu" || paused} />)}
