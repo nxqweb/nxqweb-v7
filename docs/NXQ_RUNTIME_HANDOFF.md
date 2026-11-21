@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## SHOWCASE LOGO SIZE CAPPED TO STAY CRISP 2026-11-21 (in the repo, NOT live)
+
+Owner chose Option A: the candle client's logo file is 240 px and looked soft shown at 900 px, so the fixed background logo is capped at 460 px (82% of the screen width on small screens) and placed on the right of the page on desktop, beside the intro card. ONE setting controls it: `--showcase-logo-size` in `src/styles/storefront-theme.css`; when a bigger logo file arrives, raise it (for example to 900px) and nothing else changes. Glass cards, fixed background and automatic cutout unchanged. Browser check passes.
+
 ## LOGO-TO-CODE (VECTOR TRACING) TESTED 2026-11-21: NOT GOOD FOR THIS LOGO (research only; nothing added to the repo)
 
 Owner asked to turn client logos into code so they scale to any size. Tested the free `imagetracerjs` (Unlicense) on the candle client's real logo (first enlarged 4x by the AI upscaler, then traced at two detail settings, white background removed). Result: WORSE than the original picture: the yellow flame turned gray, colors went muddy, edges rough, files 400 to 650 KB with 1,500 to 3,500 shapes. Why: tracing suits flat logos (1 to 3 solid colors, clean edges); a painted, gradient logo on a small noisy file does not trace well. Verdict: do NOT auto-trace logos. A vector is only worth using when the client supplies a real SVG (accept SVG uploads, sanitized, no scripts) or the logo is flat and simple (a possible later check: trace only when the result matches the picture closely). Best fix stays a better source file.

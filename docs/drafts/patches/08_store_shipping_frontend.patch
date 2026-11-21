@@ -296,13 +296,13 @@ index c955cba..1cc9df0 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index 2a0d2ab..fc9c05f 100644
+index f45b011..1f124be 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -409,3 +409,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
- .store-theme[data-showcase] .store-section-title { align-self: center; justify-self: center; width: fit-content; margin-inline: auto; padding: 6px 28px; border-radius: 999px; background: rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border: 1px solid rgba(255, 255, 255, .7); }
- .store-theme[data-showcase] .store-section-title::before, .store-theme[data-showcase] .store-section-title::after { display: none; }
- .store-theme[data-showcase] .store-search input { background: rgba(255, 255, 255, .6); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+@@ -416,3 +416,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+ .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 82vw); max-height: 70vh; }
+ @media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 78vw); } }
+ @media (min-width: 861px) { .store-theme[data-showcase] .store-bg-logo { justify-content: flex-end; align-items: flex-start; padding: 150px 7vw 0 0; } }
 +/* Shipping or pickup choice at checkout (shown only when the shop offers pickup). */
 +.store-theme .store-delivery-choice { border: 1px solid var(--store-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; display: grid; gap: .5rem; }
 +.store-theme .store-delivery-choice legend { font-weight: 600; padding: 0 .35rem; }
