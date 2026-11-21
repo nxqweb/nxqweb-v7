@@ -340,3 +340,30 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] .store-product-body .wide-btn::before { content: ""; display: inline-block; width: 16px; height: 16px; margin-right: 8px; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='8' cy='21' r='1'/%3E%3Ccircle cx='19' cy='21' r='1'/%3E%3Cpath d='M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12'/%3E%3C/svg%3E") center / contain no-repeat; vertical-align: -3px; }
 .store-theme[data-showcase] .store-header > .panel-title { align-items: center; }
 .store-theme[data-showcase] .store-header > .panel-title > div { display: flex; align-items: center; }
+
+/* Showcase typography and details, from the candle client's mockup. Cormorant Garamond (SIL Open Font License, files in /fonts, licence text kept next to them)
+   is loaded only on showcase stores. Buttons use the store's main text color (navy for her), like the mockup. */
+@font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/cormorant-garamond-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/cormorant-garamond-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cormorant Garamond"; font-style: normal; font-weight: 600; font-display: swap; src: url("/fonts/cormorant-garamond-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Cormorant Garamond"; font-style: italic; font-weight: 400; font-display: swap; src: url("/fonts/cormorant-garamond-latin-400-italic.woff2") format("woff2"); }
+.store-theme[data-showcase] { --showcase-serif: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
+.store-theme[data-showcase] * { font-family: var(--showcase-serif) !important; }
+.store-theme[data-showcase] .store-nav a { font-size: 1.2rem; font-weight: 600; }
+.store-theme[data-showcase] .store-header h1 { font-size: 1.02rem !important; font-weight: 600; text-wrap: balance; max-width: 24ch; line-height: 1.2 !important; letter-spacing: .06em !important; }
+.store-theme[data-showcase] .store-header { padding: 8px 16px; }
+.store-theme[data-showcase] .store-hero-title { font-weight: 500; font-size: clamp(2.2rem, 4.6vw, 3.4rem); text-wrap: balance; }
+.store-theme[data-showcase] .store-hero-text { font-size: clamp(1.15rem, 2.4vw, 1.4rem); font-weight: 500; }
+.store-theme[data-showcase] .store-hero-copy { width: min(480px, 46%); }
+.store-theme[data-showcase] .store-hero-logo { width: min(600px, 56%); }
+.store-theme[data-showcase] .store-hero-cta { background: var(--store-ink) !important; font-size: 1.15rem; font-weight: 600; min-width: 0; padding-inline: 26px; }
+.store-theme[data-showcase] .store-hero-cta::after { content: "\203A"; margin-left: 10px; font-size: 1.4em; line-height: 1; }
+.store-theme[data-showcase] .store-section-title { font-weight: 500; }
+.store-theme[data-showcase] .store-product-body h2, .store-theme[data-showcase] .store-name-button { font-size: 1.3rem; font-weight: 600; }
+.store-theme[data-showcase] .store-price { font-size: 1.35rem; font-weight: 600; font-variant-numeric: lining-nums; }
+.store-theme[data-showcase] .store-cart-link { font-variant-numeric: lining-nums; font-size: 1.15rem; }
+.store-theme[data-showcase] .store-product-body .wide-btn { font-size: 1.1rem; font-weight: 600; border-color: var(--store-ink); }
+@media (max-width: 860px) { .store-theme[data-showcase] .store-hero-copy { width: 100%; } .store-theme[data-showcase] .store-hero-logo { width: min(320px, 80%); } }
+.store-theme[data-showcase] { font-size: 1.12rem; }
+.store-theme[data-showcase] .store-hero-cta, .store-theme[data-showcase] .store-product-body .wide-btn { border-color: var(--store-ink) !important; }
+.store-theme[data-showcase] .store-header .icon-btn[aria-label="Share this store"] { border-color: var(--store-line) !important; }
