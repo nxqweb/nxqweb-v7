@@ -112,6 +112,23 @@ export function markEndRow(img: Pixels, minAlpha = 12): number | null {
   return null;
 }
 
+// Unsharp mask for a logo that was enlarged: adds back edge contrast the smooth enlargement softened. Works on color only; transparency is untouched.
+// amount 0 changes nothing; 0.6 to 1 is a clear but natural boost. Returns a new array.
+export function sharpen(img: Pixels, amount = 0.7): Uint8ClampedArray {
+  const { width: w, height: h, data: d } = img;
+  const out = new Uint8ClampedArray(d);
+  if (!(amount > 0) || w < 3 || h < 3 || d.length !== w * h * 4) return out;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] < 8) continue;
+    for (let c = 0; c < 3; c++) {
+      const blur = (d[i + c] * 4 + d[i - 4 + c] + d[i + 4 + c] + d[i - w * 4 + c] + d[i + w * 4 + c]) / 8;
+      out[i + c] = Math.max(0, Math.min(255, Math.round(d[i + c] + (d[i + c] - blur) * amount * 2)));
+    }
+  }
+  return out;
+}
+
 // ---- browser part -------------------------------------------------------------------------------------------------------------------------
 
 const MAX_SIDE = 1600;
@@ -185,6 +202,10 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
         bctx.drawImage(current, 0, 0, bigger.width, bigger.height);
         current = bigger;
       }
+      try {
+        const sctx = current.getContext("2d", { willReadFrequently: true });
+        if (sctx) { const sp = sctx.getImageData(0, 0, current.width, current.height); sp.data.set(sharpen({ width: current.width, height: current.height, data: sp.data }, 0.8)); sctx.putImageData(sp, 0, 0); }
+      } catch { /* keep the unsharpened picture */ }
       return { full: current.toDataURL("image/png"), mark };
     } catch { return null; }
   })();

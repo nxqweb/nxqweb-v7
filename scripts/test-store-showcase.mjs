@@ -25,5 +25,7 @@ check("the search icon and bar exist only for showcase stores, the search is cli
 check("the header shows the logo's icon alone when one was found, and the search styles are scoped to showcase", page.includes('data-mark={logoCut && logoCut.source === branding.logo && logoCut.mark ? "true" : undefined}') && css.includes('.store-theme[data-showcase] .store-logo[data-mark]') && css.includes(".store-theme .store-search-btn, .store-theme .store-search { display: none; }"));
 check("the logo is a fixed full-page background behind the content (page scrolls over it), only for showcase stores", /\.store-theme\[data-showcase\] \.store-bg-logo \{ display: flex; position: fixed; inset: 0; z-index: 0;/.test(css) && css.includes(".store-theme .store-bg-logo { display: none; }") && css.includes(".store-theme[data-showcase] .portal-shell { position: relative; z-index: 1; }") && /pointer-events: none/.test(css.slice(css.indexOf(".store-bg-logo { display: flex")))); 
 
+check("the background logo is full strength and crisp; only the cards blur what is behind them (frosted glass)", /\.store-bg-logo img \{ opacity: 1; filter: none;/.test(css) && /backdrop-filter: blur\(22px\)/.test(css) && !/\.store-bg-logo img \{[^}]*filter: blur/.test(css));
+
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store showcase checks passed (offline).");
 process.exit(failures ? 1 : 0);

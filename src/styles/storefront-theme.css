@@ -397,3 +397,15 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] .store-hero { background: transparent !important; }
 .store-theme[data-showcase] .store-bg-logo img { opacity: .26; }
 @media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { opacity: .22; } }
+
+/* Showcase glass window: the logo is crisp and full strength; ONLY the cards blur what is directly behind them (frosted glass). */
+.store-theme[data-showcase] .store-bg-logo img { opacity: 1; filter: none; image-rendering: auto; }
+@media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { opacity: 1; } }
+.store-theme[data-showcase] .store-header, .store-theme[data-showcase] .store-hero-copy, .store-theme[data-showcase] .store-product-card, .store-theme[data-showcase] .store-info, .store-theme[data-showcase] #store-cart {
+  background: rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15);
+  border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 10px 36px rgba(29, 47, 79, .12), inset 0 1px 0 rgba(255, 255, 255, .8);
+}
+.store-theme[data-showcase] .store-product-body { background: rgba(255, 255, 255, .38); }
+.store-theme[data-showcase] .store-section-title { align-self: center; justify-self: center; width: fit-content; margin-inline: auto; padding: 6px 28px; border-radius: 999px; background: rgba(255, 255, 255, .5); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border: 1px solid rgba(255, 255, 255, .7); }
+.store-theme[data-showcase] .store-section-title::before, .store-theme[data-showcase] .store-section-title::after { display: none; }
+.store-theme[data-showcase] .store-search input { background: rgba(255, 255, 255, .6); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }

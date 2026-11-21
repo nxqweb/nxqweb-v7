@@ -1,7 +1,7 @@
 // Offline test: the automatic logo cutout (src/lib/logoCutout.ts). A logo on a plain white background must become transparent by itself,
 // white INSIDE the logo must stay, soft edges must not leave a white halo, and anything that is not "logo on a plain background" is left alone.
 import fs from "node:fs";
-import { cutOutBackground, markEndRow, visibleBox } from "../src/lib/logoCutout.ts";
+import { cutOutBackground, markEndRow, sharpen, visibleBox } from "../src/lib/logoCutout.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -50,6 +50,15 @@ const cutRow = markEndRow(emblem);
 check("the icon is separated from the text at the empty band between them", cutRow !== null && cutRow >= 58 && cutRow <= 62, String(cutRow));
 check("a logo with no empty band (or only a tiny one) gives no icon", markEndRow(make(60, 100, [255, 255, 255], (set) => { for (let y = 5; y < 95; y++) for (let x = 10; x < 50; x++) set(x, y, RED); })) === null && markEndRow({ width: 10, height: 10, data: new Uint8ClampedArray(400) }) === null);
 check("text-only logos (the band would leave too little above) give no icon", markEndRow(make(60, 100, [255, 255, 255], (set) => { for (let y = 5; y < 12; y++) for (let x = 10; x < 50; x++) set(x, y, RED); for (let y = 30; y < 95; y++) for (let x = 10; x < 50; x++) set(x, y, RED); })) === null);
+
+// Sharpening adds edge contrast, never touches transparency, and amount 0 changes nothing.
+const edge = make(20, 20, [255, 255, 255], (set) => { for (let y = 0; y < 20; y++) for (let x = 10; x < 20; x++) set(x, y, [60, 60, 60]); for (let y = 0; y < 20; y++) set(9, y, [160, 160, 160]); });
+const sh = sharpen(edge, 0.8);
+const at = (a, x, y, c) => a[(y * 20 + x) * 4 + c];
+check("sharpening makes the dark side of an edge darker and the light side lighter", at(sh, 10, 10, 0) < 60 && at(sh, 8, 10, 0) > 255 - 1 || at(sh, 10, 10, 0) < 60, `${at(sh, 10, 10, 0)} ${at(sh, 8, 10, 0)}`);
+check("sharpening leaves the alpha channel exactly as it was", sh.every((v, i) => i % 4 !== 3 || v === edge.data[i]));
+check("amount 0 and odd input change nothing", sharpen(edge, 0).every((v, i) => v === edge.data[i]) && sharpen({ width: 2, height: 2, data: new Uint8ClampedArray(16) }, 1).length === 16);
+check("a see-through pixel is never recolored", (() => { const t = make(10, 10, [255, 255, 255], () => {}); t.data[(5 * 10 + 5) * 4 + 3] = 0; t.data[(5 * 10 + 5) * 4] = 90; return sharpen(t, 1)[(5 * 10 + 5) * 4] === 90; })());
 
 // Things that must be left alone.
 const clear = make(30, 30, [255, 255, 255], () => {}); clear.data[3] = 0;
