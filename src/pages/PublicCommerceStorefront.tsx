@@ -19,6 +19,7 @@ import {
   stockLabel, validateCheckout, variantStock, type CartLine, type CheckoutErrors, type StoreProduct, type StoreVariant,
 } from "../lib/storeCatalog";
 import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
+import { cutoutLogoUrl } from "../lib/logoCutout";
 
 type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
 type OrderResult = { order_number: string; total: number; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
@@ -47,6 +48,15 @@ export function PublicCommerceStorefront() {
   const [profile, setProfile] = useState<StoreProfile | null>(null);
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
   const [branding, setBranding] = useState<StoreBranding | null>(null); // this shop's own colors and logo (owner-set, migration 286)
+  // The big logo in the showcase hero: a logo saved on a plain white background is turned transparent automatically (src/lib/logoCutout.ts), so nobody has to supply a special file.
+  const [logoCut, setLogoCut] = useState<{ source: string; url: string } | null>(null);
+  useEffect(() => {
+    const source = branding?.logo;
+    if (!source) { setLogoCut(null); return; }
+    let live = true;
+    void cutoutLogoUrl(source).then((url) => { if (live && url) setLogoCut({ source, url }); });
+    return () => { live = false; };
+  }, [branding?.logo]);
   const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
   const [website, setWebsite] = useState<StoreWebsite | null>(null);
   const [orderCopied, setOrderCopied] = useState(false);
@@ -408,7 +418,7 @@ export function PublicCommerceStorefront() {
         </section> : null}
         {paused ? <section className="notice-card" role="status" data-testid="store-paused"><strong>This shop is not taking new orders right now.</strong><p>You can still look around. Please check back soon.</p></section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
-          {branding?.logo ? <img className="store-hero-logo" src={branding.logo} alt="" /> : null}
+          {branding?.logo ? <img className="store-hero-logo" src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /> : null}
           <div className="store-hero-copy">
             {branding?.logo ? <h2 className="store-hero-title">{data.store.name}</h2> : null}
             <p className="store-hero-text">{tagline}</p>
