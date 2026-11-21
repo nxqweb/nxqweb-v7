@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## OWNER RULE 2026-11-20: NO MORE NETLIFY CREDITS (newest)
+
+The owner said (in chat): do not use any more Netlify credits. **Netlify builds stay OFF.** Do not ask the owner to turn them on, and do not push a "trigger" commit for any reason. With builds OFF, pushes to the repo cost 0 credits. The ONLY planned credit use is the 4 remaining clean QA runs from 2026-11-23 (30 or 45 credits each, credits reset to 300 that day), and even those need the owner's explicit go, one run at a time. The candle client's store look was set by the owner on `/owner/store-look` (no build, 0 credits) and shows on her store. Post-QA wish list (needs a gated migration): a store picker on the Store look page and an automatic look seeded from the client's own setup colors (readability check still applies).
+
 ## SECOND SITE DEPLOY DONE 2026-11-20 (newest)
 
 Build for commit `b1dcd58` was green (23 seconds) and the owner published it at 2:57 PM; **builds are OFF again** ("Builds are stopped"). Netlify showed 27 credits right after (lags; expect about 11 once the 15-credit build is counted; they expire 2026-11-22, then reset to 300 on 2026-11-23). Verified from outside: the live bundle changed, contains the phone-sized Report a problem markup, and the new `uploadDenied` file (plain-words upload refusal) is served. **Live now:** the plain-words upload message on product photos, Commerce catalog, Website content, Files card and site photos; the phone-sized report button; everything from the 2026-11-18 deploy. Nothing is queued for the next deploy. Still open: provider-health readiness count to read in /owner, the candle store look (owner enters colors), the 4 QA runs from 2026-11-23, AI key decision, scanner and email proofs.
