@@ -14,14 +14,14 @@ state. Update this file, not a new one, at every handoff.
 
 - Run `QA-DAACB86B0550` (`business-launch-20261123 #3`): started 2:00:03 PM, owner approved right after, "strict evidence passed", completed 2:12:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF.
 - VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **9** (it returned 8 before this run). ONE more approve pass needed (run 10).
-- Credits: not read after run 8 or run 9 yet (269.9 before run 8; expect about 210 to 240 now). Owner to send the number; add it to the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`.
+- Credits: **209.8 of 300** read at 2:15 PM (owner screenshot, about 3 minutes after run 9 completed; Netlify can lag). It was 269.9 before run 8, so runs 8 and 9 together cost about 60 credits, roughly **30 each**. Runs 7, 8 and 9 all cost about 30.
 - Launch readiness stays 20/26 until run 10 turns the ten-runs check ready.
 
 ## QA RUN 8 PASSED 2026-11-23: clean approve runs 8 of 10 (superseded by run 9 above)
 
 - Run `QA-A31A40850DD2` (`business-launch-20261123 #2`): started 1:16:46 PM, owner approved about 1:17 PM, "strict evidence passed", completed 1:30:00 PM (13 minutes). No manual rescue; main-site builds stayed OFF.
 - VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **8** (it returned 7 before this run). Two more approve passes needed.
-- Credits: 269.9 of 300 before this run; the after-run reading is not recorded yet (expect about 240). Add it to the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`.
+- Credits: 269.9 of 300 before this run; runs 8 and 9 together took it to 209.8 (see run 9 above), about 30 each.
 - Launch readiness stays 20/26 (the ten-runs check only turns ready at 10).
 
 ## QA RUN 7 PASSED 2026-11-23: clean approve runs 7 of 10 (superseded by run 8 above)

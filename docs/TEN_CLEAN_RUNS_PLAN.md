@@ -81,10 +81,10 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 - Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
 
 ## Run QA-DAACB86B0550 PASSED (2026-11-23): the count is now 9 of 10 (verified: `count_strict_clean_business_runs()` = 9)
-Started 2:00:03 PM, owner approved right after, completed 2:12:00 PM (12 minutes), strict evidence passed, no manual rescue. Credits: not read after runs 8 and 9 yet (269.9 before run 8). 1 more approve run needed.
+Started 2:00:03 PM, owner approved right after, completed 2:12:00 PM (12 minutes), strict evidence passed, no manual rescue. Credits: **209.8 of 300** at 2:15 PM (owner screenshot; Netlify can lag), 269.9 before run 8, so runs 8 and 9 cost about 60 together (about 30 each). 1 more approve run needed.
 
 ## Run QA-A31A40850DD2 PASSED (2026-11-23): the count is now 8 of 10 (verified: `count_strict_clean_business_runs()` = 8)
-Started 1:16:46 PM, owner approved about 1:17 PM, completed 1:30:00 PM (13 minutes), strict evidence passed, no manual rescue. Credits before: 269.9 of 300; after: not read yet (expect about 240). 2 more approve runs needed.
+Started 1:16:46 PM, owner approved about 1:17 PM, completed 1:30:00 PM (13 minutes), strict evidence passed, no manual rescue. Credits before: 269.9 of 300; after runs 8 and 9 together: 209.8 (about 30 each). 2 more approve runs were needed at that point.
 
 ## Run QA-8C138EDD797E PASSED (2026-11-23): the count is now 7 of 10 (verified: `count_strict_clean_business_runs()` = 7)
 Started 12:36:34 PM, owner approved about 12:36 PM, completed 12:50:00 PM (14 minutes), strict evidence passed, no manual rescue. First run of the fresh 300-credit cycle; main-site builds stayed OFF. Credits after: **269.9 of 300** (read 1:16 PM, owner screenshot), so this run cost about **30 credits**. 3 more approve runs were needed at that point.
