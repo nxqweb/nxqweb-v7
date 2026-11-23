@@ -10,7 +10,14 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
-## QA RUN 8 PASSED 2026-11-23: clean approve runs now 8 of 10
+## QA RUN 9 PASSED 2026-11-23: clean approve runs now 9 of 10
+
+- Run `QA-DAACB86B0550` (`business-launch-20261123 #3`): started 2:00:03 PM, owner approved right after, "strict evidence passed", completed 2:12:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF.
+- VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **9** (it returned 8 before this run). ONE more approve pass needed (run 10).
+- Credits: not read after run 8 or run 9 yet (269.9 before run 8; expect about 210 to 240 now). Owner to send the number; add it to the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`.
+- Launch readiness stays 20/26 until run 10 turns the ten-runs check ready.
+
+## QA RUN 8 PASSED 2026-11-23: clean approve runs 8 of 10 (superseded by run 9 above)
 
 - Run `QA-A31A40850DD2` (`business-launch-20261123 #2`): started 1:16:46 PM, owner approved about 1:17 PM, "strict evidence passed", completed 1:30:00 PM (13 minutes). No manual rescue; main-site builds stayed OFF.
 - VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **8** (it returned 7 before this run). Two more approve passes needed.
@@ -1246,11 +1253,11 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice AND failed-payment (past_due only, no freeze) paths proven on staging (see the Stripe sandbox section at the top); refund, dispute and restore-to-active NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **8 of 10 done** (VERIFIED
-  2026-11-23 from the database: `count_strict_clean_business_runs()` = 8 after run QA-A31A40850DD2 (= 7 after QA-8C138EDD797E the same day; = 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **9 of 10 done** (VERIFIED
+  2026-11-23 from the database: `count_strict_clean_business_runs()` = 9 after run QA-DAACB86B0550 (= 8 after QA-A31A40850DD2; = 7 after QA-8C138EDD797E the same day; = 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
   `QA-3BC433C6634E` 2026-08-23, `QA-E45F85D69C9A` 2026-10-07 and
   `QA-842A688FA6D1` 2026-11-04, each `strict_evidence_passed`; failed
-  runs are not counted and do not reset the count; 2 more needed, see
+  runs are not counted and do not reset the count; 1 more needed, see
   `docs/TEN_CLEAN_RUNS_PLAN.md`); this is the actual production-deploy
   gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits

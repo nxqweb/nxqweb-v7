@@ -80,6 +80,9 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 - A failed run therefore wastes only about 15 credits when it fails early; a passing run costs 30.
 - Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
 
+## Run QA-DAACB86B0550 PASSED (2026-11-23): the count is now 9 of 10 (verified: `count_strict_clean_business_runs()` = 9)
+Started 2:00:03 PM, owner approved right after, completed 2:12:00 PM (12 minutes), strict evidence passed, no manual rescue. Credits: not read after runs 8 and 9 yet (269.9 before run 8). 1 more approve run needed.
+
 ## Run QA-A31A40850DD2 PASSED (2026-11-23): the count is now 8 of 10 (verified: `count_strict_clean_business_runs()` = 8)
 Started 1:16:46 PM, owner approved about 1:17 PM, completed 1:30:00 PM (13 minutes), strict evidence passed, no manual rescue. Credits before: 269.9 of 300; after: not read yet (expect about 240). 2 more approve runs needed.
 
