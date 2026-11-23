@@ -27,7 +27,7 @@ check("a limit that cannot be read as a plain number means NO, never 'no limit'"
 check("every refusal has a plain-words reason, and an allowed request has none", [{ ...base, switchedOn: false }, { ...base, clientUsedThisPeriod: 9 }, { ...base, allMadeThisMonth: 999 }, { ...base, now: NaN }].every((i) => checkBackgroundRequest(i).reason.length > 15) && checkBackgroundRequest(base).reason === "");
 check("odd input never throws", [undefined, null, 5, "x", []].every((v) => checkBackgroundRequest(v).ok === false));
 
-const used = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f) && !/background(Prompt|Limits)/.test(f)).some((f) => /backgroundPrompt|backgroundLimits/.test(fs.readFileSync(`src/${f}`, "utf8")));
+const used = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f) && !/background(Prompt|Limits|Rules|Generator)/.test(f)).some((f) => /backgroundPrompt|backgroundLimits/.test(fs.readFileSync(`src/${f}`, "utf8")));
 check("nothing in the app uses these yet (they wait for the approved generator)", !used);
 const lib = fs.readFileSync("src/lib/backgroundLimits.ts", "utf8") + fs.readFileSync("src/lib/backgroundPrompt.ts", "utf8");
 check("no network, no database, no keys in these files", !/fetch\(|supabase|XMLHttpRequest|sendBeacon|api[_-]?key|process\.env|import\.meta\.env/i.test(lib.replace(/\/\/.*$/gm, "")));

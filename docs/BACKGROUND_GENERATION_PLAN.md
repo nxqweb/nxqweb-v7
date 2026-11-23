@@ -22,3 +22,16 @@ Goal: every store gets its own website background (not a shared template and nev
 ## Not doing
 - A shared library of backgrounds (it reads as a template).
 - Code-drawn backgrounds: tried twice on 2026-11-23, clearly weaker than a generated picture.
+
+## Built so far (pure code, unwired, tested)
+- `src/lib/backgroundPrompt.ts`: request text from business type, mood and store colors.
+- `src/lib/backgroundLimits.ts`: per-store allowance, monthly ceiling, wait time, master switch.
+- `src/lib/backgroundRules.ts`: upload rules (PNG/JPEG/WEBP only, 10 MB, stored at most 2400 px, size advice, rights tick) and the readability guard (how much white to lay over a dark or busy picture).
+- `src/lib/backgroundGenerator.ts`: runs limits, then a provider, then checks the result. Always ends "waiting for owner approval". Default provider makes nothing. A real provider is one object with `generate(prompt, size)`.
+- Tests: `scripts/test-background-generation.mjs`, `scripts/test-background-upload-and-generator.mjs`.
+
+## Still to do for Jun 16 (all gated: owner approves each)
+1. Migration: private storage for backgrounds, a saved-background field on the store look, the per-store counter.
+2. Upload screen (and approval screen for generated pictures) plus the showcase layout reading the saved background, with the readability overlay.
+3. Edge function that wraps `generateBackground` with a real provider, its key stored as a server secret, and the provider's own spending cap.
+4. Owner decides the limits and the redesign add-on in chat.

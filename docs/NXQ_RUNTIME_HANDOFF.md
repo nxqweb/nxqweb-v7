@@ -14,6 +14,7 @@ state. Update this file, not a new one, at every handoff.
 
 - Owner decision: every store gets its own background (no shared library). First clients by hand; later an automatic generator with hard limits. Plan: `docs/BACKGROUND_GENERATION_PLAN.md`.
 - Built (pure, unwired, tested by `scripts/test-background-generation.mjs`): `src/lib/backgroundPrompt.ts` (request text from business type, mood and store colors; client text is cleaned) and `src/lib/backgroundLimits.ts` (per-store allowance, monthly ceiling, wait time, master switch; unreadable limit means no).
+- Also built (pure, unwired): `src/lib/backgroundRules.ts` (upload rules + readability guard, checked against the real cream background: no change) and `src/lib/backgroundGenerator.ts` (limits, provider, result check; always ends waiting for approval; default provider off). Test: `scripts/test-background-upload-and-generator.mjs`. Owner goal: ready to plug in keys by Jun 16 (deadline Jun 20), upload built first.
 - Needs the owner before anything automatic: provider account and key, spending cap, database counter (migration), deploy.
 - Code-drawn backgrounds were tried and rejected (worse than a generated picture).
 
