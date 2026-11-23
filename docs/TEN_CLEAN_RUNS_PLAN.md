@@ -80,6 +80,9 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 - A failed run therefore wastes only about 15 credits when it fails early; a passing run costs 30.
 - Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
 
+## Run QA-5046889506F5 PASSED (2026-11-23): the count is now 10 of 10 (verified: `count_strict_clean_business_runs()` = 10)
+Started 2:19:38 PM, owner approved right after, completed 2:32:00 PM (12 minutes), strict evidence passed, no manual rescue. Credits: 209.8 of 300 before; after run 10 not read yet (expect about 180). **The ten clean approve runs are complete.** The `ten_clean_runs` readiness check should flip to ready within about five minutes of the count reaching 10 (not yet seen on the page).
+
 ## Run QA-DAACB86B0550 PASSED (2026-11-23): the count is now 9 of 10 (verified: `count_strict_clean_business_runs()` = 9)
 Started 2:00:03 PM, owner approved right after, completed 2:12:00 PM (12 minutes), strict evidence passed, no manual rescue. Credits: **209.8 of 300** at 2:15 PM (owner screenshot; Netlify can lag), 269.9 before run 8, so runs 8 and 9 cost about 60 together (about 30 each). 1 more approve run needed.
 

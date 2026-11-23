@@ -10,7 +10,15 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
-## QA RUN 9 PASSED 2026-11-23: clean approve runs now 9 of 10
+## QA RUN 10 PASSED 2026-11-23: the ten clean approve runs are COMPLETE (10 of 10)
+
+- Run `QA-5046889506F5` (`business-launch-20261123 #4`): started 2:19:38 PM, owner approved right after, "strict evidence passed", completed 2:32:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF. Four runs in one afternoon (7, 8, 9, 10), all clean.
+- VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **10** (9 before this run).
+- The `ten_clean_runs` readiness check should turn ready within about five minutes (the strict counter runs every five minutes). NOT YET SEEN on the page: the owner has not sent the new headline number (expect 21/26). Confirm it before changing any readiness line.
+- Credits: 209.8 of 300 after run 9; the reading after run 10 is not recorded (expect about 180). Four runs cost about 120 credits.
+- What remains for the sign-off (see `docs/READINESS_GATE_MAP.md`): the three key-dependent checks (Resend email, AI key for the classifier and build-plan enrichment, and the file scanner), the six evidence checks that expire (run in the final week), and the owner's sign-off. The Group A decision (strict gate, or a written "manual mode" waiver) is the owner's.
+
+## QA RUN 9 PASSED 2026-11-23: clean approve runs 9 of 10 (superseded by run 10 above)
 
 - Run `QA-DAACB86B0550` (`business-launch-20261123 #3`): started 2:00:03 PM, owner approved right after, "strict evidence passed", completed 2:12:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF.
 - VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **9** (it returned 8 before this run). ONE more approve pass needed (run 10).
@@ -1253,11 +1261,11 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice AND failed-payment (past_due only, no freeze) paths proven on staging (see the Stripe sandbox section at the top); refund, dispute and restore-to-active NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **9 of 10 done** (VERIFIED
-  2026-11-23 from the database: `count_strict_clean_business_runs()` = 9 after run QA-DAACB86B0550 (= 8 after QA-A31A40850DD2; = 7 after QA-8C138EDD797E the same day; = 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **10 of 10 done** (VERIFIED
+  2026-11-23 from the database: `count_strict_clean_business_runs()` = 10 after run QA-5046889506F5 (= 9 after QA-DAACB86B0550; = 8 after QA-A31A40850DD2; = 7 after QA-8C138EDD797E the same day; = 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
   `QA-3BC433C6634E` 2026-08-23, `QA-E45F85D69C9A` 2026-10-07 and
   `QA-842A688FA6D1` 2026-11-04, each `strict_evidence_passed`; failed
-  runs are not counted and do not reset the count; 1 more needed, see
+  runs are not counted and do not reset the count; the count is COMPLETE (the sign-off below still waits on the other required checks), see
   `docs/TEN_CLEAN_RUNS_PLAN.md`); this is the actual production-deploy
   gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits
