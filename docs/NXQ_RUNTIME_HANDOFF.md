@@ -10,6 +10,13 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## OWN BACKGROUND PER STORE 2026-11-23 (decision, source only)
+
+- Owner decision: every store gets its own background (no shared library). First clients by hand; later an automatic generator with hard limits. Plan: `docs/BACKGROUND_GENERATION_PLAN.md`.
+- Built (pure, unwired, tested by `scripts/test-background-generation.mjs`): `src/lib/backgroundPrompt.ts` (request text from business type, mood and store colors; client text is cleaned) and `src/lib/backgroundLimits.ts` (per-store allowance, monthly ceiling, wait time, master switch; unreadable limit means no).
+- Needs the owner before anything automatic: provider account and key, spending cap, database counter (migration), deploy.
+- Code-drawn backgrounds were tried and rejected (worse than a generated picture).
+
 ## SPEED PASS 2026-11-23 (source only, 0 credits)
 
 - Measured at phone speed (4x slower CPU): store products visible ~2.1 s, cleaned logo ready ~3.0 s (cleanup ~0.8 s), scrolling smooth (1% slow frames). Bundle already lean (main script 92 KB gzip).

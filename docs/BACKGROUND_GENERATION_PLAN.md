@@ -1,0 +1,19 @@
+# Own background for every store (plan, decided 2026-11-23)
+
+Goal: every store gets its own website background (not a shared template and never the logo itself). Premium sites should look made for the client.
+
+## Phase 1: by hand (first clients)
+- Build the request text with `buildBackgroundPrompt` (`src/lib/backgroundPrompt.ts`): it takes the business type, a mood and the store's own colors, and always forbids text, logos, people and objects.
+- The owner makes the picture in an image tool, checks it by eye, and it is added to that store's files. No key, no database change.
+
+## Phase 2: automatic, with limits (after launch; every step below needs the owner's explicit approval first)
+- A server-side generator (Edge Function) that asks `checkBackgroundRequest` (`src/lib/backgroundLimits.ts`) before every run.
+- Limits are counted in pictures, set by the owner: a per-store allowance per period, a hard monthly ceiling for all stores, a short wait between requests, and one master off switch. A limit that cannot be read means "do not run".
+- The picture is generated once, shown to the owner for approval, and only then goes live. Nothing unreviewed ships.
+- A redesign request regenerates the background and may rearrange a few sections; it is an add-on the owner prices. Pricing is decided in chat and is not written here.
+- Needs (all gated): an image provider account with its own spending cap, the provider key stored as a server secret (never in chat, source, logs or workflow inputs), a small database counter per store (migration), and a deploy. Current provider prices must be looked up and shown to the owner before choosing.
+- Shipped pictures are stored in the store's own files and shrunk for phones.
+
+## Not doing
+- A shared library of backgrounds (it reads as a template).
+- Code-drawn backgrounds: tried twice on 2026-11-23, clearly weaker than a generated picture.
