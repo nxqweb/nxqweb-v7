@@ -26,6 +26,8 @@ The gate already has a way to say "not needed in this launch mode": the optional
 - **Option C: relax only the AI pair, keep email required** (or the reverse), if you want one of them proven before launch.
 **My recommendation is Option B for June 16, given the spending hold**, as long as the page keeps saying plainly which checks were waived. But it is a statement about what you are promising launch customers, so it should be your decision, in writing, not mine.
 
+**OWNER DECISION 2026-11-23 (in chat): Option B, "manual mode".** Applies to the three Group A checks only (`notification_pipeline_ready`, `change_classifier_ready`, `business_build_plan_ai_ready`). The AI Desk copy-paste replaces AI planning and classification, and automatic email stays off at launch. The AI key and Resend become post-launch upgrades. NOT YET APPLIED: marking the three checks not required (with the reason written on each row) is a gated change (a migration or an owner SQL statement), so Claude asks again before drafting it. The file scanner (`file_scanner`, Scanii) is a separate check and is NOT covered by this decision.
+
 ## Recommended order
 1. **Now to about early December:** the nine remaining approve runs (credits and the build guard decide the pace).
 2. **Before the final week:** decide Group A (A, B or C above), and if Option A, set up the accounts.

@@ -10,6 +10,12 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## DECISION 2026-11-23: launch in "manual mode" for the three key-dependent checks (owner chose Option B)
+
+- Covers the notification dispatcher (Resend), the website change classifier and the Business AI build-plan check only. AI Desk copy-paste replaces AI planning; automatic email stays off at launch; AI key and Resend are post-launch upgrades. Recorded in `docs/READINESS_GATE_MAP.md`.
+- NOT applied yet. Marking those three checks "not required, with the reason on the row" is a gated change (migration or owner SQL); draft it and ask the owner before anything is applied. The file scanner check is separate and still open.
+- Trade-off to keep in mind: manual mode means no automatic emails to clients or shoppers and AI planning stays copy-paste at launch, which is more hands-on than the "everything automatic" goal until the upgrades land.
+
 ## QA RUN 10 PASSED 2026-11-23: the ten clean approve runs are COMPLETE (10 of 10)
 
 - Run `QA-5046889506F5` (`business-launch-20261123 #4`): started 2:19:38 PM, owner approved right after, "strict evidence passed", completed 2:32:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF. Four runs in one afternoon (7, 8, 9, 10), all clean.

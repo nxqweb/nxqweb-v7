@@ -49,6 +49,9 @@ The owner's hold (no card, no paid keys, no lawyer) runs to about July 2027, **a
 - [ ] Ten clean end-to-end runs; production database and backup decision
 - [ ] The decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md` (what "cancel" does to a live site, deletion, product lines, SSL-expiry check)
 
+## Group A decision (2026-11-23, owner): manual mode (Option B in `docs/READINESS_GATE_MAP.md`)
+The three key-dependent checks (email dispatcher, change classifier, AI build plan) are to be marked not required for launch, with the reason on each row; AI key and Resend are post-launch upgrades. Not applied yet: it is a gated change and needs the owner's go. The file scanner is separate.
+
 ## Finish line check (2026-11-05, owner asked "how far until only Stripe and the AI key are left?")
 Code and staged migrations (checklist sections A and B) are essentially done: migrations 248-287 applied to staging, parity 74/74. The gap is live verification (section C). What stands between today and "only Stripe and the AI key left":
 - [x] Ten clean approve runs: **10 of 10** (verified in the database 2026-11-23; the readiness check should flip within about five minutes, not yet seen on the page). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
