@@ -142,6 +142,22 @@ export function crispLogoSize(visibleWidth: number): number {
 
 export type CutoutLogo = { full: string; mark: string | null; size: number };
 const cache = new Map<string, Promise<CutoutLogo | null>>();
+const CACHE_PREFIX = "nxq-logo-cut-v1:";
+const CACHE_MAX_CHARS = 1_200_000; // a cleaned logo is a few hundred KB; anything bigger is not stored
+
+// What was stored earlier in this browser tab, re-checked (browser storage can hold anything). Returns null when it is missing or not exactly what we wrote.
+export function parseCachedCutout(raw: unknown): CutoutLogo | null {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > CACHE_MAX_CHARS + 2000) return null;
+  try {
+    const row = JSON.parse(raw) as Record<string, unknown>;
+    const png = (v: unknown): v is string => typeof v === "string" && v.startsWith("data:image/png;base64,") && v.length <= CACHE_MAX_CHARS;
+    if (!png(row.full)) return null;
+    const mark = row.mark === null ? null : png(row.mark) ? row.mark : undefined;
+    const size = typeof row.size === "number" && Number.isFinite(row.size) && row.size >= 220 && row.size <= 900 ? row.size : null;
+    if (mark === undefined || size === null) return null;
+    return { full: row.full, mark, size };
+  } catch { return null; }
+}
 
 const toCanvas = (w: number, h: number) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
 
@@ -153,6 +169,8 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
   if (known) return known;
   const job = (async (): Promise<CutoutLogo | null> => {
     try {
+      // Remembered for this browser tab only (sessionStorage), so moving between store pages is instant and a changed logo is picked up on the next visit.
+      try { const hit = parseCachedCutout(window.sessionStorage.getItem(CACHE_PREFIX + url)); if (hit) return hit; } catch { /* storage unavailable: just compute */ }
       const img = new Image();
       img.decoding = "async";
       img.src = url;
@@ -214,7 +232,9 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
         const sctx = current.getContext("2d", { willReadFrequently: true });
         if (sctx) { const sp = sctx.getImageData(0, 0, current.width, current.height); sp.data.set(sharpen({ width: current.width, height: current.height, data: sp.data }, 0.8)); sctx.putImageData(sp, 0, 0); }
       } catch { /* keep the unsharpened picture */ }
-      return { full: current.toDataURL("image/png"), mark, size };
+      const finished: CutoutLogo = { full: current.toDataURL("image/png"), mark, size };
+      try { const text = JSON.stringify(finished); if (text.length <= CACHE_MAX_CHARS) window.sessionStorage.setItem(CACHE_PREFIX + url, text); } catch { /* storage full or blocked: fine */ }
+      return finished;
     } catch { return null; }
   })();
   cache.set(url, job);

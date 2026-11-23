@@ -1,7 +1,7 @@
 // Offline test: the automatic logo cutout (src/lib/logoCutout.ts). A logo on a plain white background must become transparent by itself,
 // white INSIDE the logo must stay, soft edges must not leave a white halo, and anything that is not "logo on a plain background" is left alone.
 import fs from "node:fs";
-import { crispLogoSize, cutOutBackground, markEndRow, sharpen, visibleBox } from "../src/lib/logoCutout.ts";
+import { crispLogoSize, cutOutBackground, markEndRow, parseCachedCutout, sharpen, visibleBox } from "../src/lib/logoCutout.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -64,6 +64,12 @@ check("a see-through pixel is never recolored", (() => { const t = make(10, 10, 
 check("a small logo is shown small and crisp, a big sharp logo is shown big", crispLogoSize(205) === 410 && crispLogoSize(120) === 240 && crispLogoSize(60) === 220 && crispLogoSize(450) === 900 && crispLogoSize(2000) === 900);
 check("an odd width never gives a broken size", [0, -5, NaN, Infinity, undefined].every((w) => { const v = crispLogoSize(w); return Number.isFinite(v) && v >= 220 && v <= 900; }));
 check("the page applies the measured size per store and falls back to the CSS default", fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8").includes('"--showcase-logo-size": `${logoCut.size}px`') && fs.readFileSync("src/styles/storefront-theme.css", "utf8").includes("--showcase-logo-size: 460px;"));
+
+// The remembered result is re-checked before use (browser storage can hold anything).
+const pngUrl = "data:image/png;base64,AAAA";
+check("a result we stored is read back exactly", (() => { const c = parseCachedCutout(JSON.stringify({ full: pngUrl, mark: pngUrl, size: 376 })); return c && c.full === pngUrl && c.mark === pngUrl && c.size === 376; })() && parseCachedCutout(JSON.stringify({ full: pngUrl, mark: null, size: 220 })).mark === null);
+check("anything else in storage is ignored (not a PNG, odd size, wrong shape, junk, huge)", [undefined, null, "", "junk", "[]", JSON.stringify({ full: "https://evil.example/x.png", mark: null, size: 300 }), JSON.stringify({ full: pngUrl, mark: "javascript:alert(1)", size: 300 }), JSON.stringify({ full: pngUrl, mark: null, size: 50 }), JSON.stringify({ full: pngUrl, mark: null, size: "300" }), JSON.stringify({ full: "data:image/png;base64," + "A".repeat(1_300_000), mark: null, size: 300 }), "x".repeat(2_000_000)].every((v) => parseCachedCutout(v) === null));
+check("the memory is per browser tab only and falls back to computing when storage is blocked", fs.readFileSync("src/lib/logoCutout.ts", "utf8").includes("window.sessionStorage.getItem(CACHE_PREFIX + url)") && fs.readFileSync("src/lib/logoCutout.ts", "utf8").includes("storage unavailable: just compute") && !/localStorage/.test(fs.readFileSync("src/lib/logoCutout.ts", "utf8")));
 
 // Things that must be left alone.
 const clear = make(30, 30, [255, 255, 255], () => {}); clear.data[3] = 0;
