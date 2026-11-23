@@ -2,6 +2,11 @@
 
 Goal: every store gets its own website background (not a shared template and never the logo itself). Premium sites should look made for the client.
 
+## Two ways to get a background (owner decision, 2026-11-23: offer both)
+- **Upload their own:** same plumbing as the logo upload in `docs/LOGO_UPLOAD_PLAN.md` (private storage, the existing writer rules, a rights tick, size limits, the existing file scan). Extra rules for a background: shrink for phones, and a readability guard so text on top of a busy or dark picture stays legible (dim or frost it automatically).
+- **Generate one:** Phase 2 below, behind the limits.
+- Both end in the same place: one saved background per store, shown behind the logo and glass cards. Build the upload path first; the generator reuses its storage, save step and screen.
+
 ## Phase 1: by hand (first clients)
 - Build the request text with `buildBackgroundPrompt` (`src/lib/backgroundPrompt.ts`): it takes the business type, a mood and the store's own colors, and always forbids text, logos, people and objects.
 - The owner makes the picture in an image tool, checks it by eye, and it is added to that store's files. No key, no database change.
