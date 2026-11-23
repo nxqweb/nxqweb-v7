@@ -80,8 +80,11 @@ Started 10:45 AM, owner approved about 11:06 AM, strict evidence passed, complet
 - A failed run therefore wastes only about 15 credits when it fails early; a passing run costs 30.
 - Expiry: the 87.8 credits are lost on 2026-11-22; the next cycle starts at 300 on 2026-11-23. Owner wants an emergency reserve kept.
 
+## Run QA-A31A40850DD2 PASSED (2026-11-23): the count is now 8 of 10 (verified: `count_strict_clean_business_runs()` = 8)
+Started 1:16:46 PM, owner approved about 1:17 PM, completed 1:30:00 PM (13 minutes), strict evidence passed, no manual rescue. Credits before: 269.9 of 300; after: not read yet (expect about 240). 2 more approve runs needed.
+
 ## Run QA-8C138EDD797E PASSED (2026-11-23): the count is now 7 of 10 (verified: `count_strict_clean_business_runs()` = 7)
-Started 12:36:34 PM, owner approved about 12:36 PM, completed 12:50:00 PM (14 minutes), strict evidence passed, no manual rescue. First run of the fresh 300-credit cycle; main-site builds stayed OFF. Credits after: not read yet (expect about 255 to 270). 3 more approve runs needed.
+Started 12:36:34 PM, owner approved about 12:36 PM, completed 12:50:00 PM (14 minutes), strict evidence passed, no manual rescue. First run of the fresh 300-credit cycle; main-site builds stayed OFF. Credits after: **269.9 of 300** (read 1:16 PM, owner screenshot), so this run cost about **30 credits**. 3 more approve runs were needed at that point.
 
 ## Run QA-08B27165B052 PASSED (2026-11-12): the count is now 6 of 10 (verified: `count_strict_clean_business_runs()` = 6)
 Started 11:58 AM, completed 12:10 PM (12 minutes). Two clean runs in a row after the token fixes. Credits before: 87.8 (expected about 57.8 after; the settled number was not read yet). Owner chose to run one more this cycle and then stop; 4 more approve runs are needed, planned from 2026-11-23 when the free plan resets to 300 credits (about 30 per run, 4 runs = about 120).

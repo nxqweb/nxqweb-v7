@@ -10,11 +10,18 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
-## QA RUN 7 PASSED 2026-11-23: clean approve runs now 7 of 10
+## QA RUN 8 PASSED 2026-11-23: clean approve runs now 8 of 10
+
+- Run `QA-A31A40850DD2` (`business-launch-20261123 #2`): started 1:16:46 PM, owner approved about 1:17 PM, "strict evidence passed", completed 1:30:00 PM (13 minutes). No manual rescue; main-site builds stayed OFF.
+- VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **8** (it returned 7 before this run). Two more approve passes needed.
+- Credits: 269.9 of 300 before this run; the after-run reading is not recorded yet (expect about 240). Add it to the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`.
+- Launch readiness stays 20/26 (the ten-runs check only turns ready at 10).
+
+## QA RUN 7 PASSED 2026-11-23: clean approve runs 7 of 10 (superseded by run 8 above)
 
 - Run `QA-8C138EDD797E` (`business-launch-20261123 #1`): started 12:36:34 PM, owner approved about 12:36 PM, "strict evidence passed", completed 12:50:00 PM (14 minutes). Owner did nothing but approve (no manual rescue). Netlify builds on the main site stayed OFF; a QA run builds its own disposable site.
 - VERIFIED in the database by the owner: `select public.count_strict_clean_business_runs();` returned **7**. Three more approve passes needed.
-- Credits: 300 at the start of the cycle; the after-run reading is not recorded yet (Netlify lags, expect about 255 to 270). Read it and add it to the ledger in `docs/TEN_CLEAN_RUNS_PLAN.md`.
+- Credits: 300 at the start of the cycle, **269.9 of 300** read at 1:16 PM (owner screenshot, before run 8 started), so run 7 cost about **30 credits**.
 - Launch readiness stays 20/26 (the ten-runs check only turns ready at 10).
 
 ## FRONT END FIRST FOR LOGO AND BACKGROUND UPLOADS 2026-11-23 (owner: build all screens now so turning the backend on is enough)
@@ -1239,11 +1246,11 @@ code work; confirmed blocked in this container as of this checklist:**
 - [ ] Stripe test-mode lifecycle, real payout account — PARTIAL (2026-10-17): sandbox webhook + customer link + paid-invoice AND failed-payment (past_due only, no freeze) paths proven on staging (see the Stripe sandbox section at the top); refund, dispute and restore-to-active NOT yet run; real payout account/live mode not configured
 - [ ] 10 consecutive disposable external Business QA runs with real
   Supabase/GitHub/Netlify evidence + your explicit signoff
-  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **7 of 10 done** (VERIFIED
-  2026-11-23 from the database: `count_strict_clean_business_runs()` = 7 after run QA-8C138EDD797E (= 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
+  (`docs/LAUNCH_HARDENING_CHECKLIST.md`) — **8 of 10 done** (VERIFIED
+  2026-11-23 from the database: `count_strict_clean_business_runs()` = 8 after run QA-A31A40850DD2 (= 7 after QA-8C138EDD797E the same day; = 6 after QA-08B27165B052 on 2026-11-12; = 5 after QA-6049B35B713A the same day; = 4 after QA-612AD87391D7 on 2026-11-05); only APPROVE runs count:
   `QA-3BC433C6634E` 2026-08-23, `QA-E45F85D69C9A` 2026-10-07 and
   `QA-842A688FA6D1` 2026-11-04, each `strict_evidence_passed`; failed
-  runs are not counted and do not reset the count; 3 more needed, see
+  runs are not counted and do not reset the count; 2 more needed, see
   `docs/TEN_CLEAN_RUNS_PLAN.md`); this is the actual production-deploy
   gate, independent of everything else above
 - [ ] Fresh Netlify build credits — unknown; a prior audit found credits
