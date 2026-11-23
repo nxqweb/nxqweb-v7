@@ -168,7 +168,7 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index c955cba..1cc9df0 100644
+index e72aebf..bb5715f 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
 @@ -20,9 +20,11 @@ import {
