@@ -49,14 +49,14 @@ export function PublicCommerceStorefront() {
   const [customRequestsOpen, setCustomRequestsOpen] = useState(false);
   const [branding, setBranding] = useState<StoreBranding | null>(null); // this shop's own colors and logo (owner-set, migration 286)
   // The big logo in the showcase hero: a logo saved on a plain white background is turned transparent automatically (src/lib/logoCutout.ts), so nobody has to supply a special file.
-  const [logoCut, setLogoCut] = useState<{ source: string; url: string; mark: string | null } | null>(null);
+  const [logoCut, setLogoCut] = useState<{ source: string; url: string; mark: string | null; size: number } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false); // showcase stores: the search icon in the header
   const [query, setQuery] = useState("");
   useEffect(() => {
     const source = branding?.logo;
     if (!source) { setLogoCut(null); return; }
     let live = true;
-    void cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark }); });
+    void cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark, size: found.size }); });
     return () => { live = false; };
   }, [branding?.logo]);
   const [paused, setPaused] = useState(false); // the owner paused or cancelled this business: the store stays visible but cannot take orders
@@ -366,7 +366,7 @@ export function PublicCommerceStorefront() {
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
-    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? (branding.vars as React.CSSProperties) : undefined}>
+    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? ({ ...branding.vars, ...(logoCut && logoCut.source === branding.logo ? { "--showcase-logo-size": `${logoCut.size}px` } : {}) } as React.CSSProperties) : undefined}>
       {branding?.logo ? <div className="store-bg-logo" aria-hidden="true"><img src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /></div> : null}
       <section className="portal-shell">
       <StoreAnnouncement website={website} />

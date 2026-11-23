@@ -133,7 +133,14 @@ export function sharpen(img: Pixels, amount = 0.7): Uint8ClampedArray {
 
 const MAX_SIDE = 1600;
 const UPSCALE_TARGET = 900;
-export type CutoutLogo = { full: string; mark: string | null };
+// How large (CSS pixels) to show a logo so it still looks sharp: twice its real visible width (sharp screens show two device pixels per CSS pixel),
+// never below 220 and never above 900. A small file stays small and crisp; a big, sharp file automatically gets to show large. No per-client setting.
+export function crispLogoSize(visibleWidth: number): number {
+  const width = Number.isFinite(visibleWidth) && visibleWidth > 0 ? visibleWidth : 0;
+  return Math.min(900, Math.max(220, Math.round(width * 2)));
+}
+
+export type CutoutLogo = { full: string; mark: string | null; size: number };
 const cache = new Map<string, Promise<CutoutLogo | null>>();
 
 const toCanvas = (w: number, h: number) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
@@ -193,6 +200,7 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
           }
         }
       } catch { mark = null; }
+      const size = crispLogoSize(current.width); // measured on the trimmed logo at its real resolution, before any enlarging
       // The logo is shown big (up to ~660 px). A small file is enlarged in smooth doubling steps so its edges are not blocky; detail still cannot be added.
       while (current.width < UPSCALE_TARGET && current.width * 2 <= MAX_SIDE) {
         const bigger = toCanvas(current.width * 2, current.height * 2);
@@ -206,7 +214,7 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
         const sctx = current.getContext("2d", { willReadFrequently: true });
         if (sctx) { const sp = sctx.getImageData(0, 0, current.width, current.height); sp.data.set(sharpen({ width: current.width, height: current.height, data: sp.data }, 0.8)); sctx.putImageData(sp, 0, 0); }
       } catch { /* keep the unsharpened picture */ }
-      return { full: current.toDataURL("image/png"), mark };
+      return { full: current.toDataURL("image/png"), mark, size };
     } catch { return null; }
   })();
   cache.set(url, job);

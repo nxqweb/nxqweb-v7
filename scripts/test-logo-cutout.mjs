@@ -1,7 +1,7 @@
 // Offline test: the automatic logo cutout (src/lib/logoCutout.ts). A logo on a plain white background must become transparent by itself,
 // white INSIDE the logo must stay, soft edges must not leave a white halo, and anything that is not "logo on a plain background" is left alone.
 import fs from "node:fs";
-import { cutOutBackground, markEndRow, sharpen, visibleBox } from "../src/lib/logoCutout.ts";
+import { crispLogoSize, cutOutBackground, markEndRow, sharpen, visibleBox } from "../src/lib/logoCutout.ts";
 
 let failures = 0;
 function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
@@ -60,6 +60,11 @@ check("sharpening leaves the alpha channel exactly as it was", sh.every((v, i) =
 check("amount 0 and odd input change nothing", sharpen(edge, 0).every((v, i) => v === edge.data[i]) && sharpen({ width: 2, height: 2, data: new Uint8ClampedArray(16) }, 1).length === 16);
 check("a see-through pixel is never recolored", (() => { const t = make(10, 10, [255, 255, 255], () => {}); t.data[(5 * 10 + 5) * 4 + 3] = 0; t.data[(5 * 10 + 5) * 4] = 90; return sharpen(t, 1)[(5 * 10 + 5) * 4] === 90; })());
 
+// Each logo is shown at the size where it still looks sharp: twice its real visible width, between 220 and 900 CSS pixels.
+check("a small logo is shown small and crisp, a big sharp logo is shown big", crispLogoSize(205) === 410 && crispLogoSize(120) === 240 && crispLogoSize(60) === 220 && crispLogoSize(450) === 900 && crispLogoSize(2000) === 900);
+check("an odd width never gives a broken size", [0, -5, NaN, Infinity, undefined].every((w) => { const v = crispLogoSize(w); return Number.isFinite(v) && v >= 220 && v <= 900; }));
+check("the page applies the measured size per store and falls back to the CSS default", fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8").includes('"--showcase-logo-size": `${logoCut.size}px`') && fs.readFileSync("src/styles/storefront-theme.css", "utf8").includes("--showcase-logo-size: 460px;"));
+
 // Things that must be left alone.
 const clear = make(30, 30, [255, 255, 255], () => {}); clear.data[3] = 0;
 check("a picture that is already transparent at the corners is left alone", cutOutBackground(clear).reason === "already-transparent");
@@ -74,7 +79,7 @@ check("odd input never throws", [{ width: 0, height: 0, data: new Uint8ClampedAr
 
 const page = fs.readFileSync("src/pages/PublicCommerceStorefront.tsx", "utf8");
 check("the showcase hero uses the cutout only when it matches the current logo, and falls back to the original otherwise", page.includes('src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo}') && page.includes('data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined}'));
-check("the cutout is requested only for a logo that exists, and a late answer for an old logo is ignored", page.includes("cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark }); })") && page.includes("return () => { live = false; };"));
+check("the cutout is requested only for a logo that exists, and a late answer for an old logo is ignored", page.includes("cutoutLogo(source).then((found) => { if (live && found) setLogoCut({ source, url: found.full, mark: found.mark, size: found.size }); })") && page.includes("return () => { live = false; };"));
 const lib = fs.readFileSync("src/lib/logoCutout.ts", "utf8");
 check("the picture is processed in the browser only (nothing is uploaded or sent anywhere)", !/fetch\(|supabase|XMLHttpRequest|sendBeacon/.test(lib) && lib.includes("catch { return null; }"));
 
