@@ -12,7 +12,7 @@ index 4985f7c..4fcbf8c 100644
  check("every shopper database call is a real function from migration 268", shopperRpcs.length >= 6 && shopperRpcs.every((n) => definedIn268.has(n)), shopperRpcs.filter((n) => !definedIn268.has(n)).join(","));
  const signedInOnly = ["get_my_shopper_profile", "save_my_shopper_profile", "delete_my_shopper_profile", "list_my_shopper_orders"];
 diff --git a/scripts/test-store-branding.mjs b/scripts/test-store-branding.mjs
-index 3afbabd..e9c4cfc 100644
+index fa0c083..356e2c3 100644
 --- a/scripts/test-store-branding.mjs
 +++ b/scripts/test-store-branding.mjs
 @@ -17,7 +17,7 @@ check("owner page: the default look is saveable; unreadable text, a pale button,
@@ -168,14 +168,13 @@ index 6777dd7..9864a51 100644
            <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
            <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
 diff --git a/src/pages/PublicCommerceStorefront.tsx b/src/pages/PublicCommerceStorefront.tsx
-index e72aebf..bb5715f 100644
+index d0d4b1c..7e7a447 100644
 --- a/src/pages/PublicCommerceStorefront.tsx
 +++ b/src/pages/PublicCommerceStorefront.tsx
-@@ -20,9 +20,11 @@ import {
+@@ -20,9 +20,10 @@ import {
  } from "../lib/storeCatalog";
  import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
  import { cutoutLogo } from "../lib/logoCutout";
-+import { cutoutLogoUrl } from "../lib/logoCutout";
 +import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
  
  type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
@@ -184,7 +183,7 @@ index e72aebf..bb5715f 100644
  
  export function PublicCommerceStorefront() {
    const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
-@@ -78,6 +80,9 @@ export function PublicCommerceStorefront() {
+@@ -78,6 +79,9 @@ export function PublicCommerceStorefront() {
    }
    // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
    const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
@@ -194,7 +193,7 @@ index e72aebf..bb5715f 100644
    const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
    const [emailCopied, setEmailCopied] = useState(false);
    const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
-@@ -87,6 +92,10 @@ export function PublicCommerceStorefront() {
+@@ -87,6 +91,10 @@ export function PublicCommerceStorefront() {
    const itemCount = useMemo(() => cartCount(cart), [cart]);
    const total = useMemo(() => cartTotal(cart), [cart]);
    const needsShipping = useMemo(() => cartNeedsShipping(cart), [cart]);
@@ -205,7 +204,7 @@ index e72aebf..bb5715f 100644
    const openProduct = useMemo(() => (openSlug && data ? data.products.find((p) => p.slug === openSlug) ?? null : null), [openSlug, data]);
  
    function showToast(message: string) {
-@@ -122,7 +131,7 @@ export function PublicCommerceStorefront() {
+@@ -122,7 +130,7 @@ export function PublicCommerceStorefront() {
    // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
    async function loadOrderMode() {
      if (!supabase) return;
@@ -214,7 +213,7 @@ index e72aebf..bb5715f 100644
      try {
        const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
        if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
-@@ -130,6 +139,15 @@ export function PublicCommerceStorefront() {
+@@ -130,6 +138,15 @@ export function PublicCommerceStorefront() {
      await statusLoad;
    }
  
@@ -230,7 +229,7 @@ index e72aebf..bb5715f 100644
    // The shop's own look. Any failure (or an older database) means the normal default theme.
    async function loadStoreLook() {
      if (!supabase) return;
-@@ -300,7 +318,7 @@ export function PublicCommerceStorefront() {
+@@ -300,7 +317,7 @@ export function PublicCommerceStorefront() {
  
    async function placeOrder() {
      if (!supabase || cart.length === 0) return;
@@ -239,7 +238,7 @@ index e72aebf..bb5715f 100644
      setFieldErrors(problems);
      if (Object.keys(problems).length > 0) {
        setError("Please check the details marked below.");
-@@ -311,7 +329,7 @@ export function PublicCommerceStorefront() {
+@@ -311,7 +328,7 @@ export function PublicCommerceStorefront() {
      }
      setBusy(true); setError("");
      if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
@@ -248,7 +247,7 @@ index e72aebf..bb5715f 100644
        store_slug_value: slug,
        items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
        customer_payload: {
-@@ -321,6 +339,7 @@ export function PublicCommerceStorefront() {
+@@ -321,6 +338,7 @@ export function PublicCommerceStorefront() {
          note,
          shipping_address: { address: form.address },
          idempotency_key: checkoutKeyRef.current,
@@ -256,7 +255,7 @@ index e72aebf..bb5715f 100644
        },
      });
      if (result.error) {
-@@ -384,7 +403,8 @@ export function PublicCommerceStorefront() {
+@@ -385,7 +403,8 @@ export function PublicCommerceStorefront() {
  
        {order ? <section className="panel panel-wide">
          <h2>Order {order.order_number} created</h2>
@@ -266,7 +265,7 @@ index e72aebf..bb5715f 100644
          <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
          <ol className="store-next-steps" data-testid="store-next-steps">
            <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
-@@ -465,16 +485,26 @@ export function PublicCommerceStorefront() {
+@@ -466,16 +485,26 @@ export function PublicCommerceStorefront() {
                </div>
              </article>;
            })}
@@ -296,10 +295,10 @@ index e72aebf..bb5715f 100644
            <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
            {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}
 diff --git a/src/styles/storefront-theme.css b/src/styles/storefront-theme.css
-index f45b011..1f124be 100644
+index 09e5315..e211c76 100644
 --- a/src/styles/storefront-theme.css
 +++ b/src/styles/storefront-theme.css
-@@ -416,3 +416,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
+@@ -420,3 +420,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
  .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 82vw); max-height: 70vh; }
  @media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 78vw); } }
  @media (min-width: 861px) { .store-theme[data-showcase] .store-bg-logo { justify-content: flex-end; align-items: flex-start; padding: 150px 7vw 0 0; } }

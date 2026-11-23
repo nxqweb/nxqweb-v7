@@ -64,6 +64,7 @@ begin
   -- a client saves their own pictures; the colors the owner set stay exactly as they were
   perform pg_temp.as_user(one);
   r := public.get_my_store_media();
+  if (r->>'client_id')::uuid <> c1 then raise exception 'the client id must be returned so the page can build its own folder path: %', r; end if;
   if (r->>'has_storefront')::boolean is not true or r->'logo' <> 'null'::jsonb or (r->>'owner_logo')::boolean is not true then raise exception 'before saving: owner logo is not shown as the client logo: %', r; end if;
   r := public.save_my_store_media(jsonb_build_object('logo', base || c1 || '/branding/logo-1.png', 'background', base || c1 || '/branding/bg-1.webp', 'background_overlay', 0.35));
   if r->>'success' <> 'true' or r->>'background' <> base || c1 || '/branding/bg-1.webp' then raise exception 'save failed: %', r; end if;

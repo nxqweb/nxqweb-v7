@@ -16,7 +16,10 @@ state. Update this file, not a new one, at every handoff.
 - Draft `docs/drafts/migrations/10_store_media.sql` (+ sidecar test, passes in `npm run test:local-full-schema`, 64/64): reuses the existing `commerce-website-content` bucket and its own-folder write rule, so `nxq_authorize_storage_upload` is NOT touched. Adds `get_my_store_media`, `save_my_store_media`, extends the look check (own-folder logo, background, background_overlay), and makes the owner's color save keep the client's pictures (the owner page cannot hold them).
 - Shipped in source now (reads only what the live look already returns; no new database call): `src/lib/storeBranding.ts` accepts an uploaded logo/background/overlay with the same strict shape as the database; the store page shows a fixed background layer with a white veil; the logo cutout reads an uploaded logo from another address (`crossOrigin`). Verified in a browser with a mocked upload (desktop and phone).
 - Judgment calls to confirm: uploaded pictures go live immediately (the client owns the store; owner can clear with the look tools); the address check requires a `supabase.co` project host (update if a custom storage domain is ever used).
-- Still to build (parked patch, needs draft 10 approved): the client upload cards (logo and background) and the owner-approval screen for generated pictures.
+- Built later the same day: the client "Logo and background" card as parked patch `docs/drafts/patches/10_store_media_frontend.patch` (adds `src/components/StoreMediaCard.tsx`, shown on the Live store page). Pure helpers stay in `src/lib/storeMedia.ts` (unwired). Tests: `scripts/test-store-media.mjs`. The card is NOT browser-tested against a mocked backend yet (typecheck, lint and text-level tests only); do that on the day it is applied.
+- Patches 08 and 10 were checked to apply together in either order and to compile and lint together. Found and fixed a stale leftover import in patch 08 (`cutoutLogoUrl`) that would have broken the build when applied.
+- After applying patch 10, flip the three "nothing in the app uses these rules yet" tests (see `docs/drafts/patches/README.md`).
+- Still to build: the owner-approval screen for generated pictures (needs the generator, its provider key and the per-store counter; all gated).
 
 ## OWN BACKGROUND PER STORE 2026-11-23 (decision, source only)
 

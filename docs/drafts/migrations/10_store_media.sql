@@ -116,6 +116,7 @@ begin
   select true, settings -> 'look' into found_store, look_value from public.commerce_storefronts where client_id = client_uuid;
   return jsonb_build_object(
     'has_storefront', coalesce(found_store, false),
+    'client_id', client_uuid,
     'logo', case when look_value ->> 'logo' like 'https://%' then look_value -> 'logo' else null end,
     'background', look_value -> 'background',
     'background_overlay', look_value -> 'background_overlay',
