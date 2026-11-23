@@ -10,6 +10,14 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## FRONT END FIRST FOR LOGO AND BACKGROUND UPLOADS 2026-11-23 (owner: build all screens now so turning the backend on is enough)
+
+- Decision (Option A): keep the rule "source only calls functions a real migration defines". Finished screens wait as parked patches; one main-app deploy after the migrations carries everything.
+- Draft `docs/drafts/migrations/10_store_media.sql` (+ sidecar test, passes in `npm run test:local-full-schema`, 64/64): reuses the existing `commerce-website-content` bucket and its own-folder write rule, so `nxq_authorize_storage_upload` is NOT touched. Adds `get_my_store_media`, `save_my_store_media`, extends the look check (own-folder logo, background, background_overlay), and makes the owner's color save keep the client's pictures (the owner page cannot hold them).
+- Shipped in source now (reads only what the live look already returns; no new database call): `src/lib/storeBranding.ts` accepts an uploaded logo/background/overlay with the same strict shape as the database; the store page shows a fixed background layer with a white veil; the logo cutout reads an uploaded logo from another address (`crossOrigin`). Verified in a browser with a mocked upload (desktop and phone).
+- Judgment calls to confirm: uploaded pictures go live immediately (the client owns the store; owner can clear with the look tools); the address check requires a `supabase.co` project host (update if a custom storage domain is ever used).
+- Still to build (parked patch, needs draft 10 approved): the client upload cards (logo and background) and the owner-approval screen for generated pictures.
+
 ## OWN BACKGROUND PER STORE 2026-11-23 (decision, source only)
 
 - Owner decision: every store gets its own background (no shared library). First clients by hand; later an automatic generator with hard limits. Plan: `docs/BACKGROUND_GENERATION_PLAN.md`.

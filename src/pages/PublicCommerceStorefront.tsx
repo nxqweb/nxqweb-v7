@@ -366,7 +366,8 @@ export function PublicCommerceStorefront() {
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
-    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? ({ ...branding.vars, ...(logoCut && logoCut.source === branding.logo ? { "--showcase-logo-size": `${logoCut.size}px` } : {}) } as React.CSSProperties) : undefined}>
+    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? ({ ...branding.vars, ...(branding.background ? { "--store-bg-overlay": String(branding.backgroundOverlay) } : {}), ...(logoCut && logoCut.source === branding.logo ? { "--showcase-logo-size": `${logoCut.size}px` } : {}) } as React.CSSProperties) : undefined}>
+      {branding?.background ? <div className="store-bg-image" aria-hidden="true"><img src={branding.background} alt="" decoding="async" /></div> : null}
       {branding?.logo ? <div className="store-bg-logo" aria-hidden="true"><img src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /></div> : null}
       <section className="portal-shell">
       <StoreAnnouncement website={website} />

@@ -16,6 +16,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 | `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
 | `08_store_shipping_fee.sql` | Store shipping: one flat fee per order, optional free-over amount, optional free pickup. Five new functions only; the server works the fee out; the app uses them only when a rule is on (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
+| `10_store_media.sql` | A client's own logo and background for the store look: the look check accepts own-folder pictures (existing bucket, no upload-rule change), two client functions, and the owner's color save keeps the client's pictures (added 2026-11-23) | `docs/BACKGROUND_GENERATION_PLAN.md`, `docs/LOGO_UPLOAD_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in

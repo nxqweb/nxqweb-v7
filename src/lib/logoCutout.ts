@@ -173,6 +173,7 @@ export function cutoutLogo(url: string): Promise<CutoutLogo | null> {
       try { const hit = parseCachedCutout(window.sessionStorage.getItem(CACHE_PREFIX + url)); if (hit) return hit; } catch { /* storage unavailable: just compute */ }
       const img = new Image();
       img.decoding = "async";
+      if (/^https:/i.test(url)) img.crossOrigin = "anonymous"; // an uploaded logo lives on another address; without this the picture cannot be read back and the original is shown instead
       img.src = url;
       await img.decode();
       const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
