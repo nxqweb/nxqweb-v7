@@ -14,6 +14,7 @@ state. Update this file, not a new one, at every handoff.
 
 - `file_security_pipeline_ready` needs a clean, released Scanii scan and a healthy `malware_scan` connection, each within the last 30 days (migration 263). The October proofs are older than that. Nothing is broken; the check needs one fresh clean scan.
 - Do NOT spend a scan now: it would age out again before Jun 16. Plan it for the final month with the evidence refresh. Before then: owner checks the Scanii dashboard (trial scans left and trial end date) and decides on a paid plan or production key (gated spending decision).
+- Scanii dashboard read 2026-11-23 5:40 PM (owner screenshot, Account > Usage): cycle start credits 50, available 46, 4 used this cycle (92% available), 2 API keys, 1 user. No scans used since 2026-10-18 (46 left then too). Trial end date and whether credits renew each cycle are NOT shown on that page; owner to check the Billing tab.
 - Read-only way to see which half is stale (Supabase SQL editor): latest clean scan `select max(scanned_at) from public.client_file_security_scans where status='clean' and quarantine_status='released' and provider_reference ~ '^(cloudmersive|scanii):' and length(coalesce(content_sha256,''))=64;` and connection `select status, last_success_at from public.nxq_provider_connections where provider_key='malware_scan' and scope_type='global' and scope_id is null;`
 
 ## DECISION 2026-11-23: launch in "manual mode" for the three key-dependent checks (owner chose Option B)
