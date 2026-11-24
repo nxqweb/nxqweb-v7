@@ -12,7 +12,7 @@ import os from "node:os";
 import path from "node:path";
 
 // Update these two lines when the plan changes (they are checked against the files on disk).
-const expectedPendingMigrations = []; // 2026-11-24: 296 to 299 were APPLIED to staging (run #298, owner typed the phrase and approved, log read: four "Applying migration" lines, no error). Staging is up to date through 299. Add a file name here only when a new migration is added on purpose; remove it once it is applied.
+const expectedPendingMigrations = ["300_manual_launch_mode.sql"]; // 2026-11-24: promoted from draft 05 (manual launch mode) on the owner's go; NOT applied yet. Staging is up to date through 299 (296 to 299: run #298). Remove the file name once it is applied.
 const lastAppliedMigration = 299; // applied to staging 2026-11-24 (run #298: 296 to 299, log read, no error); 288 to 295 on 2026-11-18 (run #291)
 const lastFunctionsDeploy = "3ce313e"; // run #293 (2026-11-18, owner-run, all 45 functions deployed from this commit, coverage check passed); anything under supabase/functions after this commit is not deployed yet
 

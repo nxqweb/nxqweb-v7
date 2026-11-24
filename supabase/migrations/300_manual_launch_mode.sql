@@ -1,3 +1,4 @@
+-- 300: promoted from draft 05 on 2026-11-24 (owner said "promote and apply 05" in chat); NOT applied until the owner approves the guarded run.
 -- Draft 05: "manual launch mode" for the three key-dependent launch readiness checks (added 2026-11-24).
 -- Owner decision 2026-11-23, Option B in docs/READINESS_GATE_MAP.md: launch with the AI Desk copy-paste instead of AI planning and classification, and with automatic
 -- email off. The AI key and the email provider become post-launch upgrades. This marks exactly three checks "not required" WITH A WRITTEN REASON that survives the

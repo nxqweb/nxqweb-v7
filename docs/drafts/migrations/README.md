@@ -14,7 +14,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
-| `05_manual_launch_mode.sql` | Manual launch mode (owner decision 2026-11-23, Option B): the three key-dependent readiness checks (email dispatcher, change classifier, AI build plan) become not required, with a written reason in its own column; a reversible owner switch that also withdraws an existing sign-off when turned off; nothing else is waived (added 2026-11-24) | `docs/READINESS_GATE_MAP.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -72,3 +71,5 @@ Drafts 09 and 10 (server enforces the order mode; idempotency key on direct-paym
 Drafts 07 and 09 were promoted on 2026-11-18 (owner chose "07 and 09 now" in chat) to real migrations `294_new_order_owner_notification` and `295_confirm_late_direct_payment`; their tests now live in `scripts/sql/local-full-schema/regression/`. Draft 09's screens (the Orders page button) were applied from their parked patch at the same time. Neither migration is applied to staging yet.
 
 Drafts 06, 08, 10 and 11 were promoted on 2026-11-24 (owner chose "everything" for deploy day) to real migrations `296_owner_only_internal_policy_reads`, `297_store_shipping_fee`, `298_store_media` and `299_store_background_generation`; their tests now live in `scripts/sql/local-full-schema/regression/`. 299 needs 298 applied first. Nothing is applied to staging yet. Drafts 01 to 04 remain.
+
+Draft 05 (manual launch mode) was promoted on 2026-11-24 (owner: "promote and apply 05") to real migration `300_manual_launch_mode`; its test now lives in `scripts/sql/local-full-schema/regression/`. Nothing is applied until the guarded run. Drafts 01 to 04 remain.
