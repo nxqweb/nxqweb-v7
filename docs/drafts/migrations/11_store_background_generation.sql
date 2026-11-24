@@ -24,7 +24,9 @@ grant select, insert, update on table public.nxq_background_settings to service_
 create table if not exists public.store_background_requests (
   id uuid primary key default gen_random_uuid(),
   client_id uuid not null references public.clients(id) on delete cascade,
-  status text not null default 'generating' check (status in ('generating', 'pending_approval', 'approved', 'rejected', 'failed')),
+  status text not null default 'generating' check (status in ('requested', 'generating', 'pending_approval', 'approved', 'rejected', 'failed')),
+  mood text check (mood is null or mood in ('calm', 'warm', 'fresh', 'elegant', 'playful')),
+  what_they_sell text check (what_they_sell is null or char_length(what_they_sell) <= 60),
   image_url text,
   overlay numeric(3,2) check (overlay is null or (overlay >= 0 and overlay <= 0.75)),
   created_at timestamptz not null default now(),
@@ -118,7 +120,54 @@ begin
   select status, image_url, created_at into latest from public.store_background_requests where client_id = client_uuid order by created_at desc limit 1;
   return jsonb_build_object('enabled', s.switched_on, 'allowance', s.per_store_allowance, 'used', used, 'remaining', greatest(s.per_store_allowance - used, 0),
     'can_request', (gate ->> 'ok')::boolean, 'reason', gate ->> 'reason',
+    'in_progress', exists (select 1 from public.store_background_requests where client_id = client_uuid and status in ('requested', 'generating', 'pending_approval')),
     'latest_status', latest.status, 'latest_created_at', latest.created_at);
+end;
+$$;
+
+-- The CLIENT's button. Checks every rule and records a request (status 'requested'); the picture maker picks it up later (nxq_background_take_next). The request counts at once.
+-- Expected refusals come back as {ok:false, reason} (plain words) so the page can show them. One request at a time per store: while one is in progress or waiting for approval, no second one.
+create or replace function public.request_my_store_background(mood_value text default 'calm', what_i_sell_value text default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare client_uuid uuid; gate jsonb; request_uuid uuid; cleaned text;
+begin
+  client_uuid := public.current_client_id();
+  if client_uuid is null then raise exception 'Client workspace not found.'; end if;
+  if mood_value is null or mood_value not in ('calm', 'warm', 'fresh', 'elegant', 'playful') then raise exception 'Choose a mood from the list.'; end if;
+  cleaned := nullif(btrim(regexp_replace(coalesce(what_i_sell_value, ''), '[^[:alnum:] ,.''&-]', ' ', 'g')), '');
+  if cleaned is not null then cleaned := left(regexp_replace(cleaned, '\s+', ' ', 'g'), 60); end if;
+  if not exists (select 1 from public.commerce_storefronts where client_id = client_uuid) then return jsonb_build_object('ok', false, 'reason', 'Create your store first.'); end if;
+  perform 1 from public.nxq_background_settings where id for update;
+  if exists (select 1 from public.store_background_requests where client_id = client_uuid and status in ('requested', 'generating', 'pending_approval')) then
+    return jsonb_build_object('ok', false, 'reason', 'You already have a background being made or waiting for approval. Please wait for it first.');
+  end if;
+  gate := public.nxq_background_gate(client_uuid);
+  if (gate ->> 'ok')::boolean is not true then return jsonb_build_object('ok', false, 'reason', gate ->> 'reason'); end if;
+  insert into public.store_background_requests (client_id, status, mood, what_they_sell) values (client_uuid, 'requested', mood_value, cleaned) returning id into request_uuid;
+  return jsonb_build_object('ok', true, 'request_id', request_uuid, 'reason', '');
+end;
+$$;
+
+-- For the picture maker (service role only): take the oldest waiting request, mark it in progress and hand back what it needs. It was already counted when the client asked.
+create or replace function public.nxq_background_take_next()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare r public.store_background_requests%rowtype; sf public.commerce_storefronts%rowtype;
+begin
+  if auth.role() <> 'service_role' then raise exception 'Service-role access required.'; end if;
+  select * into r from public.store_background_requests where status = 'requested' order by created_at asc limit 1 for update skip locked;
+  if not found then return jsonb_build_object('ok', true, 'request_id', null); end if;
+  select * into sf from public.commerce_storefronts where client_id = r.client_id;
+  update public.store_background_requests set status = 'generating' where id = r.id;
+  return jsonb_build_object('ok', true, 'request_id', r.id, 'client_id', r.client_id, 'store_name', sf.store_name, 'mood', r.mood, 'what_they_sell', r.what_they_sell,
+    'colors', jsonb_build_object('bg', sf.settings -> 'look' -> 'bg', 'tint', sf.settings -> 'look' -> 'tint', 'accent', sf.settings -> 'look' -> 'accent'));
 end;
 $$;
 
@@ -218,6 +267,8 @@ revoke all on function public.owner_set_background_settings(boolean, integer, in
 revoke all on function public.get_my_background_status() from public, anon;
 revoke all on function public.nxq_background_claim_slot(uuid) from public, anon, authenticated;
 revoke all on function public.nxq_background_finish(uuid, boolean, text, numeric) from public, anon, authenticated;
+revoke all on function public.request_my_store_background(text, text) from public, anon;
+revoke all on function public.nxq_background_take_next() from public, anon, authenticated;
 revoke all on function public.owner_list_background_requests(text) from public, anon;
 revoke all on function public.owner_decide_background_request(uuid, boolean) from public, anon;
 grant execute on function public.owner_get_background_settings() to authenticated;
@@ -225,5 +276,7 @@ grant execute on function public.owner_set_background_settings(boolean, integer,
 grant execute on function public.get_my_background_status() to authenticated;
 grant execute on function public.nxq_background_claim_slot(uuid) to service_role;
 grant execute on function public.nxq_background_finish(uuid, boolean, text, numeric) to service_role;
+grant execute on function public.request_my_store_background(text, text) to authenticated;
+grant execute on function public.nxq_background_take_next() to service_role;
 grant execute on function public.owner_list_background_requests(text) to authenticated;
 grant execute on function public.owner_decide_background_request(uuid, boolean) to authenticated;
