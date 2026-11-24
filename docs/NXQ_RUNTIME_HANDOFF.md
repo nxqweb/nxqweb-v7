@@ -14,7 +14,7 @@ state. Update this file, not a new one, at every handoff.
 
 - Plan and inventory (names only): `docs/KEY_ROTATION_PLAN.md`. Do it after everything works and BEFORE the final evidence refresh and sign-off; rotate sooner any single item the owner suspects.
 - Read-only scans done today: no secret-shaped values in the tree or in the full git history (1,717 commits, all branches), including GitHub fine-grained, Netlify, Supabase and Resend token shapes. Limit: this does not prove a key was never exposed outside the repo.
-- Gap noticed (not fixed): `scripts/check-sensitive-changes.mjs` lacks those extra token shapes. Small source change, safe to do.
+- Gap fixed (2026-11-24): `scripts/check-sensitive-changes.mjs` now matches those extra token shapes (GitHub fine-grained, Netlify, Supabase, Resend); test `scripts/test-sensitive-changes.mjs` extended; tree scan still clean.
 - Still owner-only: GitHub secret scanning and push protection (not confirmed turned on).
 
 ## OWNER DECISIONS 2026-11-24 (owner said "do option A" on the logo plus the five open decisions, i.e. take the recommended picks)

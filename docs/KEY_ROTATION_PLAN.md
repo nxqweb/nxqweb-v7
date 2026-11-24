@@ -6,7 +6,7 @@ Owner request: once everything works, rotate every key and token so nothing that
 - Secret-shaped values in the checked-in tree (`node scripts/check-sensitive-changes.mjs --tree`): none.
 - The whole git history, all branches, 1,717 commits, with the same patterns plus GitHub fine-grained, Netlify, Supabase-access, Supabase-secret and Resend token shapes (added lines only): none. Only `.env.example` is a tracked env-like file (placeholders only).
 - Limits: this finds known token SHAPES in this repository. It does not prove a key was never exposed elsewhere (chat, screenshots, a browser, a password manager, a past paste). If the owner remembers what the small incident was, rotate THAT item now rather than waiting for the end.
-- Gap noticed: `scripts/check-sensitive-changes.mjs` does not match GitHub fine-grained tokens (`github_pat_`), Netlify (`nfp_`), Supabase (`sbp_`, `sb_secret_`) or Resend (`re_`) shapes. Adding them is a small source change (not done yet).
+- Gap found and FIXED the same day: `scripts/check-sensitive-changes.mjs` now also matches GitHub fine-grained tokens (`github_pat_`), Netlify (`nfp_`), Supabase (`sbp_`, `sb_secret_`) and Resend (`re_`) shapes, with tests that plant fake values and check that lookalike words are not flagged. The tree still scans clean.
 
 ## Inventory (names only; see `docs/EXPIRING_TOKENS.md` for expiry months)
 | Group | Names | Where it is set | Difficulty |
