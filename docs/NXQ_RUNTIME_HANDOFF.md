@@ -10,6 +10,14 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## LAUNCH READINESS FLICKER 2026-11-24 (owner saw 21, then 20, then 18 of 23; owner chose Option A: leave it, handle in the final month)
+
+- Page read after migration 300: 18/23 required ready. The three manual-mode rows show "optional" (waiver works). Not ready: owner sign-off (expected), file scanner (expected; last clean scan 2026-10-06, needs a fresh one in the final month), and three that flicker: `workers_deployed`, `provider_health_pipeline_ready` and `ten_clean_runs`.
+- Cause, read from the rules (not watched live): `workers_deployed` and `provider_health_pipeline_ready` are ready only while every required worker has a healthy heartbeat from the last 10 minutes (migrations 141, 238, 263), so they decay between worker runs. `ten_clean_runs` is written by two checkers: the strict counter (migration 181) and the older broad evaluator (migration 141); the guard trigger `protect_strict_ten_run_readiness` (181) forces the row to unknown whenever the broad evaluator writes it, so whichever ran last wins. The Refresh button only reloads stored values.
+- Data is safe: owner ran `select public.count_strict_clean_business_runs();` and got **10** (read-only). The ten passed approve runs are listed on the page (2026-08-24, 10-07 #3, 11-04, 11-05, 11-12 x2, 11-23 x4).
+- No sign this was caused by migrations 296 to 300 (those rules predate them); unproven without reading the database.
+- FINAL-MONTH ORDER (so sign-off sees everything ready at once): fresh clean Scanii scan; `deploy_functions` if any function changed; `dispatch_workers` immediately before; `run_evidence_suite`; then read the page and sign off while heartbeats are fresh. If `ten_clean_runs` still shows unknown while the count is 10, draft a small migration (gated) so the broad evaluator cannot overwrite it; not built, not needed yet.
+
 ## MIGRATION 300 APPLIED AND VERIFIED 2026-11-24 (owner typed the phrase and approved both runs)
 
 - Step A: run #301 (`validate_foundation`, head `66c9ee7`, owner approved) dry run listed exactly `300_manual_launch_mode.sql`.
