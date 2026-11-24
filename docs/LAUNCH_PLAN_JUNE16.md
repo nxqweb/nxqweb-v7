@@ -54,7 +54,7 @@ The three key-dependent checks (email dispatcher, change classifier, AI build pl
 
 ## Finish line check (2026-11-05, owner asked "how far until only Stripe and the AI key are left?")
 Code and staged migrations (checklist sections A and B) are essentially done: migrations 248-287 applied to staging, parity 74/74. The gap is live verification (section C). What stands between today and "only Stripe and the AI key left":
-- [x] Ten clean approve runs: **10 of 10** (verified in the database 2026-11-23; the readiness check should flip within about five minutes, not yet seen on the page). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
+- [x] Ten clean approve runs: **10 of 10** (verified in the database 2026-11-23; the readiness check flipped: Launch readiness **21/26 (81%)**, 5 blocking, seen 2026-11-23 9:41 PM). About 30 credits per run IF the double-deploy fix works (fix deployed to staging in run #283; unproven until the Netlify Deploys list of run #4's QA site is read). Plan: 3 runs before Nov 22, 3 after, so roughly the end of November.
 - [ ] Theme and color picks applied to generated sites (owner picks; function change + approved `deploy_functions`).
 - [ ] Waitlist: owner chose a free outside tool for now (Option C); promoting the in-app draft is a gated migration and is NOT decided.
 - [ ] Decisions B1-B5 in `docs/REAL_LAUNCH_GATE.md`, and staging vs a separate production project for creators.
@@ -62,7 +62,7 @@ Code and staged migrations (checklist sections A and B) are essentially done: mi
 - The Team hours add-on was CANCELLED by the owner (2026-11-05); see `docs/BUSINESS_SUITE_PLAN.md`.
 
 ## Launch readiness 2026-11-12: 20/26 (77%) after `run_evidence_suite`
-Ready: all security, runtime, QA-flow, provider-health, SEO and recovery checks. Remaining 6: ten clean runs (10 of 10 verified 2026-11-23; readiness flip not yet seen), change classifier + build-plan AI (AI key), notification dispatcher (Resend), file scanner (Scanii), owner launch signoff. Live Stripe is optional in the current launch mode. The evidence checks expire after 7 days (next refresh due by 2026-11-19).
+Ready: all security, runtime, QA-flow, provider-health, SEO and recovery checks. Remaining 6: ten clean runs (10 of 10 verified 2026-11-23; readiness now 21/26), change classifier + build-plan AI (AI key), notification dispatcher (Resend), file scanner (Scanii), owner launch signoff. Live Stripe is optional in the current launch mode. The evidence checks expire after 7 days (next refresh due by 2026-11-19).
 
 ## Decisions recorded 2026-11-12 (owner took the defaults on `docs/OWNER_DECISION_SHEET.md`)
 - Waitlist route: keep the free outside list tool for now; the in-app waitlist stays a draft (OFF, not promoted).

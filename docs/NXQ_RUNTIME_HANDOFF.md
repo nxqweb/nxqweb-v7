@@ -57,8 +57,8 @@ state. Update this file, not a new one, at every handoff.
 
 - Run `QA-5046889506F5` (`business-launch-20261123 #4`): started 2:19:38 PM, owner approved right after, "strict evidence passed", completed 2:32:00 PM (12 minutes). No manual rescue; main-site builds stayed OFF. Four runs in one afternoon (7, 8, 9, 10), all clean.
 - VERIFIED in the database by the owner: `count_strict_clean_business_runs()` returned **10** (9 before this run).
-- The `ten_clean_runs` readiness check should turn ready within about five minutes (the strict counter runs every five minutes). NOT YET SEEN on the page: the owner has not sent the new headline number (expect 21/26). Confirm it before changing any readiness line.
-- Credits: 209.8 of 300 after run 9; the reading after run 10 is not recorded (expect about 180). Four runs cost about 120 credits.
+- The `ten_clean_runs` readiness check turned ready: Launch readiness shows **21/26 (81%), blocking/unknown 5** (owner screenshot, 2026-11-23 9:41 PM). The five left: the three Group A checks (email dispatcher, change classifier, AI build plan; manual-mode waiver decided but NOT applied), the file scanner (needs a fresh clean scan, 30-day window) and the owner sign-off. Note the six evidence checks are ready only until they expire (7 days); they are refreshed in the final week.
+- Credits: **179.7 of 300** after run 10 (owner screenshot, 2026-11-23 9:41 PM; 209.8 after run 9, so run 10 cost about 30). The four runs of 2026-11-23 cost about 120 credits in total.
 - What remains for the sign-off (see `docs/READINESS_GATE_MAP.md`): the three key-dependent checks (Resend email, AI key for the classifier and build-plan enrichment, and the file scanner), the six evidence checks that expire (run in the final week), and the owner's sign-off. The Group A decision (strict gate, or a written "manual mode" waiver) is the owner's.
 
 ## QA RUN 9 PASSED 2026-11-23: clean approve runs 9 of 10 (superseded by run 10 above)
