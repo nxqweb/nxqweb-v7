@@ -392,6 +392,9 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 @media (min-width: 861px) { .store-theme[data-showcase] .store-bg-logo img[data-cutout] { width: min(var(--showcase-logo-size), 44vw, 600px); } main.store-theme[data-showcase] .store-bg-logo { padding-right: max(7vw, calc((100vw - 1200px) / 2)); } main.store-theme[data-showcase] .store-hero-logo { display: none; } }
 /* On phones (owner decision 2026-11-24, Option A) the logo sits inside the hero above the title instead of as a fixed background behind the glass cards, where it was mostly hidden. The fixed copy is hidden only when the hero logo exists (a store with no products keeps the fixed one). */
 @media (max-width: 860px) { main.store-theme[data-showcase]:has(.store-hero-logo) .store-bg-logo { display: none; } main.store-theme[data-showcase] .store-hero-logo { width: min(var(--showcase-logo-size), 78%, 340px); } }
+/* A store with no products yet shows its logo big above the "opening soon" notice, and the fixed background copy is hidden then (it only peeked out between the panels). */
+.store-theme[data-showcase] .store-opening-logo { display: block; width: min(var(--showcase-logo-size), 460px, 78%); height: auto; margin: 8px auto 20px; pointer-events: none; }
+main.store-theme[data-showcase]:has(.store-opening-logo) .store-bg-logo { display: none; }
 /* A client's own background picture (draft 10): a fixed layer behind everything, with a white veil whose strength is measured from the picture so text stays readable. */
 .store-theme .store-bg-image { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .store-theme .store-bg-image img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }

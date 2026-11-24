@@ -464,6 +464,7 @@ export function PublicCommerceStorefront() {
         </section> : null}
 
         {branding?.logo && data.products.length > 0 ? <h2 className="store-section-title" data-testid="store-section-title">{orderMode.mode === "menu" ? "Our menu" : "Our products"}</h2> : null}
+        {branding?.logo && data.products.length === 0 ? <img className="store-opening-logo" src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /> : null}
         <section className="settings-grid store-product-grid" id="products" aria-label="Products">
           {data.products.length === 0 ? <div className="empty-state store-empty"><strong>Our shop is opening soon.</strong><p>New products are on the way. Please check back soon.</p></div>
             : visibleProducts.length === 0 ? <div className="empty-state store-empty" data-testid="store-search-empty"><strong>Nothing matches that search.</strong><p>Try a different word, or clear the search.</p></div>
