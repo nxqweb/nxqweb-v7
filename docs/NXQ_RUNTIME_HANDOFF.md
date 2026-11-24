@@ -17,6 +17,12 @@ state. Update this file, not a new one, at every handoff.
 - Client request button BUILT 2026-11-24 as parked patch `docs/drafts/patches/12_background_request_button.patch` (`StoreBackgroundRequestCard` on the Live store page, hidden until the maker is switched on; helpers `src/lib/backgroundRequest.ts`; test `scripts/test-background-request.mjs`; browser check 10 of 10 in a throwaway page). Draft 11 gained `request_my_store_background` and `nxq_background_take_next` (client asks, server maker takes the oldest request; one in progress per store); local full-schema still 66/66, with a control run that breaks the one-at-a-time rule. Patches 08, 10, 11 and 12 apply together in any order and compile together.
 - Still to build for "just plug in the key": ONLY the Edge function (takes the next request, builds the prompt, calls the provider, uploads to the store's branding folder, calls finish). Gated: provider account and key, spending cap, deploy.
 
+## MAIN-APP DEPLOY TRIGGERED 2026-11-24 (owner turned Netlify builds ON and said "go for it")
+
+- Final preflight passed (clean tree, nothing pending, staging through 299, no function change, production build and header rehearsal pass); `npm run test:ci-parity` 74/74. ONE trigger commit pushed (the one that adds the 2026-11-24 line to the deploy log in `docs/ONE_SITE_DEPLOY_RUNBOOK.md`). Credits before: 180 (owner screenshot 12:46 PM); expect about 165 after.
+- Owner steps left: when the branch deploy is green, Publish deploy; then turn builds OFF and tell Claude "builds stopped"; never click Netlify's "Deploy project" (it builds main).
+- After publish: Claude and the owner run the smoke test in `docs/DEPLOY_DAY_PLAN.md` phase 5; then her logo on `/owner/store-look`; then she uploads her own background.
+
 ## DEPLOY DAY PREP DONE 2026-11-24 (owner: "everything", "she uploads her own background", "today")
 
 - Drafts 06, 08, 10 and 11 PROMOTED to real migrations `296_owner_only_internal_policy_reads`, `297_store_shipping_fee`, `298_store_media`, `299_store_background_generation` (NOT applied; 299 needs 298 first). Sidecar tests moved to `scripts/sql/local-full-schema/regression/`. `node scripts/check-migration-integrity.mjs` passes (266 migrations).
