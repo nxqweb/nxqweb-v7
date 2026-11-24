@@ -20,6 +20,7 @@ import {
 } from "../lib/storeCatalog";
 import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
 import { cutoutLogo } from "../lib/logoCutout";
+import { accentFromLogoUrl, autoLookVars } from "../lib/logoPalette";
 import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
 
 type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
@@ -51,6 +52,17 @@ export function PublicCommerceStorefront() {
   const [branding, setBranding] = useState<StoreBranding | null>(null); // this shop's own colors and logo (owner-set, migration 286)
   // The big logo in the showcase hero: a logo saved on a plain white background is turned transparent automatically (src/lib/logoCutout.ts), so nobody has to supply a special file.
   const [logoCut, setLogoCut] = useState<{ source: string; url: string; mark: string | null; size: number } | null>(null);
+  // Automatic colors (owner decision 2026-11-24): when the owner has NOT set colors for this shop, they come from the client's own logo (src/lib/logoPalette.ts). Owner-set colors always win.
+  const [autoLook, setAutoLook] = useState<{ source: string; vars: Record<string, string> } | null>(null);
+  const ownerColors = branding ? Object.keys(branding.vars).length > 0 : false;
+  useEffect(() => {
+    const source = branding?.logo;
+    if (!source || ownerColors) { setAutoLook(null); return; }
+    let live = true;
+    void accentFromLogoUrl(source).then((hex) => { const vars = hex ? autoLookVars(hex) : null; if (live && vars) setAutoLook({ source, vars }); });
+    return () => { live = false; };
+  }, [branding?.logo, ownerColors]);
+  const autoVars = branding && !ownerColors && autoLook && autoLook.source === branding.logo ? autoLook.vars : null;
   const [searchOpen, setSearchOpen] = useState(false); // showcase stores: the search icon in the header
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -384,7 +396,7 @@ export function PublicCommerceStorefront() {
   const tagline = profile?.about ? firstSentence(profile.about) : orderMode.mode === "menu" ? "Take a look at our menu." : "Order directly from the shop.";
 
   return (
-    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? ({ ...branding.vars, ...(branding.background ? { "--store-bg-overlay": String(branding.backgroundOverlay) } : {}), ...(logoCut && logoCut.source === branding.logo ? { "--showcase-logo-size": `${logoCut.size}px` } : {}) } as React.CSSProperties) : undefined}>
+    <main className="nxq-page store-theme" id="top" data-branded={branding ? "true" : undefined} data-auto-look={autoVars ? "true" : undefined} data-showcase={branding?.logo ? "true" : undefined} data-look-font={branding?.serifHeadings ? "serif" : undefined} style={branding ? ({ ...branding.vars, ...(autoVars ?? {}), ...(branding.background ? { "--store-bg-overlay": String(branding.backgroundOverlay) } : {}), ...(logoCut && logoCut.source === branding.logo ? { "--showcase-logo-size": `${logoCut.size}px` } : {}) } as React.CSSProperties) : undefined}>
       {branding?.background ? <div className="store-bg-image" aria-hidden="true"><img src={branding.background} alt="" decoding="async" /></div> : null}
       {branding?.logo ? <div className="store-bg-logo" aria-hidden="true"><img src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /></div> : null}
       <section className="portal-shell">
