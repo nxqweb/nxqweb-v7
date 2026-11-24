@@ -32,7 +32,7 @@ Goal: every store gets its own website background (not a shared template and nev
 
 ## Draft 11 (2026-11-24): the server side, built and tested, not applied
 `docs/drafts/migrations/11_store_background_generation.sql` (+ sidecar test, passes in `npm run test:local-full-schema` 66/66, with a control run that breaks the switch rule and fails): limits table (switch OFF, allowance 0, monthly ceiling 0, so it fails closed), request log, the gate (same rules as `backgroundLimits.ts`, failed and rejected tries count), service-role-only claim and finish, and the owner's list and approve-or-reject. Nothing generated can go live without the owner's approval. Requires draft 10.
-Still missing for the maker itself: a provider account and its key as a server secret, an Edge function that wraps `generateBackground` and calls claim and finish, the owner's limits screen and approval screen (parked patch), and the client's request button.
+The owner's limits screen and approval screen are BUILT as parked patch `docs/drafts/patches/11_background_owner_screens.patch` (browser-checked, 13 checks). Still missing for the maker itself: a provider account and its key as a server secret, an Edge function that wraps `generateBackground` and calls claim and finish, and the client's request button.
 
 ## Still to do for Jun 16 (all gated: owner approves each)
 1. Migration: private storage for backgrounds, a saved-background field on the store look, the per-store counter.

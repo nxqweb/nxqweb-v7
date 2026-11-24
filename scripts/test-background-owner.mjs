@@ -1,0 +1,40 @@
+// Offline test: the owner's limits and approval screens for the automatic background maker (parked patch 11_background_owner_screens.patch; database draft 11; helper src/lib/backgroundOwner.ts), 2026-11-24.
+import fs from "node:fs";
+import { decisionConfirm, formFromSettings, parseBackgroundSettings, parseWaitingRequests, settingsChangeSummary, settingsPayload, settingsProblem } from "../src/lib/backgroundOwner.ts";
+
+let failures = 0;
+function check(name, ok, detail = "") { if (ok) console.log(`PASS  ${name}`); else { failures += 1; console.log(`FAIL  ${name}${detail ? ` - ${detail}` : ""}`); } }
+const uid = "0a1b2c3d-1111-4222-8333-444455556666"; const rid = "1a1b2c3d-1111-4222-8333-444455556666";
+const own = (f) => `https://abcdefgh.supabase.co/storage/v1/object/public/commerce-website-content/${uid}/branding/${f}`;
+
+const s = parseBackgroundSettings({ switched_on: true, per_store_allowance: 3, period_days: 365, monthly_cap: 100, cooldown_seconds: 60, made_this_month: 7 });
+check("the database's settings are read back", s.switchedOn && s.perStoreAllowance === 3 && s.periodDays === 365 && s.monthlyCap === 100 && s.cooldownSeconds === 60 && s.madeThisMonth === 7);
+check("anything missing or odd means OFF and zero (the database's own safe start)", [undefined, null, 5, "x", [], {}, { switched_on: "true", per_store_allowance: -1, monthly_cap: 1.5, made_this_month: "9" }].every((v) => { const r = parseBackgroundSettings(v); return r.switchedOn === false && r.perStoreAllowance === 0 && r.monthlyCap === 0; }));
+const form = formFromSettings(s);
+check("a form can be made from settings and turns back into the exact arguments the database function takes", JSON.stringify(settingsPayload(form)) === JSON.stringify({ switched_on_value: true, per_store_allowance_value: 3, period_days_value: 365, monthly_cap_value: 100, cooldown_seconds_value: 60 }));
+check("every out-of-range or non-number entry gets a plain problem and no payload", [["perStoreAllowance", "51"], ["perStoreAllowance", "-1"], ["perStoreAllowance", "abc"], ["perStoreAllowance", ""], ["perStoreAllowance", "2.5"], ["periodDays", "0"], ["periodDays", "3651"], ["monthlyCap", "100001"], ["cooldownSeconds", "86401"], ["cooldownSeconds", "1e3"]].every(([k, v]) => { const f = { ...form, [k]: v }; return settingsProblem(f).length > 15 && settingsPayload(f) === null; }));
+check("the edges are accepted and spaces around a number are ignored", settingsProblem({ ...form, perStoreAllowance: "0", periodDays: "1", monthlyCap: "100000", cooldownSeconds: "86400" }) === "" && settingsPayload({ ...form, perStoreAllowance: " 4 " }).per_store_allowance_value === 4 && settingsProblem({ ...form, perStoreAllowance: "50", periodDays: "3650" }) === "");
+check("the confirm box lists exactly what changes, and calls out switching ON", settingsChangeSummary(parseBackgroundSettings(null), { ...formFromSettings(parseBackgroundSettings(null)), switchedOn: true, perStoreAllowance: "2" }).includes("switched ON") && settingsChangeSummary(parseBackgroundSettings(null), { ...formFromSettings(parseBackgroundSettings(null)), switchedOn: true, perStoreAllowance: "2" }).includes("Pictures per store: 0 to 2.") && settingsChangeSummary(s, form) === "Nothing is changing." && settingsChangeSummary(s, { ...form, switchedOn: false }).includes("switched OFF"));
+
+const list = parseWaitingRequests([{ id: rid, store_name: "Light of the world", store_slug: "lotw", status: "pending_approval", image_url: own("bg.webp"), overlay: 0.35, created_at: "2026-11-24T10:00:00Z" }]);
+check("the waiting list is read back with the picture only when it is from the store's own folder", list.length === 1 && list[0].imageUrl === own("bg.webp") && list[0].overlay === 0.35 && list[0].storeSlug === "lotw");
+check("an outside address, svg, plain http, dot-dot or non-text picture is never kept", ["https://evil.example.com/x.png", own("bg.svg"), own("../bg.png"), `http://abcdefgh.supabase.co/storage/v1/object/public/commerce-website-content/${uid}/branding/bg.png`, 5, null].every((v) => parseWaitingRequests([{ id: rid, image_url: v }])[0].imageUrl === null));
+check("rows without a real id are dropped, a huge list is capped, and odd input gives an empty list", parseWaitingRequests([{ id: "nope" }, { id: rid }, null, 5, []]).length === 1 && parseWaitingRequests(Array.from({ length: 500 }, () => ({ id: rid }))).length === 100 && [undefined, null, {}, "x", 5].every((v) => parseWaitingRequests(v).length === 0));
+check("the overlay is kept between 0 and 0.75", parseWaitingRequests([{ id: rid, overlay: 9 }])[0].overlay === 0.75 && parseWaitingRequests([{ id: rid, overlay: -1 }])[0].overlay === 0 && parseWaitingRequests([{ id: rid, overlay: "0.3" }])[0].overlay === 0);
+check("the approve and reject confirm boxes say what happens", /goes live on their store right away/.test(decisionConfirm(list[0], true)) && /store stays as it is/.test(decisionConfirm(list[0], false)) && /still counts/.test(decisionConfirm(list[0], false)) && /this store/.test(decisionConfirm({ ...list[0], storeName: "", storeSlug: "" }, true)));
+
+const patch = fs.readFileSync("docs/drafts/patches/11_background_owner_screens.patch", "utf8");
+check("the parked patch adds the page, the /owner/backgrounds route behind the owner login, and a link from the owner portal", /\+\+\+ b\/src\/pages\/OwnerBackgrounds\.tsx/.test(patch) && /\+\s+if \(path === "\/owner\/backgrounds"\) return <OwnerProtectedRoute><OwnerBackgrounds \/><\/OwnerProtectedRoute>;/.test(patch) && /href="\/owner\/backgrounds">Automatic backgrounds</.test(patch));
+check("the page uses exactly the four owner functions of draft 11", /rpc\("owner_get_background_settings"\)/.test(patch) && /rpc\("owner_list_background_requests", \{ status_filter: "pending_approval" \}\)/.test(patch) && /rpc\("owner_set_background_settings", payload\)/.test(patch) && /rpc\("owner_decide_background_request", \{ request_uuid: request\.id, approve \}\)/.test(patch));
+check("saving and deciding each ask first (a confirm box), and the page only saves a valid form", /window\.confirm\(`Save these changes\?/.test(patch) && /window\.confirm\(decisionConfirm\(request, approve\)\)/.test(patch) && /disabled=\{busy \|\| Boolean\(problem\)\}/.test(patch) && /if \(!supabase \|\| !payload \|\| busy\) return;/.test(patch));
+check("an approval button stays off when the picture is not from the store's own folder", /disabled=\{busy \|\| !request\.imageUrl\}/.test(patch));
+check("no keys, environment values or outside addresses in the page", !/api[_-]?key|process\.env|import\.meta\.env|https?:\/\//i.test(patch.split("\n").filter((l) => l.startsWith("+")).join("\n").replace(/\/\/.*$/gm, "")));
+
+const draft = fs.readFileSync("docs/drafts/migrations/11_store_background_generation.sql", "utf8");
+check("draft 11 defines the four owner functions with those exact argument names", ["owner_get_background_settings()", "owner_set_background_settings(switched_on_value boolean, per_store_allowance_value integer, period_days_value integer, monthly_cap_value integer, cooldown_seconds_value integer)", "owner_list_background_requests(status_filter text default 'pending_approval')", "owner_decide_background_request(request_uuid uuid, approve boolean)"].every((sig) => draft.includes(sig)));
+check("draft 11 starts everything OFF and at zero (fails closed)", /switched_on boolean not null default false/.test(draft) && /per_store_allowance integer not null default 0/.test(draft) && /monthly_cap integer not null default 0/.test(draft));
+const callers = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f)).filter((f) => /owner_(get|set)_background_settings|owner_list_background_requests|owner_decide_background_request/.test(fs.readFileSync(`src/${f}`, "utf8")));
+check("no page in src calls those draft-only functions yet (they wait for the approved migration)", callers.length === 0, callers.join(","));
+
+console.log(failures ? `\n${failures} check(s) failed.` : "\nAll background owner screen checks passed (offline).");
+process.exit(failures ? 1 : 0);
