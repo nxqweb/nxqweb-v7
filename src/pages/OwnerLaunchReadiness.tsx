@@ -13,6 +13,7 @@ type Check = {
   evidence: Record<string, unknown>;
   last_checked_at: string | null;
   checked_by: string | null;
+  waived_reason?: string | null; // set only when the owner chose "manual launch mode" for this check (database draft 05); absent before that
 };
 
 type QaRun = {
@@ -50,6 +51,7 @@ const blockerGuidance: Record<string, string> = {
 };
 
 function nextAction(check: Check) {
+  if (!check.required && check.waived_reason) return `Waived for launch: ${check.waived_reason}`;
   if (check.status === "ready") return "Verified by current evidence.";
   if (check.status === "not_applicable") return "Not required in the current launch mode.";
   return blockerGuidance[check.check_key] || "Open the evidence details, complete the named staging proof, and refresh readiness.";

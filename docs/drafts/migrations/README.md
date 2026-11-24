@@ -14,6 +14,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
+| `05_manual_launch_mode.sql` | Manual launch mode (owner decision 2026-11-23, Option B): the three key-dependent readiness checks (email dispatcher, change classifier, AI build plan) become not required, with a written reason in its own column; a reversible owner switch that also withdraws an existing sign-off when turned off; nothing else is waived (added 2026-11-24) | `docs/READINESS_GATE_MAP.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
