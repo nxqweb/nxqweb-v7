@@ -27,6 +27,7 @@ check("the logo is a fixed full-page background behind the content (page scrolls
 
 check("the background logo is full strength and crisp; only the cards blur what is behind them (frosted glass)", /\.store-bg-logo img \{ opacity: 1; filter: none;/.test(css) && /backdrop-filter: blur\(22px\)/.test(css) && !/\.store-bg-logo img \{[^}]*filter: blur/.test(css));
 
+check("on a computer the cleaned logo is also capped at 44% of the screen width and 600px, and lined up with the page column on wide screens, so a big sharp logo stays in the hero's right half instead of spilling over the products (phones keep their own rule)", /@media \(min-width: 861px\) \{ \.store-theme\[data-showcase\] \.store-bg-logo img\[data-cutout\] \{ width: min\(var\(--showcase-logo-size\), 44vw, 600px\); \} main\.store-theme\[data-showcase\] \.store-bg-logo \{ padding-right: max\(7vw, calc\(\(100vw - 1200px\) \/ 2\)\); \} \}/.test(css));
 check("the background logo is capped at a crisp size through one setting (--showcase-logo-size) that can be raised for a sharper file", css.includes("--showcase-logo-size: 460px;") && css.includes("width: min(var(--showcase-logo-size), 82vw)"));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store showcase checks passed (offline).");
