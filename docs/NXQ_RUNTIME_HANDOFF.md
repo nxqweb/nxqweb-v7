@@ -10,6 +10,15 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## MIGRATION 300 APPLIED AND VERIFIED 2026-11-24 (owner typed the phrase and approved both runs)
+
+- Step A: run #301 (`validate_foundation`, head `66c9ee7`, owner approved) dry run listed exactly `300_manual_launch_mode.sql`.
+- Step B: run #302 (`apply_migrations`, head `66c9ee7`, owner approved, 1m 37s, success). Log read: exactly one "Applying migration 300_manual_launch_mode.sql..." line, then "Finished supabase db push.", no error. All deploy, smoke and evidence steps were skipped.
+- Step C: run #303 (`validate_foundation`, head `66c9ee7`, owner approved, 2m 39s, success). Log read: "Remote database is up to date.", manifest covers all 45 Edge functions, all 17 required secret names present, 26 architecture checks and the remote launch-architecture contract passed.
+- Staging is now through migration 300 with nothing pending. `scripts/preflight-deploy-day.mjs` expects no pending migrations and last applied 300. No Edge function changed, so `deploy_functions` is not needed.
+- Expected on the owner's Launch readiness page after Refresh: 21 of 23 required ready (the three manual-mode checks leave the denominator); left are the file scanner (fresh clean scan in the final month) and the owner sign-off. NOT yet read from the owner's screen. The "Waived for launch" wording shows only after the next main-app deploy (15 credits; bundle with automatic colors and the empty-store logo fix).
+- Reversible: `owner_set_manual_launch_mode(false)` puts the three checks back and withdraws any sign-off.
+
 ## DRAFT 11 BUILT 2026-11-24: server side of the automatic background maker (not applied)
 
 - `docs/drafts/migrations/11_store_background_generation.sql` + sidecar test (local full-schema 66/66; control run proved the test catches a broken master-switch rule). Owner-set limits start OFF and at zero (fail closed); per-store request log; gate mirrors `src/lib/backgroundLimits.ts`; service-role-only claim and finish; owner list and approve-or-reject; approving writes the picture into the store look and keeps the owner's colors. Requires draft 10. Plan: `docs/BACKGROUND_GENERATION_PLAN.md`.
@@ -17,11 +26,11 @@ state. Update this file, not a new one, at every handoff.
 - Client request button BUILT 2026-11-24 as parked patch `docs/drafts/patches/12_background_request_button.patch` (`StoreBackgroundRequestCard` on the Live store page, hidden until the maker is switched on; helpers `src/lib/backgroundRequest.ts`; test `scripts/test-background-request.mjs`; browser check 10 of 10 in a throwaway page). Draft 11 gained `request_my_store_background` and `nxq_background_take_next` (client asks, server maker takes the oldest request; one in progress per store); local full-schema still 66/66, with a control run that breaks the one-at-a-time rule. Patches 08, 10, 11 and 12 apply together in any order and compile together.
 - Still to build for "just plug in the key": ONLY the Edge function (takes the next request, builds the prompt, calls the provider, uploads to the store's branding folder, calls finish). Gated: provider account and key, spending cap, deploy.
 
-## MANUAL LAUNCH MODE 2026-11-24: drafted, then PROMOTED to migration 300 on the owner's go ("promote and apply 05"); apply in progress (owner decision from 2026-11-23, Option B)
+## MANUAL LAUNCH MODE 2026-11-24: migration 300 APPLIED to staging (owner decision from 2026-11-23, Option B)
 
 - Now `supabase/migrations/300_manual_launch_mode.sql` + regression test `scripts/sql/local-full-schema/regression/300_manual_launch_mode.test.sql` (local full-schema 63/63 after promotion; originally as draft 05 at 64/64; a control run that stopped the sign-off being withdrawn made the test fail). Marks exactly `notification_pipeline_ready`, `change_classifier_ready` and `business_build_plan_ai_ready` not required, with `waived_reason` and `waived_at` in their own columns (evaluators rewrite status and evidence every run, so the reason cannot live in evidence). Owner-only reversible switch `owner_set_manual_launch_mode(boolean)`; it shares the sign-off lock, is logged, and when turned OFF withdraws an existing sign-off (the 226 guard only reacts to status changes, so a check that becomes required again would otherwise leave an old sign-off valid). The sign-off, scanner, ten runs and isolation checks stay required.
 - Effect once applied: the readiness page counts 21 ready of 23 required (the three leave the denominator); the two left are the file scanner (fresh clean scan in the final month) and the owner sign-off. The owner page (source change, small, source only, not deployed) shows "Waived for launch: ..." for these rows.
-- Applying it needs the usual gated steps: promote to the next free migration number (300), validate_foundation dry run listing exactly that one, apply_migrations with the phrase, read the log, then the owner page shows the waiver (needs the page deployed). Do it together with the next deploy to save a trip, or on its own (no credits for the database part).
+- DONE 2026-11-24: promoted, dry run #301, applied in run #302, verified by run #303 (see the block above). The owner page shows the waiver text after the next main-app deploy.
 
 ## AUTOMATIC STORE COLORS FROM THE LOGO 2026-11-24 (owner chose Option A; source only, NOT deployed, no database change)
 
@@ -1326,6 +1335,7 @@ checks exercise it, not that it's guessed to work):
 - [x] 285 — client lifecycle: Pause, Cancel (take-down to-do) and the free first month. APPLIED to staging 2026-10-28, run #276 (owner typed the phrase and approved; dry run #275 listed exactly 285; log shows "Applying migration 285_client_lifecycle.sql", no error). No Edge function changed. The owner page `/owner/client-lifecycle` and the store/portal notices need the ONE site deploy to appear.
 - [x] 286 — each store's look (colors, headings, logo) in the database; owner page `/owner/store-look`. APPLIED to staging 2026-10-29, run #278 (her look seeded; shows after the site deploy)
 - [x] 287 — disposable QA clients' maintenance reserves 0 cents and a full shared platform cost pool no longer stops it (every other check still applies; real clients unchanged). APPLIED to staging 2026-11-04 3:24 PM, run #282 (the owner typed the phrase and approved; dry run #281 listed exactly 287; log shows "Applying migration 287_qa_maintenance_off_the_cost_pool.sql... Finished supabase db push"; found when the first measured QA run stalled on the cost pool)
+- [x] 300 — manual launch mode (three launch checks waived with a reason; reversible owner switch). APPLIED to staging 2026-11-24, run #302 (owner typed the phrase and approved; dry run #301 listed exactly 300; log: "Applying migration 300_manual_launch_mode.sql...", no error); verified by run #303 ("Remote database is up to date."). Readiness page number not yet read.
 - [x] ONE site deploy (15 Netlify credits): DONE 2026-10-29, commit `b74bd2f`, owner published by hand 2:33 PM. Live check of the new screens by screenshot is still pending
 
 **C. Live launch verification — requires staging/external access, not
