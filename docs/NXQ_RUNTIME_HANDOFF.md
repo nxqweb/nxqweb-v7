@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## SECOND MAIN-APP DEPLOY TRIGGERED 2026-11-24 (owner turned Netlify builds ON, said "builds are on")
+
+- Preflight passed on `85aaf27` (clean tree, nothing pending, staging through 300, no function change, production build and header rehearsal pass); `npm run test:ci-parity` 74/74. ONE trigger commit (the one that adds the second 2026-11-24 line to `docs/ONE_SITE_DEPLOY_RUNBOOK.md`). Credits before: 180 (owner screenshot 3:28 PM). Owner checks the deploy commit matches, publishes, turns builds OFF. Ships: automatic store colors, empty-store logo fix, "Waived for launch" wording. Result to be recorded after the owner reports.
+
 ## LAUNCH READINESS FLICKER 2026-11-24 (owner saw 21, then 20, then 18 of 23; owner chose Option A: leave it, handle in the final month)
 
 - Page read after migration 300: 18/23 required ready. The three manual-mode rows show "optional" (waiver works). Not ready: owner sign-off (expected), file scanner (expected; last clean scan 2026-10-06, needs a fresh one in the final month), and three that flicker: `workers_deployed`, `provider_health_pipeline_ready` and `ten_clean_runs`.
