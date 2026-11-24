@@ -10,6 +10,11 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## DRAFT 11 BUILT 2026-11-24: server side of the automatic background maker (not applied)
+
+- `docs/drafts/migrations/11_store_background_generation.sql` + sidecar test (local full-schema 66/66; control run proved the test catches a broken master-switch rule). Owner-set limits start OFF and at zero (fail closed); per-store request log; gate mirrors `src/lib/backgroundLimits.ts`; service-role-only claim and finish; owner list and approve-or-reject; approving writes the picture into the store look and keeps the owner's colors. Requires draft 10. Plan: `docs/BACKGROUND_GENERATION_PLAN.md`.
+- Still to build for "just plug in the key": the owner limits and approval screens (parked patch), a client request button, and the Edge function that wraps `generateBackground` with a real provider (gated: key, spending cap, deploy).
+
 ## KEY ROTATION PLAN 2026-11-24 (owner wants every key rotated at the very end; small unspecified earlier incident)
 
 - Plan and inventory (names only): `docs/KEY_ROTATION_PLAN.md`. Do it after everything works and BEFORE the final evidence refresh and sign-off; rotate sooner any single item the owner suspects.

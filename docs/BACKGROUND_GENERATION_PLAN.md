@@ -30,6 +30,10 @@ Goal: every store gets its own website background (not a shared template and nev
 - `src/lib/backgroundGenerator.ts`: runs limits, then a provider, then checks the result. Always ends "waiting for owner approval". Default provider makes nothing. A real provider is one object with `generate(prompt, size)`.
 - Tests: `scripts/test-background-generation.mjs`, `scripts/test-background-upload-and-generator.mjs`.
 
+## Draft 11 (2026-11-24): the server side, built and tested, not applied
+`docs/drafts/migrations/11_store_background_generation.sql` (+ sidecar test, passes in `npm run test:local-full-schema` 66/66, with a control run that breaks the switch rule and fails): limits table (switch OFF, allowance 0, monthly ceiling 0, so it fails closed), request log, the gate (same rules as `backgroundLimits.ts`, failed and rejected tries count), service-role-only claim and finish, and the owner's list and approve-or-reject. Nothing generated can go live without the owner's approval. Requires draft 10.
+Still missing for the maker itself: a provider account and its key as a server secret, an Edge function that wraps `generateBackground` and calls claim and finish, the owner's limits screen and approval screen (parked patch), and the client's request button.
+
 ## Still to do for Jun 16 (all gated: owner approves each)
 1. Migration: private storage for backgrounds, a saved-background field on the store look, the per-store counter.
 2. Upload screen (and approval screen for generated pictures) plus the showcase layout reading the saved background, with the readability overlay.
