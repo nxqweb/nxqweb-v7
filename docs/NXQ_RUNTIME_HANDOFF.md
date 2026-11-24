@@ -10,6 +10,15 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## OWNER DECISIONS 2026-11-24 (owner said "do option A" on the logo plus the five open decisions, i.e. take the recommended picks)
+
+1. **Two text lines on the candle client's store** (a line above the title and a line under "Our products"): Option A, add two small fields so the client types her own lines. Needs a database change, so it is gated and waits until after the QA window. NOT built, NOT applied.
+2. **Draft 06** (`docs/drafts/migrations/06_owner_only_internal_policy_reads.sql`, two internal tables become owner-only reads): yes. It only goes in as a real migration with the owner's approval on a deploy day. NOT promoted, NOT applied.
+3. **Where the add-ons plan lives:** a private document, not this public repo (no pricing or strategy detail here).
+4. **Receptionist extra-minute price:** test first, decide later. Not part of the launch. No price recorded here on purpose.
+5. **Demo voice minutes:** yes, a small test spend, but only when the receptionist build starts. Not now.
+6. **Candle client's logo:** Option A, ask her to regenerate a larger version in the same AI tool she made it in (her own work). Until then the store shows the logo at its crisp size. No upscaling or redrawing without her approval.
+
 ## FILE SCANNER CHECK 2026-11-24: not ready only because its proof aged out (30-day window)
 
 - `file_security_pipeline_ready` needs a clean, released Scanii scan and a healthy `malware_scan` connection, each within the last 30 days (migration 263). The October proofs are older than that. Nothing is broken; the check needs one fresh clean scan.
@@ -216,7 +225,7 @@ dispatched. Each item has its own detailed block further down (dated 2026-11-17)
 
 **Owner decisions needed (ask as Option A/B/C):**
 - DECIDED 2026-11-18: 07 and 09 promoted (294, 295); 08 waits until after the QA window. Hold time stays 2 hours.
-- Still open from before: draft 06, the add-ons plan location, the receptionist extra-minute price, demo voice minutes.
+- DECIDED 2026-11-24 (owner: "do option A", taken as "my picks"): see the decisions block at the top of this file.
 
 **Checks at the last push:** `npm run test:ci-parity` 74/74; local full-schema harness 64/64 (includes drafts 01-09).
 **Mistake to avoid (made twice tonight, both caught before commit or fixed at once):** (1) never pipe parity into `tail` before `&&` (the pipe hides a failure): write it to a log and test the exit code; (2) grep for an existing file before writing a "new" one (`src/lib/qrCode.ts` already existed).
