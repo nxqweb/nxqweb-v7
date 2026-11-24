@@ -17,6 +17,13 @@ state. Update this file, not a new one, at every handoff.
 - Client request button BUILT 2026-11-24 as parked patch `docs/drafts/patches/12_background_request_button.patch` (`StoreBackgroundRequestCard` on the Live store page, hidden until the maker is switched on; helpers `src/lib/backgroundRequest.ts`; test `scripts/test-background-request.mjs`; browser check 10 of 10 in a throwaway page). Draft 11 gained `request_my_store_background` and `nxq_background_take_next` (client asks, server maker takes the oldest request; one in progress per store); local full-schema still 66/66, with a control run that breaks the one-at-a-time rule. Patches 08, 10, 11 and 12 apply together in any order and compile together.
 - Still to build for "just plug in the key": ONLY the Edge function (takes the next request, builds the prompt, calls the provider, uploads to the store's branding folder, calls finish). Gated: provider account and key, spending cap, deploy.
 
+## DEPLOY DAY PLAN WRITTEN 2026-11-24 (owner chose Option A, then went to bed)
+
+- Plan: `docs/DEPLOY_DAY_PLAN.md` (pieces waiting, three decisions, Claude's prep phase, the three guarded database runs with owner form cards, the 15-credit main-app deploy, her logo and background, smoke test, rollback). NOTHING in it has been done.
+- Owner decision recorded 2026-11-24: PHONE LOGO LAYOUT = Option A (inside the hero above the title on phones, not a fixed background behind the glass). NOT built yet: first task of the prep phase; browser-check at phone, laptop and wide sizes; patch 08 edits the same page, so refresh it per the patches README.
+- Preview of her store with the new logo on the owner's new background (peach and sage, 1642 x 958; automatic softening rule said 0%) looked right on computers; the background cannot go live until draft 10 is applied (the database does not accept a background today).
+- Next 3 safe tasks: (1) build and browser-check the phone logo layout; (2) draft the manual-mode SQL for the three key-dependent readiness checks (docs/drafts only); (3) wait for the owner's go on the deploy-day decisions.
+
 ## CANDLE CLIENT'S NEW LOGO 2026-11-24 (owner rebuilt it in an image tool; file added, NOT live yet)
 
 - New file `public/brand/light-of-the-world-logo-v2.webp`: 1254 x 1254 px, plain near-white background, the logo uses about 1190 px of width (the old file had about 188 px), spelling checked (LIGHT OF THE WORLD / CANDLES AND SOAP). The old `light-of-the-world-logo.png` stays as a rollback. It is a recreation of her logo: the owner is giving the client a heads-up.
