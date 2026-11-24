@@ -10,6 +10,13 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## KEY ROTATION PLAN 2026-11-24 (owner wants every key rotated at the very end; small unspecified earlier incident)
+
+- Plan and inventory (names only): `docs/KEY_ROTATION_PLAN.md`. Do it after everything works and BEFORE the final evidence refresh and sign-off; rotate sooner any single item the owner suspects.
+- Read-only scans done today: no secret-shaped values in the tree or in the full git history (1,717 commits, all branches), including GitHub fine-grained, Netlify, Supabase and Resend token shapes. Limit: this does not prove a key was never exposed outside the repo.
+- Gap noticed (not fixed): `scripts/check-sensitive-changes.mjs` lacks those extra token shapes. Small source change, safe to do.
+- Still owner-only: GitHub secret scanning and push protection (not confirmed turned on).
+
 ## OWNER DECISIONS 2026-11-24 (owner said "do option A" on the logo plus the five open decisions, i.e. take the recommended picks)
 
 1. **Two text lines on the candle client's store** (a line above the title and a line under "Our products"): Option A, add two small fields so the client types her own lines. Needs a database change, so it is gated and waits until after the QA window. NOT built, NOT applied.
