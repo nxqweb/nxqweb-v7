@@ -10,6 +10,12 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## FILE SCANNER CHECK 2026-11-24: not ready only because its proof aged out (30-day window)
+
+- `file_security_pipeline_ready` needs a clean, released Scanii scan and a healthy `malware_scan` connection, each within the last 30 days (migration 263). The October proofs are older than that. Nothing is broken; the check needs one fresh clean scan.
+- Do NOT spend a scan now: it would age out again before Jun 16. Plan it for the final month with the evidence refresh. Before then: owner checks the Scanii dashboard (trial scans left and trial end date) and decides on a paid plan or production key (gated spending decision).
+- Read-only way to see which half is stale (Supabase SQL editor): latest clean scan `select max(scanned_at) from public.client_file_security_scans where status='clean' and quarantine_status='released' and provider_reference ~ '^(cloudmersive|scanii):' and length(coalesce(content_sha256,''))=64;` and connection `select status, last_success_at from public.nxq_provider_connections where provider_key='malware_scan' and scope_type='global' and scope_id is null;`
+
 ## DECISION 2026-11-23: launch in "manual mode" for the three key-dependent checks (owner chose Option B)
 
 - Covers the notification dispatcher (Resend), the website change classifier and the Business AI build-plan check only. AI Desk copy-paste replaces AI planning; automatic email stays off at launch; AI key and Resend are post-launch upgrades. Recorded in `docs/READINESS_GATE_MAP.md`.
