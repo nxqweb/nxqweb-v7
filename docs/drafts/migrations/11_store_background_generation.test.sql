@@ -253,6 +253,20 @@ begin
   if (public.get_my_background_status()->>'in_progress')::boolean is not false then raise exception 'after approval the client can ask again'; end if;
   r := public.request_my_store_background('fresh', null);
   if (r->>'ok')::boolean is not true then raise exception 'a second request after approval must work: %', r; end if;
+
+  -- a crashed worker must not block a store forever: stuck 'generating' requests expire, and only those
+  perform pg_temp.as_service();
+  r := public.nxq_background_take_next();
+  rid := (r->>'request_id')::uuid;
+  if has_function_privilege('authenticated', 'public.nxq_background_expire_stuck(integer)', 'execute') or has_function_privilege('anon', 'public.nxq_background_expire_stuck(integer)', 'execute') then raise exception 'expiry is for the service role only'; end if;
+  r := public.nxq_background_expire_stuck(30);
+  if (r->>'expired')::int <> 0 then raise exception 'a fresh job must not expire: %', r; end if;
+  update public.store_background_requests set created_at = now() - interval '45 minutes' where id = rid;
+  r := public.nxq_background_expire_stuck(30);
+  if (r->>'expired')::int <> 1 or (select status from public.store_background_requests where id = rid) <> 'failed' then raise exception 'a stuck job must expire to failed: %', r; end if;
+  if not pg_temp.fails($q$select public.nxq_background_expire_stuck(1)$q$, 'from 5 to 1440') then raise exception 'too short a time refused'; end if;
+  perform pg_temp.as_user(one);
+  if (public.get_my_background_status()->>'in_progress')::boolean is not false then raise exception 'after expiry the store is free to ask again'; end if;
 end $$;
 
 rollback;

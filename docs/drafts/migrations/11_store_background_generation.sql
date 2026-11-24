@@ -171,6 +171,24 @@ begin
 end;
 $$;
 
+-- For the picture maker (service role only): a worker that crashed mid-job must not block a store forever. Anything 'generating' for longer than the given minutes becomes 'failed' (it still counts).
+create or replace function public.nxq_background_expire_stuck(older_than_minutes integer default 30)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare expired integer;
+begin
+  if auth.role() <> 'service_role' then raise exception 'Service-role access required.'; end if;
+  if older_than_minutes is null or older_than_minutes < 5 or older_than_minutes > 1440 then raise exception 'older_than_minutes must be from 5 to 1440.'; end if;
+  update public.store_background_requests set status = 'failed', decided_at = now()
+   where status = 'generating' and created_at < now() - make_interval(mins => older_than_minutes);
+  get diagnostics expired = row_count;
+  return jsonb_build_object('ok', true, 'expired', expired);
+end;
+$$;
+
 -- For the picture maker (service role only): check every rule and, if allowed, reserve one slot. The slot counts even if the maker then fails.
 create or replace function public.nxq_background_claim_slot(client_uuid uuid)
 returns jsonb
@@ -269,6 +287,7 @@ revoke all on function public.nxq_background_claim_slot(uuid) from public, anon,
 revoke all on function public.nxq_background_finish(uuid, boolean, text, numeric) from public, anon, authenticated;
 revoke all on function public.request_my_store_background(text, text) from public, anon;
 revoke all on function public.nxq_background_take_next() from public, anon, authenticated;
+revoke all on function public.nxq_background_expire_stuck(integer) from public, anon, authenticated;
 revoke all on function public.owner_list_background_requests(text) from public, anon;
 revoke all on function public.owner_decide_background_request(uuid, boolean) from public, anon;
 grant execute on function public.owner_get_background_settings() to authenticated;
@@ -278,5 +297,6 @@ grant execute on function public.nxq_background_claim_slot(uuid) to service_role
 grant execute on function public.nxq_background_finish(uuid, boolean, text, numeric) to service_role;
 grant execute on function public.request_my_store_background(text, text) to authenticated;
 grant execute on function public.nxq_background_take_next() to service_role;
+grant execute on function public.nxq_background_expire_stuck(integer) to service_role;
 grant execute on function public.owner_list_background_requests(text) to authenticated;
 grant execute on function public.owner_decide_background_request(uuid, boolean) to authenticated;

@@ -17,6 +17,13 @@ state. Update this file, not a new one, at every handoff.
 - Client request button BUILT 2026-11-24 as parked patch `docs/drafts/patches/12_background_request_button.patch` (`StoreBackgroundRequestCard` on the Live store page, hidden until the maker is switched on; helpers `src/lib/backgroundRequest.ts`; test `scripts/test-background-request.mjs`; browser check 10 of 10 in a throwaway page). Draft 11 gained `request_my_store_background` and `nxq_background_take_next` (client asks, server maker takes the oldest request; one in progress per store); local full-schema still 66/66, with a control run that breaks the one-at-a-time rule. Patches 08, 10, 11 and 12 apply together in any order and compile together.
 - Still to build for "just plug in the key": ONLY the Edge function (takes the next request, builds the prompt, calls the provider, uploads to the store's branding folder, calls finish). Gated: provider account and key, spending cap, deploy.
 
+## EDGE FUNCTION WRITTEN 2026-11-24: `generate-store-background` (draft, NOT deployed, NOT in supabase/functions)
+
+- Folder `docs/drafts/functions/generate-store-background/` (README beside it explains adoption). Test `scripts/test-generate-store-background.mjs` (32 checks, fakes only). Draft 11 gained `nxq_background_expire_stuck` (local full-schema 66/66).
+- DRY RUN of adopting it (copied into `supabase/functions`, manifest entry, then reverted): the CI gate asks for exactly three things: the migrations it calls must be real migrations first, a `verify_jwt = false` line in `supabase/config.toml`, and the manifest entry (plus flipping the test's "still a draft" check). Nothing else broke.
+- UNVERIFIED provider details: the picture service's docs were unreachable from the build session (network), so `provider.ts` is written from general knowledge and fails closed; model and size are required settings. A live read of the provider's current docs and one live test are REQUIRED before it is switched on. If the owner wants Claude to read those docs, the build session's network needs `platform.openai.com` allowed (an owner approval); nothing was changed.
+- Still needed to run for real (all gated): migrations 10 and 11 applied, a provider account with a spending cap, its key as a server secret, adoption of the function, a scheduler entry, a guarded deploy.
+
 ## KEY ROTATION PLAN 2026-11-24 (owner wants every key rotated at the very end; small unspecified earlier incident)
 
 - Plan and inventory (names only): `docs/KEY_ROTATION_PLAN.md`. Do it after everything works and BEFORE the final evidence refresh and sign-off; rotate sooner any single item the owner suspects.
