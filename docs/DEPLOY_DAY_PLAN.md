@@ -1,8 +1,10 @@
-# Deploy day plan (written 2026-11-24; NOTHING here has been done yet)
+# Deploy day plan (written 2026-11-24)
+
+**STATUS 2026-11-24 (owner said "everything", "she uploads", "today"):** Phase 1 is DONE: drafts 06, 08, 10 and 11 are now migrations 296, 297, 298 and 299 (NOT applied); patches 08, 10, 11 and 12 are APPLIED in the source (not deployed); the phone logo layout is built; CI parity 74/74, store tests 86/86, local database harness 62/62 (including the four regression tests); `node scripts/preflight-deploy-day.mjs` passes except the clean-tree check before the commit, expects pending migrations to be exactly 296 + 297 + 298 + 299, and reports that no Edge function changed (so `deploy_functions` is NOT needed). NEXT: Phase 2 (the three guarded database runs) needs the owner present to type the phrase and click Approve.
 
 Goal: put everything that is built and waiting onto staging and the site in ONE clean day: the database changes, the screens, the candle client's new logo and background. Builds stay OFF until step 4. One main-app deploy costs 15 Netlify credits (about 180 left on 2026-11-23).
 
-## What is waiting (all finished, tested locally, none applied)
+## What is waiting (all finished and tested; the migrations are in the repo as 296 to 299 but NOT applied, the screens are in the source but NOT deployed)
 | Piece | What it does | Gated step it needs |
 |---|---|---|
 | Draft 06 | Two internal tables become owner-only reads (no client-visible change) | migration |

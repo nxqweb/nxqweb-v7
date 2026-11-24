@@ -1,3 +1,4 @@
+-- 298: promoted from draft 10 on 2026-11-24 (owner chose "everything" for deploy day in chat); NOT applied until the owner approves the guarded run.
 -- Draft 10: a client's own logo and background for the store look (added 2026-11-23). ADDITIVE: one internal check is re-created with extra allowed values,
 -- and two client functions are new. No table, bucket, policy or upload rule changes: the pictures go into the EXISTING commerce-website-content bucket,
 -- which already lets a Commerce client write only inside their own folder (migration 108) and already needs an upload ticket (nxq_authorize_storage_upload).

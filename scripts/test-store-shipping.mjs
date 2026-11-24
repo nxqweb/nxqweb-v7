@@ -44,7 +44,7 @@ check("a long pickup note is refused in plain words", !checkShippingForm({ ...bl
 check("a saved rule fills the form back in", JSON.stringify(shippingFormFromRule(flat)) === JSON.stringify({ mode: "flat", flatFee: "6.50", freeOver: "50.00", pickupAllowed: true, pickupNote: "Saturdays at the market" }) && shippingFormFromRule(noShipping).flatFee === "");
 
 // ---- the draft, and the rule that source never calls a function that only exists in a draft
-const sql = read("docs/drafts/migrations/08_store_shipping_fee.sql");
+const sql = read("supabase/migrations/297_store_shipping_fee.sql");
 const made = sql.match(/create or replace function public\.\w+/g) || [];
 check("the draft adds five functions only (no table, policy, trigger or change to an existing function)", !/create (table|policy|trigger)|alter table|drop /i.test(sql) && made.length === 5 && made.every((m) => /nxq_store_shipping_rule|get_my_store_shipping|save_my_store_shipping|get_public_store_shipping|create_public_store_order_with_shipping/.test(m)));
 

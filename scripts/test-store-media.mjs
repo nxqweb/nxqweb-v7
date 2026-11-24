@@ -1,4 +1,4 @@
-// Offline test: the client's own logo and background card (parked patch 10_store_media_frontend.patch; database draft 10; helper src/lib/storeMedia.ts), 2026-11-23.
+// Offline test: the client's own logo and background card (src/components/StoreMediaCard.tsx; migration 298, was draft 10; helper src/lib/storeMedia.ts), 2026-11-23, wired 2026-11-24.
 import fs from "node:fs";
 import { extensionFor, mediaFilePath, mediaSaveMessage, parseStoreMedia } from "../src/lib/storeMedia.ts";
 
@@ -16,8 +16,9 @@ check("an owner-shipped /brand/ logo is not shown as the client's, and bad pictu
 check("odd input never throws and means nothing is set", [undefined, null, 5, "x", [], {}].every((v) => { const r = parseStoreMedia(v); return r.hasStorefront === false && r.logo === null && r.background === null && r.clientId === null; }));
 check("server refusals become plain words and the server's own sentence is never shown", [["Create your store first.", /Create your store/], ["The background must be a picture uploaded to your own store folder.", /own store folder/], ["The background must be a PNG, JPEG or WEBP picture uploaded to your own store folder.", /PNG, JPEG or WEBP/], ["Client workspace not found.", /sign in/], ["boom sk-SECRET", /could not be saved/], [undefined, /could not be saved/]].every(([raw, want]) => { const m = mediaSaveMessage(raw); return want.test(m) && !/sk-|SECRET|boom/.test(m); }));
 
-const patch = fs.readFileSync("docs/drafts/patches/10_store_media_frontend.patch", "utf8");
-check("the parked patch adds the card and puts it on the Live store page", /\+\+\+ b\/src\/components\/StoreMediaCard\.tsx/.test(patch) && /\+\+\+ b\/src\/pages\/ClientCommerceLiveStore\.tsx/.test(patch) && /\+\s+<StoreMediaCard \/>/.test(patch));
+const added = (file, only) => `+++ b/${file}\n` + fs.readFileSync(file, "utf8").split("\n").filter((l) => !only || only.test(l)).map((l) => "+" + l).join("\n") + "\n"; // the lines of a real source file, shaped like added lines of a diff, so the checks below read the actual code
+const patch = added("src/components/StoreMediaCard.tsx") + added("src/pages/ClientCommerceLiveStore.tsx", /StoreMediaCard/);
+check("the card exists and is on the Live store page", /\+\+\+ b\/src\/components\/StoreMediaCard\.tsx/.test(patch) && /\+\+\+ b\/src\/pages\/ClientCommerceLiveStore\.tsx/.test(patch) && /\+\s+<StoreMediaCard \/>/.test(patch));
 check("the card goes through the upload ticket, the existing bucket, then the new save function", /authorizeStorageUpload\(supabase, "commerce-website-content", path, file\)/.test(patch) && /completeStorageUpload/.test(patch) && /rpc\("save_my_store_media"/.test(patch) && /rpc\("get_my_store_media"\)/.test(patch));
 check("a failed save removes the just-uploaded file, and a failed upload or finalize cancels the ticket", /remove\(\[path\]\)/.test(patch) && /cancelStorageUpload\(supabase, ticket\)/.test(patch));
 check("the rights tick is always required, a small picture needs its own tick, and the save button stays off until the rules allow it", /rightsConfirmed: rights\[kind\]/.test(patch) && /acknowledgedSmall: soft\[kind\]/.test(patch) && /disabled=\{Boolean\(busy\) \|\| !check\?\.ok\}/.test(patch) && /This picture is mine, or I have permission to use it on my store/.test(patch));
@@ -26,10 +27,10 @@ check("a background's softening amount is measured from the picture and saved wi
 check("the card shows nothing until the database answers and the client has a store", /if \(!media \|\| !media\.hasStorefront\) return null;/.test(patch));
 check("no keys, environment values or outside addresses in the card", !/api[_-]?key|process\.env|import\.meta\.env|https?:\/\/(?!abcdefgh)/i.test(patch.split("\n").filter((l) => l.startsWith("+")).join("\n").replace(/\/\/.*$/gm, "")));
 
-const draft = fs.readFileSync("docs/drafts/migrations/10_store_media.sql", "utf8");
+const draft = fs.readFileSync("supabase/migrations/298_store_media.sql", "utf8");
 check("draft 10 returns the client id so the card can build the client's own folder", /'client_id', client_uuid/.test(draft));
 const callers = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f)).filter((f) => /get_my_store_media|save_my_store_media/.test(fs.readFileSync(`src/${f}`, "utf8")));
-check("no page in src calls the draft-only functions yet (they wait for the approved migration)", callers.length === 0, callers.join(","));
+check("only the upload card calls the two client functions", callers.length >= 1 && callers.every((f) => /StoreMediaCard\.tsx$/.test(f)), callers.join(","));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll store media checks passed (offline).");
 process.exit(failures ? 1 : 0);

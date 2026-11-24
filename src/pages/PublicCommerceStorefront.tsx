@@ -20,9 +20,10 @@ import {
 } from "../lib/storeCatalog";
 import { recentOrderKey, recentOrderMinutesLeft, restoreRecentOrder, serializeRecentOrder, type RecentOrder } from "../lib/recentOrder";
 import { cutoutLogo } from "../lib/logoCutout";
+import { noShipping, shippingFor, shippingHint, shippingRuleActive, shippingRuleFromRow, type DeliveryMethod, type ShippingRule } from "../lib/storeShipping";
 
 type StoreData = { store: { name: string; slug: string; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null }; products: StoreProduct[] };
-type OrderResult = { order_number: string; total: number; currency: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
+type OrderResult = { order_number: string; total: number; currency: string; subtotal?: number; shipping_total?: number; delivery_method?: string; stripe_payment_link?: string | null; paypal_url?: string | null; venmo_url?: string | null; payment_note?: string | null };
 
 export function PublicCommerceStorefront() {
   const slug = window.location.pathname.split("/").filter(Boolean)[1] || "";
@@ -78,6 +79,9 @@ export function PublicCommerceStorefront() {
   }
   // "Order by email" stores (migration 270): the checkout builds an email to the shop instead of creating an online order.
   const [orderMode, setOrderMode] = useState<OrderMode>(onlineMode);
+  // The shop's shipping rule (draft migration 08). Until that exists, or when the shop set none, nothing about checkout changes.
+  const [shippingRule, setShippingRule] = useState<ShippingRule>(noShipping);
+  const [deliveryChoice, setDeliveryChoice] = useState<DeliveryMethod>("ship");
   const [emailOrder, setEmailOrder] = useState<{ href: string; text: string; shortened: boolean } | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
   const [openSlug, setOpenSlug] = useState(() => slugFromHash(window.location.hash));
@@ -87,6 +91,10 @@ export function PublicCommerceStorefront() {
   const itemCount = useMemo(() => cartCount(cart), [cart]);
   const total = useMemo(() => cartTotal(cart), [cart]);
   const needsShipping = useMemo(() => cartNeedsShipping(cart), [cart]);
+  const shippingOn = orderMode.mode === "online" && shippingRuleActive(shippingRule);
+  const delivery: DeliveryMethod = shippingOn && shippingRule.pickupAllowed && deliveryChoice === "pickup" ? "pickup" : "ship";
+  const shippingFee = shippingOn ? shippingFor(shippingRule, total, needsShipping, delivery) : 0;
+  const addressNeeded = needsShipping && delivery !== "pickup";
   const openProduct = useMemo(() => (openSlug && data ? data.products.find((p) => p.slug === openSlug) ?? null : null), [openSlug, data]);
 
   function showToast(message: string) {
@@ -122,12 +130,21 @@ export function PublicCommerceStorefront() {
   // How this store takes orders. Any failure (including the function not existing yet) means normal online ordering.
   async function loadOrderMode() {
     if (!supabase) return;
-    const statusLoad = Promise.all([loadStoreStatus(), loadStoreLook()]); // paused or cancelled shops: asked alongside, so a paused store never flashes the cart first
+    const statusLoad = Promise.all([loadStoreStatus(), loadStoreLook(), loadShippingRule()]); // paused or cancelled shops: asked alongside, so a paused store never flashes the cart first
     try {
       const result = await supabase.rpc("get_public_store_order_mode", { store_slug_value: slug });
       if (!result.error && result.data) setOrderMode(orderModeFromRow(result.data));
     } catch { /* online ordering */ }
     await statusLoad;
+  }
+
+  // The shop's shipping fee and pickup option. Any failure (or an older database) means no fee and the normal order path.
+  async function loadShippingRule() {
+    if (!supabase) return;
+    try {
+      const result = await supabase.rpc("get_public_store_shipping", { store_slug_value: slug });
+      if (!result.error) setShippingRule(shippingRuleFromRow(result.data));
+    } catch { /* no shipping fee */ }
   }
 
   // The shop's own look. Any failure (or an older database) means the normal default theme.
@@ -300,7 +317,7 @@ export function PublicCommerceStorefront() {
 
   async function placeOrder() {
     if (!supabase || cart.length === 0) return;
-    const problems = validateCheckout(form, needsShipping);
+    const problems = validateCheckout(form, addressNeeded);
     setFieldErrors(problems);
     if (Object.keys(problems).length > 0) {
       setError("Please check the details marked below.");
@@ -311,7 +328,7 @@ export function PublicCommerceStorefront() {
     }
     setBusy(true); setError("");
     if (!checkoutKeyRef.current) checkoutKeyRef.current = newCheckoutKey();
-    const result = await supabase.rpc("create_public_stripe_ready_direct_payment_order", {
+    const result = await supabase.rpc(shippingOn ? "create_public_store_order_with_shipping" : "create_public_stripe_ready_direct_payment_order", {
       store_slug_value: slug,
       items_payload: cart.map((item) => ({ variant_id: item.variant.id, quantity: item.quantity })),
       customer_payload: {
@@ -321,6 +338,7 @@ export function PublicCommerceStorefront() {
         note,
         shipping_address: { address: form.address },
         idempotency_key: checkoutKeyRef.current,
+        ...(shippingOn ? { delivery_method: delivery } : {}),
       },
     });
     if (result.error) {
@@ -385,7 +403,8 @@ export function PublicCommerceStorefront() {
 
       {order ? <section className="panel panel-wide">
         <h2>Order {order.order_number} created</h2>
-        <p>Your total is <strong>{formatMoney(order.total, order.currency)}</strong>.</p>
+        <p>Your total is <strong>{formatMoney(order.total, order.currency)}</strong>{Number(order.shipping_total) > 0 ? <> (includes {formatMoney(Number(order.shipping_total), order.currency)} shipping)</> : null}.</p>
+        {order.delivery_method === "pickup" ? <p data-testid="store-pickup-note">You chose pickup.{shippingRule.pickupNote ? ` ${shippingRule.pickupNote}` : " The shop will tell you when and where."}</p> : null}
         <div className="notice-card"><strong>Payment step</strong><p>{order.payment_note || "Include your order number in the payment note."}</p><p>Use order number: <strong>{order.order_number}</strong></p></div>
         <ol className="store-next-steps" data-testid="store-next-steps">
           <li>Pay with the button below and put order number <strong>{order.order_number}</strong> in the payment note.</li>
@@ -467,16 +486,26 @@ export function PublicCommerceStorefront() {
               </div>
             </article>;
           })}
-          <h3>Total: {formatMoney(total, currency)}</h3>
+          {shippingOn && needsShipping ? <div data-testid="store-shipping-lines">
+            <p>Subtotal: {formatMoney(total, currency)}</p>
+            <p>{delivery === "pickup" ? "Pickup" : "Shipping"}: {shippingFee > 0 ? formatMoney(shippingFee, currency) : "Free"}</p>
+            {shippingHint(shippingRule, total, needsShipping, delivery, (amount) => formatMoney(amount, currency)) ? <p className="subtle">{shippingHint(shippingRule, total, needsShipping, delivery, (amount) => formatMoney(amount, currency))}</p> : null}
+          </div> : null}
+          <h3>Total: {formatMoney(total + shippingFee, currency)}</h3>
         </section>
 
         {cart.length > 0 ? <form className="panel panel-wide" noValidate onSubmit={(event) => { event.preventDefault(); if (orderMode.mode === "email") sendEmailOrder(); else void placeOrder(); }}>
           <h2>Customer details</h2>
+          {shippingOn && shippingRule.pickupAllowed ? <fieldset className="store-delivery-choice" data-testid="store-delivery-choice"><legend>How do you want to get your order?</legend>
+            <label><input type="radio" name="delivery" checked={delivery === "ship"} onChange={() => setDeliveryChoice("ship")} /> <span>Ship it to me</span></label>
+            <label><input type="radio" name="delivery" checked={delivery === "pickup"} onChange={() => { setDeliveryChoice("pickup"); setFieldErrors((current) => ({ ...current, address: undefined })); }} /> <span>I will pick it up (free)</span></label>
+            {delivery === "pickup" && shippingRule.pickupNote ? <p className="subtle">{shippingRule.pickupNote}</p> : null}
+          </fieldset> : null}
           <div className="setup-form-grid">
             <label><span>Name <em className="required-mark">(required)</em></span><input className="auth-input" id="field-name" autoComplete="name" maxLength={160} value={form.name} aria-invalid={fieldErrors.name ? true : undefined} aria-describedby={fieldErrors.name ? "err-name" : undefined} onChange={(e) => setField("name", e.target.value)} />{fieldErrors.name ? <small className="store-field-error" id="err-name">{fieldErrors.name}</small> : null}</label>
             <label><span>Email <em className="required-mark">(required)</em></span><input className="auth-input" id="field-email" type="email" autoComplete="email" maxLength={254} value={form.email} aria-invalid={fieldErrors.email ? true : undefined} aria-describedby={fieldErrors.email ? "err-email" : undefined} onChange={(e) => setField("email", e.target.value)} />{fieldErrors.email ? <small className="store-field-error" id="err-email">{fieldErrors.email}</small> : null}</label>
             <label><span>Phone <em className="optional-tag">(optional)</em></span><input className="auth-input" type="tel" autoComplete="tel" maxLength={80} value={form.phone} onChange={(e) => setField("phone", e.target.value)} /></label>
-            <label><span>Shipping address {needsShipping ? <em className="required-mark">(required)</em> : <em className="optional-tag">(not needed for pickup items)</em>}</span><input className="auth-input" id="field-address" autoComplete="street-address" maxLength={1000} value={form.address} aria-invalid={fieldErrors.address ? true : undefined} aria-describedby={fieldErrors.address ? "err-address" : undefined} onChange={(e) => setField("address", e.target.value)} />{fieldErrors.address ? <small className="store-field-error" id="err-address">{fieldErrors.address}</small> : null}</label>
+            <label><span>Shipping address {addressNeeded ? <em className="required-mark">(required)</em> : <em className="optional-tag">{delivery === "pickup" ? "(not needed for pickup)" : "(not needed for pickup items)"}</em>}</span><input className="auth-input" id="field-address" autoComplete="street-address" maxLength={1000} value={form.address} aria-invalid={fieldErrors.address ? true : undefined} aria-describedby={fieldErrors.address ? "err-address" : undefined} onChange={(e) => setField("address", e.target.value)} />{fieldErrors.address ? <small className="store-field-error" id="err-address">{fieldErrors.address}</small> : null}</label>
           </div>
           <label><span>Order note <em className="optional-tag">(optional)</em></span><textarea className="auth-input" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
           {signedIn ? <label style={{ display: "flex", gap: ".6rem", alignItems: "center" }}><input type="checkbox" checked={saveToAccount} onChange={(e) => setSaveToAccount(e.target.checked)} /><span>Save these details to my account for next time</span></label> : null}

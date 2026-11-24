@@ -14,10 +14,6 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `02_owner_client_directory_v2.sql` | Owner client directory v2 with `client_code` and `nxq_id`, searchable (additive) | `docs/CLIENT_ID_AND_NXQ_ACCOUNT_PLAN.md` |
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
-| `06_owner_only_internal_policy_reads.sql` | Security review 2026-11-13, PRODUCT DECISION: the tier policy table and the feature flags become owner-only reads (nothing in the app reads them as a client) | same |
-| `08_store_shipping_fee.sql` | Store shipping: one flat fee per order, optional free-over amount, optional free pickup. Five new functions only; the server works the fee out; the app uses them only when a rule is on (added 2026-11-17) | `docs/NXQ_RUNTIME_HANDOFF.md` |
-| `10_store_media.sql` | A client's own logo and background for the store look: the look check accepts own-folder pictures (existing bucket, no upload-rule change), two client functions, and the owner's color save keeps the client's pictures (added 2026-11-23) | `docs/BACKGROUND_GENERATION_PLAN.md`, `docs/LOGO_UPLOAD_PLAN.md` |
-| `11_store_background_generation.sql` | Server side of the automatic store-background maker: owner-set limits (switch OFF, allowance 0, monthly ceiling 0 by default), a per-store request log, the gate that mirrors `src/lib/backgroundLimits.ts`, and the owner's approve-or-reject step. Needs draft 10 first. No provider, key or Edge function (added 2026-11-24) | `docs/BACKGROUND_GENERATION_PLAN.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
@@ -73,3 +69,5 @@ Drafts 09 and 10 (server enforces the order mode; idempotency key on direct-paym
 
 
 Drafts 07 and 09 were promoted on 2026-11-18 (owner chose "07 and 09 now" in chat) to real migrations `294_new_order_owner_notification` and `295_confirm_late_direct_payment`; their tests now live in `scripts/sql/local-full-schema/regression/`. Draft 09's screens (the Orders page button) were applied from their parked patch at the same time. Neither migration is applied to staging yet.
+
+Drafts 06, 08, 10 and 11 were promoted on 2026-11-24 (owner chose "everything" for deploy day) to real migrations `296_owner_only_internal_policy_reads`, `297_store_shipping_fee`, `298_store_media` and `299_store_background_generation`; their tests now live in `scripts/sql/local-full-schema/regression/`. 299 needs 298 applied first. Nothing is applied to staging yet. Drafts 01 to 04 remain.

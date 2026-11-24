@@ -45,7 +45,8 @@ check("a gradient or an internal link inside the file (#id) is allowed", svgProb
 
 check("a picture is stored at most 2400 px on its longest side, never enlarged, shape kept", JSON.stringify(logoStoredSize(4800, 2400)) === JSON.stringify({ width: 2400, height: 1200, resized: true }) && JSON.stringify(logoStoredSize(2000, 1000)) === JSON.stringify({ width: 2000, height: 1000, resized: false }) && logoStoredSize(240, 240).resized === false);
 check("odd sizes give nothing", [[0, 10], [10, 0], [NaN, 4], [-1, 4]].every(([w, h]) => logoStoredSize(w, h) === null));
-check("the rules are not used by any page yet (they wait for the upload screen and its database change)", !fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f) && !/logoRules/.test(f)).some((f) => fs.readFileSync(`src/${f}`, "utf8").includes("logoRules")));
+const logoRuleUsers = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f) && !/logoRules/.test(f)).filter((f) => fs.readFileSync(`src/${f}`, "utf8").includes("logoRules"));
+check("the rules are used only by the client upload card now (the screen and its database change are in)", logoRuleUsers.length >= 1 && logoRuleUsers.every((f) => /StoreMediaCard\.tsx$/.test(f)), logoRuleUsers.join(","));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll logo rules checks passed (offline).");
 process.exit(failures ? 1 : 0);

@@ -1,4 +1,4 @@
--- Sidecar test for 11 (automatic store background: limits, counter, owner approval). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 299 (was draft 11) (automatic store background maker). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

@@ -5,6 +5,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 import { safePaymentUrl } from "../lib/safeUrl";
 import { GetPaidHelper } from "../components/GetPaidHelper";
 import { StoreQrCard } from "../components/StoreQrCard";
+import { StoreShippingCard } from "../components/StoreShippingCard";
 import { withCommerceReason } from "../lib/commerceRpcReason";
 import { emptyStoreProfile, normalizeStoreProfile, profileFromRow, storeProfileLimits, type StoreProfile } from "../lib/storeProfile";
 
@@ -27,6 +28,8 @@ type LiveSettings = {
   public_url: string;
   products: LiveProduct[];
 };
+
+import { StoreMediaCard } from "../components/StoreMediaCard";
 
 export function ClientCommerceLiveStore() {
   const [data, setData] = useState<LiveSettings | null>(null);
@@ -297,6 +300,7 @@ export function ClientCommerceLiveStore() {
       {!loading && !verified ? <div className="empty-state">Storefront settings could not be verified, so publishing controls are unavailable.</div> : null}
 
       {!loading && verified && data ? <>
+        <StoreMediaCard />
         {orderMode !== null ? <section className="panel panel-wide" data-testid="order-mode-panel" data-tour="live-order-mode">
           <div className="panel-title"><Store size={20} /><div><h2>How do customers order?</h2><p className="subtle">Pick one. You can change it any time.</p></div></div>
           <div role="radiogroup" aria-label="How customers order" className="order-mode-choices">
@@ -340,6 +344,8 @@ export function ClientCommerceLiveStore() {
           </div> : null}
         </section>
 
+        {orderMode === "email" || orderMode === "menu" ? null : <StoreShippingCard />}
+
         <section className="panel panel-wide" data-tour="live-visibility">
           <div className="panel-title"><Store size={20} /><div><h2>Product visibility</h2><p className="subtle">Choose which products customers can see. A product stays hidden until you press Make visible.</p></div></div>
           <p className="subtle">Photos are added on the <a href="/client/commerce/images">Photos page</a>, not here.</p>
@@ -355,6 +361,8 @@ export function ClientCommerceLiveStore() {
             </article>
           ))}
         </section>
+
+        <StoreBackgroundRequestCard />
 
         {profileLoaded ? <section className="panel panel-wide" data-testid="store-profile-form">
           <div className="panel-title"><Store size={20} /><div><h2>About and contact <em className="optional-tag">optional</em></h2><p className="subtle">A short note and a way for customers to reach you. Whatever you type here is shown publicly at the bottom of your store, so leave a box empty to keep it private.</p></div></div>
@@ -382,3 +390,6 @@ export function ClientCommerceLiveStore() {
     </section></main>
   );
 }
+
+// Imported here, at the end, so this card's wiring never shares lines with the other parked patches that edit this page.
+import { StoreBackgroundRequestCard } from "../components/StoreBackgroundRequestCard";

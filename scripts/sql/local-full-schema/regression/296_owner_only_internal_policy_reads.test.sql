@@ -1,4 +1,4 @@
--- Sidecar test for 06 (owner-only reads of the tier policy and feature-flag tables). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
+-- Regression test for migration 296 (was draft 06) (owner-only internal policy reads). Rolled-back transaction. Must end by selecting DRAFT_TEST_OK.
 begin;
 select set_config('request.jwt.claim.role', 'service_role', true);
 

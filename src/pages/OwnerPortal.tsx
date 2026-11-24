@@ -1288,6 +1288,7 @@ function parseBuildPlanSections(buildPlan: Record<string, unknown>) {
                 <a className="icon-btn" href="/owner/plan-changes">Plan changes</a>
                 <a className="icon-btn" href="/owner/client-lifecycle">Pause / cancel / first month</a>
                 <a className="icon-btn" href="/owner/store-look">Store look</a>
+                <a className="icon-btn" href="/owner/backgrounds">Automatic backgrounds</a>
                 <a className="icon-btn" href="/owner/netlify-budget">Netlify build limit</a>
                 <a className="icon-btn" href="/owner/sales">Sales pipeline</a>
                 <a className="icon-btn" href="/owner/growth">Growth controls</a>

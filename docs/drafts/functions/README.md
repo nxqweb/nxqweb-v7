@@ -9,7 +9,7 @@ A function here is finished, tested source that is deliberately kept OUT of `sup
 Tests: `scripts/test-generate-store-background.mjs` (fakes only: no network, no key, no database). It also checks that the function's copy of the prompt builder gives the same text as the app's, and that the function is still only a draft.
 
 ## Adopting a draft function (all steps gated; dry-run on 2026-11-24 showed this is exactly what the repo asks for)
-1. Promote and apply the migrations it calls (the CI rule "every source RPC call has a captured migration definition" fails until then).
+1. Apply the migrations it calls (298 and 299, promoted 2026-11-24 and not yet applied; the CI rule "every source RPC call has a captured migration definition" is satisfied now that they are real migrations).
 2. Copy the folder to `supabase/functions/<name>/`.
 3. Add `entry("<name>", false, "worker-token")` to `scripts/edge-function-manifest.mjs`.
 4. Add `[functions.<name>]` with `verify_jwt = false` to `supabase/config.toml`.

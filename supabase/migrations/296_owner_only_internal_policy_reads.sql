@@ -1,3 +1,4 @@
+-- 296: promoted from draft 06 on 2026-11-24 (owner chose "everything" for deploy day in chat); NOT applied until the owner approves the guarded run.
 -- DRAFT (not a real migration; needs the owner's approval to promote and apply).
 -- From the 2026-11-13 security review. THIS ONE IS A PRODUCT DECISION, kept separate from draft 05 on purpose:
 -- today every signed-in client can read the internal tier policy table and the feature-flag table.

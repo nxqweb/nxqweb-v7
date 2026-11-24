@@ -1,3 +1,4 @@
+-- 299: promoted from draft 11 on 2026-11-24 (owner chose "everything" for deploy day in chat); NOT applied until the owner approves the guarded run.
 -- Draft 11: the server side of the automatic store-background maker (added 2026-11-24). ADDITIVE: two new tables and eight new functions; nothing existing is changed.
 -- REQUIRES draft 10 (the look check must already accept an own-folder `background`): apply 10 first.
 -- Plan: docs/BACKGROUND_GENERATION_PLAN.md. The picture maker itself (a provider account, its key as a server secret, an Edge function that calls it) is NOT here and

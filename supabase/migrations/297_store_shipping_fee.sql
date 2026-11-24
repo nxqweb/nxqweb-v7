@@ -1,3 +1,4 @@
+-- 297: promoted from draft 08 on 2026-11-24 (owner chose "everything" for deploy day in chat); NOT applied until the owner approves the guarded run.
 -- Draft 08: a simple shipping fee for stores (added 2026-11-17). ADDITIVE ONLY: four new functions plus one internal helper.
 -- No existing function, table, trigger or policy is changed, so a store that never sets a shipping rule behaves exactly as before,
 -- and the app keeps using the old order function until a rule is switched on.

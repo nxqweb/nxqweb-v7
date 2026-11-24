@@ -54,7 +54,9 @@ check("client text is cleaned before it reaches the provider", r.status === "pen
 check("odd input never throws", (await Promise.all([undefined, null, {}, { limits: 5 }].map((v) => generateBackground(v)))).every((o) => o.status === "refused"));
 
 const files = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f) && !/background(Prompt|Limits|Rules|Generator)/.test(f));
-check("nothing in the app uses these yet (they wait for the approved upload screen and generator)", !files.some((f) => /background(Rules|Generator)/.test(fs.readFileSync(`src/${f}`, "utf8"))));
+const rulesUsers = files.filter((f) => /backgroundRules/.test(fs.readFileSync(`src/${f}`, "utf8")));
+const generatorUsers = files.filter((f) => /backgroundGenerator/.test(fs.readFileSync(`src/${f}`, "utf8")));
+check("the upload rules are used only by the client upload card, and the pure generator is used by no page (the Edge function has its own tested copy of the job)", rulesUsers.length >= 1 && rulesUsers.every((f) => /StoreMediaCard\.tsx$/.test(f)) && generatorUsers.length === 0, `${rulesUsers.join(",")} | ${generatorUsers.join(",")}`);
 const code = ["backgroundRules", "backgroundGenerator"].map((f) => fs.readFileSync(`src/lib/${f}.ts`, "utf8").replace(/\/\/.*$/gm, "")).join("\n");
 check("no network, database, keys or environment in these files", !/fetch\(|supabase|XMLHttpRequest|sendBeacon|api[_-]?key|process\.env|import\.meta\.env/i.test(code));
 

@@ -1,4 +1,4 @@
-// Offline test: the owner's limits and approval screens for the automatic background maker (parked patch 11_background_owner_screens.patch; database draft 11; helper src/lib/backgroundOwner.ts), 2026-11-24.
+// Offline test: the owner's limits and approval screens for the automatic background maker (src/pages/OwnerBackgrounds.tsx; migration 299, was draft 11; helper src/lib/backgroundOwner.ts), 2026-11-24.
 import fs from "node:fs";
 import { decisionConfirm, formFromSettings, parseBackgroundSettings, parseWaitingRequests, settingsChangeSummary, settingsPayload, settingsProblem } from "../src/lib/backgroundOwner.ts";
 
@@ -23,18 +23,19 @@ check("rows without a real id are dropped, a huge list is capped, and odd input 
 check("the overlay is kept between 0 and 0.75", parseWaitingRequests([{ id: rid, overlay: 9 }])[0].overlay === 0.75 && parseWaitingRequests([{ id: rid, overlay: -1 }])[0].overlay === 0 && parseWaitingRequests([{ id: rid, overlay: "0.3" }])[0].overlay === 0);
 check("the approve and reject confirm boxes say what happens", /goes live on their store right away/.test(decisionConfirm(list[0], true)) && /store stays as it is/.test(decisionConfirm(list[0], false)) && /still counts/.test(decisionConfirm(list[0], false)) && /this store/.test(decisionConfirm({ ...list[0], storeName: "", storeSlug: "" }, true)));
 
-const patch = fs.readFileSync("docs/drafts/patches/11_background_owner_screens.patch", "utf8");
-check("the parked patch adds the page, the /owner/backgrounds route behind the owner login, and a link from the owner portal", /\+\+\+ b\/src\/pages\/OwnerBackgrounds\.tsx/.test(patch) && /\+\s+if \(path === "\/owner\/backgrounds"\) return <OwnerProtectedRoute><OwnerBackgrounds \/><\/OwnerProtectedRoute>;/.test(patch) && /href="\/owner\/backgrounds">Automatic backgrounds</.test(patch));
+const added = (file, only) => `+++ b/${file}\n` + fs.readFileSync(file, "utf8").split("\n").filter((l) => !only || only.test(l)).map((l) => "+" + l).join("\n") + "\n"; // the lines of a real source file, shaped like added lines of a diff, so the checks below read the actual code
+const patch = added("src/pages/OwnerBackgrounds.tsx") + added("src/App.tsx", /OwnerBackgrounds|owner\/backgrounds/) + added("src/pages/OwnerPortal.tsx", /owner\/backgrounds/);
+check("the page exists, the /owner/backgrounds route is behind the owner login, and the owner portal links to it", /\+\+\+ b\/src\/pages\/OwnerBackgrounds\.tsx/.test(patch) && /\+\s+if \(path === "\/owner\/backgrounds"\) return <OwnerProtectedRoute><OwnerBackgrounds \/><\/OwnerProtectedRoute>;/.test(patch) && /href="\/owner\/backgrounds">Automatic backgrounds</.test(patch));
 check("the page uses exactly the four owner functions of draft 11", /rpc\("owner_get_background_settings"\)/.test(patch) && /rpc\("owner_list_background_requests", \{ status_filter: "pending_approval" \}\)/.test(patch) && /rpc\("owner_set_background_settings", payload\)/.test(patch) && /rpc\("owner_decide_background_request", \{ request_uuid: request\.id, approve \}\)/.test(patch));
 check("saving and deciding each ask first (a confirm box), and the page only saves a valid form", /window\.confirm\(`Save these changes\?/.test(patch) && /window\.confirm\(decisionConfirm\(request, approve\)\)/.test(patch) && /disabled=\{busy \|\| Boolean\(problem\)\}/.test(patch) && /if \(!supabase \|\| !payload \|\| busy\) return;/.test(patch));
 check("an approval button stays off when the picture is not from the store's own folder", /disabled=\{busy \|\| !request\.imageUrl\}/.test(patch));
 check("no keys, environment values or outside addresses in the page", !/api[_-]?key|process\.env|import\.meta\.env|https?:\/\//i.test(patch.split("\n").filter((l) => l.startsWith("+")).join("\n").replace(/\/\/.*$/gm, "")));
 
-const draft = fs.readFileSync("docs/drafts/migrations/11_store_background_generation.sql", "utf8");
+const draft = fs.readFileSync("supabase/migrations/299_store_background_generation.sql", "utf8");
 check("draft 11 defines the four owner functions with those exact argument names", ["owner_get_background_settings()", "owner_set_background_settings(switched_on_value boolean, per_store_allowance_value integer, period_days_value integer, monthly_cap_value integer, cooldown_seconds_value integer)", "owner_list_background_requests(status_filter text default 'pending_approval')", "owner_decide_background_request(request_uuid uuid, approve boolean)"].every((sig) => draft.includes(sig)));
 check("draft 11 starts everything OFF and at zero (fails closed)", /switched_on boolean not null default false/.test(draft) && /per_store_allowance integer not null default 0/.test(draft) && /monthly_cap integer not null default 0/.test(draft));
 const callers = fs.readdirSync("src", { recursive: true }).filter((f) => /\.tsx?$/.test(f)).filter((f) => /owner_(get|set)_background_settings|owner_list_background_requests|owner_decide_background_request/.test(fs.readFileSync(`src/${f}`, "utf8")));
-check("no page in src calls those draft-only functions yet (they wait for the approved migration)", callers.length === 0, callers.join(","));
+check("only the owner backgrounds page calls those four functions", callers.length >= 1 && callers.every((f) => /OwnerBackgrounds\.tsx$/.test(f)), callers.join(","));
 
 console.log(failures ? `\n${failures} check(s) failed.` : "\nAll background owner screen checks passed (offline).");
 process.exit(failures ? 1 : 0);

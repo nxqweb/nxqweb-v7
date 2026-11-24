@@ -424,3 +424,8 @@ html:has(.store-theme) { scroll-behavior: smooth; }
 .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 82vw); max-height: 70vh; }
 @media (max-width: 860px) { .store-theme[data-showcase] .store-bg-logo img { width: min(var(--showcase-logo-size), 78vw); } }
 @media (min-width: 861px) { .store-theme[data-showcase] .store-bg-logo { justify-content: flex-end; align-items: flex-start; padding: 150px 7vw 0 0; } }
+/* Shipping or pickup choice at checkout (shown only when the shop offers pickup). */
+.store-theme .store-delivery-choice { border: 1px solid var(--store-line, rgba(0,0,0,.14)); border-radius: 12px; padding: .75rem 1rem; margin: 0 0 1rem; display: grid; gap: .5rem; }
+.store-theme .store-delivery-choice legend { font-weight: 600; padding: 0 .35rem; }
+.store-theme .store-delivery-choice label { display: flex; gap: .6rem; align-items: center; min-height: 44px; cursor: pointer; }
+.store-theme .store-delivery-choice input { width: 20px; height: 20px; }

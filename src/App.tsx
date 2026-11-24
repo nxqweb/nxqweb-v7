@@ -82,6 +82,7 @@ const OwnerGrowthCenter = named(() => import("./pages/OwnerGrowthCenter"), "Owne
 const OwnerLaunchReadiness = named(() => import("./pages/OwnerLaunchReadiness"), "OwnerLaunchReadiness");
 const OwnerPlanChanges = named(() => import("./pages/OwnerPlanChanges"), "OwnerPlanChanges");
 const OwnerStoreLook = named(() => import("./pages/OwnerStoreLook"), "OwnerStoreLook");
+const OwnerBackgrounds = named(() => import("./pages/OwnerBackgrounds"), "OwnerBackgrounds");
 const OwnerNetlifyBudget = named(() => import("./pages/OwnerNetlifyBudget"), "OwnerNetlifyBudget");
 const OwnerClientLifecycle = named(() => import("./pages/OwnerClientLifecycle"), "OwnerClientLifecycle");
 const OwnerPortal = named(() => import("./pages/OwnerPortal"), "OwnerPortal");
@@ -129,6 +130,7 @@ function AppRoutes() {
   if (path === "/owner/files") return <OwnerProtectedRoute><OwnerFiles /></OwnerProtectedRoute>;
   if (path === "/owner/plan-changes") return <OwnerProtectedRoute><OwnerPlanChanges /></OwnerProtectedRoute>;
   if (path === "/owner/store-look") return <OwnerProtectedRoute><OwnerStoreLook /></OwnerProtectedRoute>;
+  if (path === "/owner/backgrounds") return <OwnerProtectedRoute><OwnerBackgrounds /></OwnerProtectedRoute>;
   if (path === "/owner/netlify-budget") return <OwnerProtectedRoute><OwnerNetlifyBudget /></OwnerProtectedRoute>;
   if (path === "/owner/client-lifecycle") return <OwnerProtectedRoute><OwnerClientLifecycle /></OwnerProtectedRoute>;
   if (path === "/owner") return <OwnerProtectedRoute><><OwnerCommandCenter /><OwnerPortal /></></OwnerProtectedRoute>;
