@@ -20,9 +20,9 @@ state. Update this file, not a new one, at every handoff.
 ## DEPLOY DAY PLAN WRITTEN 2026-11-24 (owner chose Option A, then went to bed)
 
 - Plan: `docs/DEPLOY_DAY_PLAN.md` (pieces waiting, three decisions, Claude's prep phase, the three guarded database runs with owner form cards, the 15-credit main-app deploy, her logo and background, smoke test, rollback). NOTHING in it has been done.
-- Owner decision recorded 2026-11-24: PHONE LOGO LAYOUT = Option A (inside the hero above the title on phones, not a fixed background behind the glass). NOT built yet: first task of the prep phase; browser-check at phone, laptop and wide sizes; patch 08 edits the same page, so refresh it per the patches README.
+- Owner decision recorded 2026-11-24: PHONE LOGO LAYOUT = Option A (inside the hero above the title on phones, not a fixed background behind the glass). BUILT 2026-11-24 (source only, not deployed): the hero renders a decorative logo image (shown up to 860px wide screens, hidden on computers); on those screens the fixed background copy is hidden only when the hero logo exists (`:has`), so a store with no products keeps its fixed logo. Real-browser check, 8 of 8: phone (logo above the title, 285px), tablet, laptop (563px, unchanged), wide (600px, unchanged), no-products store. Patch 08 still applies (guard green). Tests pinned in `scripts/test-store-showcase.mjs`.
 - Preview of her store with the new logo on the owner's new background (peach and sage, 1642 x 958; automatic softening rule said 0%) looked right on computers; the background cannot go live until draft 10 is applied (the database does not accept a background today).
-- Next 3 safe tasks: (1) build and browser-check the phone logo layout; (2) draft the manual-mode SQL for the three key-dependent readiness checks (docs/drafts only); (3) wait for the owner's go on the deploy-day decisions.
+- Next 3 safe tasks: (1) [DONE] phone logo layout; (2) draft the manual-mode SQL for the three key-dependent readiness checks (docs/drafts only); (3) wait for the owner's go on the deploy-day decisions.
 
 ## CANDLE CLIENT'S NEW LOGO 2026-11-24 (owner rebuilt it in an image tool; file added, NOT live yet)
 

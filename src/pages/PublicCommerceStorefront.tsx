@@ -427,6 +427,7 @@ export function PublicCommerceStorefront() {
         </section> : null}
         {paused ? <section className="notice-card" role="status" data-testid="store-paused"><strong>This shop is not taking new orders right now.</strong><p>You can still look around. Please check back soon.</p></section> : null}
         {data.products.length > 0 ? <section className="store-hero" aria-label="Welcome" data-testid="store-hero">
+          {branding?.logo ? <img className="store-hero-logo" src={logoCut && logoCut.source === branding.logo ? logoCut.url : branding.logo} data-cutout={logoCut && logoCut.source === branding.logo ? "true" : undefined} alt="" /> : null}
           <div className="store-hero-copy">
             {branding?.logo ? <h2 className="store-hero-title">{data.store.name}</h2> : null}
             <p className="store-hero-text">{tagline}</p>

@@ -10,7 +10,7 @@ Goal: put everything that is built and waiting onto staging and the site in ONE 
 | Draft 10 + patch 10 | A client's own logo and background (database check, upload card on the Live store page); owner colour saves keep their pictures | migration + screens |
 | Draft 11 + patches 11 and 12 | Automatic background maker server side, owner limits and approval page (`/owner/backgrounds`), client "Make me a background" button. Switched OFF and zero by default, so nothing happens until the owner sets numbers | migration + screens |
 | Candle client logo v2 | `public/brand/light-of-the-world-logo-v2.webp` (already in the repo) | ships with the deploy, then one owner setting |
-| Phone logo layout | Decided 2026-11-24 (Option A): on phones the logo sits inside the hero above the title instead of as a fixed background behind the glass cards | NOT built yet: build and browser-check first (careful: patch 08 edits the same page) |
+| Phone logo layout | Decided 2026-11-24 (Option A): on phones the logo sits inside the hero above the title instead of as a fixed background behind the glass cards | BUILT and browser-checked 2026-11-24 (8 of 8); ships with the deploy |
 | Edge function `generate-store-background` | The picture maker | NOT part of deploy day; a later, separate gated step (see the end) |
 
 ## Decisions to make first (Option A / B / C each; Claude recommends)
@@ -20,7 +20,7 @@ Goal: put everything that is built and waiting onto staging and the site in ONE 
 
 ## Phase 1: Claude prepares (source only, no credits, no approvals)
 1. `git fetch`, confirm the branch tip against `origin`, `npm run test:ci-parity` green.
-2. Build and browser-check the phone logo layout; refresh patch 08 if it touches the same lines (routine in `docs/drafts/patches/README.md`).
+2. (Phone logo layout: DONE 2026-11-24.) Re-run the parked patch guard; refresh patch 08 if the page changed under it (routine in `docs/drafts/patches/README.md`).
 3. Promote the drafts to real migrations with the next free numbers, in dependency order (06, 08, 10, then 11; draft 10 must come before draft 11): move each sidecar test to `scripts/sql/local-full-schema/regression/`, keep the "NOT APPLIED" header, run `node scripts/check-migration-integrity.mjs` and `npm run test:local-full-schema`.
 4. Apply patches 08, 10, 11, 12; flip the three "nothing in the app uses these rules yet" tests (listed in the patches README); delete the applied patches and their entries in `scripts/test-parked-patches.mjs`.
 5. `npm run test:ci-parity` must be fully green, then `node scripts/preflight-deploy-day.mjs` (the only allowed failure is a dirty tree before the trigger commit). Push to the safe branch. Report exact files, checks and SHA.
