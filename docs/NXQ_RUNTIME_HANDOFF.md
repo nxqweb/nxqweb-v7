@@ -20,7 +20,8 @@ state. Update this file, not a new one, at every handoff.
 ## MAIN-APP DEPLOY TRIGGERED 2026-11-24 (owner turned Netlify builds ON and said "go for it")
 
 - Final preflight passed (clean tree, nothing pending, staging through 299, no function change, production build and header rehearsal pass); `npm run test:ci-parity` 74/74. ONE trigger commit pushed (the one that adds the 2026-11-24 line to the deploy log in `docs/ONE_SITE_DEPLOY_RUNBOOK.md`). Credits before: 180 (owner screenshot 12:46 PM); expect about 165 after.
-- Owner steps left: when the branch deploy is green, Publish deploy; then turn builds OFF and tell Claude "builds stopped"; never click Netlify's "Deploy project" (it builds main).
+- RESULT: build on `4fa87e0` succeeded (24 s), the owner PUBLISHED it at 12:54 PM and builds are OFF again ("Builds are stopped", screenshot 12:55 PM). Published code verified (phone hero logo, background layer, owner backgrounds page, both client cards; new logo file served 200). Credits: banner 180 (lagging), expect about 165. Never click Netlify's "Deploy project" (it builds main).
+- STILL TO DO: smoke test of her real store (needs her store address), then set her logo to `/brand/light-of-the-world-logo-v2.webp` on `/owner/store-look` (no build), then she uploads her own background with the new card. The maker stays OFF (limits zero) until the owner sets numbers.
 - After publish: Claude and the owner run the smoke test in `docs/DEPLOY_DAY_PLAN.md` phase 5; then her logo on `/owner/store-look`; then she uploads her own background.
 
 ## DEPLOY DAY PREP DONE 2026-11-24 (owner: "everything", "she uploads her own background", "today")
