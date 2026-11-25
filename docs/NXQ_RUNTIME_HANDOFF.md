@@ -10,6 +10,13 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## SCANII BILLING PAGE READ 2026-11-24 (owner screenshots of Account, Usage / Settings / Billing, about 4:20 PM)
+
+- Billing tab: **no active subscription** (nothing renews on its own) and no trial end date is shown. Paid plans exist; picking one is a gated spending decision for the owner, only needed once real clients upload files at volume. No prices recorded here (public repo).
+- Usage: 50 starting credits, **46 available**, 4 used this cycle (same as 2026-11-23, so no scans since). Whether the free credits expire is NOT stated on the page.
+- Settings: account created 2026-10-05. The "Delete account" box shows a date 30 days out; that is only a preview of what would happen if the owner confirmed a delete (the button was greyed out), NOT a scheduled deletion. Do not press it. Security events: 8 in the last 30 days (not reviewed; likely setup activity; the owner can check "View security log").
+- Effect on the plan: 46 credits easily cover the one or two clean scans needed in the final-month sitting (`docs/FINAL_MONTH_RUNBOOK.md`). Each uploaded client file uses a credit, so a paid plan decision is needed before real client uploads grow. The account id is not recorded here.
+
 ## GITHUB SECRET PROTECTION CONFIRMED ON 2026-11-24 (owner screenshot of Settings, Advanced Security, 4:09 PM)
 
 - Secret Protection (secret scanning) shows enabled (the button reads "Disable") and **Push protection is On** for this public repository. Copilot Autofix shows On (it only matters once CodeQL is set up). Left OFF on purpose: CodeQL setup (it adds a workflow file, a gated change), AI Scan (uses AI credits), Dependabot security and version updates (they open pull requests by themselves). Dependency graph and Dependabot alerts were NOT confirmed in this screenshot; owner was asked to switch them on (free, warnings only). This closes the owner to-do "turn on GitHub secret scanning and push protection". It does not replace key rotation (`docs/KEY_ROTATION_PLAN.md`).
