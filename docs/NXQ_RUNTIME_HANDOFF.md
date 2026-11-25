@@ -10,6 +10,10 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## GITHUB SECRET PROTECTION CONFIRMED ON 2026-11-24 (owner screenshot of Settings, Advanced Security, 4:09 PM)
+
+- Secret Protection (secret scanning) shows enabled (the button reads "Disable") and **Push protection is On** for this public repository. Copilot Autofix shows On (it only matters once CodeQL is set up). Left OFF on purpose: CodeQL setup (it adds a workflow file, a gated change), AI Scan (uses AI credits), Dependabot security and version updates (they open pull requests by themselves). Dependency graph and Dependabot alerts were NOT confirmed in this screenshot; owner was asked to switch them on (free, warnings only). This closes the owner to-do "turn on GitHub secret scanning and push protection". It does not replace key rotation (`docs/KEY_ROTATION_PLAN.md`).
+
 ## CANDLE STORE LOOK CHECK 2026-11-24/25 (after the second deploy; no files in the app changed)
 
 - Owner opened her live store: logo shows big above "opening soon" (the empty-store logo fix works). The owner's screen showed a gray page, also in Incognito and in the phone-sized preview. Headless renders at phone and desktop width, in light and dark color schemes, all give the page background `#fdf7f7` (cream) and near-white cards, so the site is not sending gray. Owner has Windows HDR on and will not turn it off; HDR remapping of normal pages is the most likely cause (unverified on the owner's machine). Treat the gray as a display artifact, not a site bug.

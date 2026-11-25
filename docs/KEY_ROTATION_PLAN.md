@@ -32,5 +32,5 @@ Owner request: once everything works, rotate every key and token so nothing that
 Owner: roughly a few hours spread over one or two sittings, mostly clicking at providers. Claude: checks names, runs the validators and reads logs after each step. The only genuinely risky parts are the shared internal tokens and the Supabase project keys, because a half-done change stops the background workers.
 
 ## Owner to-dos that help regardless
-- Turn on GitHub secret scanning and push protection (Repo, Settings, Advanced Security); see `docs/OWNER_SECURITY_SETTINGS_CHECK.md` (still open).
+- GitHub secret scanning and push protection: DONE, confirmed on by owner screenshot 2026-11-24 (Repo, Settings, Advanced Security); see `docs/OWNER_SECURITY_SETTINGS_CHECK.md`.
 - Never paste a secret into chat or a screenshot.
