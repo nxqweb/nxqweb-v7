@@ -1,0 +1,70 @@
+name: NXQ Deploy Function Lint Cleanup
+
+on:
+  push:
+    branches:
+      - safe/commerce-live-storefront
+    paths:
+      - .github/workflows/one-shot-deploy-function-lint.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out safe branch
+        uses: actions/checkout@v4
+        with:
+          ref: safe/commerce-live-storefront
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Remove redundant response initializers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          targets = [
+              ('supabase/functions/execute-preview-netlify-build/index.ts', 'let buildData: Record<string, unknown> = {};', 'let buildData: Record<string, unknown>;'),
+              ('supabase/functions/execute-production-netlify-build/index.ts', 'let buildData: Record<string, unknown> = {};', 'let buildData: Record<string, unknown>;'),
+              ('supabase/functions/publish-production-netlify-deploy/index.ts', 'let publishData: Record<string, unknown> = {};', 'let publishData: Record<string, unknown>;'),
+          ]
+          for filename, old, new in targets:
+              path = Path(filename)
+              text = path.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected exactly one initializer in {filename}; refusing ambiguous edit.')
+              path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint guarded Netlify functions
+        run: npx eslint supabase/functions/execute-preview-netlify-build/index.ts supabase/functions/execute-production-netlify-build/index.ts supabase/functions/publish-production-netlify-deploy/index.ts
+
+      - name: Verify app build
+        run: npm run build
+
+      - name: Verify diff
+        run: git diff --check && git diff --stat
+
+      - name: Commit deployment lint cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/execute-preview-netlify-build/index.ts supabase/functions/execute-production-netlify-build/index.ts supabase/functions/publish-production-netlify-deploy/index.ts
+          git commit -m "fix: clean guarded Netlify response parsing"
+          git push origin HEAD:safe/commerce-live-storefront

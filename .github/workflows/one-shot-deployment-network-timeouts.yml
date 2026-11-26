@@ -1,0 +1,72 @@
+name: NXQ Deployment Network Timeouts
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - .github/workflows/one-shot-deployment-network-timeouts.yml
+      - scripts/patch-deployment-network-timeouts.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Apply bounded deployment-network patch
+        run: python scripts/patch-deployment-network-timeouts.py
+      - name: Install dependencies
+        run: npm ci
+      - name: Type-check every Edge function
+        run: npm run test:edge
+      - name: Zero-warning lint
+        run: npm run lint -- --max-warnings=0
+      - name: Verify bounded provider calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=(
+            supabase/functions/execute-preview-netlify-build/index.ts
+            supabase/functions/execute-production-netlify-build/index.ts
+            supabase/functions/check-preview-netlify-status/index.ts
+            supabase/functions/check-production-netlify-status/index.ts
+            supabase/functions/publish-production-netlify-deploy/index.ts
+          )
+          for target in "${targets[@]}"; do
+            grep -q 'async function boundedProviderFetch' "$target"
+            grep -q 'status: 599' "$target"
+            count="$(grep -c 'await fetch(' "$target" || true)"
+            test "$count" -eq 1 || { echo "$target has $count raw awaited fetch calls; expected helper-only 1"; exit 1; }
+          done
+          git diff --check
+      - name: Commit bounded deployment network calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          targets=(
+            supabase/functions/execute-preview-netlify-build/index.ts
+            supabase/functions/execute-production-netlify-build/index.ts
+            supabase/functions/check-preview-netlify-status/index.ts
+            supabase/functions/check-production-netlify-status/index.ts
+            supabase/functions/publish-production-netlify-deploy/index.ts
+          )
+          if git diff --quiet -- "${targets[@]}"; then
+            echo "No deployment timeout changes required."
+            exit 0
+          fi
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add -- "${targets[@]}"
+          git commit -m "fix: bound deployment provider network calls"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

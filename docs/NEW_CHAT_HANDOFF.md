@@ -1,0 +1,43 @@
+# NXQX-Web: new-chat handoff (written 2026-11-12, refreshed 2026-11-26, upload this file to the new chat)
+
+**First message to paste into the new chat:** "Read CLAUDE.md and docs/NEW_CHAT_HANDOFF.md in the nxqweb-v7 repo, check git against origin, ask me whether Netlify builds are ON or OFF before any push, then read the 'HANDOFF 2026-11-26' block at the top of docs/NXQ_RUNTIME_HANDOFF.md and continue with the next safe task."
+
+**READ FIRST (2026-11-26):** the owner's end goal, what exists today, the checks, the blockers and the next three safe tasks are in the "HANDOFF 2026-11-26" block at the top of `docs/NXQ_RUNTIME_HANDOFF.md`. In short: NXQX should run a business's whole digital life as one ecosystem (website, AI receptionist for calls, commerce, excellent portals), built so that only Stripe and the AI keys remain to plug in before launch (Jun 16, 2027). The AI receptionist is NOT built yet (home-page "Coming soon" card only), and NXQX does not yet create Stripe customers or checkouts through the Stripe API. The sections below are older notes from 2026-11-12; where they disagree with the 2026-11-26 block, the 2026-11-26 block wins.
+
+## Do this first (every session)
+1. `git fetch`, then compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`. Branch: `safe/checkpoint-autonomy-wave35-sales`. Never work on `main`. Never trust a SHA written in a document.
+2. Read `CLAUDE.md` (standing rules), then the "UPDATE 2026-11-13" and "HANDOFF 2026-11-12" blocks at the top of `docs/NXQ_RUNTIME_HANDOFF.md`, `docs/PATH_TO_LAUNCH.md` (one-page plan to Jun 16, 2027) and `docs/EXPIRING_TOKENS.md` (token names and expiry dates). The "Canonical launch checklist" is in `docs/NXQ_RUNTIME_HANDOFF.md`.
+3. Ask the owner whether **Netlify builds are ON or OFF** before ANY push. The main staging site (`nxqweb-v9-staging`) shows "Builds are stopped": never click "Activate builds". Production deploys cost 15 credits each, previews are not billed. (The disposable QA sites are separate Netlify projects that the pipeline creates itself.)
+4. Before every push run `npm run test:ci-parity` (74 commands, about 3 minutes; check the exit code and the "All 74 CI commands passed" line). A real Postgres is in the sandbox: `pg_ctlcluster 16 main start`, then `NXQ_LOCAL_PG_OS_USER=postgres node scripts/test-local-full-schema.mjs` (50/50). Fresh container with an empty `node_modules`: run `npm ci` first.
+
+## Older state notes (2026-11-12; partly superseded by the 2026-11-26 block)
+- **Clean approve QA runs: 6 of 10** (verified in the database: `select public.count_strict_clean_business_runs();` returned 6). Only APPROVE runs count; a failed run does not reset the count. 4 more are needed.
+- **Launch readiness: 21/26 (81%)** (owner screenshot 2026-11-23, after the ten clean runs). The 5 open checks: the three key-dependent checks (email dispatcher, change classifier, AI build plan; the owner chose "manual mode" to waive them, NOT applied yet), the file scanner (needs a fresh clean scan, 30-day window; do it in the final month) and the owner sign-off (last). The six evidence checks are ready only until they expire (7 days); refresh them in the final week.
+- **Netlify credits: 179.7 of 300** (2026-11-23, expire 2026-12-22). A QA run or a main-app deploy costs about 30 and 15. Builds stay OFF. **Clean approve runs: 10 of 10 (complete, verified in the database 2026-11-23).**
+- Staging database: migrations through **300 applied** (300, manual launch mode: run #302, log read, no error; verified by run #303 "Remote database is up to date.") (296 to 299 applied 2026-11-24, run #298, log read, no error; they were promoted that day from drafts 06, 08, 10 and 11). 288 to 295 were applied in run #291 on 2026-11-18. The owner chose "everything" for deploy day; the plan is `docs/DEPLOY_DAY_PLAN.md`. The four screen patches are APPLIED in the source but NOT DEPLOYED (the site still shows the old screens until the one main-app deploy), her new logo is in `public/brand/` (not live yet), and no Edge function needs deploying.
+- **Token incident (all fixed by the owner by hand, all proven):** the Supabase GitHub secret, the Netlify token and the GitHub verify token had expired or been replaced; new ones have long expiry dates in `docs/EXPIRING_TOKENS.md`. The owner still has to save Proton Pass notes and set phone reminders (late Oct 2027) for them.
+- **The six staging evidence checks expire after 7 days**: next refresh due about **2026-11-19**.
+- Owner dashboard exceptions: **11** (146 old QA failures were cancelled by the owner; the 11 left are explained in the handoff block; none are live).
+- The Team hours add-on was built and then CANCELLED by the owner (not building it).
+- Unchanged since 2026-10-29 (ask the owner for the current status): the candle client (Light of the World) store, her products and photos; screenshots of the logged-in screens (`/owner/store-look`, `/owner/client-lifecycle`, the setup form).
+
+## Next three safe tasks (updated 2026-11-26; the old list was done or superseded)
+1. Stripe, ready to plug in (build the missing billing piece against a pretend Stripe; owner picks the billing model first).
+2. AI receptionist: plan and a safe, parked foundation (nothing paid, no provider yet).
+3. Portal and storefront polish pass, batched into one commit for the next deploy.
+Details and the exact next-session instruction are in the "HANDOFF 2026-11-26" block in `docs/NXQ_RUNTIME_HANDOFF.md`.
+
+## Rules in force
+- Stop-and-ask gates are in `CLAUDE.md` (workflows, migrations, external services, secrets, deploys, payments, destructive actions). Mutations need the owner's typed `APPLY-NXQ-SUPABASE-STAGING` and the owner's own click on Review deployments -> nxq-staging -> Approve and deploy. Claude may start the guarded workflow through the GitHub tool only for an action the owner approved in the current chat, then gives the run link and a three-field form card.
+- Never put a secret value in chat, files, logs or screenshots. Every token must have an expiry date written in `docs/EXPIRING_TOKENS.md`. The owner pastes tokens into Supabase or GitHub secrets by hand.
+- Owner prefers: gen-z tone, nice, honest, smart, helpful; options as labeled choices (Option A / B / C) for real decisions; a short done/left checklist at the end of a chat; point to the canonical checklist, never invent a percentage.
+- Spending hold on paid keys, lawyer and card until about **July 2027**, which is AFTER the Jun 16, 2027 launch: the AI key, email provider (Resend + domain), scanner (Scanii) and a production Supabase project need a dated owner decision.
+- Supabase is on the FREE plan: no backups; creators go on STAGING first (wave 1 = 5 creators, low-stakes content only); a production project with backups before anyone real depends on it.
+- Decisions already settled (2026-11-12): `docs/OWNER_DECISION_SHEET.md` (cancel by hand, deletion by hand, free month by hand, sell Business now, theme picks by hand, waitlist via a free outside tool).
+- A pending request from the GitHub app "Claude" (new permissions: repository creation write, Dependabot alerts read) was NOT accepted; advice: leave it ignored.
+
+## Owner-only items (Claude cannot do these)
+Typed phrase and Approve clicks for every guarded run; starting and approving each QA run; the AI key, Resend account and domain, Scanii account, live Stripe, production Supabase, lawyer review; the launch signoff; Proton Pass notes, phone reminders and deleting the old expired tokens (GitHub fine-grained `nxqweb-staging-verify` and `NXQ deployment verifier`, old Netlify ones, the classic GitHub token "NXQ Web Automation"); confirming whether the three old full-access Supabase CLI tokens are theirs.
+
+## Useful files
+`docs/PLUG_IN_CHECKLIST.md` (secret names and order for Claude, Stripe test mode, Resend, Scanii), `docs/OWNER_SECURITY_SETTINGS_CHECK.md` (owner look-and-confirm list of live GitHub, Supabase and Netlify settings; not yet done), `docs/PATH_TO_LAUNCH.md`, `docs/EXPIRING_TOKENS.md`, `docs/TEN_CLEAN_RUNS_PLAN.md` (ledger and credit math), `docs/PROMOTION_DOUBLE_DEPLOY_PLAN.md`, `docs/OWNER_DECISION_SHEET.md`, `docs/LAUNCH_PLAN_JUNE16.md`, `docs/REAL_LAUNCH_GATE.md`, `docs/WAVE_RELEASE_RUNBOOK.md`, `docs/BACKUP_AND_RESTORE.md`, `docs/NXQ_RUNTIME_HANDOFF.md` (full history, long).

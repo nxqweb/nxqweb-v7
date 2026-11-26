@@ -1,0 +1,39 @@
+diff --git a/supabase/functions/ingest-stripe-webhook/index.ts b/supabase/functions/ingest-stripe-webhook/index.ts
+index 5e5587e..91ae97b 100644
+--- a/supabase/functions/ingest-stripe-webhook/index.ts
++++ b/supabase/functions/ingest-stripe-webhook/index.ts
+@@ -2,6 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
+ import type { DynamicDatabase } from "../_shared/dynamic-database.ts";
+ import { applyReferralCreditToDraftInvoice } from "../_shared/referral-invoice-credit.ts";
+ import type { CreditDeps, StripeInvoiceObject } from "../_shared/referral-invoice-credit.ts";
++import { readCheckoutCompleted } from "../_shared/checkout-completed.ts";
+ 
+ const jsonHeaders={"Content-Type":"application/json"};
+ const encoder=new TextEncoder();
+@@ -117,7 +118,7 @@ Deno.serve(async(req)=>{
+     const createdSeconds=Number(event.created);
+     const mappedType=normalizedType(eventType,object);
+     // Events we do not act on are acknowledged before anything else, so a customer-less event never makes Stripe retry for days.
+-    if(!mappedType&&eventType!=="invoice.created")return response({ok:true,ignored:true,event_type:eventType},202);
++    if(!mappedType&&eventType!=="invoice.created"&&eventType!=="checkout.session.completed")return response({ok:true,ignored:true,event_type:eventType},202);
+     // A dispute object has no customer field: its customer is found through the charge (needs the Stripe key; without it the event fails loudly and Stripe retries).
+     const providerCustomerId=(eventType==="charge.dispute.created"&&typeof object.customer!=="string"?await customerFromCharge(object.charge):String(object.customer||"")).slice(0,180);
+     if(!eventId||!providerCustomerId)throw new Error("Stripe event identity is incomplete.");
+@@ -130,6 +131,17 @@ Deno.serve(async(req)=>{
+     const client=await admin.from("clients").select("id,qa_only").eq("id",link.data.client_id).single();
+     if(client.error||!client.data)throw new Error("Linked NXQX client was not found.");
+     if(client.data.qa_only)throw new Error("Billing artifacts are forbidden for QA-only clients.");
++    // A client finished the hosted checkout NXQX created for them. This only RECORDS that fact (money events keep using the paths below). The checkout must belong
++    // to the customer and client that the event was matched to above, so a checkout from some other Stripe product can never touch an NXQX client.
++    if(eventType==="checkout.session.completed"){
++      const done=readCheckoutCompleted(object);
++      if(!done.ok)return response({ok:true,ignored:true,reason:done.reason},202);
++      if(done.value.customerId!==providerCustomerId||done.value.clientId!==client.data.id)throw new Error("Checkout session does not match the linked client.");
++      const marked=await admin.rpc("nxq_checkout_mark_completed",{target_session_id:done.value.sessionId,target_customer_id:done.value.customerId,target_subscription_id:done.value.subscriptionId,target_event_id:eventId});
++      if(marked.error)throw new Error(`Checkout completion failed: ${marked.error.message}`);
++      if((marked.data as {ok?:boolean;reason?:string}|null)?.ok!==true)return response({ok:true,ignored:true,reason:String((marked.data as {reason?:string}|null)?.reason||"checkout_not_recorded").slice(0,60)},202);
++      return response({ok:true,checkout_completed:true});
++    }
+     if(eventType==="invoice.created")return await creditNewInvoice(admin,object,client.data.id);
+ 
+     const existing=await admin.from("billing_provider_events").select("id").eq("provider_key","stripe").eq("provider_event_id",eventId).maybeSingle();

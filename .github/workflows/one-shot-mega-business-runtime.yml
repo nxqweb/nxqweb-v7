@@ -1,0 +1,54 @@
+name: One-shot mega Business runtime wiring
+
+on:
+  push:
+    branches:
+      - safe/mega-autonomy-pass
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Patch Business generator runtime config
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('supabase/functions/build-business-website/index.ts')
+          s=p.read_text()
+          s=s.replace('const blueprintFiles = ["index.html", "app.js", "styles.css", "analytics.js"];','const blueprintFiles = ["index.html", "app.js", "styles.css", "lead-form.js", "analytics.js"];')
+          s=s.replace('function buildSiteConfig(buildPlan: JsonRecord) {','function buildSiteConfig(buildPlan: JsonRecord, runtime: JsonRecord = {}) {')
+          s=s.replace('  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";\n  const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);\n  const mouseTracking = tierKey === "premium";', '  const analyticsEndpoint = clean(runtime.analytics_endpoint);\n  const analyticsIngestKey = clean(runtime.analytics_ingest_key);\n  const analyticsProfileEnabled = runtime.analytics_profile_enabled === true;\n  const leadEndpoint = clean(runtime.lead_endpoint);\n  const leadFormKey = clean(runtime.lead_form_key);\n  const advancedAnalytics = ["growth", "pro", "premium"].includes(tierKey);\n  const mouseTracking = tierKey === "premium";')
+          s=s.replace('    analytics: {\n      enabled: advancedAnalytics && Boolean(analyticsEndpoint),\n      endpoint: analyticsEndpoint,', '    leads: {\n      enabled: Boolean(leadEndpoint && leadFormKey),\n      endpoint: leadEndpoint,\n      formKey: leadFormKey,\n    },\n    analytics: {\n      enabled: advancedAnalytics && analyticsProfileEnabled && Boolean(analyticsEndpoint && analyticsIngestKey),\n      endpoint: analyticsEndpoint,\n      ingestKey: analyticsIngestKey,')
+          marker='  const token = await githubInstallationToken();\n'
+          runtime='''  const analyticsEndpoint = Deno.env.get("NXQ_PUBLIC_ANALYTICS_ENDPOINT")?.trim() || "";\n  const leadEndpoint = Deno.env.get("NXQ_PUBLIC_LEAD_ENDPOINT")?.trim() || "";\n  const analyticsSetup = await admin.rpc("configure_website_analytics_for_project", { target_client_id: job.client_id, target_project_id: job.project_id });\n  if (analyticsSetup.error) throw new Error(`Analytics profile setup failed: ${analyticsSetup.error.message}`);\n  const analyticsProfile = await admin.from("website_analytics_profiles").select("public_ingest_key,status").eq("project_id", job.project_id).single();\n  if (analyticsProfile.error) throw new Error(`Analytics profile load failed: ${analyticsProfile.error.message}`);\n  if (analyticsEndpoint) {\n    const analyticsFlag = await admin.from("website_analytics_profiles").update({ ingest_endpoint_configured: true, updated_at: new Date().toISOString() }).eq("project_id", job.project_id);\n    if (analyticsFlag.error) throw new Error(`Analytics endpoint state failed: ${analyticsFlag.error.message}`);\n  }\n  const leadForm = await admin.rpc("create_default_business_lead_form", { target_client_id: job.client_id, target_project_id: job.project_id });\n  if (leadForm.error) throw new Error(`Lead form setup failed: ${leadForm.error.message}`);\n  const runtimeConfig: JsonRecord = {\n    analytics_endpoint: analyticsEndpoint,\n    analytics_ingest_key: String(analyticsProfile.data?.public_ingest_key || ""),\n    analytics_profile_enabled: analyticsProfile.data?.status === "enabled",\n    lead_endpoint: leadEndpoint,\n    lead_form_key: String(leadForm.data || ""),\n  };\n\n'''
+          if runtime not in s:
+              if marker not in s: raise SystemExit('runtime insertion marker missing')
+              s=s.replace(marker,runtime+marker,1)
+          s=s.replace('buildSiteConfig(projectRes.data.build_plan as JsonRecord)', 'buildSiteConfig(projectRes.data.build_plan as JsonRecord, runtimeConfig)')
+          p.write_text(s)
+          PY
+      - run: npx eslint supabase/functions/build-business-website/index.ts --max-warnings=0
+      - run: node scripts/validate-business-build-worker-contract.mjs
+      - name: Verify expected runtime hooks
+        run: |
+          grep -q 'lead-form.js' supabase/functions/build-business-website/index.ts
+          grep -q 'create_default_business_lead_form' supabase/functions/build-business-website/index.ts
+          grep -q 'public_ingest_key' supabase/functions/build-business-website/index.ts
+          grep -q 'analyticsIngestKey' supabase/functions/build-business-website/index.ts
+      - name: Commit patch if needed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/functions/build-business-website/index.ts
+          git diff --cached --quiet || git commit -m "Wire generated Business lead and analytics runtime config"
+          git push

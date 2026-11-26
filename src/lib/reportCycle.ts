@@ -1,0 +1,126 @@
+// Pure monthly-report cycle logic for the client Reports page. No network, no React.
+// Inputs come straight from what the database already stores: the client's maintenance plan
+// (schedule) and their website_monthly_reports rows (one per month). Nothing here is invented.
+
+export type CyclePlan = {
+  status: string;
+  monthly_report_enabled: boolean;
+  next_monthly_report_at: string | null;
+};
+
+export type CycleReport = {
+  report_month: string; // 'YYYY-MM-DD' (first of the month)
+  status: string;
+  generated_at: string | null;
+  delivered_at: string | null;
+  health_summary?: unknown;
+  performance_summary?: unknown;
+  recommendations?: unknown;
+};
+
+export type MonthStatus = "delivered" | "ready" | "draft" | "blocked" | "failed" | "missing";
+
+export type CycleMonth = { month: string; status: MonthStatus; generatedAt: string | null; deliveredAt: string | null; summary: ReportSummary | null };
+
+export type CycleState = "no_plan" | "paused" | "off" | "active";
+
+export type CycleSummary = {
+  state: CycleState;
+  planStatus: string | null;
+  nextReportAt: string | null; // only set while the cycle is active and the date parses
+  months: CycleMonth[]; // oldest to newest, ending with the current month
+  latest: CycleMonth | null; // newest month that has a real report row
+  latestReady: CycleMonth | null; // newest month with a finished report (ready or delivered): the one whose numbers are shown, even while a newer month is still being prepared
+};
+
+const KNOWN: ReadonlySet<string> = new Set(["delivered", "ready", "draft", "blocked", "failed"]);
+
+export const statusLabel: Record<MonthStatus, string> = {
+  delivered: "Delivered",
+  ready: "Ready",
+  draft: "Being prepared",
+  blocked: "Waiting",
+  failed: "Could not be completed",
+  missing: "No report",
+};
+
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// What a finished monthly report says, in plain numbers. Only values the maintenance worker really wrote are used; anything missing, negative or
+// the wrong type is dropped, and an empty result means "nothing to show" (never invented figures).
+export type ReportSummary = { checks: number; completed: number; needAttention: number; sentences: string[]; recommendations: string[] };
+
+const count = (value: unknown): number | null => (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100000 ? Math.floor(value) : null);
+
+export function summarizeReport(row: Pick<CycleReport, "health_summary" | "recommendations"> & { performance_summary?: unknown }): ReportSummary | null {
+  const health = row.health_summary && typeof row.health_summary === "object" ? (row.health_summary as Record<string, unknown>) : {};
+  const checks = count(health.total_checks);
+  const completed = count(health.completed_checks);
+  const attention = count(health.unresolved_checks);
+  const recommendations = Array.isArray(row.recommendations)
+    ? row.recommendations.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim().slice(0, 300)).slice(0, 5)
+    : [];
+  const perf = row.performance_summary && typeof row.performance_summary === "object" ? (row.performance_summary as Record<string, unknown>) : {};
+  const hasActivity = perf.generated_from_real_data === true;
+  if (checks === null && recommendations.length === 0 && !hasActivity) return null;
+  const sentences: string[] = [];
+  if (hasActivity) {
+    const views = count(perf.page_views);
+    const before = count(perf.prev_page_views);
+    if (perf.tracking === true && views !== null) {
+      let line = `Your website had ${views} visit${views === 1 ? "" : "s"} this month.`;
+      if (before !== null && before > 0 && views !== before) line += ` That is ${views > before ? "up" : "down"} from ${before} last month.`;
+      sentences.push(line);
+    }
+    const leads = count(perf.leads);
+    if (leads !== null) {
+      const urgent = count(perf.urgent_leads) ?? 0;
+      sentences.push(`${leads} ${leads === 1 ? "inquiry" : "inquiries"} came in through your website${urgent > 0 ? `, ${urgent} marked urgent` : ""}.`);
+    }
+  }
+  if (checks !== null) {
+    sentences.push(checks === 0 ? "No website checks were needed this month." : `${checks} website check${checks === 1 ? " was" : "s were"} run this month.`);
+    if (completed !== null && checks > 0) sentences.push(`${completed} finished without a problem.`);
+    if (attention !== null && attention > 0) sentences.push(`${attention} ${attention === 1 ? "needs" : "need"} attention. The NXQX team is looking at ${attention === 1 ? "it" : "them"}.`);
+  }
+  return { checks: checks ?? 0, completed: completed ?? 0, needAttention: attention ?? 0, sentences, recommendations };
+}
+
+export function buildCycle(plan: CyclePlan | null, reports: CycleReport[], nowMs: number, monthCount = 6): CycleSummary {
+  const byMonth = new Map<string, CycleReport>();
+  for (const report of reports) {
+    const key = String(report.report_month || "").slice(0, 7);
+    if (/^\d{4}-\d{2}$/.test(key) && !byMonth.has(key)) byMonth.set(key, report);
+  }
+
+  const now = new Date(nowMs);
+  const months: CycleMonth[] = [];
+  for (let offset = monthCount - 1; offset >= 0; offset -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+    const key = monthKey(date);
+    const report = byMonth.get(key);
+    const status: MonthStatus = report && KNOWN.has(report.status) ? (report.status as MonthStatus) : "missing";
+    months.push({
+      month: `${key}-01`,
+      status,
+      generatedAt: report?.generated_at ?? null,
+      deliveredAt: report?.delivered_at ?? null,
+      summary: report && (status === "ready" || status === "delivered") ? summarizeReport(report) : null,
+    });
+  }
+
+  let state: CycleState = "active";
+  if (!plan) state = "no_plan";
+  else if (plan.status !== "active") state = "paused";
+  else if (!plan.monthly_report_enabled) state = "off";
+
+  const next = plan?.next_monthly_report_at ? new Date(plan.next_monthly_report_at) : null;
+  const nextReportAt = state === "active" && next && !Number.isNaN(next.getTime()) ? next.toISOString() : null;
+  const latest = [...months].reverse().find((month) => month.status !== "missing") ?? null;
+
+  const latestReady = [...months].reverse().find((month) => month.summary !== null) ?? null;
+
+  return { state, planStatus: plan?.status ?? null, nextReportAt, months, latest, latestReady };
+}

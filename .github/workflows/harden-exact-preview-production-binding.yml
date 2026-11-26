@@ -1,0 +1,48 @@
+name: Harden Exact Preview Production Binding
+
+on:
+  push:
+    branches:
+      - safe/checkpoint-autonomy-wave35-sales
+    paths:
+      - scripts/patch-exact-preview-production-binding.py
+      - .github/workflows/harden-exact-preview-production-binding.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply exact commit binding patch
+        run: python scripts/patch-exact-preview-production-binding.py
+      - name: Verify semantic binding
+        run: |
+          grep -q 'verified_preview_commit_sha' supabase/functions/build-business-website/index.ts
+          grep -q 'item.commit_ref === expectedCommitSha' supabase/functions/build-business-website/index.ts
+          grep -q 'sourceSha !== verifiedPreviewCommitSha' supabase/functions/promote-business-production/index.ts
+      - name: Typecheck Edge functions
+        run: node scripts/check-edge-functions.mjs
+      - name: Lint zero warnings
+        run: npm run lint -- --max-warnings=0
+      - name: Commit hardened workers
+        run: |
+          if git diff --quiet -- supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts; then
+            echo 'No worker changes required.'
+            exit 0
+          fi
+          git config user.name 'nxqweb'
+          git config user.email 'NXQweb@protonmail.com'
+          git add supabase/functions/build-business-website/index.ts supabase/functions/promote-business-production/index.ts
+          git commit -m 'fix: bind verified preview commit to production'
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales

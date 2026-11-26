@@ -1,0 +1,36 @@
+name: NXQ Edge Timeout Sweep
+on:
+  push:
+    branches: [safe/checkpoint-autonomy-wave35-sales]
+    paths:
+      - .github/workflows/one-shot-edge-timeout-sweep.yml
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: safe/checkpoint-autonomy-wave35-sales
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: python scripts/patch-remaining-edge-network-timeouts.py
+      - run: npm ci
+      - run: node scripts/validate-runtime-error-surface-contract.mjs
+      - run: npm run test:edge
+      - run: npm run lint -- --max-warnings=0
+      - shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          git config user.name "NXQ Safe CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/functions/*/index.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: bound remaining Edge provider calls"
+          git push origin HEAD:safe/checkpoint-autonomy-wave35-sales
