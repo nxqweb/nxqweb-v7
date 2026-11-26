@@ -10,6 +10,45 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## HANDOFF 2026-11-26 (owner asked for a handoff; chat was getting long). READ THIS FIRST.
+
+**Branch and tip:** `safe/checkpoint-autonomy-wave35-sales`, tip `d146a22` before this handoff commit (verified equal to `origin` after `git fetch`); working tree was clean. Never work on `main`. Netlify builds are OFF (owner stopped them 2026-11-24 after the second deploy; ask before ANY push anyway).
+
+### The owner's end goal (restated by the owner 2026-11-26; do not drift from it)
+NXQX takes care of a business's WHOLE digital life, as one smooth ecosystem: (1) their **website**, premium-looking from the first build; (2) an **AI receptionist** that answers their phone calls and links into everything else; (3) **commerce**: companies that sell products sell them on their own website. The client portal and owner portal layouts should be excellent end to end. Everything automatic where possible (the AI maintains it, the owner earns, no per-client manual setup). Owner target: **everything built and ready so that only Stripe and the AI keys have to be plugged in, then launch.** Launch date Jun 16, 2027 (deadline Jun 20).
+
+### What exists today (verified from the repo 2026-11-26; staging only, nothing is live to real paying clients)
+| Piece | Status |
+|---|---|
+| Website builds, previews, promotion, maintenance | Built; ten clean end-to-end QA runs complete (count 10, owner read it from the database) |
+| Client portal and owner portal | Built (dozens of pages each), live on staging |
+| Commerce storefront (store page, cart, checkout, owner and client store tools, logo and background upload) | Built and live on staging; the candle client's store is the first real one (no products yet) |
+| Stripe | Webhook and test tooling built and locally tested; clients can paste a Stripe Payment Link in their store; live mode OFF. NOT built: NXQX creating customers, subscriptions or checkout sessions through the Stripe API (billing a client is still done by the owner inside Stripe). See `docs/STRIPE_AND_AI_PLUG_IN_DAY.md` |
+| AI key | One secret (`NXQ_AI_MODEL_PROVIDER_TOKEN`) feeds build planning, change classification and outreach drafting; the proof run `prove_business_build_plan_ai` exists and cannot run without the key. Launch is in "manual mode" (migration 300 waives the three AI/email readiness checks; the AI Desk copy-paste covers it) |
+| AI receptionist (phone calls) | **NOT BUILT.** Only a "Coming soon" card on the public home page. Owner decisions on record: extra-minute price test first, demo voice minutes only when the build starts, not part of the June launch. No provider chosen |
+| Real AI background maker for stores | Draft Edge function + database parts exist (migration 299 applied, function not adopted); needs a provider account, spending cap and key |
+
+### Completed since the previous handoff (2026-11-24 to 2026-11-26)
+Migrations 296 to 300 applied to staging and verified (runs #298, #302, #303; staging is through 300, nothing pending). Second main-app deploy published (`f6df2c7`): automatic store colors from the logo, empty-store logo fix, "Waived for launch" wording; live smoke 16/16. GitHub secret scanning and push protection confirmed ON. Scanii billing and usage read (no subscription, 46 of 50 credits left). Parked draft 05 (ten-run check follows the strict count; local harness 65/65 with a control run) and `docs/FINAL_MONTH_RUNBOOK.md`. Candle client was sent the message about her sharper logo and the background upload; as of 2026-11-26 she had not uploaded a background or products.
+
+### Checks (exact)
+`npm run test:ci-parity` 74/74, exit 0 (last run on `d146a22`); `node scripts/preflight-deploy-day.mjs` passes (nothing pending; no function change); `node scripts/check-migration-integrity.mjs` 267 migrations valid; local full-schema harness 65/65 (`service postgresql start`, `NXQ_LOCAL_PG_OS_USER=postgres npm run test:local-full-schema`).
+
+### Decisions and hard rules in force
+Gated actions in `CLAUDE.md` (workflows, migrations, external services, secrets, deploys, payments, destructive actions) still need the owner's explicit go; the owner types `APPLY-NXQ-SUPABASE-STAGING` and clicks Approve, Claude never does. Repo stays PUBLIC (follow the public-repo writing rule: no personal identifiers, no money detail, no secret values). Manual launch mode (owner, 2026-11-23). Spending hold on paid keys and the card until about July 2027 (after the June launch), so Stripe and AI keys are plugged in on a dated owner decision. Owner's name was never given: do not guess it; ask once if they want to be addressed by name.
+
+### Confirmed blockers and risks
+Launch readiness shows about 18 of 23 and flickers (workers and provider health need a fresh worker check-in; ten-runs row is written by two checkers; fix parked as draft 05; final-month order in `docs/FINAL_MONTH_RUNBOOK.md`). The scheduled "Staging Worker Dispatcher" on `main` fails (known; manual `dispatch_workers` covers it). Staging evidence from 2026-11-18 expires about 2026-11-25, so more rows read unknown until the final-month refresh. File scanner needs a fresh clean scan in the final month. Scanii has no subscription. Supabase is on the free plan (no backups). The owner's screen looks gray because of Windows HDR (display artifact, not a site bug).
+
+### Next three safe tasks (owner picks the order; free, local, no gates until adoption)
+1. **Stripe, ready to plug in:** build the missing billing piece against a PRETEND Stripe (create customer and checkout or subscription from NXQX, with tests and a control run), so plug-in day is only "add the test key and prove it". Needs the owner to choose the billing model first (Option A hosted checkout link created by NXQX, Option B keep manual invoices, Option C payment links per plan; Claude recommends A). Draft migrations and function changes stay parked until approved.
+2. **AI receptionist, plan and safe foundation:** write the plan (call flow, what it records, how calls link to the portal, leads and bookings, provider options, a hard off switch, spend cap), then a parked draft with local tests. No provider account, number or spend until the owner decides.
+3. **Portal and storefront polish pass:** screenshot-driven review of the client portal, owner portal and store pages (`docs/UI_REDESIGN_PLAN.md`), fixes in ONE batched commit, shipped with the next 15-credit deploy.
+Also pending on the owner: the candle client's upload and products (check her live store before assuming), the name to use, and key rotation and the final-month sitting later.
+
+### Exact instruction for the next session
+Read `CLAUDE.md` and this file, run `git fetch` and compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`, confirm builds are OFF with the owner before any push, then ask the owner which of the three tasks above to start (Option A / B / C) and resume. End every chat by pointing to the canonical launch checklist in this file.
+
 ## SCANII BILLING PAGE READ 2026-11-24 (owner screenshots of Account, Usage / Settings / Billing, about 4:20 PM)
 
 - Billing tab: **no active subscription** (nothing renews on its own) and no trial end date is shown. Paid plans exist; picking one is a gated spending decision for the owner, only needed once real clients upload files at volume. No prices recorded here (public repo).

@@ -1,6 +1,8 @@
-# NXQX-Web: new-chat handoff (written 2026-11-12, updated 2026-11-13, upload this file to the new chat)
+# NXQX-Web: new-chat handoff (written 2026-11-12, refreshed 2026-11-26, upload this file to the new chat)
 
-**First message to paste into the new chat:** "Read CLAUDE.md and docs/NEW_CHAT_HANDOFF.md in the nxqweb-v7 repo, check git against origin, ask me whether Netlify builds are ON or OFF before any push, then continue with the first of the next three safe tasks."
+**First message to paste into the new chat:** "Read CLAUDE.md and docs/NEW_CHAT_HANDOFF.md in the nxqweb-v7 repo, check git against origin, ask me whether Netlify builds are ON or OFF before any push, then read the 'HANDOFF 2026-11-26' block at the top of docs/NXQ_RUNTIME_HANDOFF.md and continue with the next safe task."
+
+**READ FIRST (2026-11-26):** the owner's end goal, what exists today, the checks, the blockers and the next three safe tasks are in the "HANDOFF 2026-11-26" block at the top of `docs/NXQ_RUNTIME_HANDOFF.md`. In short: NXQX should run a business's whole digital life as one ecosystem (website, AI receptionist for calls, commerce, excellent portals), built so that only Stripe and the AI keys remain to plug in before launch (Jun 16, 2027). The AI receptionist is NOT built yet (home-page "Coming soon" card only), and NXQX does not yet create Stripe customers or checkouts through the Stripe API. The sections below are older notes from 2026-11-12; where they disagree with the 2026-11-26 block, the 2026-11-26 block wins.
 
 ## Do this first (every session)
 1. `git fetch`, then compare `git rev-parse HEAD` with `git ls-remote origin refs/heads/safe/checkpoint-autonomy-wave35-sales`. Branch: `safe/checkpoint-autonomy-wave35-sales`. Never work on `main`. Never trust a SHA written in a document.
@@ -8,7 +10,7 @@
 3. Ask the owner whether **Netlify builds are ON or OFF** before ANY push. The main staging site (`nxqweb-v9-staging`) shows "Builds are stopped": never click "Activate builds". Production deploys cost 15 credits each, previews are not billed. (The disposable QA sites are separate Netlify projects that the pipeline creates itself.)
 4. Before every push run `npm run test:ci-parity` (74 commands, about 3 minutes; check the exit code and the "All 74 CI commands passed" line). A real Postgres is in the sandbox: `pg_ctlcluster 16 main start`, then `NXQ_LOCAL_PG_OS_USER=postgres node scripts/test-local-full-schema.mjs` (50/50). Fresh container with an empty `node_modules`: run `npm ci` first.
 
-## Where things stand (2026-11-12)
+## Older state notes (2026-11-12; partly superseded by the 2026-11-26 block)
 - **Clean approve QA runs: 6 of 10** (verified in the database: `select public.count_strict_clean_business_runs();` returned 6). Only APPROVE runs count; a failed run does not reset the count. 4 more are needed.
 - **Launch readiness: 21/26 (81%)** (owner screenshot 2026-11-23, after the ten clean runs). The 5 open checks: the three key-dependent checks (email dispatcher, change classifier, AI build plan; the owner chose "manual mode" to waive them, NOT applied yet), the file scanner (needs a fresh clean scan, 30-day window; do it in the final month) and the owner sign-off (last). The six evidence checks are ready only until they expire (7 days); refresh them in the final week.
 - **Netlify credits: 179.7 of 300** (2026-11-23, expire 2026-12-22). A QA run or a main-app deploy costs about 30 and 15. Builds stay OFF. **Clean approve runs: 10 of 10 (complete, verified in the database 2026-11-23).**
@@ -19,10 +21,11 @@
 - The Team hours add-on was built and then CANCELLED by the owner (not building it).
 - Unchanged since 2026-10-29 (ask the owner for the current status): the candle client (Light of the World) store, her products and photos; screenshots of the logged-in screens (`/owner/store-look`, `/owner/client-lifecycle`, the setup form).
 
-## Next three safe tasks
-1. **DONE 2026-11-13: security review; the repo STAYS PUBLIC (owner decision). Do NOT flip it to private:** the Approve gate on `nxq-staging` is believed to need a public repo on GitHub's free plan (not verified from GitHub's docs). Going private needs a different Approve gate first. No secret was found in any file or in the full git history. The repo is public, so follow the public-repo writing rule in `CLAUDE.md`. A few gated fixes are queued for the owner's approval: see the "UPDATE 2026-11-13" block in `docs/NXQ_RUNTIME_HANDOFF.md`. The two small Edge function tidy-ups are written and tested (2026-11-13) but NOT deployed: they ride the next approved `deploy_functions`. Draft 06 (a product decision) is in `docs/drafts/migrations/`, tested, not promoted. About Nov 19 use `deploy_functions` (not `deploy_zero_netlify_readiness`, which does not include the three changed functions) and then `run_evidence_suite`, both with the owner's approval.
-2. **About Nov 19 (free, gated):** start `deploy_functions` (all 45 functions, 0 Netlify credits: ships the sturdier cleanup, the 60-second promotion budget and the 2026-11-13 tidy-ups) and then `run_evidence_suite`; the owner types the phrase and clicks Approve, Claude reads the log; Launch readiness should return to 20/26.
-3. **From Nov 23:** run the 4 remaining approve QA runs one at a time (owner: Launch readiness -> Refresh -> Start APPROVE-path QA -> approve the "NXQ QA Disposable <run code>" request that matches the run code -> hands off; about 12-25 minutes each). After each run: the run row, the SQL count, the Netlify credits page. Claude updates `docs/TEN_CLEAN_RUNS_PLAN.md`, the canonical checklist and `docs/LAUNCH_PLAN_JUNE16.md` only after the SQL count is seen. If a run fails: stop, do not retry, read `qa_lifecycle_runs.evidence` and the run's `automation_jobs` rows (queries are in the handoff block).
+## Next three safe tasks (updated 2026-11-26; the old list was done or superseded)
+1. Stripe, ready to plug in (build the missing billing piece against a pretend Stripe; owner picks the billing model first).
+2. AI receptionist: plan and a safe, parked foundation (nothing paid, no provider yet).
+3. Portal and storefront polish pass, batched into one commit for the next deploy.
+Details and the exact next-session instruction are in the "HANDOFF 2026-11-26" block in `docs/NXQ_RUNTIME_HANDOFF.md`.
 
 ## Rules in force
 - Stop-and-ask gates are in `CLAUDE.md` (workflows, migrations, external services, secrets, deploys, payments, destructive actions). Mutations need the owner's typed `APPLY-NXQ-SUPABASE-STAGING` and the owner's own click on Review deployments -> nxq-staging -> Approve and deploy. Claude may start the guarded workflow through the GitHub tool only for an action the owner approved in the current chat, then gives the run link and a three-field form card.
