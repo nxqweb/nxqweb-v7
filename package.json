@@ -63,6 +63,8 @@
     "ready": "node scripts/deploy-day-ready.mjs",
     "test:deploy-day": "node scripts/test-deploy-day-ready.mjs",
     "test:referral-credit": "node scripts/test-referral-invoice-credit.mjs",
+    "test:checkout-link": "node scripts/test-client-checkout-link.mjs",
+    "test:checkout-link-control": "node scripts/control-client-checkout-link.mjs",
     "test:rewards-page": "node scripts/test-rewards-page.mjs",
     "test:info-pages": "node scripts/test-info-pages.mjs",
     "test:owner-billing-safety": "node scripts/test-owner-billing-safety.mjs",

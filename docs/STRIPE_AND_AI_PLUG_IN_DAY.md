@@ -45,7 +45,8 @@ Known limit (product, not code): a new subscription's FIRST invoice is created a
 | Webhook function: signature check (5 minute window), idempotent events, customer to client mapping, QA clients blocked, billing off by default | Built, local tests only; never run with real Stripe events |
 | Owner screen to link a Stripe customer to a client (`/owner/billing`, migration 261) | Built and applied |
 | Stripe Payment Links in client stores (paste a public link) | Built; accepts `https://buy.stripe.com/...` only |
-| NXQX creating customers, subscriptions, invoices or credits through the Stripe API | **Not built. The code never calls the Stripe API.** `STRIPE_SECRET_KEY` is required by the readiness check but unused today, so billing a client still means the owner creating the Stripe subscription by hand and linking the customer |
+| NXQX creating a hosted checkout link (customer plus subscription checkout session) | **Built as a parked draft 2026-11-26, against a pretend Stripe; NOT deployed.** See `docs/drafts/functions/create-client-checkout-link/README.md` for the plug-in order |
+| NXQX creating invoices, credits, cancels or refunds through the Stripe API | **Not built. The code never calls the Stripe API.** `STRIPE_SECRET_KEY` is required by the readiness check but unused today, so billing a client still means the owner creating the Stripe subscription by hand and linking the customer |
 | Live mode | Off: needs `NXQ_STRIPE_LIVE_MODE_ENABLED=true` plus a separate production approval |
 
 ## 3. AI key: ready vs not

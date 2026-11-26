@@ -5,6 +5,7 @@ A function here is finished, tested source that is deliberately kept OUT of `sup
 | Draft | What it does | Needs first |
 |---|---|---|
 | `generate-store-background/` | The automatic store-background maker: takes the oldest waiting request, asks a picture service, checks and saves the picture in the store's own branding folder, and reports back for the owner's approval. One request per run. Switched OFF until its settings exist. | draft 10 and draft 11 promoted and applied; a provider account, key and spending cap (owner) |
+| `create-client-checkout-link/` | Billing model A1: the owner asks for a hosted Stripe checkout link for one client; NXQX creates the customer, links it, creates a subscription checkout session and returns only a Stripe-hosted page. OFF unless two switches are on; test keys only until live mode is allowed. | draft migration 13 applied; Stripe TEST key and webhook secret (owner, by hand); the webhook patch; a guarded deploy |
 
 Tests: `scripts/test-generate-store-background.mjs` (fakes only: no network, no key, no database). It also checks that the function's copy of the prompt builder gives the same text as the app's, and that the function is still only a draft.
 

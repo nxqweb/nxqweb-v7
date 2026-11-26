@@ -10,6 +10,16 @@ state. Update this file, not a new one, at every handoff.
 > "below" about one of those headings, look there. The run ledger, canonical launch checklist, staging
 > preflight plan, decisions, blockers, next tasks and setup sections stay in this file.
 
+## TASK A DONE 2026-11-26: Stripe "hosted checkout link" (billing model A1), built against a pretend Stripe, PARKED as drafts (nothing deployed, nothing applied)
+
+- Owner chose Option A1 (NXQX creates a hosted checkout link) on 2026-11-26; builds are OFF; no gated action was taken (no workflow, migration apply, deploy, secret or Stripe call).
+- Draft function `docs/drafts/functions/create-client-checkout-link/` (README beside it has the plug-in order and the gated adoption steps): `stripe.ts` (request builders and answer readers), `core.ts` (orchestration, every outside call injected), `index.ts` (owner-only handler, 503 unless `NXQ_BILLING_ENABLED` and the new `NXQ_STRIPE_CHECKOUT_ENABLED` are both true), `checkout-completed.ts`, and a parked patch for `ingest-stripe-webhook` (`checkout.session.completed`; checked with `git apply --check`, not applied).
+- Draft migration `docs/drafts/migrations/13_stripe_checkout_links.sql` (+ sidecar test): attempts table plus five service-role-only functions (reserve, record customer, mark created, mark failed, mark completed). Amount comes from the client's price (at least $10), QA-only, denied, archived, dormant and already-subscribed clients are refused, one open attempt per client. Not a real migration; number it on approval.
+- Tests: `npm run test:checkout-link` (pretend Stripe, also in `npm run test:store`); control run `npm run test:checkout-link-control` (16 deliberately broken rules, each turned the test red); local full-schema 67/67 with two SQL control runs (QA guard and already-subscribed guard removed, each turned the harness red).
+- Control runs found and fixed three real problems before commit: a Postgres regex cap (255, not 300), a Stripe error code that could echo the key into a reason string, and a SQL test that silently passed on NULL.
+- NOT built: the owner screen with the "Create checkout link" button (parked until the function is adopted), trials or free first month, live mode, cancel and refund through the API.
+- Open owner decisions: return address setting, who sends links, trial handling (listed in the folder README).
+
 ## HANDOFF 2026-11-26 (owner asked for a handoff; chat was getting long). READ THIS FIRST.
 
 **Branch and tip:** `safe/checkpoint-autonomy-wave35-sales`, tip `d146a22` before this handoff commit (verified equal to `origin` after `git fetch`); working tree was clean. Never work on `main`. Netlify builds are OFF (owner stopped them 2026-11-24 after the second deploy; ask before ANY push anyway).

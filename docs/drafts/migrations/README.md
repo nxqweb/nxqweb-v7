@@ -15,6 +15,7 @@ gate: it needs the owner's explicit approval and the guarded staging workflow.
 | `03_prelaunch_waitlist.sql` | Pre-launch waitlist: emails only, service-role write path, erase on removal, owner invites people in waves (added 2026-11-04) | `docs/WAITLIST_AND_EXAMPLE_PAGE_PLAN.md`, `docs/LAUNCH_PLAN_JUNE16.md` |
 | `04_addon_packs.sql` | Add-on packs: catalog (seeded pack INACTIVE), per-client row, append-only events, one owner-only switch; billing stays manual (added 2026-11-04) | `docs/BUSINESS_SUITE_PLAN.md` |
 | `05_ten_run_check_follows_strict_count.sql` | Stops the ten-run launch check flickering: the guard from migration 181 derives the status from the strict counter instead of forcing unknown (added 2026-11-24; would become migration 301; NOT applied; local harness 65/65 with a control run) | `docs/FINAL_MONTH_RUNBOOK.md` |
+| `13_stripe_checkout_links.sql` | Attempts table and five service-role-only functions for hosted Stripe checkout links (billing model A1); amount from the database, QA-only and already-subscribed clients refused (added 2026-11-26; NOT applied; local harness 67/67 with two control runs) | `docs/drafts/functions/create-client-checkout-link/README.md` |
 
 Note: the pgcrypto search_path repair was promoted from a draft to real migration 257 on 2026-10-05
 (approved by the owner; not yet applied to staging). Its regression test lives in
