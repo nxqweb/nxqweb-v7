@@ -35,5 +35,10 @@ for a mutation (blank for a read-only validation).
 - **File scanner still unknown after step 5:** the scan was not clean and released, or is older than 30 days. Check the Provider health screen for the scanner connection and the Files card on the test client.
 - **Any evidence row unknown with "expired or missing":** the seven days passed. Re-run `run_evidence_suite`.
 
+## Known: the scheduled worker dispatcher on `main` keeps failing (seen 2026-11-26)
+- The "NXQ Staging Worker Dispatcher" scheduled run (`runtime-worker-dispatch.yml`, runs from `main` at the old commit 77e9455, not from the safe branch) failed on its last three scheduled runs (2026-11-25 05:42, 2026-11-25 16:04, 2026-11-26 00:11 UTC). Its logs were not downloadable (HTTP 404), so the exact error was not read. The notes already say this scheduled copy is the one that fails.
+- Why it matters: that dispatcher is what would keep the worker heartbeats fresh, so while it fails the "workers deployed" and "provider health" readiness rows go stale between manual runs. Not a launch blocker by itself: the manual `dispatch_workers` run in the final-month sitting refreshes them (step 5 above).
+- Decision for later (gated: workflow files and `main`): leave it as is and rely on the manual run, or fix and merge it per `docs/MAIN_BRANCH_MERGE_PLAN.md`. Do not touch `.github/workflows/**` or `main` without the owner's explicit go.
+
 ## What is deliberately NOT required for launch (owner decision 2026-11-23, manual launch mode)
 Notification email delivery, the AI change classifier and AI build-plan enrichment are waived with a written reason on the readiness page (migration 300). They can be switched back on with `owner_set_manual_launch_mode(false)`, which also withdraws any existing sign-off.
